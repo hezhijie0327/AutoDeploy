@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 1.0.1
+# Current Version: 1.0.2
 
 ## How to get and use?
 # curl https://source.zhijie.online/AutoDeploy/main/ubuntu.sh | sudo bash
@@ -123,9 +123,31 @@ function ConfigurePackages() {
     ConfigureSysctl
     ConfigureUfw
 }
+# Configure System
+function ConfigureSystem() {
+    function ConfigureUserInfo() {
+        userinfo=(
+            "ubuntu"
+            "ubuntu"
+        )
+        function ChangeRootPassword() {
+            passwd -u "root" && echo "root:${userinfo[1]}" | chpasswd && passwd -l "root"
+        }
+        function CreateNewUser() {
+            if [ $(cat /etc/passwd | cut -f 1 -d ":" | grep -E "^${userinfo[0]}$") == "" ]; then
+                useradd "${userinfo[0]}" && if [ ! -d "/home/${userinfo[0]}" ];j
+                    mkdir "/home/${userinfo[0]}"
+                fi && chown -R "${userinfo[0]}" "/home/${userinfo[0]}"
+            fi && echo "${userinfo[0]}:${userinfo[1]}" | chpasswd
+        }
+        ChangeRootPassword
+        CreateNewUser
+    }
+    ConfigureUserInfo
+}
 # Install Packages
 function InstallPackages() {
-    apt update && apt install -y apt-transport-https ca-certificates systemd ufw
+    apt update && apt install -y apt-transport-https ca-certificates curl dnsutils git jq knot-dnsutils landscape-common net-tools systemd ufw update-notifier-common wget
 }
 # Upgrade Packages
 function UpgradePackages() {
@@ -140,4 +162,5 @@ InstallPackages
 transport_protocol="https" && SetRepositoryMirror
 UpgradePackages
 ConfigurePackages
+ConfigureSystem
 read_only="true" && SetReadonlyFlag
