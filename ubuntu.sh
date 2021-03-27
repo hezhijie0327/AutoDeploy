@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 1.0.7
+# Current Version: 1.0.8
 
 ## How to get and use?
 # curl https://source.zhijie.online/AutoDeploy/main/ubuntu.sh | sudo bash
@@ -78,7 +78,7 @@ function ConfigurePackages() {
     function ConfigureResolved() {
         resolved_list=(
             "[Resolve]"
-            "DNS=127.0.0.1 223.5.5.5#dns.alidns.com 223.6.6.6#dns.alidns.com"
+            "DNS=223.5.5.5#dns.alidns.com 223.6.6.6#dns.alidns.com"
             "DNSOverTLS=opportunistic"
             "DNSSEC=allow-downgrade"
             "DNSStubListener=false"
@@ -118,10 +118,23 @@ function ConfigurePackages() {
             cat "/tmp/ufw.tmp" > "/etc/default/ufw" && rm -rf "/tmp/ufw.tmp" && ufw reload
         fi
     }
+    function ConfigureZsh() {
+        zsh_list=(
+            "source \"/usr/share/zsh-autosuggestions/zsh-autosuggestions.zsh\""
+            "source \"/usr/share/zsh-syntax-highlighting/zsh-syntax-highlighting.zsh\""
+        )
+        which "zsh" > "/dev/null" 2>&1
+        if [ "$?" -eq "0" ]; then
+            cat "/etc/zsh/newuser.zshrc.recommended" > "/tmp/newuser.zshrc.recommended.bak" && rm -rf "/tmp/zsh.tmp" && for zsh_list_task in "${!zsh_list[@]}"; do
+                echo "${zsh_list[$zsh_list_task]}" >> "/tmp/zsh.tmp"
+            done && cat "/tmp/newuser.zshrc.recommended.bak" "/tmp/zsh.tmp" > "/etc/zsh/newuser.zshrc.recommended"
+        fi && apt install -y zsh-autosuggestions zsh-syntax-highlighting
+    }
     ConfigureCrontab
     ConfigureResolved
     ConfigureSysctl
     ConfigureUfw
+    ConfigureZsh
 }
 # Configure System
 function ConfigureSystem() {
