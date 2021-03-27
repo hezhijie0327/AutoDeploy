@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 1.0.5
+# Current Version: 1.0.6
 
 ## How to get and use?
 # curl https://source.zhijie.online/AutoDeploy/main/ubuntu.sh | sudo bash
@@ -125,38 +125,23 @@ function ConfigurePackages() {
 }
 # Configure System
 function ConfigureSystem() {
+    function ConfigureDefaultShell() {
+        user_list=($(cat "/etc/passwd" | cut -f 1 -d ":" | grep "bash\|sh" | sort | uniq | awk "{ print $2 }"))
+        for user_list_task in "${!user_list[@]}"; do
+            usermod -s "/bin/zsh" "${user_list[user_list_task]}"
+        done
+    }
     function ConfigureTimeZone() {
         if [ -f "/etc/localtime" ]; then
             rm -rf "/etc/localtime"
         fi && ln -s "/usr/share/zoneinfo/Asia/Shanghai" "/etc/localtime"
     }
-    function ConfigureUserInfo() {
-        username=(
-                "root"
-                "ubuntu"
-            )
-        for user_list_task in "${!user_list[@]}"; do
-            if [ "${user_list[$user_list_task]}" == "root" ]; then
-                passwd -l "${user_list[$user_list_task]}"
-            fi
-            if [ "$(cat '/etc/passwd' | cut -f 1 -d ':' | grep -E ^${user_list[user_list_task]}$)" == "" ]; then
-                useradd "${user_list[user_list_task]}" && if [ ! -d "/home/${user_list[user_list_task]}" ]; then
-                    mkdir "/home/${user_list[user_list_task]}"
-                fi && chown -R "${user_list[user_list_task]}" "/home/${user_list[user_list_task]}"
-            fi && echo "${user_list[$user_list_task]}:Ubuntu$(date '+%Y')" | sudo chpasswd
-            if [ ! -f "/root/.zshrc" ]; then
-                touch "/root/.zshrc"
-            elif [ ! -f "/home/${user_list[user_list_task]}/.zshrc" ]; then
-                touch "/home/${user_list[user_list_task]}/.zshrc"
-            fi && usermod -s "/bin/zsh" "${user_list[user_list_task]}"
-        done
-    }
+    ConfigureDefaultShell
     ConfigureTimeZone
-    ConfigureUserInfo
 }
 # Install Packages
 function InstallPackages() {
-    apt update && apt install -y apt-transport-https ca-certificates curl dnsutils git jq knot-dnsutils landscape-common net-tools systemd ufw update-notifier-common wget zsh
+    apt update && apt install -y apt-transport-https ca-certificates curl dnsutils git jq knot-dnsutils landscape-common nano net-tools systemd ufw update-notifier-common wget zsh
 }
 # Upgrade Packages
 function UpgradePackages() {
