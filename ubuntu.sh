@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 1.1.1
+# Current Version: 1.1.2
 
 ## How to get and use?
 # curl https://source.zhijie.online/AutoDeploy/main/ubuntu.sh | sudo bash
@@ -52,6 +52,8 @@ function SetReadonlyFlag() {
         "/etc/apt/sources.list"
         "/etc/default/ufw"
         "/etc/docker/daemon.json"
+        "/etc/hostname"
+        "/etc/hosts"
         "/etc/sysctl.conf"
         "/etc/systemd/resolved.conf.d/resolved.conf"
     )
@@ -130,7 +132,7 @@ function ConfigurePackages() {
         if [ "$?" -eq "0" ]; then
             rm -rf "/tmp/sysctl.tmp" && for sysctl_list_task in "${!sysctl_list[@]}"; do
                 echo "${sysctl_list[$sysctl_list_task]}" >> "/tmp/sysctl.tmp"
-            done && cat "/tmp/sysctl.tmp" > "/etc/sysctl.conf"  && sysctl -p && rm -rf "/tmp/sysctl.tmp"
+            done && cat "/tmp/sysctl.tmp" > "/etc/sysctl.conf" && sysctl -p && rm -rf "/tmp/sysctl.tmp"
         fi
     }
     function ConfigureUfw() {
@@ -173,7 +175,26 @@ function ConfigureSystem() {
             rm -rf "/etc/localtime"
         fi && ln -s "/usr/share/zoneinfo/Asia/Shanghai" "/etc/localtime"
     }
+    function ConfigureHostfile() {
+        host_name="ubuntu-$(date '+%Y%m%d%H%M%S')"
+        host_list=(
+            "127.0.0.1 localhost"
+            "127.0.1.1 ${host_name}"
+            "255.255.255.255 broadcasthost"
+            "::1 ip6-localhost ip6-loopback localhost"
+            "fe00::0 ip6-localnet"
+            "ff00::0 ip6-mcastprefix"
+            "ff02::1 ip6-allnodes"
+            "ff02::2 ip6-allrouters"
+            "ff02::3 ip6-allhosts"
+        )
+        rm -rf "/tmp/hosts.tmp" && for host_list_task in "${!host_list[@]}"; do
+            echo "${host_list[$host_list_task]}" >> "/tmp/hosts.tmp"
+        done && cat "/tmp/hosts.tmp" > "/etc/hosts" && rm -rf "/tmp/hosts.tmp"
+        rm -rf "/tmp/hostname.tmp" && echo "${host_name}" > "/tmp/hostname.tmp" && cat "/tmp/hostname.tmp" > "/etc/hostname" && rm -rf "/tmp/hostname.tmp"
+    }
     ConfigureDefaultShell
+    ConfigureHostfile
     ConfigureTimeZone
 }
 # Install Custom Packages
