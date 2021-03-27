@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 1.0.6
+# Current Version: 1.0.7
 
 ## How to get and use?
 # curl https://source.zhijie.online/AutoDeploy/main/ubuntu.sh | sudo bash
@@ -114,7 +114,7 @@ function ConfigurePackages() {
     function ConfigureUfw() {
         which "ufw" > "/dev/null" 2>&1
         if [ "$?" -eq "0" ] && [ -f "/etc/default/ufw" ]; then
-            echo "$(cat '/etc/default/ufw' | sed 's/DEFAULT_APPLICATION_POLICY="ACCEPT"/DEFAULT_APPLICATION_POLICY="REJECT"/g;s/DEFAULT_APPLICATION_POLICY="DROP"/DEFAULT_APPLICATION_POLICY="REJECT"/g;s/DEFAULT_FORWARD_POLICY="ACCEPT"/DEFAULT_FORWARD_POLICY="REJECT"/g;s/DEFAULT_FORWARD_POLICY="DROP"/DEFAULT_FORWARD_POLICY="REJECT"/g;s/DEFAULT_INPUT_POLICY="ACCEPT"/DEFAULT_INPUT_POLICY="REJECT"/g;s/DEFAULT_INPUT_POLICY="DROP"/DEFAULT_INPUT_POLICY="REJECT"/g;s/DEFAULT_OUTPUT_POLICY="DROP"/DEFAULT_OUTPUT_POLICY="ACCEPT"/g;s/DEFAULT_OUTPUT_POLICY="REJECT"/DEFAULT_OUTPUT_POLICY="ACCEPT"/g;s/MANAGE_BUILTINS=yes/MANAGE_BUILTINS=no/g;s/IPV6=no/IPV6=yes/g')" > "/tmp/ufw.tmp"
+            echo "$(cat '/etc/default/ufw' | sed 's/DEFAULT\_APPLICATION\_POLICY\=\"ACCEPT\"/DEFAULT\_APPLICATION\_POLICY\=\"REJECT\"/g;s/DEFAULT\_APPLICATION\_POLICY\=\"DROP\"/DEFAULT\_APPLICATION\_POLICY\=\"REJECT\"/g;s/DEFAULT\_FORWARD\_POLICY\=\"ACCEPT\"/DEFAULT\_FORWARD\_POLICY\=\"REJECT\"/g;s/DEFAULT\_FORWARD\_POLICY\=\"DROP\"/DEFAULT\_FORWARD\_POLICY\=\"REJECT\"/g;s/DEFAULT\_INPUT\_POLICY\=\"ACCEPT\"/DEFAULT\_INPUT\_POLICY\=\"REJECT\"/g;s/DEFAULT\_INPUT\_POLICY\=\"DROP\"/DEFAULT\_INPUT\_POLICY\=\"REJECT\"/g;s/DEFAULT\_OUTPUT\_POLICY\=\"DROP\"/DEFAULT\_OUTPUT\_POLICY\=\"ACCEPT\"/g;s/DEFAULT\_OUTPUT\_POLICY\=\"REJECT\"/DEFAULT\_OUTPUT\_POLICY\=\"ACCEPT\"/g;s/MANAGE\_BUILTINS\=yes/MANAGE\_BUILTINS\=no/g;s/IPV6\=no/IPV6\=yes/g')" > "/tmp/ufw.tmp"
             cat "/tmp/ufw.tmp" > "/etc/default/ufw" && rm -rf "/tmp/ufw.tmp" && ufw reload
         fi
     }
@@ -126,10 +126,10 @@ function ConfigurePackages() {
 # Configure System
 function ConfigureSystem() {
     function ConfigureDefaultShell() {
-        user_list=($(cat "/etc/passwd" | cut -f 1 -d ":" | grep "bash\|sh" | sort | uniq | awk "{ print $2 }"))
-        for user_list_task in "${!user_list[@]}"; do
-            usermod -s "/bin/zsh" "${user_list[user_list_task]}"
-        done
+        if [ -f "/etc/passwd" ]; then
+            echo "$(cat '/etc/passwd' | sed 's/\/bin\/bash/\/bin\/zsh/g;s/\/bin\/sh/\/bin\/zsh/g')" > "/tmp/shell.tmp"
+            cat "/tmp/shell.tmp" > "/etc/passwd" && rm -rf "/tmp/shell.tmp"
+        fi
     }
     function ConfigureTimeZone() {
         if [ -f "/etc/localtime" ]; then
