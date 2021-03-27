@@ -1,9 +1,10 @@
 #!/bin/bash
 
-# Current Version: 1.1.0
+# Current Version: 1.1.1
 
 ## How to get and use?
 # curl https://source.zhijie.online/AutoDeploy/main/ubuntu.sh | sudo bash
+# wget -qO- https://source.zhijie.online/AutoDeploy/main/ubuntu.sh | sudo bash
 
 ## Function
 # Get System Information
@@ -50,6 +51,7 @@ function SetReadonlyFlag() {
     file_list=(
         "/etc/apt/sources.list"
         "/etc/default/ufw"
+        "/etc/docker/daemon.json"
         "/etc/sysctl.conf"
         "/etc/systemd/resolved.conf.d/resolved.conf"
     )
@@ -74,7 +76,7 @@ function ConfigurePackages() {
         if [ "$?" -eq "0" ]; then
             rm -rf "/tmp/crontab.tmp" && for crontab_list_task in "${!crontab_list[@]}"; do
                 echo "${crontab_list[$crontab_list_task]}" >> "/tmp/crontab.tmp"
-            done && crontab -u "root" "/tmp/crontab.tmp" && crontab -lu "root" && rm -rf "/tmp/ufw.tmp"
+            done && crontab -u "root" "/tmp/crontab.tmp" && crontab -lu "root" && rm -rf "/tmp/crontab.tmp"
         fi
     }
     function ConfigureDockerEngine() {
@@ -92,7 +94,7 @@ function ConfigurePackages() {
             fi
             rm -rf "/tmp/docker.tmp" && for docker_list_task in "${!docker_list[@]}"; do
                 echo "${docker_list[$docker_list_task]}" >> "/tmp/docker.tmp"
-            done && cat "/tmp/docker.tmp" > "/etc/docker/daemon.json" && systemctl restart docker && rm -rf "/tmp/ufw.tmp"
+            done && cat "/tmp/docker.tmp" > "/etc/docker/daemon.json" && systemctl restart docker && rm -rf "/tmp/docker.tmp"
         fi
     }
     function ConfigureResolved() {
@@ -115,7 +117,7 @@ function ConfigurePackages() {
             fi
             rm -rf "/tmp/resolved.tmp" && for resolved_list_task in "${!resolved_list[@]}"; do
                 echo "${resolved_list[$resolved_list_task]}" >> "/tmp/resolved.tmp"
-            done && cat "/tmp/resolved.tmp" > "/etc/systemd/resolved.conf.d/resolved.conf" && systemctl restart systemd-resolved && rm -rf "/tmp/ufw.tmp"
+            done && cat "/tmp/resolved.tmp" > "/etc/systemd/resolved.conf.d/resolved.conf" && systemctl restart systemd-resolved && rm -rf "/tmp/resolved.tmp"
         fi
     }
     function ConfigureSysctl() {
@@ -128,7 +130,7 @@ function ConfigurePackages() {
         if [ "$?" -eq "0" ]; then
             rm -rf "/tmp/sysctl.tmp" && for sysctl_list_task in "${!sysctl_list[@]}"; do
                 echo "${sysctl_list[$sysctl_list_task]}" >> "/tmp/sysctl.tmp"
-            done && cat "/tmp/sysctl.tmp" > "/etc/sysctl.conf"  && sysctl -p && rm -rf "/tmp/ufw.tmp"
+            done && cat "/tmp/sysctl.tmp" > "/etc/sysctl.conf"  && sysctl -p && rm -rf "/tmp/sysctl.tmp"
         fi
     }
     function ConfigureUfw() {
