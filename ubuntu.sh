@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 1.0.4
+# Current Version: 1.0.5
 
 ## How to get and use?
 # curl https://source.zhijie.online/AutoDeploy/main/ubuntu.sh | sudo bash
@@ -125,11 +125,6 @@ function ConfigurePackages() {
 }
 # Configure System
 function ConfigureSystem() {
-    function ConfigureDefaultShell() {
-        chsh -s "/bin/zsh" && if [ ! -f "/root/.zshrc" ]; then
-            touch "/root/.zshrc"
-        fi
-    }
     function ConfigureTimeZone() {
         if [ -f "/etc/localtime" ]; then
             rm -rf "/etc/localtime"
@@ -137,21 +132,25 @@ function ConfigureSystem() {
     }
     function ConfigureUserInfo() {
         username=(
-                "admin"
                 "root"
                 "ubuntu"
             )
         for user_list_task in "${!user_list[@]}"; do
-            if [ "${user_list[$user_list_task]}" == "admin" ] || [ "${user_list[$user_list_task]}" == "root" ]; then
+            if [ "${user_list[$user_list_task]}" == "root" ]; then
                 passwd -l "${user_list[$user_list_task]}"
-            elif [ "$(cat '/etc/passwd' | cut -f 1 -d ':' | grep -E ^${user_list[user_list_task]}$)" == "" ]; then
+            fi
+            if [ "$(cat '/etc/passwd' | cut -f 1 -d ':' | grep -E ^${user_list[user_list_task]}$)" == "" ]; then
                 useradd "${user_list[user_list_task]}" && if [ ! -d "/home/${user_list[user_list_task]}" ]; then
                     mkdir "/home/${user_list[user_list_task]}"
                 fi && chown -R "${user_list[user_list_task]}" "/home/${user_list[user_list_task]}"
             fi && echo "${user_list[$user_list_task]}:Ubuntu$(date '+%Y')" | sudo chpasswd
+            if [ ! -f "/root/.zshrc" ]; then
+                touch "/root/.zshrc"
+            elif [ ! -f "/home/${user_list[user_list_task]}/.zshrc" ]; then
+                touch "/home/${user_list[user_list_task]}/.zshrc"
+            fi && usermod -s "/bin/zsh" "${user_list[user_list_task]}"
         done
     }
-    ConfigureDefaultShell
     ConfigureTimeZone
     ConfigureUserInfo
 }
