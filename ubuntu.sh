@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 1.0.8
+# Current Version: 1.0.9
 
 ## How to get and use?
 # curl https://source.zhijie.online/AutoDeploy/main/ubuntu.sh | sudo bash
@@ -66,7 +66,6 @@ function ConfigurePackages() {
         crontab_list=(
             "0 4 */7 * * sudo reboot"
             "@daily sudo apt update && sudo apt dist-upgrade -y && sudo apt upgrade -y && sudo apt autoremove -y"
-            "@reboot sudo rm -rf \"/root/.bash_history\""
         )
         which "crontab" > "/dev/null" 2>&1
         if [ "$?" -eq "0" ]; then
@@ -78,7 +77,7 @@ function ConfigurePackages() {
     function ConfigureResolved() {
         resolved_list=(
             "[Resolve]"
-            "DNS=223.5.5.5#dns.alidns.com 223.6.6.6#dns.alidns.com"
+            "DNS=223.5.5.5#dns.alidns.com 223.6.6.6#dns.alidns.com 2400:3200::1#dns.alidns.com 2400:3200:baba::1#dns.alidns.com"
             "DNSOverTLS=opportunistic"
             "DNSSEC=allow-downgrade"
             "DNSStubListener=false"
@@ -120,6 +119,7 @@ function ConfigurePackages() {
     }
     function ConfigureZsh() {
         zsh_list=(
+            "bindkey \"^[[Z\" autosuggest-accept"
             "source \"/usr/share/zsh-autosuggestions/zsh-autosuggestions.zsh\""
             "source \"/usr/share/zsh-syntax-highlighting/zsh-syntax-highlighting.zsh\""
         )
