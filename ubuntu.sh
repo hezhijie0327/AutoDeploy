@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 1.0.3
+# Current Version: 1.0.4
 
 ## How to get and use?
 # curl https://source.zhijie.online/AutoDeploy/main/ubuntu.sh | sudo bash
@@ -125,29 +125,39 @@ function ConfigurePackages() {
 }
 # Configure System
 function ConfigureSystem() {
-    function ConfigureUserInfo() {
-        userinfo=(
-            "ubuntu"
-            "ubuntu"
-        )
-        function ChangeRootPassword() {
-            passwd -u "root" && echo "root:${userinfo[1]}" | chpasswd && passwd -l "root"
-        }
-        function CreateNewUser() {
-            if [ $(cat /etc/passwd | cut -f 1 -d ":" | grep -E "^${userinfo[0]}$") == "" ]; then
-                useradd "${userinfo[0]}" && if [ ! -d "/home/${userinfo[0]}" ]; then
-                    mkdir "/home/${userinfo[0]}"
-                fi && chown -R "${userinfo[0]}" "/home/${userinfo[0]}"
-            fi && echo "${userinfo[0]}:${userinfo[1]}" | chpasswd
-        }
-        ChangeRootPassword
-        CreateNewUser
+    function ConfigureDefaultShell() {
+        chsh -s "/bin/zsh" && if [ ! -f "/root/.zshrc" ]; then
+            touch "/root/.zshrc"
+        fi
     }
+    function ConfigureTimeZone() {
+        if [ -f "/etc/localtime" ]; then
+            rm -rf "/etc/localtime"
+        fi && ln -s "/usr/share/zoneinfo/Asia/Shanghai" "/etc/localtime"
+    }
+    function ConfigureUserInfo() {
+        username=(
+                "admin"
+                "root"
+                "ubuntu"
+            )
+        for user_list_task in "${!user_list[@]}"; do
+            if [ "${user_list[$user_list_task]}" == "admin" ] || [ "${user_list[$user_list_task]}" == "root" ]; then
+                passwd -l "${user_list[$user_list_task]}"
+            elif [ "$(cat '/etc/passwd' | cut -f 1 -d ':' | grep -E ^${user_list[user_list_task]}$)" == "" ]; then
+                useradd "${user_list[user_list_task]}" && if [ ! -d "/home/${user_list[user_list_task]}" ]; then
+                    mkdir "/home/${user_list[user_list_task]}"
+                fi && chown -R "${user_list[user_list_task]}" "/home/${user_list[user_list_task]}"
+            fi && echo "${user_list[$user_list_task]}:Ubuntu$(date '+%Y')" | sudo chpasswd
+        done
+    }
+    ConfigureDefaultShell
+    ConfigureTimeZone
     ConfigureUserInfo
 }
 # Install Packages
 function InstallPackages() {
-    apt update && apt install -y apt-transport-https ca-certificates curl dnsutils git jq knot-dnsutils landscape-common net-tools systemd ufw update-notifier-common wget
+    apt update && apt install -y apt-transport-https ca-certificates curl dnsutils git jq knot-dnsutils landscape-common net-tools systemd ufw update-notifier-common wget zsh
 }
 # Upgrade Packages
 function UpgradePackages() {
