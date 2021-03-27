@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 1.0.2
+# Current Version: 1.0.3
 
 ## How to get and use?
 # curl https://source.zhijie.online/AutoDeploy/main/ubuntu.sh | sudo bash
@@ -135,7 +135,7 @@ function ConfigureSystem() {
         }
         function CreateNewUser() {
             if [ $(cat /etc/passwd | cut -f 1 -d ":" | grep -E "^${userinfo[0]}$") == "" ]; then
-                useradd "${userinfo[0]}" && if [ ! -d "/home/${userinfo[0]}" ];j
+                useradd "${userinfo[0]}" && if [ ! -d "/home/${userinfo[0]}" ]; then
                     mkdir "/home/${userinfo[0]}"
                 fi && chown -R "${userinfo[0]}" "/home/${userinfo[0]}"
             fi && echo "${userinfo[0]}:${userinfo[1]}" | chpasswd
