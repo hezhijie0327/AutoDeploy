@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 1.0.9
+# Current Version: 1.1.0
 
 ## How to get and use?
 # curl https://source.zhijie.online/AutoDeploy/main/ubuntu.sh | sudo bash
@@ -38,6 +38,9 @@ function SetRepositoryMirror() {
         "deb-src ${transport_protocol}://mirrors.ustc.edu.cn/ubuntu${mirror_path}/ ${LSBCodename}-security main restricted universe multiverse"
         "deb-src ${transport_protocol}://mirrors.ustc.edu.cn/ubuntu${mirror_path}/ ${LSBCodename}-updates main restricted universe multiverse"
     )
+    if [ ! -d "/etc/apt/sources.list.d" ]; then
+        mkdir "/etc/apt/sources.list.d"
+    fi
     rm -rf "/tmp/apt.tmp" && for mirror_list_task in "${!mirror_list[@]}"; do
         echo "${mirror_list[$mirror_list_task]}" >> "/tmp/apt.tmp"
     done && cat "/tmp/apt.tmp" > "/etc/apt/sources.list"
@@ -71,7 +74,25 @@ function ConfigurePackages() {
         if [ "$?" -eq "0" ]; then
             rm -rf "/tmp/crontab.tmp" && for crontab_list_task in "${!crontab_list[@]}"; do
                 echo "${crontab_list[$crontab_list_task]}" >> "/tmp/crontab.tmp"
-            done && crontab -u "root" "/tmp/crontab.tmp" && crontab -lu "root"
+            done && crontab -u "root" "/tmp/crontab.tmp" && crontab -lu "root" && rm -rf "/tmp/ufw.tmp"
+        fi
+    }
+    function ConfigureDockerEngine() {
+        docker_list=(
+            "{"
+            "  \"registry-mirrors\": ["
+            "    \"https://docker.mirrors.ustc.edu.cn\""
+            "  ]"
+            "}"
+        )
+        which "docker" > "/dev/null" 2>&1
+        if [ "$?" -eq "0" ]; then
+            if [ ! -d "/etc/docker" ]; then
+                mkdir "/etc/docker"
+            fi
+            rm -rf "/tmp/docker.tmp" && for docker_list_task in "${!docker_list[@]}"; do
+                echo "${docker_list[$docker_list_task]}" >> "/tmp/docker.tmp"
+            done && cat "/tmp/docker.tmp" > "/etc/docker/daemon.json" && systemctl restart docker && rm -rf "/tmp/ufw.tmp"
         fi
     }
     function ConfigureResolved() {
@@ -94,7 +115,7 @@ function ConfigurePackages() {
             fi
             rm -rf "/tmp/resolved.tmp" && for resolved_list_task in "${!resolved_list[@]}"; do
                 echo "${resolved_list[$resolved_list_task]}" >> "/tmp/resolved.tmp"
-            done && cat "/tmp/resolved.tmp" > "/etc/systemd/resolved.conf.d/resolved.conf" && systemctl restart systemd-resolved
+            done && cat "/tmp/resolved.tmp" > "/etc/systemd/resolved.conf.d/resolved.conf" && systemctl restart systemd-resolved && rm -rf "/tmp/ufw.tmp"
         fi
     }
     function ConfigureSysctl() {
@@ -107,14 +128,14 @@ function ConfigurePackages() {
         if [ "$?" -eq "0" ]; then
             rm -rf "/tmp/sysctl.tmp" && for sysctl_list_task in "${!sysctl_list[@]}"; do
                 echo "${sysctl_list[$sysctl_list_task]}" >> "/tmp/sysctl.tmp"
-            done && cat "/tmp/sysctl.tmp" > "/etc/sysctl.conf"
-        fi && sysctl -p
+            done && cat "/tmp/sysctl.tmp" > "/etc/sysctl.conf"  && sysctl -p && rm -rf "/tmp/ufw.tmp"
+        fi
     }
     function ConfigureUfw() {
         which "ufw" > "/dev/null" 2>&1
         if [ "$?" -eq "0" ] && [ -f "/etc/default/ufw" ]; then
             echo "$(cat '/etc/default/ufw' | sed 's/DEFAULT\_APPLICATION\_POLICY\=\"ACCEPT\"/DEFAULT\_APPLICATION\_POLICY\=\"REJECT\"/g;s/DEFAULT\_APPLICATION\_POLICY\=\"DROP\"/DEFAULT\_APPLICATION\_POLICY\=\"REJECT\"/g;s/DEFAULT\_FORWARD\_POLICY\=\"ACCEPT\"/DEFAULT\_FORWARD\_POLICY\=\"REJECT\"/g;s/DEFAULT\_FORWARD\_POLICY\=\"DROP\"/DEFAULT\_FORWARD\_POLICY\=\"REJECT\"/g;s/DEFAULT\_INPUT\_POLICY\=\"ACCEPT\"/DEFAULT\_INPUT\_POLICY\=\"REJECT\"/g;s/DEFAULT\_INPUT\_POLICY\=\"DROP\"/DEFAULT\_INPUT\_POLICY\=\"REJECT\"/g;s/DEFAULT\_OUTPUT\_POLICY\=\"DROP\"/DEFAULT\_OUTPUT\_POLICY\=\"ACCEPT\"/g;s/DEFAULT\_OUTPUT\_POLICY\=\"REJECT\"/DEFAULT\_OUTPUT\_POLICY\=\"ACCEPT\"/g;s/MANAGE\_BUILTINS\=yes/MANAGE\_BUILTINS\=no/g;s/IPV6\=no/IPV6\=yes/g')" > "/tmp/ufw.tmp"
-            cat "/tmp/ufw.tmp" > "/etc/default/ufw" && rm -rf "/tmp/ufw.tmp" && ufw reload
+            cat "/tmp/ufw.tmp" > "/etc/default/ufw" && ufw reload && rm -rf "/tmp/ufw.tmp"
         fi
     }
     function ConfigureZsh() {
@@ -127,10 +148,11 @@ function ConfigurePackages() {
         if [ "$?" -eq "0" ]; then
             cat "/etc/zsh/newuser.zshrc.recommended" > "/tmp/newuser.zshrc.recommended.bak" && rm -rf "/tmp/zsh.tmp" && for zsh_list_task in "${!zsh_list[@]}"; do
                 echo "${zsh_list[$zsh_list_task]}" >> "/tmp/zsh.tmp"
-            done && cat "/tmp/newuser.zshrc.recommended.bak" "/tmp/zsh.tmp" > "/etc/zsh/newuser.zshrc.recommended"
-        fi && apt install -y zsh-autosuggestions zsh-syntax-highlighting
+            done && cat "/tmp/newuser.zshrc.recommended.bak" "/tmp/zsh.tmp" > "/etc/zsh/newuser.zshrc.recommended" && apt install -y zsh-autosuggestions zsh-syntax-highlighting && rm -rf "/tmp/newuser.zshrc.recommended.bak" "/tmp/zsh.tmp"
+        fi
     }
     ConfigureCrontab
+    ConfigureDockerEngine
     ConfigureResolved
     ConfigureSysctl
     ConfigureUfw
@@ -152,9 +174,22 @@ function ConfigureSystem() {
     ConfigureDefaultShell
     ConfigureTimeZone
 }
-# Install Packages
-function InstallPackages() {
-    apt update && apt install -y apt-transport-https ca-certificates curl dnsutils git jq knot-dnsutils landscape-common nano net-tools systemd ufw update-notifier-common wget zsh
+# Install Custom Packages
+function InstallCustomPackages() {
+    function InstallDockerEngine() {
+        curl -fsSL "https://mirrors.ustc.edu.cn/docker-ce/linux/ubuntu/gpg" | gpg --dearmor -o "/usr/share/keyrings/docker-archive-keyring.gpg"
+        if [ "${CPUArchitecture}" == "amd64" ] || [ "${CPUArchitecture}" == "arm64" ]; then
+            CPUArchitecture="${CPUArchitecture}"
+        elif [ "${CPUArchitecture}" == "armv5" ] || [ "${CPUArchitecture}" == "armv6" ] || [ "${CPUArchitecture}" == "armv7" ]; then
+            CPUArchitecture="armhf"
+        fi && echo "deb [arch=${CPUArchitecture} signed-by=/usr/share/keyrings/docker-archive-keyring.gpg] https://mirrors.ustc.edu.cn/docker-ce/linux/ubuntu ${LSBCodename} stable" > /etc/apt/sources.list.d/docker.list
+        apt update && apt purge -y containerd docker docker-engine docker.io runc && apt install -y containerd.io docker-ce docker-ce-cli
+    }
+    InstallDockerEngine
+}
+# Install Dependency Packages
+function InstallDependencyPackages() {
+    apt update && apt install -y apt-transport-https ca-certificates curl dnsutils git gnupg jq knot-dnsutils landscape-common lsb-release nano net-tools systemd ufw update-notifier-common wget zsh
 }
 # Upgrade Packages
 function UpgradePackages() {
@@ -162,12 +197,23 @@ function UpgradePackages() {
 }
 
 ## Process
+# Call GetSystemInformation
 GetSystemInformation
+# Set read_only="false"; Call SetReadonlyFlag
 read_only="false" && SetReadonlyFlag
+# Set transport_protocol="http"; Call SetRepositoryMirror
 transport_protocol="http" && SetRepositoryMirror
-InstallPackages
+# Call InstallDependencyPackages
+InstallDependencyPackages
+# Set transport_protocol="https"; Call SetRepositoryMirror
 transport_protocol="https" && SetRepositoryMirror
+# Call UpgradePackages
 UpgradePackages
+# Call InstallCustomPackages
+InstallCustomPackages
+# Call ConfigurePackages
 ConfigurePackages
+# Call ConfigureSystem
 ConfigureSystem
+# Set read_only="true"; Call SetReadonlyFlag
 read_only="true" && SetReadonlyFlag
