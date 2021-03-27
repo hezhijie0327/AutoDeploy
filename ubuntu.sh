@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 1.1.4
+# Current Version: 1.1.5
 
 ## How to get and use?
 # curl https://source.zhijie.online/AutoDeploy/main/ubuntu.sh | sudo bash
@@ -138,7 +138,7 @@ function ConfigurePackages() {
     function ConfigureUfw() {
         which "ufw" > "/dev/null" 2>&1
         if [ "$?" -eq "0" ] && [ -f "/etc/default/ufw" ]; then
-            echo "$(cat '/etc/default/ufw' | sed 's/DEFAULT\_APPLICATION\_POLICY\=\"ACCEPT\"/DEFAULT\_APPLICATION\_POLICY\=\"REJECT\"/g;s/DEFAULT\_APPLICATION\_POLICY\=\"DROP\"/DEFAULT\_APPLICATION\_POLICY\=\"REJECT\"/g;s/DEFAULT\_FORWARD\_POLICY\=\"ACCEPT\"/DEFAULT\_FORWARD\_POLICY\=\"REJECT\"/g;s/DEFAULT\_FORWARD\_POLICY\=\"DROP\"/DEFAULT\_FORWARD\_POLICY\=\"REJECT\"/g;s/DEFAULT\_INPUT\_POLICY\=\"ACCEPT\"/DEFAULT\_INPUT\_POLICY\=\"REJECT\"/g;s/DEFAULT\_INPUT\_POLICY\=\"DROP\"/DEFAULT\_INPUT\_POLICY\=\"REJECT\"/g;s/DEFAULT\_OUTPUT\_POLICY\=\"DROP\"/DEFAULT\_OUTPUT\_POLICY\=\"ACCEPT\"/g;s/DEFAULT\_OUTPUT\_POLICY\=\"REJECT\"/DEFAULT\_OUTPUT\_POLICY\=\"ACCEPT\"/g;s/MANAGE\_BUILTINS\=yes/MANAGE\_BUILTINS\=no/g;s/IPV6\=no/IPV6\=yes/g')" > "/tmp/ufw.tmp"
+            echo "$(cat '/etc/default/ufw' | sed 's/DEFAULT\_APPLICATION\_POLICY\=\"ACCEPT\"/DEFAULT\_APPLICATION\_POLICY\=\"REJECT\"/g;s/DEFAULT\_APPLICATION\_POLICY\=\"DROP\"/DEFAULT\_APPLICATION\_POLICY\=\"REJECT\"/g;s/DEFAULT\_APPLICATION\_POLICY\=\"SKIP\"/DEFAULT\_APPLICATION\_POLICY\=\"REJECT\"/g;s/DEFAULT\_FORWARD\_POLICY\=\"ACCEPT\"/DEFAULT\_FORWARD\_POLICY\=\"REJECT\"/g;s/DEFAULT\_FORWARD\_POLICY\=\"DROP\"/DEFAULT\_FORWARD\_POLICY\=\"REJECT\"/g;s/DEFAULT\_INPUT\_POLICY\=\"ACCEPT\"/DEFAULT\_INPUT\_POLICY\=\"REJECT\"/g;s/DEFAULT\_INPUT\_POLICY\=\"DROP\"/DEFAULT\_INPUT\_POLICY\=\"REJECT\"/g;s/DEFAULT\_OUTPUT\_POLICY\=\"DROP\"/DEFAULT\_OUTPUT\_POLICY\=\"ACCEPT\"/g;s/DEFAULT\_OUTPUT\_POLICY\=\"REJECT\"/DEFAULT\_OUTPUT\_POLICY\=\"ACCEPT\"/g;s/MANAGE\_BUILTINS\=yes/MANAGE\_BUILTINS\=no/g;s/IPV6\=no/IPV6\=yes/g')" > "/tmp/ufw.tmp"
             cat "/tmp/ufw.tmp" > "/etc/default/ufw" && ufw reload && rm -rf "/tmp/ufw.tmp"
         fi
     }
@@ -170,11 +170,6 @@ function ConfigureSystem() {
             cat "/tmp/shell.tmp" > "/etc/passwd" && rm -rf "/tmp/shell.tmp"
         fi
     }
-    function ConfigureTimeZone() {
-        if [ -f "/etc/localtime" ]; then
-            rm -rf "/etc/localtime"
-        fi && ln -s "/usr/share/zoneinfo/Asia/Shanghai" "/etc/localtime"
-    }
     function ConfigureHostfile() {
         host_name="ubuntu-$(date '+%Y%m%d%H%M%S')"
         host_list=(
@@ -193,8 +188,17 @@ function ConfigureSystem() {
         done && cat "/tmp/hosts.tmp" > "/etc/hosts" && rm -rf "/tmp/hosts.tmp"
         rm -rf "/tmp/hostname.tmp" && echo "${host_name}" > "/tmp/hostname.tmp" && cat "/tmp/hostname.tmp" > "/etc/hostname" && rm -rf "/tmp/hostname.tmp"
     }
+    function ConfigureLocales() {
+        apt purge -y locales && apt update && apt install -y locales && locale-gen "en_US.UTF-8" && update-locale "en_US.UTF-8"
+    }
+    function ConfigureTimeZone() {
+        if [ -f "/etc/localtime" ]; then
+            rm -rf "/etc/localtime"
+        fi && ln -s "/usr/share/zoneinfo/Asia/Shanghai" "/etc/localtime"
+    }
     ConfigureDefaultShell
     ConfigureHostfile
+    ConfigureLocales
     ConfigureTimeZone
 }
 # Install Custom Packages
