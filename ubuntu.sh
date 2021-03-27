@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 1.1.5
+# Current Version: 1.1.6
 
 ## How to get and use?
 # curl https://source.zhijie.online/AutoDeploy/main/ubuntu.sh | sudo bash
@@ -152,7 +152,7 @@ function ConfigurePackages() {
         if [ "$?" -eq "0" ]; then
             cat "/etc/zsh/newuser.zshrc.recommended" > "/tmp/newuser.zshrc.recommended.bak" && rm -rf "/tmp/zsh.tmp" && for zsh_list_task in "${!zsh_list[@]}"; do
                 echo "${zsh_list[$zsh_list_task]}" >> "/tmp/zsh.tmp"
-            done && cat "/tmp/newuser.zshrc.recommended.bak" "/tmp/zsh.tmp" > "/etc/zsh/newuser.zshrc.recommended" && apt install -y zsh-autosuggestions zsh-syntax-highlighting && rm -rf "/tmp/newuser.zshrc.recommended.bak" "/tmp/zsh.tmp"
+            done && cat "/tmp/newuser.zshrc.recommended.bak" "/tmp/zsh.tmp" > "/etc/zsh/newuser.zshrc.recommended" > "/root/.zshrc" > "~/.zshrc" && apt install -y zsh-autosuggestions zsh-syntax-highlighting && rm -rf "/tmp/newuser.zshrc.recommended.bak" "/tmp/zsh.tmp"
         fi
     }
     ConfigureCrontab
