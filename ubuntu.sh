@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 1.1.9
+# Current Version: 1.2.0
 
 ## How to get and use?
 # curl https://source.zhijie.online/AutoDeploy/main/ubuntu.sh | sudo bash
@@ -249,7 +249,11 @@ function InstallCustomPackages() {
         apt update && apt purge -y containerd docker docker-engine docker.io runc && apt install -y containerd.io docker-ce docker-ce-cli
     }
     function InstallOhMyZsh() {
-        rm -rf "/etc/zsh/oh-my-zsh" && git clone --depth=1 "https://hub.fastgit.org/robbyrussell/oh-my-zsh.git" "/etc/zsh/oh-my-zsh"
+        rm -rf "/etc/zsh/oh-my-zsh" && git clone --depth=1 "https://hub.fastgit.org/robbyrussell/oh-my-zsh.git" "/etc/zsh/oh-my-zsh" && if [ "$?" -eq "1" ]; then
+            git clone --depth=1 "https://github.com.cnpmjs.org/robbyrussell/oh-my-zsh.git" "/etc/zsh/oh-my-zsh" && if [ "$?" -eq "1" ]; then
+                git clone --depth=1 "https://github.com/robbyrussell/oh-my-zsh.git" "/etc/zsh/oh-my-zsh"
+            fi
+        fi
     }
     InstallDockerEngine
     InstallOhMyZsh
