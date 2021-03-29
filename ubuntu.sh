@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 1.1.7
+# Current Version: 1.1.8
 
 ## How to get and use?
 # curl https://source.zhijie.online/AutoDeploy/main/ubuntu.sh | sudo bash
@@ -144,15 +144,37 @@ function ConfigurePackages() {
     }
     function ConfigureZsh() {
         zsh_list=(
+            "export ZSH=\"\$HOME/.oh-my-zsh\""
+            "ZSH_CACHE_DIR=\"\$ZSH/cache\""
+            "ZSH_CUSTOM=\"\$ZSH/custom\""
+            "ZSH_THEME=\"robbyrussell\""
+            "DISABLE_AUTO_UPDATE=\"false\""
+            "DISABLE_UPDATE_PROMPT=\"false\""
+            "UPDATE_ZSH_DAYS=\"30\""
+            "ZSH_COMPDUMP=\"\$ZSH_CACHE_DIR/.zcompdump\""
+            "ZSH_DISABLE_COMPFIX=\"false\""
+            "CASE_SENSITIVE=\"true\""
+            "COMPLETION_WAITING_DOTS=\"true\""
+            "DISABLE_AUTO_TITLE=\"false\""
+            "DISABLE_LS_COLORS=\"false\""
+            "DISABLE_MAGIC_FUNCTIONS=\"false\""
+            "DISABLE_UNTRACKED_FILES_DIRTY=\"false\""
+            "ENABLE_CORRECTION=\"true\""
+            "HIST_STAMPS=\"yyyy-mm-dd\""
+            "HYPHEN_INSENSITIVE=\"false\""
+            "ZSH_THEME_RANDOM_CANDIDATES=()"
+            "ZSH_THEME_RANDOM_IGNORED=()"
+            "ZSH_THEME_RANDOM_QUIET=\"true\""
+            "source \"\$ZSH/oh-my-zsh.sh\""
             "bindkey \"^[[Z\" autosuggest-accept"
             "source \"/usr/share/zsh-autosuggestions/zsh-autosuggestions.zsh\""
             "source \"/usr/share/zsh-syntax-highlighting/zsh-syntax-highlighting.zsh\""
         )
         which "zsh" > "/dev/null" 2>&1
         if [ "$?" -eq "0" ]; then
-            cat "/etc/zsh/newuser.zshrc.recommended" > "/tmp/newuser.zshrc.recommended.bak" && rm -rf "/tmp/zsh.tmp" && for zsh_list_task in "${!zsh_list[@]}"; do
+            rm -rf "/etc/zsh/oh-my-zsh" "/tmp/zsh.tmp" && for zsh_list_task in "${!zsh_list[@]}"; do
                 echo "${zsh_list[$zsh_list_task]}" >> "/tmp/zsh.tmp"
-            done && cat "/tmp/newuser.zshrc.recommended.bak" "/tmp/zsh.tmp" > "/etc/zsh/newuser.zshrc.recommended" && apt install -y zsh-autosuggestions zsh-syntax-highlighting && rm -rf "/tmp/newuser.zshrc.recommended.bak" "/tmp/zsh.tmp"
+            done && cat "/tmp/zsh.tmp" > "/etc/zsh/oh-my-zsh.zshrc" && apt install -y zsh-autosuggestions zsh-syntax-highlighting && git clone --depth=1 "https://github.com/robbyrussell/oh-my-zsh.git" "/etc/zsh/oh-my-zsh" && cat "/etc/zsh/oh-my-zsh.zshrc" > "/root/.zshrc" && ln -s "/etc/zsh/oh-my-zsh" "/root/.oh-my-zsh" && rm -rf "/tmp/zsh.tmp"
         fi
     }
     ConfigureCrontab
