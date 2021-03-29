@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 1.1.8
+# Current Version: 1.1.9
 
 ## How to get and use?
 # curl https://source.zhijie.online/AutoDeploy/main/ubuntu.sh | sudo bash
@@ -99,6 +99,41 @@ function ConfigurePackages() {
             done && cat "/tmp/docker.tmp" > "/etc/docker/daemon.json" && systemctl restart docker && rm -rf "/tmp/docker.tmp"
         fi
     }
+    function ConfigureOhMyZsh() {
+        omz_list=(
+            "export ZSH=\"\$HOME/.oh-my-zsh\""
+            "ZSH_CACHE_DIR=\"\$ZSH/cache\""
+            "ZSH_CUSTOM=\"\$ZSH/custom\""
+            "ZSH_THEME=\"robbyrussell\""
+            "DISABLE_AUTO_UPDATE=\"false\""
+            "DISABLE_UPDATE_PROMPT=\"false\""
+            "UPDATE_ZSH_DAYS=\"30\""
+            "ZSH_COMPDUMP=\"\$ZSH_CACHE_DIR/.zcompdump\""
+            "ZSH_DISABLE_COMPFIX=\"false\""
+            "CASE_SENSITIVE=\"true\""
+            "COMPLETION_WAITING_DOTS=\"true\""
+            "DISABLE_AUTO_TITLE=\"false\""
+            "DISABLE_LS_COLORS=\"false\""
+            "DISABLE_MAGIC_FUNCTIONS=\"false\""
+            "DISABLE_UNTRACKED_FILES_DIRTY=\"false\""
+            "ENABLE_CORRECTION=\"true\""
+            "HIST_STAMPS=\"yyyy-mm-dd\""
+            "HYPHEN_INSENSITIVE=\"false\""
+            "ZSH_THEME_RANDOM_CANDIDATES=()"
+            "ZSH_THEME_RANDOM_IGNORED=()"
+            "ZSH_THEME_RANDOM_QUIET=\"true\""
+            "source \"\$ZSH/oh-my-zsh.sh\""
+            "bindkey \"^[[Z\" autosuggest-accept"
+            "source \"/usr/share/zsh-autosuggestions/zsh-autosuggestions.zsh\""
+            "source \"/usr/share/zsh-syntax-highlighting/zsh-syntax-highlighting.zsh\""
+        )
+        which "zsh" > "/dev/null" 2>&1
+        if [ "$?" -eq "0" ] && [ -d "/etc/zsh/oh-my-zsh" ]; then
+            rm -rf "/tmp/omz.tmp" && for omz_list_task in "${!omz_list[@]}"; do
+                echo "${omz_list[$omz_list_task]}" >> "/tmp/omz.tmp"
+            done && cat "/tmp/omz.tmp" > "/etc/zsh/oh-my-zsh.zshrc" && rm -rf "/tmp/omz.tmp"
+        fi
+    }
     function ConfigureResolved() {
         resolved_list=(
             "[Resolve]"
@@ -144,41 +179,20 @@ function ConfigurePackages() {
     }
     function ConfigureZsh() {
         zsh_list=(
-            "export ZSH=\"\$HOME/.oh-my-zsh\""
-            "ZSH_CACHE_DIR=\"\$ZSH/cache\""
-            "ZSH_CUSTOM=\"\$ZSH/custom\""
-            "ZSH_THEME=\"robbyrussell\""
-            "DISABLE_AUTO_UPDATE=\"false\""
-            "DISABLE_UPDATE_PROMPT=\"false\""
-            "UPDATE_ZSH_DAYS=\"30\""
-            "ZSH_COMPDUMP=\"\$ZSH_CACHE_DIR/.zcompdump\""
-            "ZSH_DISABLE_COMPFIX=\"false\""
-            "CASE_SENSITIVE=\"true\""
-            "COMPLETION_WAITING_DOTS=\"true\""
-            "DISABLE_AUTO_TITLE=\"false\""
-            "DISABLE_LS_COLORS=\"false\""
-            "DISABLE_MAGIC_FUNCTIONS=\"false\""
-            "DISABLE_UNTRACKED_FILES_DIRTY=\"false\""
-            "ENABLE_CORRECTION=\"true\""
-            "HIST_STAMPS=\"yyyy-mm-dd\""
-            "HYPHEN_INSENSITIVE=\"false\""
-            "ZSH_THEME_RANDOM_CANDIDATES=()"
-            "ZSH_THEME_RANDOM_IGNORED=()"
-            "ZSH_THEME_RANDOM_QUIET=\"true\""
-            "source \"\$ZSH/oh-my-zsh.sh\""
             "bindkey \"^[[Z\" autosuggest-accept"
             "source \"/usr/share/zsh-autosuggestions/zsh-autosuggestions.zsh\""
             "source \"/usr/share/zsh-syntax-highlighting/zsh-syntax-highlighting.zsh\""
         )
         which "zsh" > "/dev/null" 2>&1
-        if [ "$?" -eq "0" ]; then
-            rm -rf "/etc/zsh/oh-my-zsh" "/tmp/zsh.tmp" && for zsh_list_task in "${!zsh_list[@]}"; do
+        if [ "$?" -eq "0" ] && [ -f "/etc/zsh/newuser.zshrc.recommended" ]; then
+            cat "/etc/zsh/newuser.zshrc.recommended" > "/tmp/newuser.zshrc.recommended.bak" && rm -rf "/tmp/zsh.tmp" && for zsh_list_task in "${!zsh_list[@]}"; do
                 echo "${zsh_list[$zsh_list_task]}" >> "/tmp/zsh.tmp"
-            done && cat "/tmp/zsh.tmp" > "/etc/zsh/oh-my-zsh.zshrc" && apt install -y zsh-autosuggestions zsh-syntax-highlighting && git clone --depth=1 "https://github.com/robbyrussell/oh-my-zsh.git" "/etc/zsh/oh-my-zsh" && cat "/etc/zsh/oh-my-zsh.zshrc" > "/root/.zshrc" && ln -s "/etc/zsh/oh-my-zsh" "/root/.oh-my-zsh" && rm -rf "/tmp/zsh.tmp"
+            done && cat "/tmp/newuser.zshrc.recommended.bak" "/tmp/zsh.tmp" > "/etc/zsh/newuser.zshrc.recommended" && apt install -y zsh-autosuggestions zsh-syntax-highlighting && rm -rf "/tmp/newuser.zshrc.recommended.bak" "/tmp/zsh.tmp" && ConfigureOmz
         fi
     }
     ConfigureCrontab
     ConfigureDockerEngine
+    ConfigureOhMyZsh
     ConfigureResolved
     ConfigureSysctl
     ConfigureUfw
@@ -234,11 +248,15 @@ function InstallCustomPackages() {
         fi && echo "deb [arch=${CPUArchitecture} signed-by=/usr/share/keyrings/docker-archive-keyring.gpg] https://mirrors.ustc.edu.cn/docker-ce/linux/ubuntu ${LSBCodename} stable" > /etc/apt/sources.list.d/docker.list
         apt update && apt purge -y containerd docker docker-engine docker.io runc && apt install -y containerd.io docker-ce docker-ce-cli
     }
+    function InstallOhMyZsh() {
+        rm -rf "/etc/zsh/oh-my-zsh" && git clone --depth=1 "https://hub.fastgit.org/robbyrussell/oh-my-zsh.git" "/etc/zsh/oh-my-zsh"
+    }
     InstallDockerEngine
+    InstallOhMyZsh
 }
 # Install Dependency Packages
 function InstallDependencyPackages() {
-    apt update && apt install -y apt-transport-https ca-certificates curl dnsutils git gnupg jq knot-dnsutils landscape-common lsb-release nano net-tools netplan.io snapd systemd ufw update-notifier-common vim wget zsh && snap install core
+    apt update && apt install -y apt-transport-https ca-certificates curl dnsutils git gnupg jq knot-dnsutils landscape-common lsb-release nano net-tools netplan.io snapd systemd ufw update-notifier-common vim wget zsh zsh-autosuggestions zsh-syntax-highlighting && snap install core
 }
 # Upgrade Packages
 function UpgradePackages() {
