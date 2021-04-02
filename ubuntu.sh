@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 1.2.5
+# Current Version: 1.2.6
 
 ## How to get and use?
 # curl https://source.zhijie.online/AutoDeploy/main/ubuntu.sh | sudo bash
@@ -50,6 +50,7 @@ function SetRepositoryMirror() {
 function SetReadonlyFlag() {
     file_list=(
         "/etc/apt/sources.list"
+        "/etc/apt/sources.list.d/docker.list"
         "/etc/default/ufw"
         "/etc/docker/daemon.json"
         "/etc/hostname"
@@ -164,7 +165,7 @@ function ConfigurePackages() {
             done && cat "/tmp/sysctl.tmp" > "/etc/sysctl.conf" && sysctl -p && rm -rf "/tmp/sysctl.tmp"
         fi
     }
-    fuction ConfigureTuned() {
+    function ConfigureTuned() {
         which "tuned-adm" > "/dev/null" 2>&1
         if [ "$?" -eq "0" ]; then
             tuned-adm profile "$(tuned-adm recommend)" && tuned-adm active
@@ -266,7 +267,7 @@ function InstallCustomPackages() {
             CPUArchitecture="${CPUArchitecture}"
         elif [ "${CPUArchitecture}" == "armv5" ] || [ "${CPUArchitecture}" == "armv6" ] || [ "${CPUArchitecture}" == "armv7" ]; then
             CPUArchitecture="armhf"
-        fi && echo "deb [arch=${CPUArchitecture} signed-by=/usr/share/keyrings/docker-archive-keyring.gpg] https://mirrors.ustc.edu.cn/docker-ce/linux/ubuntu ${LSBCodename} stable" > /etc/apt/sources.list.d/docker.list
+        fi && echo "deb [arch=${CPUArchitecture} signed-by=/usr/share/keyrings/docker-archive-keyring.gpg] https://mirrors.ustc.edu.cn/docker-ce/linux/ubuntu ${LSBCodename} stable" > "/etc/apt/sources.list.d/docker.list"
         apt update && apt purge -y containerd docker docker-engine docker.io runc && apt install -y containerd.io docker-ce docker-ce-cli
     }
     function InstallOhMyZsh() {
