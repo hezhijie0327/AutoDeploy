@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 1.2.3
+# Current Version: 1.2.4
 
 ## How to get and use?
 # curl https://source.zhijie.online/AutoDeploy/main/ubuntu.sh | sudo bash
@@ -54,6 +54,7 @@ function SetReadonlyFlag() {
         "/etc/docker/daemon.json"
         "/etc/hostname"
         "/etc/hosts"
+        "/etc/netplan/netplan.yaml"
         "/etc/sysctl.conf"
         "/etc/systemd/resolved.conf.d/resolved.conf"
     )
@@ -71,7 +72,7 @@ function SetReadonlyFlag() {
 function ConfigurePackages() {
     function ConfigureCrontab() {
         crontab_list=(
-            "0 0 */7 * * sudo apt update && sudo apt dist-upgrade -y && sudo apt upgrade -y && sudo apt autoremove -y && sudo snap refresh"
+            "0 0 */7 * * sudo apt update && sudo apt dist-upgrade -y && sudo apt upgrade -y && sudo apt autoremove -y"
             "0 4 */7 * * sudo reboot"
         )
         which "crontab" > "/dev/null" 2>&1
@@ -97,6 +98,34 @@ function ConfigurePackages() {
             rm -rf "/tmp/docker.tmp" && for docker_list_task in "${!docker_list[@]}"; do
                 echo "${docker_list[$docker_list_task]}" >> "/tmp/docker.tmp"
             done && cat "/tmp/docker.tmp" > "/etc/docker/daemon.json" && systemctl restart docker && rm -rf "/tmp/docker.tmp"
+        fi
+    }
+    function ConfigureNetplan() {
+        netplan_list=(
+            "network:"
+            "  version: 2"
+            "  renderer: networkd"
+            "  ethernets:"
+        )
+        netplan_ethernets_list=(
+            "      dhcp4: true"
+            "      dhcp6: true"
+        )
+        network_interface=($(cat "/proc/net/dev" | grep -v "docker0\|lo" | grep "\:" | sed "s/[[:space:]]//g" | cut -d ":" -f 1 | sort | uniq))
+        which "netplan" > "/dev/null" 2>&1
+        if [ "$?" -eq "0" ]; then
+            if [ ! -d "/etc/netplan" ]; then
+                mkdir "/etc/netplan"
+            else
+                rm -rf /etc/netplan/*.yaml
+            fi
+            rm -rf "/tmp/netplan.tmp" && for netplan_list_task in "${!netplan_list[@]}"; do
+                echo "${netplan_list[$netplan_list_task]}" >> "/tmp/netplan.tmp"
+            done && for network_interface_task in "${!network_interface[@]}"; do
+                echo "    ${network_interface[$network_interface_task]}:" >> "/tmp/netplan.tmp" && for netplan_ethernets_list_task in "${!netplan_ethernets_list[@]}"; do
+                    echo "${netplan_ethernets_list[$netplan_ethernets_list_task]}" >> "/tmp/netplan.tmp"
+                done
+            done && cat "/tmp/netplan.tmp" > "/etc/netplan/netplan.yaml" && netplan apply && rm -rf "/tmp/netplan.tmp"
         fi
     }
     function ConfigureResolved() {
@@ -178,6 +207,7 @@ function ConfigurePackages() {
     }
     ConfigureCrontab
     ConfigureDockerEngine
+    ConfigureNetplan
     ConfigureResolved
     ConfigureSysctl
     ConfigureUfw
@@ -256,7 +286,7 @@ function InstallCustomPackages() {
 }
 # Install Dependency Packages
 function InstallDependencyPackages() {
-    apt update && apt install -y apt-transport-https ca-certificates curl dnsutils git gnupg jq knot-dnsutils landscape-common lsb-release nano net-tools netplan.io snapd systemd ufw update-notifier-common vim wget zsh && snap install core
+    apt update && apt install -y apt-transport-https ca-certificates curl dnsutils git gnupg jq knot-dnsutils landscape-common lsb-release nano net-tools netplan.io systemd ufw update-notifier-common vim wget zsh
 }
 # Upgrade Packages
 function UpgradePackages() {
