@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 1.2.2
+# Current Version: 1.2.3
 
 ## How to get and use?
 # curl https://source.zhijie.online/AutoDeploy/main/ubuntu.sh | sudo bash
@@ -163,8 +163,6 @@ function ConfigurePackages() {
             "ENABLE_CORRECTION=\"true\""
             "HIST_STAMPS=\"yyyy-mm-dd\""
             "HYPHEN_INSENSITIVE=\"false\""
-            "ZSH_THEME_RANDOM_CANDIDATES=()"
-            "ZSH_THEME_RANDOM_IGNORED=()"
             "ZSH_THEME_RANDOM_QUIET=\"true\""
             "ZSH_AUTOSUGGEST_HIGHLIGHT_STYLE=\"bg=250,fg=238,bold,underline\""
             "ZSH_AUTOSUGGEST_STRATEGY=(match_prev_cmd history completion)"
