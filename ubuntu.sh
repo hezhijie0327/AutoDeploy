@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 1.2.7
+# Current Version: 1.2.8
 
 ## How to get and use?
 # curl https://source.zhijie.online/AutoDeploy/main/ubuntu.sh | sudo bash
@@ -58,6 +58,7 @@ function SetReadonlyFlag() {
         "/etc/netplan/netplan.yaml"
         "/etc/sysctl.conf"
         "/etc/systemd/resolved.conf.d/resolved.conf"
+        "/etc/zsh/oh-my-zsh.zshrc"
     )
     if [ "${read_only}" == "true" ]; then
         for file_list_task in "${!file_list[@]}"; do
