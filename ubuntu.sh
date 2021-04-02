@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 1.2.4
+# Current Version: 1.2.5
 
 ## How to get and use?
 # curl https://source.zhijie.online/AutoDeploy/main/ubuntu.sh | sudo bash
@@ -164,6 +164,12 @@ function ConfigurePackages() {
             done && cat "/tmp/sysctl.tmp" > "/etc/sysctl.conf" && sysctl -p && rm -rf "/tmp/sysctl.tmp"
         fi
     }
+    fuction ConfigureTuned() {
+        which "tuned-adm" > "/dev/null" 2>&1
+        if [ "$?" -eq "0" ]; then
+            tuned-adm profile "$(tuned-adm recommend)" && tuned-adm active
+        fi
+    }
     function ConfigureUfw() {
         which "ufw" > "/dev/null" 2>&1
         if [ "$?" -eq "0" ] && [ -f "/etc/default/ufw" ]; then
@@ -286,7 +292,7 @@ function InstallCustomPackages() {
 }
 # Install Dependency Packages
 function InstallDependencyPackages() {
-    apt update && apt install -y apt-transport-https ca-certificates curl dnsutils git gnupg jq knot-dnsutils landscape-common lsb-release nano net-tools netplan.io systemd ufw update-notifier-common vim wget zsh
+    apt update && apt install -y apt-transport-https ca-certificates curl dnsutils git gnupg jq knot-dnsutils landscape-common lsb-release nano net-tools netplan.io systemd tuned ufw update-notifier-common vim wget zsh
 }
 # Upgrade Packages
 function UpgradePackages() {
