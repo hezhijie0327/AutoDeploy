@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 1.2.0
+# Current Version: 1.2.1
 
 ## How to get and use?
 # curl https://source.zhijie.online/AutoDeploy/main/ubuntu.sh | sudo bash
@@ -104,7 +104,7 @@ function ConfigurePackages() {
             "export ZSH=\"\$HOME/.oh-my-zsh\""
             "ZSH_CACHE_DIR=\"\$ZSH/cache\""
             "ZSH_CUSTOM=\"\$ZSH/custom\""
-            "ZSH_THEME=\"robbyrussell\""
+            "ZSH_THEME=\"ys\""
             "DISABLE_AUTO_UPDATE=\"false\""
             "DISABLE_UPDATE_PROMPT=\"false\""
             "UPDATE_ZSH_DAYS=\"30\""
@@ -122,8 +122,10 @@ function ConfigurePackages() {
             "ZSH_THEME_RANDOM_CANDIDATES=()"
             "ZSH_THEME_RANDOM_IGNORED=()"
             "ZSH_THEME_RANDOM_QUIET=\"true\""
+            "ZSH_AUTOSUGGEST_HIGHLIGHT_STYLE=\"bg=250,fg=238,bold,underline\""
+            "ZSH_AUTOSUGGEST_STRATEGY=(match_prev_cmd history completion)"
+            "ZSH_AUTOSUGGEST_USE_ASYNC=\"true\""
             "source \"\$ZSH/oh-my-zsh.sh\""
-            "bindkey \"^[[Z\" autosuggest-accept"
             "source \"/usr/share/zsh-autosuggestions/zsh-autosuggestions.zsh\""
             "source \"/usr/share/zsh-syntax-highlighting/zsh-syntax-highlighting.zsh\""
         )
