@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 1.2.9
+# Current Version: 1.3.0
 
 ## How to get and use?
 # curl https://source.zhijie.online/AutoDeploy/main/ubuntu.sh | sudo bash
@@ -182,7 +182,7 @@ function ConfigurePackages() {
     function ConfigureZsh() {
         omz_list=(
             "export ZSH=\"\$HOME/.oh-my-zsh\""
-            "plugins=(zsh-autosuggestions zsh-syntax-highlighting)"
+            "plugins=(zsh-autosuggestions zsh-completions zsh-history-substring-search zsh-syntax-highlighting)"
             "ZSH_CACHE_DIR=\"\$ZSH/cache\""
             "ZSH_CUSTOM=\"\$ZSH/custom\""
             "ZSH_THEME=\"ys\""
@@ -274,6 +274,8 @@ function InstallCustomPackages() {
     function InstallOhMyZsh() {
         plugin_list=(
             "zsh-autosuggestions"
+            "zsh-completions"
+            "zsh-history-substring-search"
             "zsh-syntax-highlighting"
         )
         rm -rf "/etc/zsh/oh-my-zsh" && git clone --depth=1 "https://hub.fastgit.org/robbyrussell/oh-my-zsh.git" "/etc/zsh/oh-my-zsh" && if [ "$?" -eq "1" ]; then
