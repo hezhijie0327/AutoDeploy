@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 1.0.4
+# Current Version: 1.0.5
 
 ## How to get and use?
 # /bin/bash -c "$(curl -fsSL 'https://source.zhijie.online/AutoDeploy/main/macOS.sh')"
@@ -26,17 +26,6 @@ function ConfigurePackages() {
                 echo "${crontab_list[$crontab_list_task]}" >> "/tmp/crontab.tmp"
             done && sudo crontab -u "${CurrentUsername}" "/tmp/crontab.tmp" && sudo crontab -lu "${CurrentUsername}" && rm -rf "/tmp/crontab.tmp"
         fi
-    }
-    function ConfigureHomebrew() {
-        tap_list=(
-            "homebrew-cask"
-            "homebrew-cask-drivers"
-            "homebrew-cask-fonts"
-            "homebrew-cask-versions"
-        )
-        for tap_list_task in "${!tap_list[@]}"; do
-            rm -rf "/usr/local/Homebrew/Library/Taps/homebrew/${tap_list[$tap_list_task]}" && git clone "https://mirrors.tuna.tsinghua.edu.cn/git/homebrew/${tap_list[$tap_list_task]}.git" "/usr/local/Homebrew/Library/Taps/homebrew/${tap_list[$tap_list_task]}"
-        done
     }
     function ConfigureZsh() {
         omz_list=(
@@ -68,14 +57,13 @@ function ConfigurePackages() {
             "source \"\$ZSH/oh-my-zsh.sh\""
         )
         which "zsh" > "/dev/null" 2>&1
-        if [ "$?" -eq "0" ] && [ -d "/usr/local/Cellar/zsh/oh-my-zsh" ]; then
+        if [ "$?" -eq "0" ] && [ -d "/Users/${CurrentUsername}/.oh-my-zsh" ]; then
             rm -rf "/tmp/omz.tmp" && for omz_list_task in "${!omz_list[@]}"; do
                 echo "${omz_list[$omz_list_task]}" >> "/tmp/omz.tmp"
-            done && cat "/tmp/omz.tmp" > "/usr/local/Cellar/zsh/oh-my-zsh/oh-my-zsh.zshrc" && rm -rf "/tmp/omz.tmp"
+            done && cat "/tmp/omz.tmp" > "/Users/${CurrentUsername}/.zshrc" && rm -rf "/tmp/omz.tmp"
         fi
     }
     ConfigureCrontab
-    ConfigureHomebrew
     ConfigureZsh
 }
 # Configure System
@@ -106,15 +94,15 @@ function InstallCustomPackages() {
             "zsh-history-substring-search"
             "zsh-syntax-highlighting"
         )
-        rm -rf "/usr/local/Cellar/zsh/oh-my-zsh" && git clone --depth=1 "https://hub.fastgit.org/ohmyzsh/ohmyzsh.git" "/usr/local/Cellar/zsh/oh-my-zsh" && if [ "$?" -eq "1" ]; then
-            git clone --depth=1 "https://github.com.cnpmjs.org/ohmyzsh/ohmyzsh.git" "/usr/local/Cellar/zsh/oh-my-zsh" && if [ "$?" -eq "1" ]; then
-                git clone --depth=1 "https://github.com/ohmyzsh/ohmyzsh.git" "/usr/local/Cellar/zsh/oh-my-zsh"
+        rm -rf "/Users/${CurrentUsername}/.oh-my-zsh" && git clone --depth=1 "https://hub.fastgit.org/ohmyzsh/ohmyzsh.git" "/Users/${CurrentUsername}/.oh-my-zsh" && if [ "$?" -eq "1" ]; then
+            git clone --depth=1 "https://github.com.cnpmjs.org/ohmyzsh/ohmyzsh.git" "/Users/${CurrentUsername}/.oh-my-zsh" && if [ "$?" -eq "1" ]; then
+                git clone --depth=1 "https://github.com/ohmyzsh/ohmyzsh.git" "/Users/${CurrentUsername}/.oh-my-zsh"
             fi
         fi
         for plugin_list_task in "${!plugin_list[@]}"; do
-            rm -rf "/usr/local/Cellar/zsh/oh-my-zsh/custom/plugins/${plugin_list[$plugin_list_task]}" && git clone --depth=1 "https://hub.fastgit.org/zsh-users/${plugin_list[$plugin_list_task]}.git" "/usr/local/Cellar/zsh/oh-my-zsh/custom/plugins/${plugin_list[$plugin_list_task]}" && if [ "$?" -eq "1" ]; then
-                git clone --depth=1 "https://github.com.cnpmjs.org/zsh-users/${plugin_list[$plugin_list_task]}.git" "/usr/local/Cellar/zsh/oh-my-zsh/custom/plugins/${plugin_list[$plugin_list_task]}" && if [ "$?" -eq "1" ]; then
-                    git clone --depth=1 "https://github.com/zsh-users/${plugin_list[$plugin_list_task]}.git" "/usr/local/Cellar/zsh/oh-my-zsh/custom/plugins/${plugin_list[$plugin_list_task]}"
+            rm -rf "/Users/${CurrentUsername}/.oh-my-zsh/custom/plugins/${plugin_list[$plugin_list_task]}" && git clone --depth=1 "https://hub.fastgit.org/zsh-users/${plugin_list[$plugin_list_task]}.git" "/Users/${CurrentUsername}/.oh-my-zsh/custom/plugins/${plugin_list[$plugin_list_task]}" && if [ "$?" -eq "1" ]; then
+                git clone --depth=1 "https://github.com.cnpmjs.org/zsh-users/${plugin_list[$plugin_list_task]}.git" "/Users/${CurrentUsername}/.oh-my-zsh/custom/plugins/${plugin_list[$plugin_list_task]}" && if [ "$?" -eq "1" ]; then
+                    git clone --depth=1 "https://github.com/zsh-users/${plugin_list[$plugin_list_task]}.git" "/Users/${CurrentUsername}/.oh-my-zsh/custom/plugins/${plugin_list[$plugin_list_task]}"
                 fi
             fi
         done
@@ -123,11 +111,22 @@ function InstallCustomPackages() {
 }
 # Install Dependency Packages
 function InstallDependencyPackages() {
-    export HOMEBREW_BOTTLE_DOMAIN="https://mirrors.tuna.tsinghua.edu.cn/homebrew-bottles"
+    tap_list=(
+            "homebrew-cask"
+            "homebrew-cask-drivers"
+            "homebrew-cask-fonts"
+            "homebrew-cask-versions"
+            "homebrew-core"
+        )
     which "brew" > "/dev/null" 2>&1
     if [ "$?" -eq "1" ]; then
         /bin/bash -c "$(curl -fsSL 'https://cdn.jsdelivr.net/gh/Homebrew/install@master/install.sh' | sed 's/https\:\/\/github\.com\/Homebrew\/brew/https\:\/\/mirrors\.tuna\.tsinghua\.edu\.cn\/git\/homebrew\/brew\.git/g;s/https\:\/\/github\.com\/Homebrew\/homebrew\-core/https\:\/\/mirrors\.tuna\.tsinghua\.edu\.cn\/git\/homebrew\/homebrew\-core\.git/g')"
-    fi && brew update && brew install bash curl git jq knot nano neofetch vim wget zsh && brew cleanup
+    fi && export HOMEBREW_BOTTLE_DOMAIN="https://mirrors.tuna.tsinghua.edu.cn/homebrew-bottles"
+    for tap_list_task in "${!tap_list[@]}"; do
+        if [ ! -d "/usr/local/Homebrew/Library/Taps/homebrew/${tap_list[$tap_list_task]}" ]; then
+            git clone "https://mirrors.tuna.tsinghua.edu.cn/git/homebrew/${tap_list[$tap_list_task]}.git" "/usr/local/Homebrew/Library/Taps/homebrew/${tap_list[$tap_list_task]}"
+        fi
+    done && brew update && brew install bash curl git jq knot nano neofetch vim wget zsh && brew cleanup
 }
 # Upgrade Packages
 function UpgradePackages() {
