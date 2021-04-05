@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 1.0.2
+# Current Version: 1.0.3
 
 ## How to get and use?
 # /bin/bash -c "$(curl -fsSL 'https://source.zhijie.online/AutoDeploy/main/macOS.sh')"
@@ -41,6 +41,7 @@ function ConfigurePackages() {
     function ConfigureZsh() {
         omz_list=(
             "export HOMEBREW_BOTTLE_DOMAIN=\"https://mirrors.tuna.tsinghua.edu.cn/homebrew-bottles\""
+            "export PATH=\"/usr/local/sbin:\$PATH\""
             "export ZSH=\"\$HOME/.oh-my-zsh\""
             "plugins=(zsh-autosuggestions zsh-completions zsh-history-substring-search zsh-syntax-highlighting)"
             "ZSH_CACHE_DIR=\"\$ZSH/cache\""
@@ -67,10 +68,10 @@ function ConfigurePackages() {
             "source \"\$ZSH/oh-my-zsh.sh\""
         )
         which "zsh" > "/dev/null" 2>&1
-        if [ "$?" -eq "0" ] && [ -d "/usr/local/Cellar/oh-my-zsh" ]; then
+        if [ "$?" -eq "0" ] && [ -d "/usr/local/Cellar/zsh/oh-my-zsh" ]; then
             rm -rf "/tmp/omz.tmp" && for omz_list_task in "${!omz_list[@]}"; do
                 echo "${omz_list[$omz_list_task]}" >> "/tmp/omz.tmp"
-            done && cat "/tmp/omz.tmp" > "/usr/local/Cellar/oh-my-zsh/oh-my-zsh.zshrc" && rm -rf "/tmp/omz.tmp"
+            done && cat "/tmp/omz.tmp" > "/usr/local/Cellar/zsh/oh-my-zsh/oh-my-zsh.zshrc" && rm -rf "/tmp/omz.tmp"
         fi
     }
     ConfigureCrontab
@@ -105,15 +106,15 @@ function InstallCustomPackages() {
             "zsh-history-substring-search"
             "zsh-syntax-highlighting"
         )
-        rm -rf "/usr/local/Cellar/oh-my-zsh" && git clone --depth=1 "https://hub.fastgit.org/ohmyzsh/ohmyzsh.git" "/usr/local/Cellar/oh-my-zsh" && if [ "$?" -eq "1" ]; then
-            git clone --depth=1 "https://github.com.cnpmjs.org/ohmyzsh/ohmyzsh.git" "/usr/local/Cellar/oh-my-zsh" && if [ "$?" -eq "1" ]; then
-                git clone --depth=1 "https://github.com/ohmyzsh/ohmyzsh.git" "/usr/local/Cellar/oh-my-zsh"
+        rm -rf "/usr/local/Cellar/zsh/oh-my-zsh" && git clone --depth=1 "https://hub.fastgit.org/ohmyzsh/ohmyzsh.git" "/usr/local/Cellar/zsh/oh-my-zsh" && if [ "$?" -eq "1" ]; then
+            git clone --depth=1 "https://github.com.cnpmjs.org/ohmyzsh/ohmyzsh.git" "/usr/local/Cellar/zsh/oh-my-zsh" && if [ "$?" -eq "1" ]; then
+                git clone --depth=1 "https://github.com/ohmyzsh/ohmyzsh.git" "/usr/local/Cellar/zsh/oh-my-zsh"
             fi
         fi
         for plugin_list_task in "${!plugin_list[@]}"; do
-            rm -rf "/usr/local/Cellar/oh-my-zsh/custom/plugins/${plugin_list[$plugin_list_task]}" && git clone --depth=1 "https://hub.fastgit.org/zsh-users/${plugin_list[$plugin_list_task]}.git" "/usr/local/Cellar/oh-my-zsh/custom/plugins/${plugin_list[$plugin_list_task]}" && if [ "$?" -eq "1" ]; then
-                git clone --depth=1 "https://github.com.cnpmjs.org/zsh-users/${plugin_list[$plugin_list_task]}.git" "/usr/local/Cellar/oh-my-zsh/custom/plugins/${plugin_list[$plugin_list_task]}" && if [ "$?" -eq "1" ]; then
-                    git clone --depth=1 "https://github.com/zsh-users/${plugin_list[$plugin_list_task]}.git" "/usr/local/Cellar/oh-my-zsh/custom/plugins/${plugin_list[$plugin_list_task]}"
+            rm -rf "/usr/local/Cellar/zsh/oh-my-zsh/custom/plugins/${plugin_list[$plugin_list_task]}" && git clone --depth=1 "https://hub.fastgit.org/zsh-users/${plugin_list[$plugin_list_task]}.git" "/usr/local/Cellar/zsh/oh-my-zsh/custom/plugins/${plugin_list[$plugin_list_task]}" && if [ "$?" -eq "1" ]; then
+                git clone --depth=1 "https://github.com.cnpmjs.org/zsh-users/${plugin_list[$plugin_list_task]}.git" "/usr/local/Cellar/zsh/oh-my-zsh/custom/plugins/${plugin_list[$plugin_list_task]}" && if [ "$?" -eq "1" ]; then
+                    git clone --depth=1 "https://github.com/zsh-users/${plugin_list[$plugin_list_task]}.git" "/usr/local/Cellar/zsh/oh-my-zsh/custom/plugins/${plugin_list[$plugin_list_task]}"
                 fi
             fi
         done
