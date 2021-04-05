@@ -1,18 +1,18 @@
 #!/bin/bash
 
-# Current Version: 1.0.1
+# Current Version: 1.0.2
 
 ## How to get and use?
-# /bin/bash -c "$(curl 'https://source.zhijie.online/AutoDeploy/main/macOS.sh')"
+# /bin/bash -c "$(curl -fsSL 'https://source.zhijie.online/AutoDeploy/main/macOS.sh')"
 # /bin/bash -c "$(wget -qO- 'https://source.zhijie.online/AutoDeploy/main/macOS.sh')"
 
 ## Function
 # Get System Information
 function GetSystemInformation() {
-    function GetCPUArchitecture() {
-        CPUArchitecture=$(case "$(uname -m)" in aarch64) echo "arm64" ;; amd64 | x64 | x86-64 | x86_64) echo "amd64" ;; armv5l) echo "armv5" ;; armv6l) echo "armv6" ;; armv7l) echo "armv7" ;; i386 | i486 | i586 | i686 | x86) echo "386" ;; esac)
+    function GetCurrentUsername() {
+        CurrentUsername=$(whoami)
     }
-    GetCPUArchitecture
+    GetCurrentUsername
 }
 # Configure Packages
 function ConfigurePackages() {
@@ -24,7 +24,7 @@ function ConfigurePackages() {
         if [ "$?" -eq "0" ]; then
             rm -rf "/tmp/crontab.tmp" && for crontab_list_task in "${!crontab_list[@]}"; do
                 echo "${crontab_list[$crontab_list_task]}" >> "/tmp/crontab.tmp"
-            done && sudo crontab -u "$(whoami)" "/tmp/crontab.tmp" && sudo crontab -lu "$(whoami)" && rm -rf "/tmp/crontab.tmp"
+            done && sudo crontab -u "${CurrentUsername}" "/tmp/crontab.tmp" && sudo crontab -lu "${CurrentUsername}" && rm -rf "/tmp/crontab.tmp"
         fi
     }
     function ConfigureHomebrew() {
@@ -35,7 +35,7 @@ function ConfigurePackages() {
             "homebrew-cask-versions"
         )
         for tap_list_task in "${!tap_list[@]}"; do
-            rm -rf "/usr/local/Homebrew/Library/Taps/homebrew/${tap_list[$tap_list_task]}" && git clone "https://mirrors.tuna.tsinghua.edu.cn/git/homebrew/${tap_list[$tap_list_task]}.git" "/usr/local/Homebrew/Library/Taps/homebrew/${tap_list[$tap_list_task]}"
+            rm -rf "/usr/local/Homebrew/Library/Taps/homebrew/${tap_list[$tap_list_task]}" && git clone --depth=1 "https://mirrors.tuna.tsinghua.edu.cn/git/homebrew/${tap_list[$tap_list_task]}.git" "/usr/local/Homebrew/Library/Taps/homebrew/${tap_list[$tap_list_task]}"
         done
     }
     function ConfigureZsh() {
@@ -70,7 +70,7 @@ function ConfigurePackages() {
         if [ "$?" -eq "0" ] && [ -d "/usr/local/Cellar/oh-my-zsh" ]; then
             rm -rf "/tmp/omz.tmp" && for omz_list_task in "${!omz_list[@]}"; do
                 echo "${omz_list[$omz_list_task]}" >> "/tmp/omz.tmp"
-            done && cat "/tmp/omz.tmp" > "/usr/local/Cellar/oh-my-zsh.zshrc" && rm -rf "/tmp/omz.tmp"
+            done && cat "/tmp/omz.tmp" > "/usr/local/Cellar/oh-my-zsh/oh-my-zsh.zshrc" && rm -rf "/tmp/omz.tmp"
         fi
     }
     ConfigureCrontab
@@ -94,13 +94,7 @@ function ConfigureSystem() {
             echo "${host_list[$host_list_task]}" >> "/tmp/hosts.tmp"
         done && sudo cat "/tmp/hosts.tmp" > "/etc/hosts" && rm -rf "/tmp/hosts.tmp"
     }
-    function ConfigureTimeZone() {
-        if [ -f "/etc/localtime" ]; then
-            sudo rm -rf "/etc/localtime"
-        fi && sudo ln -s "/usr/share/zoneinfo/Asia/Shanghai" "/etc/localtime"
-    }
     ConfigureHostfile
-    ConfigureTimeZone
 }
 # Install Custom Packages
 function InstallCustomPackages() {
@@ -128,9 +122,10 @@ function InstallCustomPackages() {
 }
 # Install Dependency Packages
 function InstallDependencyPackages() {
+    export HOMEBREW_BOTTLE_DOMAIN="https://mirrors.tuna.tsinghua.edu.cn/homebrew-bottles"
     which "brew" > "/dev/null" 2>&1
     if [ "$?" -eq "1" ]; then
-        /bin/bash -c "$(curl 'https://cdn.jsdelivr.net/gh/Homebrew/install@master/install.sh' | sed 's/https\:\/\/github\.com\/Homebrew\/brew/https\:\/\/mirrors\.tuna\.tsinghua\.edu\.cn\/git\/homebrew\/brew\.git/g;s/https\:\/\/github\.com\/Homebrew\/homebrew\-core/https\:\/\/mirrors\.tuna\.tsinghua\.edu\.cn\/git\/homebrew\/homebrew\-core\.git')"
+        /bin/bash -c "$(curl -fsSL 'https://cdn.jsdelivr.net/gh/Homebrew/install@master/install.sh' | sed 's/https\:\/\/github\.com\/Homebrew\/brew/https\:\/\/mirrors\.tuna\.tsinghua\.edu\.cn\/git\/homebrew\/brew\.git/g;s/https\:\/\/github\.com\/Homebrew\/homebrew\-core/https\:\/\/mirrors\.tuna\.tsinghua\.edu\.cn\/git\/homebrew\/homebrew\-core\.git/g')"
     fi && brew update && brew install bash curl git jq knot nano neofetch vim wget zsh && brew cleanup
 }
 # Upgrade Packages
