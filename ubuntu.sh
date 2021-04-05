@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 1.3.0
+# Current Version: 1.3.1
 
 ## How to get and use?
 # curl https://source.zhijie.online/AutoDeploy/main/ubuntu.sh | sudo bash
@@ -278,9 +278,9 @@ function InstallCustomPackages() {
             "zsh-history-substring-search"
             "zsh-syntax-highlighting"
         )
-        rm -rf "/etc/zsh/oh-my-zsh" && git clone --depth=1 "https://hub.fastgit.org/robbyrussell/oh-my-zsh.git" "/etc/zsh/oh-my-zsh" && if [ "$?" -eq "1" ]; then
-            git clone --depth=1 "https://github.com.cnpmjs.org/robbyrussell/oh-my-zsh.git" "/etc/zsh/oh-my-zsh" && if [ "$?" -eq "1" ]; then
-                git clone --depth=1 "https://github.com/robbyrussell/oh-my-zsh.git" "/etc/zsh/oh-my-zsh"
+        rm -rf "/etc/zsh/oh-my-zsh" && git clone --depth=1 "https://hub.fastgit.org/ohmyzsh/ohmyzsh.git" "/etc/zsh/oh-my-zsh" && if [ "$?" -eq "1" ]; then
+            git clone --depth=1 "https://github.com.cnpmjs.org/ohmyzsh/ohmyzsh.git" "/etc/zsh/oh-my-zsh" && if [ "$?" -eq "1" ]; then
+                git clone --depth=1 "https://github.com/ohmyzsh/ohmyzsh.git" "/etc/zsh/oh-my-zsh"
             fi
         fi
         for plugin_list_task in "${!plugin_list[@]}"; do
