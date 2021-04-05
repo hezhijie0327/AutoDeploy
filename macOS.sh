@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 1.0.7
+# Current Version: 1.0.8
 
 ## How to get and use?
 # /bin/bash -c "$(curl -fsSL 'https://source.zhijie.online/AutoDeploy/main/macOS.sh')"
@@ -104,25 +104,20 @@ function InstallCustomPackages() {
 }
 # Install Dependency Packages
 function InstallDependencyPackages() {
-    tap_full_list=(
+    tap_list=(
         "homebrew-cask"
-        "homebrew-core"
-    )
-    tap_lite_list=(
         "homebrew-cask-drivers"
         "homebrew-cask-fonts"
         "homebrew-cask-versions"
+        "homebrew-cask"
     )
     which "brew" > "/dev/null" 2>&1
     if [ "$?" -eq "1" ]; then
         /bin/bash -c "$(curl -fsSL 'https://cdn.jsdelivr.net/gh/Homebrew/install@master/install.sh' | sed 's/https\:\/\/github\.com\/Homebrew\/brew/https\:\/\/mirrors\.tuna\.tsinghua\.edu\.cn\/git\/homebrew\/brew\.git/g;s/https\:\/\/github\.com\/Homebrew\/homebrew\-core/https\:\/\/mirrors\.tuna\.tsinghua\.edu\.cn\/git\/homebrew\/homebrew\-core\.git/g')"
     fi && export HOMEBREW_BOTTLE_DOMAIN="https://mirrors.tuna.tsinghua.edu.cn/homebrew-bottles"
     if [ -d "/usr/local/Homebrew/Library/Taps/homebrew" ]; then
-        for tap_full_list_task in "${!tap_full_list[@]}"; do
-            rm -rf "/usr/local/Homebrew/Library/Taps/homebrew/${tap_full_list[$tap_full_list_task]}" && git clone "https://mirrors.tuna.tsinghua.edu.cn/git/homebrew/${tap_full_list[$tap_full_list_task]}.git" "/usr/local/Homebrew/Library/Taps/homebrew/${tap_full_list[$tap_full_list_task]}"
-        done
-        for tap_lite_list_task in "${!tap_lite_list[@]}"; do
-            rm -rf "/usr/local/Homebrew/Library/Taps/homebrew/${tap_lite_list[$tap_lite_list_task]}" && git clone --depth=1 "https://mirrors.tuna.tsinghua.edu.cn/git/homebrew/${tap_lite_list[$tap_lite_list_task]}.git" "/usr/local/Homebrew/Library/Taps/homebrew/${tap_lite_list[$tap_lite_list_task]}"
+        for tap_list_task in "${!tap_list[@]}"; do
+            rm -rf "/usr/local/Homebrew/Library/Taps/homebrew/${tap_list[$tap_list_task]}" && git clone "https://mirrors.tuna.tsinghua.edu.cn/git/homebrew/${tap_list[$tap_list_task]}.git" "/usr/local/Homebrew/Library/Taps/homebrew/${tap_list[$tap_list_task]}"
         done && brew update && brew install bash curl git jq knot nano neofetch vim wget zsh && brew cleanup
     fi
 }
