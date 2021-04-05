@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 1.0.5
+# Current Version: 1.0.6
 
 ## How to get and use?
 # /bin/bash -c "$(curl -fsSL 'https://source.zhijie.online/AutoDeploy/main/macOS.sh')"
@@ -94,39 +94,37 @@ function InstallCustomPackages() {
             "zsh-history-substring-search"
             "zsh-syntax-highlighting"
         )
-        rm -rf "/Users/${CurrentUsername}/.oh-my-zsh" && git clone --depth=1 "https://hub.fastgit.org/ohmyzsh/ohmyzsh.git" "/Users/${CurrentUsername}/.oh-my-zsh" && if [ "$?" -eq "1" ]; then
-            git clone --depth=1 "https://github.com.cnpmjs.org/ohmyzsh/ohmyzsh.git" "/Users/${CurrentUsername}/.oh-my-zsh" && if [ "$?" -eq "1" ]; then
-                git clone --depth=1 "https://github.com/ohmyzsh/ohmyzsh.git" "/Users/${CurrentUsername}/.oh-my-zsh"
-            fi
+        rm -rf "/Users/${CurrentUsername}/.oh-my-zsh" && git clone --depth=1 "https://github.com.cnpmjs.org/ohmyzsh/ohmyzsh.git" "/Users/${CurrentUsername}/.oh-my-zsh" && if [ -d "/Users/${CurrentUsername}/.oh-my-zsh/custom/plugins" ]; then
+            for plugin_list_task in "${!plugin_list[@]}"; do
+                rm -rf "/Users/${CurrentUsername}/.oh-my-zsh/custom/plugins/${plugin_list[$plugin_list_task]}" && git clone --depth=1 "https://github.com.cnpmjs.org/zsh-users/${plugin_list[$plugin_list_task]}.git" "/Users/${CurrentUsername}/.oh-my-zsh/custom/plugins/${plugin_list[$plugin_list_task]}"
+            done
         fi
-        for plugin_list_task in "${!plugin_list[@]}"; do
-            rm -rf "/Users/${CurrentUsername}/.oh-my-zsh/custom/plugins/${plugin_list[$plugin_list_task]}" && git clone --depth=1 "https://hub.fastgit.org/zsh-users/${plugin_list[$plugin_list_task]}.git" "/Users/${CurrentUsername}/.oh-my-zsh/custom/plugins/${plugin_list[$plugin_list_task]}" && if [ "$?" -eq "1" ]; then
-                git clone --depth=1 "https://github.com.cnpmjs.org/zsh-users/${plugin_list[$plugin_list_task]}.git" "/Users/${CurrentUsername}/.oh-my-zsh/custom/plugins/${plugin_list[$plugin_list_task]}" && if [ "$?" -eq "1" ]; then
-                    git clone --depth=1 "https://github.com/zsh-users/${plugin_list[$plugin_list_task]}.git" "/Users/${CurrentUsername}/.oh-my-zsh/custom/plugins/${plugin_list[$plugin_list_task]}"
-                fi
-            fi
-        done
     }
     InstallOhMyZsh
 }
 # Install Dependency Packages
 function InstallDependencyPackages() {
-    tap_list=(
-            "homebrew-cask"
-            "homebrew-cask-drivers"
-            "homebrew-cask-fonts"
-            "homebrew-cask-versions"
-            "homebrew-core"
-        )
+    tap_full_list=(
+        "homebrew-cask"
+    )
+    tap_lite_list=(
+        "homebrew-cask-drivers"
+        "homebrew-cask-fonts"
+        "homebrew-cask-versions"
+        "homebrew-core"
+    )
     which "brew" > "/dev/null" 2>&1
     if [ "$?" -eq "1" ]; then
         /bin/bash -c "$(curl -fsSL 'https://cdn.jsdelivr.net/gh/Homebrew/install@master/install.sh' | sed 's/https\:\/\/github\.com\/Homebrew\/brew/https\:\/\/mirrors\.tuna\.tsinghua\.edu\.cn\/git\/homebrew\/brew\.git/g;s/https\:\/\/github\.com\/Homebrew\/homebrew\-core/https\:\/\/mirrors\.tuna\.tsinghua\.edu\.cn\/git\/homebrew\/homebrew\-core\.git/g')"
     fi && export HOMEBREW_BOTTLE_DOMAIN="https://mirrors.tuna.tsinghua.edu.cn/homebrew-bottles"
-    for tap_list_task in "${!tap_list[@]}"; do
-        if [ ! -d "/usr/local/Homebrew/Library/Taps/homebrew/${tap_list[$tap_list_task]}" ]; then
-            git clone "https://mirrors.tuna.tsinghua.edu.cn/git/homebrew/${tap_list[$tap_list_task]}.git" "/usr/local/Homebrew/Library/Taps/homebrew/${tap_list[$tap_list_task]}"
-        fi
-    done && brew update && brew install bash curl git jq knot nano neofetch vim wget zsh && brew cleanup
+    if [ -d "/usr/local/Homebrew/Library/Taps/homebrew" ]; then
+        for tap_full_list_task in "${!tap_full_list[@]}"; do
+            rm -rf "/usr/local/Homebrew/Library/Taps/homebrew/${tap_full_list[$tap_full_list_task]}" && git clone "https://mirrors.tuna.tsinghua.edu.cn/git/homebrew/${tap_full_list[$tap_full_list_task]}.git" "/usr/local/Homebrew/Library/Taps/homebrew/${tap_full_list[$tap_full_list_task]}"
+        done
+        for tap_lite_list_task in "${!tap_lite_list[@]}"; do
+            rm -rf "/usr/local/Homebrew/Library/Taps/homebrew/${tap_lite_list[$tap_lite_list_task]}" && git clone --depth=1 "https://mirrors.tuna.tsinghua.edu.cn/git/homebrew/${tap_lite_list[$tap_lite_list_task]}.git" "/usr/local/Homebrew/Library/Taps/homebrew/${tap_lite_list[$tap_lite_list_task]}"
+        done && brew update && brew install bash curl git jq knot nano neofetch vim wget zsh && brew cleanup
+    fi
 }
 # Upgrade Packages
 function UpgradePackages() {
