@@ -1,10 +1,10 @@
 #!/bin/bash
 
-# Current Version: 1.0.0
+# Current Version: 1.0.1
 
 ## How to get and use?
-# curl "https://source.zhijie.online/AutoDeploy/main/macOS.sh" | sudo bash
-# wget -qO- "https://source.zhijie.online/AutoDeploy/main/macOS.sh" | sudo bash
+# /bin/bash -c "$(curl 'https://source.zhijie.online/AutoDeploy/main/macOS.sh')"
+# /bin/bash -c "$(wget -qO- 'https://source.zhijie.online/AutoDeploy/main/macOS.sh')"
 
 ## Function
 # Get System Information
@@ -18,14 +18,25 @@ function GetSystemInformation() {
 function ConfigurePackages() {
     function ConfigureCrontab() {
         crontab_list=(
-            "0 0 */7 * * sudo brew update && sudo brew upgrade && sudo brew cleanup && sudo softwareupdate -ai"
+            "0 0 */7 * * brew update && brew upgrade && brew cleanup && softwareupdate -ai"
         )
         which "crontab" > "/dev/null" 2>&1
         if [ "$?" -eq "0" ]; then
             rm -rf "/tmp/crontab.tmp" && for crontab_list_task in "${!crontab_list[@]}"; do
                 echo "${crontab_list[$crontab_list_task]}" >> "/tmp/crontab.tmp"
-            done && crontab -u "root" "/tmp/crontab.tmp" && crontab -lu "root" && rm -rf "/tmp/crontab.tmp"
+            done && sudo crontab -u "$(whoami)" "/tmp/crontab.tmp" && sudo crontab -lu "$(whoami)" && rm -rf "/tmp/crontab.tmp"
         fi
+    }
+    function ConfigureHomebrew() {
+        tap_list=(
+            "homebrew-cask"
+            "homebrew-cask-drivers"
+            "homebrew-cask-fonts"
+            "homebrew-cask-versions"
+        )
+        for tap_list_task in "${!tap_list[@]}"; do
+            rm -rf "/usr/local/Homebrew/Library/Taps/homebrew/${tap_list[$tap_list_task]}" && git clone "https://mirrors.tuna.tsinghua.edu.cn/git/homebrew/${tap_list[$tap_list_task]}.git" "/usr/local/Homebrew/Library/Taps/homebrew/${tap_list[$tap_list_task]}"
+        done
     }
     function ConfigureZsh() {
         omz_list=(
@@ -63,6 +74,7 @@ function ConfigurePackages() {
         fi
     }
     ConfigureCrontab
+    ConfigureHomebrew
     ConfigureZsh
 }
 # Configure System
@@ -80,33 +92,18 @@ function ConfigureSystem() {
         )
         rm -rf "/tmp/hosts.tmp" && for host_list_task in "${!host_list[@]}"; do
             echo "${host_list[$host_list_task]}" >> "/tmp/hosts.tmp"
-        done && cat "/tmp/hosts.tmp" > "/etc/hosts" && rm -rf "/tmp/hosts.tmp"
+        done && sudo cat "/tmp/hosts.tmp" > "/etc/hosts" && rm -rf "/tmp/hosts.tmp"
     }
     function ConfigureTimeZone() {
         if [ -f "/etc/localtime" ]; then
-            rm -rf "/etc/localtime"
-        fi && ln -s "/usr/share/zoneinfo/Asia/Shanghai" "/etc/localtime"
+            sudo rm -rf "/etc/localtime"
+        fi && sudo ln -s "/usr/share/zoneinfo/Asia/Shanghai" "/etc/localtime"
     }
     ConfigureHostfile
     ConfigureTimeZone
 }
 # Install Custom Packages
 function InstallCustomPackages() {
-    function InstallHomebrew() {
-        tap_list=(
-            "homebrew-cask"
-            "homebrew-cask-drivers"
-            "homebrew-cask-fonts"
-            "homebrew-cask-versions"
-        )
-        which "brew" > "/dev/null" 2>&1
-        if [ "$?" -eq "1" ]; then
-            /bin/bash -c "$(curl 'https://cdn.jsdelivr.net/gh/Homebrew/install@master/install.sh' | sed 's/https\:\/\/github\.com\/Homebrew\/brew/https\:\/\/mirrors\.tuna\.tsinghua\.edu\.cn\/git\/homebrew\/brew\.git/g;s/https\:\/\/github\.com\/Homebrew\/homebrew\-core/https\:\/\/mirrors\.tuna\.tsinghua\.edu\.cn\/git\/homebrew\/homebrew\-core\.git')"
-        fi
-        for tap_list_task in "${!tap_list[@]}"; do
-            rm -rf "/usr/local/Homebrew/Library/Taps/homebrew/${tap_list[$tap_list_task]}" && git clone "https://mirrors.tuna.tsinghua.edu.cn/git/homebrew/${tap_list[$tap_list_task]}.git" "/usr/local/Homebrew/Library/Taps/homebrew/${tap_list[$tap_list_task]}"
-        done
-    }
     function InstallOhMyZsh() {
         plugin_list=(
             "zsh-autosuggestions"
@@ -127,21 +124,29 @@ function InstallCustomPackages() {
             fi
         done
     }
-    InstallHomebrew
     InstallOhMyZsh
 }
 # Install Dependency Packages
 function InstallDependencyPackages() {
-    brew update && brew install bash curl git jq knot nano neofetch vim wget zsh && brew cleanup
+    which "brew" > "/dev/null" 2>&1
+    if [ "$?" -eq "1" ]; then
+        /bin/bash -c "$(curl 'https://cdn.jsdelivr.net/gh/Homebrew/install@master/install.sh' | sed 's/https\:\/\/github\.com\/Homebrew\/brew/https\:\/\/mirrors\.tuna\.tsinghua\.edu\.cn\/git\/homebrew\/brew\.git/g;s/https\:\/\/github\.com\/Homebrew\/homebrew\-core/https\:\/\/mirrors\.tuna\.tsinghua\.edu\.cn\/git\/homebrew\/homebrew\-core\.git')"
+    fi && brew update && brew install bash curl git jq knot nano neofetch vim wget zsh && brew cleanup
+}
+# Upgrade Packages
+function UpgradePackages() {
+    brew update && brew upgrade && brew cleanup && softwareupdate -ai
 }
 
 ## Process
 # Call GetSystemInformation
 GetSystemInformation
-# Call InstallCustomPackages
-InstallCustomPackages
 # Call InstallDependencyPackages
 InstallDependencyPackages
+# Call UpgradePackages
+UpgradePackages
+# Call InstallCustomPackages
+InstallCustomPackages
 # Call ConfigurePackages
 ConfigurePackages
 # Call ConfigureSystem
