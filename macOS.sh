@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 1.0.6
+# Current Version: 1.0.7
 
 ## How to get and use?
 # /bin/bash -c "$(curl -fsSL 'https://source.zhijie.online/AutoDeploy/main/macOS.sh')"
@@ -106,12 +106,12 @@ function InstallCustomPackages() {
 function InstallDependencyPackages() {
     tap_full_list=(
         "homebrew-cask"
+        "homebrew-core"
     )
     tap_lite_list=(
         "homebrew-cask-drivers"
         "homebrew-cask-fonts"
         "homebrew-cask-versions"
-        "homebrew-core"
     )
     which "brew" > "/dev/null" 2>&1
     if [ "$?" -eq "1" ]; then
