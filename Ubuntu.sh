@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 1.3.3
+# Current Version: 1.3.4
 
 ## How to get and use?
 # curl "https://source.zhijie.online/AutoDeploy/main/Ubuntu.sh" | sudo bash
@@ -74,8 +74,8 @@ function SetReadonlyFlag() {
 function ConfigurePackages() {
     function ConfigureCrontab() {
         crontab_list=(
-            "0 0 */7 * * sudo apt update && sudo apt dist-upgrade -y && sudo apt upgrade -y && sudo apt autoremove -y"
-            "0 4 */7 * * sudo reboot"
+            "0 0 * * 7 sudo apt update && sudo apt dist-upgrade -y && sudo apt upgrade -y && sudo apt autoremove -y"
+            "0 4 * * 7 sudo reboot"
         )
         which "crontab" > "/dev/null" 2>&1
         if [ "$?" -eq "0" ]; then
