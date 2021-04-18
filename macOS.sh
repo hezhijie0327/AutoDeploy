@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 1.1.0
+# Current Version: 1.1.1
 
 ## How to get and use?
 # /bin/bash -c "$(curl -fsSL 'https://source.zhijie.online/AutoDeploy/main/macOS.sh')"
@@ -99,11 +99,11 @@ function InstallCustomPackages() {
             "github" # GitHub Desktop
             "iina" # IINA
             "logitech-options" # Logi Options
+            "loopback" # Loopback
             "obs" # OBS
             "parallels" # Parallels Desktop
             "permute" # Permute 3
             "pixelsnap" # PixelSnap 2
-            "soundflower" # Soundflower
             "visual-studio-code" # Visual Studio Code
         )
         which "brew" > "/dev/null" 2>&1
@@ -135,7 +135,6 @@ function InstallCustomPackages() {
             "462058435" # Microsoft Excel
             "462062816" # Microsoft PowerPoint
             "497799835" # Xcode
-            "571213070" # DaVinci Resolve (Studio 900392332)
             "595615424" # QQ Music
             "634148309" # Logic Pro
             "634159523" # MainStage
