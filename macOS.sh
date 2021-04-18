@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 1.1.3
+# Current Version: 1.1.4
 
 ## How to get and use?
 # /bin/bash -c "$(curl -fsSL 'https://source.zhijie.online/AutoDeploy/main/macOS.sh')"
@@ -29,7 +29,7 @@ function ConfigurePackages() {
     }
     function ConfigureZsh() {
         omz_list=(
-            "export HOMEBREW_BOTTLE_DOMAIN=\"https://mirrors.tuna.tsinghua.edu.cn/homebrew-bottles\""
+            "export HOMEBREW_BOTTLE_DOMAIN=\"https://mirrors.ustc.edu.cn/homebrew-bottles/bottles\""
             "export PATH=\"/usr/local/sbin:\$PATH\""
             "export ZSH=\"\$HOME/.oh-my-zsh\""
             "plugins=(zsh-autosuggestions zsh-completions zsh-history-substring-search zsh-syntax-highlighting)"
@@ -178,19 +178,17 @@ function InstallCustomPackages() {
 # Install Dependency Packages
 function InstallDependencyPackages() {
     tap_list=(
-        "homebrew-cask"
-        "homebrew-cask-drivers"
-        "homebrew-cask-fonts"
         "homebrew-cask-versions"
         "homebrew-cask"
+        "homebrew-core"
     )
     which "brew" > "/dev/null" 2>&1
     if [ "$?" -eq "1" ]; then
-        /bin/bash -c "$(curl -fsSL 'https://cdn.jsdelivr.net/gh/Homebrew/install@master/install.sh' | sed 's/https\:\/\/github\.com\/Homebrew\/brew/https\:\/\/mirrors\.tuna\.tsinghua\.edu\.cn\/git\/homebrew\/brew\.git/g;s/https\:\/\/github\.com\/Homebrew\/homebrew\-core/https\:\/\/mirrors\.tuna\.tsinghua\.edu\.cn\/git\/homebrew\/homebrew\-core\.git/g')"
-    fi && export HOMEBREW_BOTTLE_DOMAIN="https://mirrors.tuna.tsinghua.edu.cn/homebrew-bottles"
+        /bin/bash -c "$(curl -fsSL 'https://cdn.jsdelivr.net/gh/Homebrew/install@master/install.sh' | sed 's/https\:\/\/github\.com\/Homebrew\/brew/https\:\/\/mirrors\.ustc\.edu\.cn\/brew\.git/g;s/https\:\/\/github\.com\/Homebrew\/homebrew\-core/https\:\/\/mirrors\.ustc\.edu\.cn\/homebrew\-core\.git/g')"
+    fi && export HOMEBREW_BOTTLE_DOMAIN="https://mirrors.ustc.edu.cn/homebrew-bottles/bottles"
     if [ -d "/usr/local/Homebrew/Library/Taps/homebrew" ]; then
         for tap_list_task in "${!tap_list[@]}"; do
-            rm -rf "/usr/local/Homebrew/Library/Taps/homebrew/${tap_list[$tap_list_task]}" && git clone "https://mirrors.tuna.tsinghua.edu.cn/git/homebrew/${tap_list[$tap_list_task]}.git" "/usr/local/Homebrew/Library/Taps/homebrew/${tap_list[$tap_list_task]}"
+            rm -rf "/usr/local/Homebrew/Library/Taps/homebrew/${tap_list[$tap_list_task]}" && git clone "https://mirrors.ustc.edu.cn/${tap_list[$tap_list_task]}.git" "/usr/local/Homebrew/Library/Taps/homebrew/${tap_list[$tap_list_task]}"
         done && brew update && brew install bash curl git jq knot mas nano neofetch vim wget zsh && brew cleanup && softwareupdate --install-rosetta
     fi
 }
