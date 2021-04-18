@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 1.0.9
+# Current Version: 1.1.0
 
 ## How to get and use?
 # /bin/bash -c "$(curl -fsSL 'https://source.zhijie.online/AutoDeploy/main/macOS.sh')"
@@ -18,7 +18,7 @@ function GetSystemInformation() {
 function ConfigurePackages() {
     function ConfigureCrontab() {
         crontab_list=(
-            "0 0 * * 7 brew update && brew upgrade && brew cleanup && softwareupdate -ai"
+            "0 0 * * 7 brew update && brew upgrade && brew cleanup && mas upgrade && softwareupdate -ai"
         )
         which "crontab" > "/dev/null" 2>&1
         if [ "$?" -eq "0" ]; then
@@ -87,6 +87,78 @@ function ConfigureSystem() {
 }
 # Install Custom Packages
 function InstallCustomPackages() {
+    function InstallAppFromCask() {
+        app_list=(
+            "adguard" # AdGuard
+            "betterzip" # BetterZip
+            "cleanmymac" # CleanMyMac X
+            "cleanshot" # CleanShot X
+            "docker" # Docker
+            "downie" # Downie 4
+            "folx" # Folx
+            "github" # GitHub Desktop
+            "iina" # IINA
+            "logitech-options" # Logi Options
+            "obs" # OBS
+            "parallels" # Parallels Desktop
+            "permute" # Permute 3
+            "pixelsnap" # PixelSnap 2
+            "soundflower" # Soundflower
+            "visual-studio-code" # Visual Studio Code
+        )
+        which "brew" > "/dev/null" 2>&1
+        if [ "$?" -eq "0" ]; then
+            for app_list_task in "${!app_list[@]}"; do
+                brew search --cask ${app_list[$app_list_task]} && if [ "$?" -eq "0" ]; then
+                    brew install --cask ${app_list[$app_list_task]}
+                fi
+            done
+        fi
+    }
+    function InstallAppFromMAS() {
+        app_list=(
+            "1176074088" # Termius
+            "1289583905" # Pixelmator Pro
+            "1333542190" # 1Password 7
+            "408981434" # iMovie
+            "409183694" # Keynote
+            "409201541" # Pages
+            "409203825" # Numbers
+            "409222199" # Cyberduck
+            "424389933" # Final Cut Pro
+            "424390742" # Compressor
+            "430798174" # HazeOver
+            "434290957" # Motion
+            "441258766" # Magnet
+            "451108668" # QQ
+            "462054704" # Microsoft Word
+            "462058435" # Microsoft Excel
+            "462062816" # Microsoft PowerPoint
+            "497799835" # Xcode
+            "571213070" # DaVinci Resolve (Studio 900392332)
+            "595615424" # QQ Music
+            "634148309" # Logic Pro
+            "634159523" # MainStage
+            "682658836" # GarageBand
+            "789066512" # Maipo
+            "824171161" # Affinity Designer
+            "824183456" # Affinity Photo
+            "836500024" # WeChat
+            "881418622" # Affinity Publisher
+            "937984704" # Amphetamine
+            "967805235" # Paste
+        )
+        which "mas" > "/dev/null" 2>&1
+        if [ "$?" -eq "0" ]; then
+            for app_list_task in "${!app_list[@]}"; do
+                mas info ${app_list[$app_list_task]} && if [ "$?" -eq "0" ]; then
+                    mas install ${app_list[$app_list_task]} && if [ "$?" -eq "1" ]; then
+                        mas purchase ${app_list[$app_list_task]}
+                    fi
+                fi
+            done
+        fi
+    }
     function InstallOhMyZsh() {
         plugin_list=(
             "zsh-autosuggestions"
@@ -100,6 +172,8 @@ function InstallCustomPackages() {
             done
         fi
     }
+    InstallAppFromCask
+    InstallAppFromMAS
     InstallOhMyZsh
 }
 # Install Dependency Packages
@@ -118,12 +192,12 @@ function InstallDependencyPackages() {
     if [ -d "/usr/local/Homebrew/Library/Taps/homebrew" ]; then
         for tap_list_task in "${!tap_list[@]}"; do
             rm -rf "/usr/local/Homebrew/Library/Taps/homebrew/${tap_list[$tap_list_task]}" && git clone "https://mirrors.tuna.tsinghua.edu.cn/git/homebrew/${tap_list[$tap_list_task]}.git" "/usr/local/Homebrew/Library/Taps/homebrew/${tap_list[$tap_list_task]}"
-        done && brew update && brew install bash curl git jq knot nano neofetch vim wget zsh && brew cleanup
+        done && brew update && brew install bash curl git jq knot mas nano neofetch vim wget zsh && brew cleanup
     fi
 }
 # Upgrade Packages
 function UpgradePackages() {
-    brew update && brew upgrade && brew cleanup && softwareupdate -ai
+    brew update && brew upgrade && brew cleanup && mas upgrade && softwareupdate -ai
 }
 
 ## Process
