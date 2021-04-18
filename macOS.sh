@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 1.1.2
+# Current Version: 1.1.3
 
 ## How to get and use?
 # /bin/bash -c "$(curl -fsSL 'https://source.zhijie.online/AutoDeploy/main/macOS.sh')"
@@ -9,16 +9,9 @@
 ## Function
 # Get System Information
 function GetSystemInformation() {
-    function GetCPUArchitecture() {
-        CPUArchitecture=$(case "$(uname -m)" in aarch64) echo "arm64" ;; amd64 | x64 | x86-64 | x86_64) echo "amd64" ;; armv5l) echo "armv5" ;; armv6l) echo "armv6" ;; armv7l) echo "armv7" ;; i386 | i486 | i586 | i686 | x86) echo "386" ;; esac)
-        if [ "${CPUArchitecture}" != "386" ] && [ "${CPUArchitecture}" != "amd64" ]; then
-            softwareupdate --install-rosetta
-        fi
-    }
     function GetCurrentUsername() {
         CurrentUsername=$(whoami)
     }
-    GetCPUArchitecture
     GetCurrentUsername
 }
 # Configure Packages
@@ -198,7 +191,7 @@ function InstallDependencyPackages() {
     if [ -d "/usr/local/Homebrew/Library/Taps/homebrew" ]; then
         for tap_list_task in "${!tap_list[@]}"; do
             rm -rf "/usr/local/Homebrew/Library/Taps/homebrew/${tap_list[$tap_list_task]}" && git clone "https://mirrors.tuna.tsinghua.edu.cn/git/homebrew/${tap_list[$tap_list_task]}.git" "/usr/local/Homebrew/Library/Taps/homebrew/${tap_list[$tap_list_task]}"
-        done && brew update && brew install bash curl git jq knot mas nano neofetch vim wget zsh && brew cleanup
+        done && brew update && brew install bash curl git jq knot mas nano neofetch vim wget zsh && brew cleanup && softwareupdate --install-rosetta
     fi
 }
 # Upgrade Packages
