@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 1.1.4
+# Current Version: 1.1.5
 
 ## How to get and use?
 # /bin/bash -c "$(curl -fsSL 'https://source.zhijie.online/AutoDeploy/main/macOS.sh')"
@@ -30,7 +30,7 @@ function ConfigurePackages() {
     function ConfigureZsh() {
         omz_list=(
             "export HOMEBREW_BOTTLE_DOMAIN=\"https://mirrors.ustc.edu.cn/homebrew-bottles/bottles\""
-            "export PATH=\"/usr/local/sbin:\$PATH\""
+            "export PATH=\"/opt/homebrew/bin:/usr/local/sbin:\$PATH\""
             "export ZSH=\"\$HOME/.oh-my-zsh\""
             "plugins=(zsh-autosuggestions zsh-completions zsh-history-substring-search zsh-syntax-highlighting)"
             "ZSH_CACHE_DIR=\"\$ZSH/cache\""
@@ -81,7 +81,7 @@ function ConfigureSystem() {
         )
         rm -rf "/tmp/hosts.tmp" && for host_list_task in "${!host_list[@]}"; do
             echo "${host_list[$host_list_task]}" >> "/tmp/hosts.tmp"
-        done && sudo cat "/tmp/hosts.tmp" > "/etc/hosts" && rm -rf "/tmp/hosts.tmp"
+        done && sudo chmod -R 666 "/etc/hosts" && sudo cat "/tmp/hosts.tmp" > "/etc/hosts" && sudo chmod -R 644 "/etc/hosts" && rm -rf "/tmp/hosts.tmp"
     }
     ConfigureHostfile
 }
