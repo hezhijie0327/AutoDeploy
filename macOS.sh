@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 1.1.8
+# Current Version: 1.1.9
 
 ## How to get and use?
 # /bin/bash -c "$(curl -fsSL 'https://source.zhijie.online/AutoDeploy/main/macOS.sh')"
@@ -18,7 +18,7 @@ function GetSystemInformation() {
 function ConfigurePackages() {
     function ConfigureCrontab() {
         crontab_list=(
-            "0 0 * * 7 brew update && brew upgrade && brew cleanup && mas upgrade && softwareupdate -ai"
+            "0 0 * * 7 brew update && brew upgrade && brew upgrade --cask && brew cleanup && mas upgrade && softwareupdate -ai"
         )
         which "crontab" > "/dev/null" 2>&1
         if [ "$?" -eq "0" ]; then
@@ -200,7 +200,7 @@ function InstallDependencyPackages() {
 }
 # Upgrade Packages
 function UpgradePackages() {
-    brew update && brew upgrade && brew cleanup && mas upgrade && softwareupdate -ai
+    brew update && brew upgrade && brew upgrade --cask && brew cleanup && mas upgrade && softwareupdate -ai
 }
 
 ## Process
