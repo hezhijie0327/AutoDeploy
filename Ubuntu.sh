@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 1.3.4
+# Current Version: 1.3.5
 
 ## How to get and use?
 # curl "https://source.zhijie.online/AutoDeploy/main/Ubuntu.sh" | sudo bash
@@ -17,10 +17,10 @@ function GetSystemInformation() {
     }
     function GetLSBCodename() {
         which "lsb_release" > "/dev/null" 2>&1
-        if [ "$?" -eq "0" ]; then
+        if [ "$?" -eq "0" ] && [ "$(lsb_release -cs)" == "focal" ]; then
             LSBCodename=$(lsb_release -cs)
         else
-            LSBCodename="focal"
+            LSBCodename="hirsute"
         fi
     }
     GetCPUArchitecture
