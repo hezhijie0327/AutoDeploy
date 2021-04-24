@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 1.2.0
+# Current Version: 1.2.1
 
 ## How to get and use?
 # /bin/bash -c "$(curl -fsSL 'https://source.zhijie.online/AutoDeploy/main/macOS.sh')"
@@ -31,7 +31,7 @@ function ConfigurePackages() {
         omz_list=(
             "export HOMEBREW_BOTTLE_DOMAIN=\"https://mirrors.ustc.edu.cn/homebrew-bottles/bottles\""
             "export HOMEBREW_GITHUB_API_TOKEN=\"your_token_here\""
-            "export PATH=\"/opt/homebrew/bin:/usr/local/sbin:\$PATH\""
+            "export PATH=\"/opt/homebrew/bin:/opt/homebrew/sbin:/usr/local/sbin:\$PATH\""
             "export ZSH=\"\$HOME/.oh-my-zsh\""
             "plugins=(zsh-autosuggestions zsh-completions zsh-history-substring-search zsh-syntax-highlighting)"
             "ZSH_CACHE_DIR=\"\$ZSH/cache\""
