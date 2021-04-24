@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 1.3.5
+# Current Version: 1.3.6
 
 ## How to get and use?
 # curl "https://source.zhijie.online/AutoDeploy/main/Ubuntu.sh" | sudo bash
@@ -100,6 +100,11 @@ function ConfigurePackages() {
             rm -rf "/tmp/docker.tmp" && for docker_list_task in "${!docker_list[@]}"; do
                 echo "${docker_list[$docker_list_task]}" >> "/tmp/docker.tmp"
             done && cat "/tmp/docker.tmp" > "/etc/docker/daemon.json" && systemctl restart docker && rm -rf "/tmp/docker.tmp"
+        fi
+    }
+    function ConfigureLandscape() {
+        if [ -f "/usr/lib/python3/dist-packages/landscape/lib/network.py" ]; then
+            cat "/usr/lib/python3/dist-packages/landscape/lib/network.py" | sed "s/tostring/tobytes/g" > "/tmp/landscape.tmp" && cat "/tmp/landscape.tmp" > "/usr/lib/python3/dist-packages/landscape/lib/network.py" && rm -rf "/tmp/landscape.tmp"
         fi
     }
     function ConfigureNetplan() {
@@ -215,6 +220,7 @@ function ConfigurePackages() {
     }
     ConfigureCrontab
     ConfigureDockerEngine
+    ConfigureLandscape
     ConfigureNetplan
     ConfigureResolved
     ConfigureSysctl
