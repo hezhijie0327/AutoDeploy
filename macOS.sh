@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 1.2.3
+# Current Version: 1.2.4
 
 ## How to get and use?
 # /bin/bash -c "$(curl -fsSL 'https://source.zhijie.online/AutoDeploy/main/macOS.sh')"
@@ -18,6 +18,7 @@ function GetSystemInformation() {
 function ConfigurePackages() {
     function ConfigureCrontab() {
         crontab_list=(
+            "0 0 * * * rm -rf /Users/*/.*_history"
             "0 0 * * 7 export PATH=\"/opt/homebrew/bin:/opt/homebrew/sbin:/usr/local/sbin:\$PATH\" && brew update && brew upgrade && brew upgrade --cask && brew cleanup && mas upgrade && softwareupdate -ai"
         )
         which "crontab" > "/dev/null" 2>&1
