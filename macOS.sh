@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 1.2.4
+# Current Version: 1.2.5
 
 ## How to get and use?
 # /bin/bash -c "$(curl -fsSL 'https://source.zhijie.online/AutoDeploy/main/macOS.sh')"
@@ -119,6 +119,7 @@ function InstallCustomPackages() {
     }
     function InstallAppFromMAS() {
         app_list=(
+            "1136220934" # Infuse 7
             "1176074088" # Termius
             "1289583905" # Pixelmator Pro
             "1333542190" # 1Password 7
