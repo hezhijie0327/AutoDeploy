@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 1.2.8
+# Current Version: 1.2.9
 
 ## How to get and use?
 # /bin/bash -c "$(curl -fsSL 'https://source.zhijie.online/AutoDeploy/main/macOS.sh')"
@@ -9,9 +9,15 @@
 ## Function
 # Get System Information
 function GetSystemInformation() {
+    function GetCPUArchitecture() {
+        if [ "$(uname -m)" == "arm64" ]; then
+            softwareupdate --install-rosetta
+        fi
+    }
     function GetCurrentUsername() {
         CurrentUsername=$(whoami)
     }
+    GetCPUArchitecture
     GetCurrentUsername
 }
 # Configure Packages
@@ -19,7 +25,7 @@ function ConfigurePackages() {
     function ConfigureCrontab() {
         crontab_list=(
             "0 0 * * * rm -rf /Users/*/.*_history"
-            "0 0 * * 7 export PATH=\"/opt/homebrew/bin:/opt/homebrew/sbin:/usr/local/sbin:\$PATH\" && brew update && brew upgrade --cask --greedy && brew upgrade --formula && brew cleanup && mas upgrade && softwareupdate -ai"
+            "0 0 * * 7 export HOMEBREW_BOTTLE_DOMAIN=\"https://mirrors.ustc.edu.cn/homebrew-bottles/bottles\" && export PATH=\"/Library/Apple/usr/bin:/bin:/sbin:/usr/bin:/usr/sbin:/usr/local/bin:/usr/local/sbin:/opt/homebrew/bin:/opt/homebrew/sbin\" && brew update && brew upgrade --cask --greedy && brew upgrade --formula && brew cleanup && mas upgrade && softwareupdate -ai"
         )
         which "crontab" > "/dev/null" 2>&1
         if [ "$?" -eq "0" ]; then
@@ -32,7 +38,7 @@ function ConfigurePackages() {
         omz_list=(
             "export HOMEBREW_BOTTLE_DOMAIN=\"https://mirrors.ustc.edu.cn/homebrew-bottles/bottles\""
             "export HOMEBREW_GITHUB_API_TOKEN=\"your_token_here\""
-            "export PATH=\"/opt/homebrew/bin:/opt/homebrew/sbin:/usr/local/sbin:\$PATH\""
+            "export PATH=\"/Library/Apple/usr/bin:/bin:/sbin:/usr/bin:/usr/sbin:/usr/local/bin:/usr/local/sbin:/opt/homebrew/bin:/opt/homebrew/sbin\""
             "export ZSH=\"\$HOME/.oh-my-zsh\""
             "plugins=(zsh-autosuggestions zsh-completions zsh-history-substring-search zsh-syntax-highlighting)"
             "ZSH_CACHE_DIR=\"\$ZSH/cache\""
@@ -197,7 +203,7 @@ function InstallDependencyPackages() {
             rm -rf "$(brew --repo)/Library/Taps/homebrew/${tap_tuna_list[$tap_tuna_list_task]}" && git clone "https://mirrors.tuna.tsinghua.edu.cn/git/homebrew/${tap_tuna_list[$tap_tuna_list_task]}.git" "$(brew --repo)/Library/Taps/homebrew/${tap_tuna_list[$tap_tuna_list_task]}"
         done && for tap_ustc_list_task in "${!tap_ustc_list[@]}"; do
             rm -rf "$(brew --repo)/Library/Taps/homebrew/${tap_ustc_list[$tap_ustc_list_task]}" && git clone "https://mirrors.ustc.edu.cn/${tap_ustc_list[$tap_ustc_list_task]}.git" "$(brew --repo)/Library/Taps/homebrew/${tap_ustc_list[$tap_ustc_list_task]}"
-        done && brew update && brew install bash curl git jq knot mas nano neofetch vim wget zsh && compaudit | xargs chmod g-w,o-w && brew cleanup && softwareupdate --install-rosetta
+        done && brew update && brew install bash curl git jq knot mas nano neofetch vim wget zsh && compaudit | xargs chmod g-w,o-w && brew cleanup
     fi
 }
 # Upgrade Packages
