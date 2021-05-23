@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 1.3.0
+# Current Version: 1.3.1
 
 ## How to get and use?
 # /bin/bash -c "$(curl -fsSL 'https://source.zhijie.online/AutoDeploy/main/macOS.sh')"
@@ -30,7 +30,7 @@ function ConfigurePackages() {
     function ConfigureCrontab() {
         crontab_list=(
             "0 0 * * * rm -rf /Users/*/.*_history"
-            "0 0 * * 7 export HOMEBREW_BOTTLE_DOMAIN=\"https://mirrors.ustc.edu.cn/homebrew-bottles/bottles\" && export PATH=\"/Library/Apple/usr/bin:/bin:/sbin:/usr/bin:/usr/sbin:/usr/local/bin:/usr/local/sbin:/opt/homebrew/bin:/opt/homebrew/sbin\" && brew update && brew upgrade --cask --greedy && brew upgrade --formula && brew cleanup && mas upgrade && softwareupdate -ai"
+            "0 0 * * 7 export HOMEBREW_BOTTLE_DOMAIN=\"https://mirrors.ustc.edu.cn/homebrew-bottles/bottles\" && export PATH=\"/opt/homebrew/bin:/opt/homebrew/sbin:/usr/local/bin:/usr/local/sbin:/usr/bin:/usr/sbin:/bin:/sbin:/Library/Apple/usr/bin\" && brew update && brew upgrade --cask --greedy && brew upgrade --formula && brew cleanup && mas upgrade && softwareupdate -ai"
         )
         which "crontab" > "/dev/null" 2>&1
         if [ "$?" -eq "0" ]; then
@@ -43,7 +43,7 @@ function ConfigurePackages() {
         omz_list=(
             "export HOMEBREW_BOTTLE_DOMAIN=\"https://mirrors.ustc.edu.cn/homebrew-bottles/bottles\""
             "export HOMEBREW_GITHUB_API_TOKEN=\"your_token_here\""
-            "export PATH=\"/Library/Apple/usr/bin:/bin:/sbin:/usr/bin:/usr/sbin:/usr/local/bin:/usr/local/sbin:/opt/homebrew/bin:/opt/homebrew/sbin\""
+            "export PATH=\"/opt/homebrew/bin:/opt/homebrew/sbin:/usr/local/bin:/usr/local/sbin:/usr/bin:/usr/sbin:/bin:/sbin:/Library/Apple/usr/bin\""
             "export ZSH=\"\$HOME/.oh-my-zsh\""
             "plugins=(zsh-autosuggestions zsh-completions zsh-history-substring-search zsh-syntax-highlighting)"
             "ZSH_CACHE_DIR=\"\$ZSH/cache\""
