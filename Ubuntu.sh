@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 1.4.3
+# Current Version: 1.4.4
 
 ## How to get and use?
 # curl "https://source.zhijie.online/AutoDeploy/main/Ubuntu.sh" | sudo bash
@@ -81,7 +81,7 @@ function ConfigurePackages() {
     function ConfigureCrontab() {
         crontab_list=(
             "0 0 * * * sudo rm -rf /home/*/.*_history /root/.*_history"
-            "0 0 * * 7 export DEBIAN_FRONTEND=\"noninteractive\" && export PATH=\"/bin:/sbin:/usr/bin:/usr/sbin:/usr/local/bin:/usr/local/sbin:/snap/bin\" && sudo apt update && sudo apt dist-upgrade -y && sudo apt upgrade -y && sudo apt autoremove -y && sudo snap refresh"
+            "0 0 * * 7 export DEBIAN_FRONTEND=\"noninteractive\" && export PATH=\"/snap/bin:/usr/local/bin:/usr/local/sbin:/usr/bin:/usr/sbin:/bin:/sbin\" && sudo apt update && sudo apt dist-upgrade -y && sudo apt upgrade -y && sudo apt autoremove -y && sudo snap refresh"
             "0 4 * * 7 sudo reboot"
         )
         which "crontab" > "/dev/null" 2>&1
@@ -194,7 +194,7 @@ function ConfigurePackages() {
     function ConfigureZsh() {
         omz_list=(
             "export DEBIAN_FRONTEND=\"noninteractive\""
-            "export PATH=\"/bin:/sbin:/usr/bin:/usr/sbin:/usr/local/bin:/usr/local/sbin:/snap/bin\""
+            "export PATH=\"/snap/bin:/usr/local/bin:/usr/local/sbin:/usr/bin:/usr/sbin:/bin:/sbin\""
             "export ZSH=\"\$HOME/.oh-my-zsh\""
             "plugins=(zsh-autosuggestions zsh-completions zsh-history-substring-search zsh-syntax-highlighting)"
             "ZSH_CACHE_DIR=\"\$ZSH/cache\""
