@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 1.4.0
+# Current Version: 1.4.1
 
 ## How to get and use?
 # curl "https://source.zhijie.online/AutoDeploy/main/Ubuntu.sh" | sudo bash
@@ -116,7 +116,7 @@ function ConfigurePackages() {
         netplan_list=(
             "network:"
             "  version: 2"
-            "  renderer: NetworkManager"
+            "  renderer: networkd"
             "  ethernets:"
         )
         netplan_ethernets_list=(
@@ -302,7 +302,7 @@ function InstallCustomPackages() {
 }
 # Install Dependency Packages
 function InstallDependencyPackages() {
-    apt update && apt install -y apt-transport-https ca-certificates cockpit cockpit-podman curl dnsutils git gnupg jq knot-dnsutils landscape-common lsb-release nano neofetch net-tools netplan.io snapd systemd tuned ufw update-notifier-common vim wget zsh && snap install core
+    apt update && apt install -y apt-transport-https ca-certificates curl dnsutils git gnupg jq knot-dnsutils landscape-common lsb-release nano neofetch net-tools netplan.io snapd systemd tuned ufw update-notifier-common vim wget zsh && snap install core
 }
 # Upgrade Packages
 function UpgradePackages() {
@@ -310,6 +310,8 @@ function UpgradePackages() {
 }
 
 ## Process
+# Set DEBIAN_FRONTEND to "noninteractive"
+export DEBIAN_FRONTEND="noninteractive"
 # Call GetSystemInformation
 GetSystemInformation
 # Set read_only="false"; Call SetReadonlyFlag
