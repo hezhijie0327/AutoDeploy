@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 1.3.8
+# Current Version: 1.3.9
 
 ## How to get and use?
 # curl "https://source.zhijie.online/AutoDeploy/main/Ubuntu.sh" | sudo bash
@@ -116,7 +116,7 @@ function ConfigurePackages() {
         netplan_list=(
             "network:"
             "  version: 2"
-            "  renderer: networkd"
+            "  renderer: NetworkManager"
             "  ethernets:"
         )
         netplan_ethernets_list=(
@@ -302,7 +302,7 @@ function InstallCustomPackages() {
 }
 # Install Dependency Packages
 function InstallDependencyPackages() {
-    apt update && apt install -y apt-transport-https ca-certificates curl dnsutils git gnupg jq knot-dnsutils landscape-common lsb-release nano neofetch net-tools netplan.io snapd systemd tuned ufw update-notifier-common vim wget zsh && snap install core
+    apt update && apt install -y apt-transport-https ca-certificates cockpit curl dnsutils git gnupg jq knot-dnsutils landscape-common lsb-release nano neofetch net-tools netplan.io snapd systemd tuned ufw update-notifier-common vim wget zsh && snap install core
 }
 # Upgrade Packages
 function UpgradePackages() {
