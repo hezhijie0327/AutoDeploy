@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 1.3.7
+# Current Version: 1.3.8
 
 ## How to get and use?
 # curl "https://source.zhijie.online/AutoDeploy/main/Ubuntu.sh" | sudo bash
@@ -9,22 +9,26 @@
 ## Function
 # Get System Information
 function GetSystemInformation() {
-    function GetCPUArchitecture() {
-        CPUArchitecture=$(case "$(uname -m)" in aarch64) echo "arm64" ;; amd64 | x64 | x86-64 | x86_64) echo "amd64" ;; armv5l) echo "armv5" ;; armv6l) echo "armv6" ;; armv7l) echo "armv7" ;; i386 | i486 | i586 | i686 | x86) echo "386" ;; esac)
-        if [ "${CPUArchitecture}" != "386" ] && [ "${CPUArchitecture}" != "amd64" ]; then
-            mirror_path="-ports"
-        fi
-    }
     function GetLSBCodename() {
         which "lsb_release" > "/dev/null" 2>&1
-        if [ "$?" -eq "0" ] && [ "$(lsb_release -cs)" == "focal" ]; then
-            LSBCodename=$(lsb_release -cs)
-        else
+        if [ "$?" -eq "0" ] && [ "$(lsb_release -ds | grep 'LTS')" == "" ]; then
             LSBCodename="hirsute"
+        else
+            LSBCodename="focal"
         fi
     }
-    GetCPUArchitecture
+    function IsArmArchitecture() {
+        if [ "$(uname -m)" == "aarch64" ]; then
+            mirror_path="-ports"
+        elif [ "$(uname -m)" == "x86_64" ]; then
+            mirror_path=""
+        else
+            echo "Unsupported architecture."
+            exit 1
+        fi
+    }
     GetLSBCodename
+    IsArmArchitecture
 }
 # Set Repository Mirror
 function SetRepositoryMirror() {
@@ -75,7 +79,7 @@ function ConfigurePackages() {
     function ConfigureCrontab() {
         crontab_list=(
             "0 0 * * * sudo rm -rf /home/*/.*_history /root/.*_history"
-            "0 0 * * 7 sudo apt update && sudo apt dist-upgrade -y && sudo apt upgrade -y && sudo apt autoremove -y"
+            "0 0 * * 7 export DEBIAN_FRONTEND=\"noninteractive\" && export PATH=\"/bin:/sbin:/usr/bin:/usr/sbin:/usr/local/bin:/usr/local/sbin:/snap/bin\" && sudo apt update && sudo apt dist-upgrade -y && sudo apt upgrade -y && sudo apt autoremove -y && sudo snap refresh"
             "0 4 * * 7 sudo reboot"
         )
         which "crontab" > "/dev/null" 2>&1
@@ -187,6 +191,8 @@ function ConfigurePackages() {
     }
     function ConfigureZsh() {
         omz_list=(
+            "export DEBIAN_FRONTEND=\"noninteractive\""
+            "export PATH=\"/bin:/sbin:/usr/bin:/usr/sbin:/usr/local/bin:/usr/local/sbin:/snap/bin\""
             "export ZSH=\"\$HOME/.oh-my-zsh\""
             "plugins=(zsh-autosuggestions zsh-completions zsh-history-substring-search zsh-syntax-highlighting)"
             "ZSH_CACHE_DIR=\"\$ZSH/cache\""
@@ -296,11 +302,11 @@ function InstallCustomPackages() {
 }
 # Install Dependency Packages
 function InstallDependencyPackages() {
-    apt update && apt install -y apt-transport-https ca-certificates curl dnsutils git gnupg jq knot-dnsutils landscape-common lsb-release nano neofetch net-tools netplan.io systemd tuned ufw update-notifier-common vim wget zsh
+    apt update && apt install -y apt-transport-https ca-certificates curl dnsutils git gnupg jq knot-dnsutils landscape-common lsb-release nano neofetch net-tools netplan.io snapd systemd tuned ufw update-notifier-common vim wget zsh && snap install core
 }
 # Upgrade Packages
 function UpgradePackages() {
-    apt update && apt dist-upgrade -y && apt upgrade -y && apt autoremove -y
+    apt update && apt dist-upgrade -y && apt upgrade -y && apt autoremove -y && snap refresh
 }
 
 ## Process
