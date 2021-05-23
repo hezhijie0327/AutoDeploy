@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 1.4.1
+# Current Version: 1.4.2
 
 ## How to get and use?
 # curl "https://source.zhijie.online/AutoDeploy/main/Ubuntu.sh" | sudo bash
@@ -19,8 +19,10 @@ function GetSystemInformation() {
     }
     function IsArmArchitecture() {
         if [ "$(uname -m)" == "aarch64" ]; then
+            mirror_arch="arm64"
             mirror_path="-ports"
         elif [ "$(uname -m)" == "x86_64" ]; then
+            mirror_arch="amd64"
             mirror_path=""
         else
             echo "Unsupported architecture."
@@ -277,11 +279,7 @@ function ConfigureSystem() {
 function InstallCustomPackages() {
     function InstallDockerEngine() {
         curl -fsSL "https://mirrors.ustc.edu.cn/docker-ce/linux/ubuntu/gpg" | gpg --dearmor -o "/usr/share/keyrings/docker-archive-keyring.gpg"
-        if [ "${CPUArchitecture}" == "amd64" ] || [ "${CPUArchitecture}" == "arm64" ]; then
-            CPUArchitecture="${CPUArchitecture}"
-        elif [ "${CPUArchitecture}" == "armv5" ] || [ "${CPUArchitecture}" == "armv6" ] || [ "${CPUArchitecture}" == "armv7" ]; then
-            CPUArchitecture="armhf"
-        fi && echo "deb [arch=${CPUArchitecture} signed-by=/usr/share/keyrings/docker-archive-keyring.gpg] https://mirrors.ustc.edu.cn/docker-ce/linux/ubuntu ${LSBCodename} stable" > "/etc/apt/sources.list.d/docker.list"
+        echo "deb [arch=${mirror_arch} signed-by=/usr/share/keyrings/docker-archive-keyring.gpg] https://mirrors.ustc.edu.cn/docker-ce/linux/ubuntu ${LSBCodename} stable" > "/etc/apt/sources.list.d/docker.list"
         apt update && apt purge -y containerd docker docker-engine docker.io runc && apt install -y containerd.io docker-ce docker-ce-cli
     }
     function InstallOhMyZsh() {
