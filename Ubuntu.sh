@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 1.4.2
+# Current Version: 1.4.3
 
 ## How to get and use?
 # curl "https://source.zhijie.online/AutoDeploy/main/Ubuntu.sh" | sudo bash
@@ -224,7 +224,7 @@ function ConfigurePackages() {
         if [ "$?" -eq "0" ] && [ -d "/etc/zsh/oh-my-zsh" ]; then
             rm -rf "/tmp/omz.tmp" && for omz_list_task in "${!omz_list[@]}"; do
                 echo "${omz_list[$omz_list_task]}" >> "/tmp/omz.tmp"
-            done && cat "/tmp/omz.tmp" > "/etc/zsh/oh-my-zsh.zshrc" && rm -rf "/tmp/omz.tmp"
+            done && cat "/tmp/omz.tmp" > "/etc/zsh/oh-my-zsh.zshrc" && rm -rf "/tmp/omz.tmp" && ln -s "/etc/zsh/oh-my-zsh" "/root/.oh-my-zsh" && ln -s "/etc/zsh/oh-my-zsh.zshrc" "/root/.zshrc"
         fi
     }
     ConfigureCrontab
