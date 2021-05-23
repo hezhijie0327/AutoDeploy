@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 1.2.9
+# Current Version: 1.3.0
 
 ## How to get and use?
 # /bin/bash -c "$(curl -fsSL 'https://source.zhijie.online/AutoDeploy/main/macOS.sh')"
@@ -9,16 +9,21 @@
 ## Function
 # Get System Information
 function GetSystemInformation() {
-    function GetCPUArchitecture() {
-        if [ "$(uname -m)" == "arm64" ]; then
-            softwareupdate --install-rosetta
-        fi
-    }
     function GetCurrentUsername() {
         CurrentUsername=$(whoami)
     }
-    GetCPUArchitecture
+    function IsArmArchitecture() {
+        if [ "$(uname -m)" == "arm64" ]; then
+            softwareupdate --install-rosetta
+        else
+            if [ "$(uname -m)" != "x86_64" ]; then
+                echo "Unsupported architecture."
+                exit 1
+            fi
+        fi
+    }
     GetCurrentUsername
+    IsArmArchitecture
 }
 # Configure Packages
 function ConfigurePackages() {
