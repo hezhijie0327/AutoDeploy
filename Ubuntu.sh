@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 1.4.4
+# Current Version: 1.4.5
 
 ## How to get and use?
 # curl "https://source.zhijie.online/AutoDeploy/main/Ubuntu.sh" | sudo bash
@@ -194,6 +194,7 @@ function ConfigurePackages() {
     function ConfigureZsh() {
         omz_list=(
             "export DEBIAN_FRONTEND=\"noninteractive\""
+            "export EDITOR=\"nano\""
             "export PATH=\"/snap/bin:/usr/local/bin:/usr/local/sbin:/usr/bin:/usr/sbin:/bin:/sbin\""
             "export ZSH=\"\$HOME/.oh-my-zsh\""
             "plugins=(zsh-autosuggestions zsh-completions zsh-history-substring-search zsh-syntax-highlighting)"
