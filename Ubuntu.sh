@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 1.3.9
+# Current Version: 1.4.0
 
 ## How to get and use?
 # curl "https://source.zhijie.online/AutoDeploy/main/Ubuntu.sh" | sudo bash
@@ -302,7 +302,7 @@ function InstallCustomPackages() {
 }
 # Install Dependency Packages
 function InstallDependencyPackages() {
-    apt update && apt install -y apt-transport-https ca-certificates cockpit curl dnsutils git gnupg jq knot-dnsutils landscape-common lsb-release nano neofetch net-tools netplan.io snapd systemd tuned ufw update-notifier-common vim wget zsh && snap install core
+    apt update && apt install -y apt-transport-https ca-certificates cockpit cockpit-podman curl dnsutils git gnupg jq knot-dnsutils landscape-common lsb-release nano neofetch net-tools netplan.io snapd systemd tuned ufw update-notifier-common vim wget zsh && snap install core
 }
 # Upgrade Packages
 function UpgradePackages() {
