@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 1.3.3
+# Current Version: 1.3.4
 
 ## How to get and use?
 # /bin/bash -c "$(curl -fsSL 'https://source.zhijie.online/AutoDeploy/main/macOS.sh')"
@@ -114,6 +114,7 @@ function InstallCustomPackages() {
             "iina" # IINA
             "logitech-options" # Logi Options
             "loopback" # Loopback
+            "microsoft-teams" # Microsoft Teams
             "obs" # OBS
             "parallels" # Parallels Desktop
             "permute" # Permute 3
@@ -154,7 +155,6 @@ function InstallCustomPackages() {
             "634148309" # Logic Pro
             "634159523" # MainStage
             "682658836" # GarageBand
-            "789066512" # Maipo
             "824171161" # Affinity Designer
             "824183456" # Affinity Photo
             "836500024" # WeChat
