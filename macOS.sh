@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 1.3.4
+# Current Version: 1.3.5
 
 ## How to get and use?
 # /bin/bash -c "$(curl -fsSL 'https://source.zhijie.online/AutoDeploy/main/macOS.sh')"
@@ -103,15 +103,14 @@ function ConfigureSystem() {
 function InstallCustomPackages() {
     function InstallAppFromCask() {
         app_list=(
-            "adguard" # AdGuard
             "betterzip" # BetterZip
             "cleanmymac" # CleanMyMac X
             "cleanshot" # CleanShot X
             "docker" # Docker
             "downie" # Downie 4
             "folx" # Folx
-            "github" # GitHub Desktop
             "iina" # IINA
+            "istat-menus" # iStat Menus
             "logitech-options" # Logi Options
             "loopback" # Loopback
             "microsoft-teams" # Microsoft Teams
@@ -119,6 +118,7 @@ function InstallCustomPackages() {
             "parallels" # Parallels Desktop
             "permute" # Permute 3
             "pixelsnap" # PixelSnap 2
+            "sourcetree" # Sourcetree
             "visual-studio-code" # Visual Studio Code
         )
         which "brew" > "/dev/null" 2>&1
@@ -209,7 +209,7 @@ function InstallDependencyPackages() {
             rm -rf "$(brew --repo)/Library/Taps/homebrew/${tap_tuna_list[$tap_tuna_list_task]}" && git clone "https://mirrors.tuna.tsinghua.edu.cn/git/homebrew/${tap_tuna_list[$tap_tuna_list_task]}.git" "$(brew --repo)/Library/Taps/homebrew/${tap_tuna_list[$tap_tuna_list_task]}"
         done && for tap_ustc_list_task in "${!tap_ustc_list[@]}"; do
             rm -rf "$(brew --repo)/Library/Taps/homebrew/${tap_ustc_list[$tap_ustc_list_task]}" && git clone "https://mirrors.ustc.edu.cn/${tap_ustc_list[$tap_ustc_list_task]}.git" "$(brew --repo)/Library/Taps/homebrew/${tap_ustc_list[$tap_ustc_list_task]}"
-        done && brew update && brew install bash curl git jq knot mas nano neofetch vim wget zsh && compaudit | xargs chmod g-w,o-w && brew cleanup
+        done && brew update && brew install bash curl git git-flow git-lfs jq knot mas nano neofetch vim wget zsh && compaudit | xargs chmod g-w,o-w && brew cleanup
     fi
 }
 # Upgrade Packages
