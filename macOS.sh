@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 1.3.5
+# Current Version: 1.3.6
 
 ## How to get and use?
 # /bin/bash -c "$(curl -fsSL 'https://source.zhijie.online/AutoDeploy/main/macOS.sh')"
@@ -112,12 +112,10 @@ function InstallCustomPackages() {
             "iina" # IINA
             "istat-menus" # iStat Menus
             "logitech-options" # Logi Options
-            "loopback" # Loopback
             "microsoft-teams" # Microsoft Teams
-            "obs" # OBS
+            #"one-switch" # One Switch (Add on macOS Monterey)
             "parallels" # Parallels Desktop
             "permute" # Permute 3
-            "pixelsnap" # PixelSnap 2
             "sourcetree" # Sourcetree
             "visual-studio-code" # Visual Studio Code
         )
@@ -132,35 +130,23 @@ function InstallCustomPackages() {
     }
     function InstallAppFromMAS() {
         app_list=(
-            "1136220934" # Infuse 7
-            "1176074088" # Termius
+            "1136220934" # Infuse
             "1289583905" # Pixelmator Pro
-            "1333542190" # 1Password 7
-            "408981434" # iMovie
-            "409183694" # Keynote
-            "409201541" # Pages
-            "409203825" # Numbers
-            "409222199" # Cyberduck
+            "1333542190" # 1Password 7 (Remove on macOS Monterey)
+            "419330170" # Moom
             "424389933" # Final Cut Pro
             "424390742" # Compressor
             "430798174" # HazeOver
             "434290957" # Motion
-            "441258766" # Magnet
             "451108668" # QQ
             "462054704" # Microsoft Word
             "462058435" # Microsoft Excel
             "462062816" # Microsoft PowerPoint
             "497799835" # Xcode
-            "595615424" # QQ Music
-            "634148309" # Logic Pro
-            "634159523" # MainStage
-            "682658836" # GarageBand
-            "824171161" # Affinity Designer
+            "823766827" # OneDrive
             "824183456" # Affinity Photo
-            "836500024" # WeChat
-            "881418622" # Affinity Publisher
-            "937984704" # Amphetamine
-            "967805235" # Paste
+            "836500024" # 微信
+            "993841014" # CopyLess 2
         )
         which "mas" > "/dev/null" 2>&1
         if [ "$?" -eq "0" ]; then
