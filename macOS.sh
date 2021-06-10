@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 1.3.7
+# Current Version: 1.3.8
 
 ## How to get and use?
 # /bin/bash -c "$(curl -fsSL 'https://source.zhijie.online/AutoDeploy/main/macOS.sh')"
@@ -144,9 +144,13 @@ function InstallCustomPackages() {
             "462058435" # Microsoft Excel
             "462062816" # Microsoft PowerPoint
             "497799835" # Xcode
+            "634148309" # Logic Pro
+            "634159523" # MainStage
             "823766827" # OneDrive
+            "824171161" # Affinity Designer
             "824183456" # Affinity Photo
-            "836500024" # 微信
+            "836500024" # Wechat
+            "881418622" # Affinity Publisher
             "993841014" # CopyLess 2
         )
         which "mas" > "/dev/null" 2>&1
