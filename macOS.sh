@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 1.4.1
+# Current Version: 1.4.2
 
 ## How to get and use?
 # /bin/bash -c "$(curl -fsSL 'https://source.zhijie.online/AutoDeploy/main/macOS.sh')"
@@ -182,24 +182,20 @@ function InstallCustomPackages() {
 }
 # Install Dependency Packages
 function InstallDependencyPackages() {
-    tap_tuna_list=(
+    tap_list=(
         "homebrew-cask-drivers"
         "homebrew-cask-fonts"
-    )
-    tap_ustc_list=(
         "homebrew-cask-versions"
         "homebrew-cask"
     )
     export PATH="/opt/homebrew/bin:/opt/homebrew/sbin:/Library/Apple/usr/bin:/usr/local/bin:/usr/local/sbin:/usr/bin:/usr/sbin:/bin:/sbin"
     which "brew" > "/dev/null" 2>&1
     if [ "$?" -eq "1" ]; then
-        /bin/bash -c "$(curl -fsSL 'https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh' | sed 's/https\:\/\/github\.com\/Homebrew\/brew/https\:\/\/mirrors\.ustc\.edu\.cn\/brew\.git/g;s/https\:\/\/github\.com\/Homebrew\/homebrew\-core/https\:\/\/mirrors\.ustc\.edu\.cn\/homebrew\-core\.git/g')"
+        /bin/bash -c "$(curl -fsSL 'https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh' | sed 's/https\:\/\/github\.com/https\:\/\/github\.com\.cnpmjs\.org/g')"
     fi && export HOMEBREW_BOTTLE_DOMAIN="https://mirrors.ustc.edu.cn/homebrew-bottles/bottles"
     if [ -d "$(brew --repo)/Library/Taps/homebrew" ]; then
-        for tap_tuna_list_task in "${!tap_tuna_list[@]}"; do
-            rm -rf "$(brew --repo)/Library/Taps/homebrew/${tap_tuna_list[$tap_tuna_list_task]}" && git clone "https://mirrors.tuna.tsinghua.edu.cn/git/homebrew/${tap_tuna_list[$tap_tuna_list_task]}.git" "$(brew --repo)/Library/Taps/homebrew/${tap_tuna_list[$tap_tuna_list_task]}"
-        done && for tap_ustc_list_task in "${!tap_ustc_list[@]}"; do
-            rm -rf "$(brew --repo)/Library/Taps/homebrew/${tap_ustc_list[$tap_ustc_list_task]}" && git clone "https://mirrors.ustc.edu.cn/${tap_ustc_list[$tap_ustc_list_task]}.git" "$(brew --repo)/Library/Taps/homebrew/${tap_ustc_list[$tap_ustc_list_task]}"
+        for tap_list_task in "${!tap_list[@]}"; do
+            rm -rf "$(brew --repo)/Library/Taps/homebrew/${tap_list[$tap_list_task]}" && git clone "https://github.com.cnpmjs.org/Homebrew/${tap_list[$tap_list_task]}.git" "$(brew --repo)/Library/Taps/homebrew/${tap_list[$tap_list_task]}"
         done && brew update && brew install bash curl git git-flow git-lfs jq knot mas mercurial nano neofetch p7zip rar unzip vim wget zip zsh && compaudit | xargs chmod g-w,o-w && brew cleanup
     fi
 }
