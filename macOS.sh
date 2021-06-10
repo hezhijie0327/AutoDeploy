@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 1.4.2
+# Current Version: 1.4.3
 
 ## How to get and use?
 # /bin/bash -c "$(curl -fsSL 'https://source.zhijie.online/AutoDeploy/main/macOS.sh')"
@@ -68,6 +68,7 @@ function ConfigurePackages() {
             "ZSH_AUTOSUGGEST_HIGHLIGHT_STYLE=\"bg=250,fg=238,bold,underline\""
             "ZSH_AUTOSUGGEST_STRATEGY=(match_prev_cmd history completion)"
             "ZSH_AUTOSUGGEST_USE_ASYNC=\"true\""
+            "source \"\$(brew --repository)/Library/Taps/homebrew/homebrew-command-not-found/handler.sh\""
             "source \"\$ZSH/oh-my-zsh.sh\""
         )
         which "zsh" > "/dev/null" 2>&1
@@ -183,10 +184,20 @@ function InstallCustomPackages() {
 # Install Dependency Packages
 function InstallDependencyPackages() {
     tap_list=(
+        "homebrew-aliases"
+        "homebrew-autoupdate"
+        "homebrew-bundle"
+        "homebrew-cask"
         "homebrew-cask-drivers"
         "homebrew-cask-fonts"
         "homebrew-cask-versions"
-        "homebrew-cask"
+        "homebrew-command-not-found"
+        "homebrew-core"
+        "homebrew-formula-analytics"
+        "homebrew-json"
+        "homebrew-portable-ruby"
+        "homebrew-services"
+        "homebrew-test-bot"
     )
     export PATH="/opt/homebrew/bin:/opt/homebrew/sbin:/Library/Apple/usr/bin:/usr/local/bin:/usr/local/sbin:/usr/bin:/usr/sbin:/bin:/sbin"
     which "brew" > "/dev/null" 2>&1
