@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 1.3.8
+# Current Version: 1.3.9
 
 ## How to get and use?
 # /bin/bash -c "$(curl -fsSL 'https://source.zhijie.online/AutoDeploy/main/macOS.sh')"
@@ -200,7 +200,7 @@ function InstallDependencyPackages() {
             rm -rf "$(brew --repo)/Library/Taps/homebrew/${tap_tuna_list[$tap_tuna_list_task]}" && git clone "https://mirrors.tuna.tsinghua.edu.cn/git/homebrew/${tap_tuna_list[$tap_tuna_list_task]}.git" "$(brew --repo)/Library/Taps/homebrew/${tap_tuna_list[$tap_tuna_list_task]}"
         done && for tap_ustc_list_task in "${!tap_ustc_list[@]}"; do
             rm -rf "$(brew --repo)/Library/Taps/homebrew/${tap_ustc_list[$tap_ustc_list_task]}" && git clone "https://mirrors.ustc.edu.cn/${tap_ustc_list[$tap_ustc_list_task]}.git" "$(brew --repo)/Library/Taps/homebrew/${tap_ustc_list[$tap_ustc_list_task]}"
-        done && brew update && brew install bash curl git git-flow git-lfs jq knot mas mercurial nano neofetch vim wget zsh && compaudit | xargs chmod g-w,o-w && brew cleanup
+        done && brew update && brew install bash curl git git-flow git-lfs jq knot mas mercurial nano neofetch p7zip unzip vim wget zip zsh && compaudit | xargs chmod g-w,o-w && brew cleanup
     fi
 }
 # Upgrade Packages
