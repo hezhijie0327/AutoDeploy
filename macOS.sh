@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 1.4.3
+# Current Version: 1.4.4
 
 ## How to get and use?
 # /bin/bash -c "$(curl -fsSL 'https://source.zhijie.online/AutoDeploy/main/macOS.sh')"
@@ -114,7 +114,7 @@ function InstallCustomPackages() {
             "istat-menus" # iStat Menus
             "logitech-options" # Logi Options
             "microsoft-teams" # Microsoft Teams
-            #"one-switch" # One Switch (Add on macOS Monterey)
+            "one-switch" # One Switch
             "parallels" # Parallels Desktop
             "permute" # Permute 3
             "sourcetree" # Sourcetree
@@ -133,7 +133,6 @@ function InstallCustomPackages() {
         app_list=(
             "1136220934" # Infuse
             "1289583905" # Pixelmator Pro
-            "1333542190" # 1Password 7 (Remove on macOS Monterey)
             "419330170" # Moom
             "424389933" # Final Cut Pro
             "424390742" # Compressor
