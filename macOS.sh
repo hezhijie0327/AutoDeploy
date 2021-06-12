@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 1.4.6
+# Current Version: 1.4.7
 
 ## How to get and use?
 # /bin/bash -c "$(curl -fsSL 'https://source.zhijie.online/AutoDeploy/main/macOS.sh')"
@@ -206,7 +206,7 @@ function InstallDependencyPackages() {
     if [ -d "$(brew --repo)/Library/Taps/homebrew" ]; then
         for tap_list_task in "${!tap_list[@]}"; do
             rm -rf "$(brew --repo)/Library/Taps/homebrew/${tap_list[$tap_list_task]}" && git clone "https://github.com.cnpmjs.org/Homebrew/${tap_list[$tap_list_task]}.git" "$(brew --repo)/Library/Taps/homebrew/${tap_list[$tap_list_task]}"
-        done && brew update && brew install bash curl ffmpeg git git-flow git-lfs jq knot mas mercurial nano neofetch p7zip rar unzip vim wget youtube-dl zip zsh && compaudit | xargs chmod g-w,o-w && brew cleanup
+        done && brew update && brew install bash curl ffmpeg git git-flow git-lfs jq knot mas mercurial nano neofetch p7zip rar unzip vim wget youtube-dl zip zsh && brew cleanup
     fi
 }
 # Upgrade Packages
