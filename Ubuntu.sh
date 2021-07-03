@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 1.4.9
+# Current Version: 1.5.0
 
 ## How to get and use?
 # curl "https://source.zhijie.online/AutoDeploy/main/Ubuntu.sh" | sudo bash
@@ -308,6 +308,10 @@ function InstallDependencyPackages() {
 function UpgradePackages() {
     apt update && apt dist-upgrade -y && apt upgrade -y && apt autoremove -y && snap refresh
 }
+# Upgrade Kernel
+function UpgradeKernel() {
+    curl -fsSL "https://raw.githubusercontent.com/pimlie/ubuntu-mainline-kernel.sh/master/ubuntu-mainline-kernel.sh" | bash -s -- -i --yes
+}
 
 ## Process
 # Set DEBIAN_FRONTEND to "noninteractive"
@@ -324,6 +328,8 @@ InstallDependencyPackages
 transport_protocol="https" && SetRepositoryMirror
 # Call UpgradePackages
 UpgradePackages
+# Call UpgradeKernel
+UpgradeKernel
 # Call InstallCustomPackages
 InstallCustomPackages
 # Call ConfigurePackages
