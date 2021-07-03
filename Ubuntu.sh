@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 1.5.2
+# Current Version: 1.5.3
 
 ## How to get and use?
 # curl "https://source.zhijie.online/AutoDeploy/main/Ubuntu.sh" | sudo bash
@@ -82,7 +82,6 @@ function ConfigurePackages() {
         crontab_list=(
             "0 0 * * * sudo rm -rf /home/*/.*_history /root/.*_history"
             "0 0 * * 7 export DEBIAN_FRONTEND=\"noninteractive\" && export PATH=\"/snap/bin:/usr/local/bin:/usr/local/sbin:/usr/bin:/usr/sbin:/bin:/sbin\" && sudo apt update && sudo apt dist-upgrade -y && sudo apt upgrade -y && sudo apt autoremove -y && sudo snap refresh"
-            "0 1 1 * * curl -fsSL "https://raw.githubusercontent.com/pimlie/ubuntu-mainline-kernel.sh/master/ubuntu-mainline-kernel.sh" | sudo bash -s -- -i --yes"
             "0 4 * * 7 sudo reboot"
         )
         which "crontab" > "/dev/null" 2>&1
@@ -309,10 +308,6 @@ function InstallDependencyPackages() {
 function UpgradePackages() {
     apt update && apt dist-upgrade -y && apt upgrade -y && apt autoremove -y && snap refresh
 }
-# Upgrade Kernel
-function UpgradeKernel() {
-    curl -fsSL "https://raw.githubusercontent.com/pimlie/ubuntu-mainline-kernel.sh/master/ubuntu-mainline-kernel.sh" | bash -s -- -i --yes
-}
 
 ## Process
 # Set DEBIAN_FRONTEND to "noninteractive"
@@ -329,8 +324,6 @@ InstallDependencyPackages
 transport_protocol="https" && SetRepositoryMirror
 # Call UpgradePackages
 UpgradePackages
-# Call UpgradeKernel
-UpgradeKernel
 # Call InstallCustomPackages
 InstallCustomPackages
 # Call ConfigurePackages
