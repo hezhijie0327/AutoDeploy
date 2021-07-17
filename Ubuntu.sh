@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 1.5.8
+# Current Version: 1.5.9
 
 ## How to get and use?
 # curl "https://source.zhijie.online/AutoDeploy/main/Ubuntu.sh" | sudo bash
@@ -10,11 +10,17 @@
 # Get System Information
 function GetSystemInformation() {
     function GetLSBCodename() {
+        LSBCodename_LTS="focal"
+        LSBCodename_NON_LTS="hirsute"
         which "lsb_release" > "/dev/null" 2>&1
-        if [ "$?" -eq "0" ] && [ "$(lsb_release -ds | grep 'LTS')" == "" ]; then
-            LSBCodename="hirsute"
+        if [ "$?" -eq "0" ]; then
+            if [ "$(lsb_release -ds | grep 'LTS')" == "" ]; then
+                LSBCodename="${LSBCodename_NON_LTS}"
+            else
+                LSBCodename="${LSBCodename_LTS}"
+            fi
         else
-            LSBCodename="focal"
+            LSBCodename="${LSBCodename_NON_LTS}"
         fi
     }
     function IsArmArchitecture() {
@@ -81,7 +87,7 @@ function ConfigurePackages() {
     function ConfigureCrontab() {
         crontab_list=(
             "0 0 * * * sudo rm -rf /home/*/.*_history /root/.*_history"
-            "0 0 * * 7 export DEBIAN_FRONTEND=\"noninteractive\" && export PATH=\"/snap/bin:/usr/local/bin:/usr/local/sbin:/usr/bin:/usr/sbin:/bin:/sbin\" && sudo apt update && sudo apt dist-upgrade -y && sudo apt upgrade -y && sudo apt autoremove -y && sudo snap refresh"
+            "0 0 * * 7 export DEBIAN_FRONTEND=\"noninteractive\" && export PATH=\"/snap/bin:/usr/local/bin:/usr/local/sbin:/usr/bin:/usr/sbin:/bin:/sbin\" && sudo apt update && sudo apt dist-upgrade -qy && sudo apt upgrade -qy && sudo apt autoremove -qy && sudo snap refresh"
             "0 4 * * 7 sudo reboot"
         )
         which "crontab" > "/dev/null" 2>&1
@@ -143,11 +149,10 @@ function ConfigurePackages() {
         fi
     }
     function ConfigurePostfix() {
-        if [ ! -d "/etc/postfix" ]; then
-            mkdir "/etc/postfix"
-        fi
-        if [ ! -f "/etc/postfix/main.cf" ]; then
-            touch "/etc/postfix/main.cf"
+        NEW_HOSTNAME="Ubuntu-$(date '+%Y%m%d%H%M%S')"
+        if [ -f "/etc/postfix/main.cf" ]; then
+            CURRENT_HOSTNAME=$(cat "/etc/postfix/main.cf" | grep "myhostname\ \=\ " | sed "s/myhostname\ \=\ //g")
+            cat "/etc/postfix/main.cf" | sed "s/${CURRENT_HOSTNAME}/${NEW_HOSTNAME}/g" > "/tmp/main.cf.tmp" && cat "/tmp/main.cf.tmp" > "/etc/postfix/main.cf" && rm -rf "/tmp/main.cf.tmp"
         fi
     }
     function ConfigureResolved() {
@@ -262,10 +267,9 @@ function ConfigureSystem() {
         fi
     }
     function ConfigureHostfile() {
-        host_name="ubuntu-$(date '+%Y%m%d%H%M%S')"
         host_list=(
             "127.0.0.1 localhost"
-            "127.0.1.1 ${host_name}"
+            "127.0.1.1 ${NEW_HOSTNAME}"
             "255.255.255.255 broadcasthost"
             "::1 ip6-localhost ip6-loopback localhost"
             "fe00::0 ip6-localnet"
@@ -280,7 +284,7 @@ function ConfigureSystem() {
         rm -rf "/tmp/hostname.tmp" && echo "${host_name}" > "/tmp/hostname.tmp" && cat "/tmp/hostname.tmp" > "/etc/hostname" && rm -rf "/tmp/hostname.tmp"
     }
     function ConfigureLocales() {
-        apt purge -y locales && apt update && apt install -y locales && locale-gen "en_US.UTF-8" && update-locale "en_US.UTF-8"
+        apt purge -qy locales && apt update && apt install -qy locales && locale-gen "en_US.UTF-8" && update-locale "en_US.UTF-8"
     }
     function ConfigureTimeZone() {
         if [ -f "/etc/localtime" ]; then
@@ -297,7 +301,7 @@ function InstallCustomPackages() {
     function InstallDockerEngine() {
         curl -fsSL "https://mirrors.ustc.edu.cn/docker-ce/linux/ubuntu/gpg" | gpg --dearmor -o "/usr/share/keyrings/docker-archive-keyring.gpg"
         echo "deb [arch=${mirror_arch} signed-by=/usr/share/keyrings/docker-archive-keyring.gpg] https://mirrors.ustc.edu.cn/docker-ce/linux/ubuntu ${LSBCodename} stable" > "/etc/apt/sources.list.d/docker.list"
-        apt update && apt purge -y containerd docker docker-engine docker.io runc && apt install -y containerd.io docker-ce docker-ce-cli
+        apt update && apt purge -qy containerd docker docker-engine docker.io runc && apt install -qy containerd.io docker-ce docker-ce-cli
     }
     function InstallOhMyZsh() {
         plugin_list=(
@@ -317,11 +321,11 @@ function InstallCustomPackages() {
 }
 # Install Dependency Packages
 function InstallDependencyPackages() {
-    apt update && apt install -y apt-transport-https ca-certificates cockpit cockpit-pcp curl dnsutils git git-flow git-lfs gnupg jq knot-dnsutils landscape-common lsb-release mailutils mercurial nano neofetch net-tools netplan.io p7zip-full postfix rar realmd snapd systemd tuned udisks2 udisks2-bcache udisks2-btrfs udisks2-lvm2 udisks2-zram ufw unrar unzip update-notifier-common vim wget zip zsh && snap install core
+    apt update && apt install -qy apt-transport-https ca-certificates cockpit cockpit-pcp curl dnsutils git git-flow git-lfs gnupg jq knot-dnsutils landscape-common lsb-release mailutils mercurial nano neofetch net-tools netplan.io p7zip-full postfix rar realmd snapd systemd tuned udisks2 udisks2-bcache udisks2-btrfs udisks2-lvm2 udisks2-zram ufw unrar unzip update-notifier-common vim wget zip zsh && snap install core
 }
 # Upgrade Packages
 function UpgradePackages() {
-    apt update && apt dist-upgrade -y && apt upgrade -y && apt autoremove -y && snap refresh
+    apt update && apt dist-upgrade -qy && apt upgrade -qy && apt autoremove -qy && snap refresh
 }
 
 ## Process
