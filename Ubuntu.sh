@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 1.5.7
+# Current Version: 1.5.8
 
 ## How to get and use?
 # curl "https://source.zhijie.online/AutoDeploy/main/Ubuntu.sh" | sudo bash
@@ -142,6 +142,14 @@ function ConfigurePackages() {
             done && cat "/tmp/netplan.tmp" > "/etc/netplan/netplan.yaml" && netplan apply && rm -rf "/tmp/netplan.tmp"
         fi
     }
+    function ConfigurePostfix() {
+        if [ ! -d "/etc/postfix" ]; then
+            mkdir "/etc/postfix"
+        fi
+        if [ ! -f "/etc/postfix/main.cf" ]; then
+            touch "/etc/postfix/main.cf"
+        fi
+    }
     function ConfigureResolved() {
         resolved_list=(
             "[Resolve]"
@@ -238,6 +246,7 @@ function ConfigurePackages() {
     ConfigureDockerEngine
     ConfigureLandscape
     ConfigureNetplan
+    ConfigurePostfix
     ConfigureResolved
     ConfigureSshd
     ConfigureSysctl
@@ -308,7 +317,7 @@ function InstallCustomPackages() {
 }
 # Install Dependency Packages
 function InstallDependencyPackages() {
-    apt update && apt install -y apt-transport-https ca-certificates cockpit cockpit-pcp curl dnsutils git git-flow git-lfs gnupg jq knot-dnsutils landscape-common lsb-release mercurial nano neofetch net-tools netplan.io p7zip-full rar realmd snapd systemd tuned udisks2 udisks2-bcache udisks2-btrfs udisks2-lvm2 udisks2-zram ufw unrar unzip update-notifier-common vim wget zip zsh && snap install core
+    apt update && apt install -y apt-transport-https ca-certificates cockpit cockpit-pcp curl dnsutils git git-flow git-lfs gnupg jq knot-dnsutils landscape-common lsb-release mailutils mercurial nano neofetch net-tools netplan.io p7zip-full postfix rar realmd snapd systemd tuned udisks2 udisks2-bcache udisks2-btrfs udisks2-lvm2 udisks2-zram ufw unrar unzip update-notifier-common vim wget zip zsh && snap install core
 }
 # Upgrade Packages
 function UpgradePackages() {
