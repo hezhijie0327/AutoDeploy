@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 1.5.9
+# Current Version: 1.6.0
 
 ## How to get and use?
 # curl "https://source.zhijie.online/AutoDeploy/main/Ubuntu.sh" | sudo bash
@@ -107,6 +107,9 @@ function ConfigurePackages() {
         )
         which "docker" > "/dev/null" 2>&1
         if [ "$?" -eq "0" ]; then
+            if [ ! -d "/docker" ]; then
+                mkdir "/docker"
+            fi
             if [ ! -d "/etc/docker" ]; then
                 mkdir "/etc/docker"
             fi
@@ -281,7 +284,7 @@ function ConfigureSystem() {
         rm -rf "/tmp/hosts.tmp" && for host_list_task in "${!host_list[@]}"; do
             echo "${host_list[$host_list_task]}" >> "/tmp/hosts.tmp"
         done && cat "/tmp/hosts.tmp" > "/etc/hosts" && rm -rf "/tmp/hosts.tmp"
-        rm -rf "/tmp/hostname.tmp" && echo "${host_name}" > "/tmp/hostname.tmp" && cat "/tmp/hostname.tmp" > "/etc/hostname" && rm -rf "/tmp/hostname.tmp"
+        rm -rf "/tmp/hostname.tmp" && echo "${NEW_HOSTNAME}" > "/tmp/hostname.tmp" && cat "/tmp/hostname.tmp" > "/etc/hostname" && rm -rf "/tmp/hostname.tmp"
     }
     function ConfigureLocales() {
         apt purge -qy locales && apt update && apt install -qy locales && locale-gen "en_US.UTF-8" && update-locale "en_US.UTF-8"
