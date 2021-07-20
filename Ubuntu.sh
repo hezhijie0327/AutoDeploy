@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 1.6.0
+# Current Version: 1.6.1
 
 ## How to get and use?
 # curl "https://source.zhijie.online/AutoDeploy/main/Ubuntu.sh" | sudo bash
@@ -12,6 +12,8 @@ function GetSystemInformation() {
     function GetLSBCodename() {
         LSBCodename_LTS="focal"
         LSBCodename_NON_LTS="hirsute"
+        Version_LTS="20.04"
+        Version_NON_LTS="21.04"
         which "lsb_release" > "/dev/null" 2>&1
         if [ "$?" -eq "0" ]; then
             if [ "$(lsb_release -ds | grep 'LTS')" == "" ]; then
@@ -20,7 +22,11 @@ function GetSystemInformation() {
                 LSBCodename="${LSBCodename_LTS}"
             fi
         else
-            LSBCodename="${LSBCodename_NON_LTS}"
+            if [[ "$(( ${Version_NON_LTS} - ${Version_LTS} ))" -ge "0" ]]; then
+                LSBCodename="${LSBCodename_NON_LTS}"
+            else
+                LSBCodename="${LSBCodename_LTS}"
+            fi
         fi
     }
     function IsArmArchitecture() {
