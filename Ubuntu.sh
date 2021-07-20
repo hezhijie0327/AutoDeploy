@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 1.6.1
+# Current Version: 1.6.2
 
 ## How to get and use?
 # curl "https://source.zhijie.online/AutoDeploy/main/Ubuntu.sh" | sudo bash
@@ -22,8 +22,12 @@ function GetSystemInformation() {
                 LSBCodename="${LSBCodename_LTS}"
             fi
         else
-            if [[ "$(( ${Version_NON_LTS} - ${Version_LTS} ))" -ge "0" ]]; then
-                LSBCodename="${LSBCodename_NON_LTS}"
+            if [ -f '/etc/issue' ]; then
+                if [ "$(cat '/etc/issue' | grep 'LTS')" == "" ]; then
+                    LSBCodename="${LSBCodename_NON_LTS}"
+                else
+                    LSBCodename="${LSBCodename_LTS}"
+                fi
             else
                 LSBCodename="${LSBCodename_LTS}"
             fi
