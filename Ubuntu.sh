@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 1.6.2
+# Current Version: 1.6.3
 
 ## How to get and use?
 # curl "https://source.zhijie.online/AutoDeploy/main/Ubuntu.sh" | sudo bash
@@ -73,6 +73,7 @@ function SetReadonlyFlag() {
     file_list=(
         "/etc/apt/sources.list"
         "/etc/apt/sources.list.d/docker.list"
+        "/etc/apt/sources.list.d/github-cli.list"
         "/etc/default/ufw"
         "/etc/docker/daemon.json"
         "/etc/hostname"
@@ -316,6 +317,11 @@ function InstallCustomPackages() {
         echo "deb [arch=${mirror_arch} signed-by=/usr/share/keyrings/docker-archive-keyring.gpg] https://mirrors.ustc.edu.cn/docker-ce/linux/ubuntu ${LSBCodename} stable" > "/etc/apt/sources.list.d/docker.list"
         apt update && apt purge -qy containerd docker docker-engine docker.io runc && apt install -qy containerd.io docker-ce docker-ce-cli
     }
+    function InstallGitHubCLI() {
+        curl -fsSL "https://cli.github.com/packages/githubcli-archive-keyring.gpg" | gpg --dearmor -o "/usr/share/keyrings/githubcli-archive-keyring.gpg"
+        echo "deb [arch=${mirror_arch} signed-by=/usr/share/keyrings/githubcli-archive-keyring.gpg] https://cli.github.com/packages stable main" > "/etc/apt/sources.list.d/github-cli.list"
+        apt update && apt install -qy gh
+    }
     function InstallOhMyZsh() {
         plugin_list=(
             "zsh-autosuggestions"
@@ -330,6 +336,7 @@ function InstallCustomPackages() {
         fi
     }
     InstallDockerEngine
+    InstallGitHubCLI
     InstallOhMyZsh
 }
 # Install Dependency Packages
