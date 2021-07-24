@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 1.5.3
+# Current Version: 1.5.4
 
 ## How to get and use?
 # /bin/bash -c "$(curl -fsSL 'https://source.zhijie.online/AutoDeploy/main/macOS.sh')"
@@ -205,9 +205,42 @@ function InstallDependencyPackages() {
         /bin/bash -c "$(curl -fsSL 'https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh' | sed 's/https\:\/\/github\.com/https\:\/\/github\.com\.cnpmjs\.org/g')"
     fi && export HOMEBREW_BOTTLE_DOMAIN="https://mirrors.ustc.edu.cn/homebrew-bottles/bottles"
     if [ -d "$(brew --repo)/Library/Taps/homebrew" ]; then
+        app_list=(
+            "awk"
+            "bash"
+            "curl"
+            "ffmpeg"
+            "gh"
+            "git"
+            "git-flow"
+            "git-lfs"
+            "gnupg"
+            "grep"
+            "iperf3"
+            "jq"
+            "knot"
+            "mailutils"
+            "mas"
+            "mercurial"
+            "mtr"
+            "nano"
+            "neofetch"
+            "p7zip"
+            "rar"
+            "unzip"
+            "vim"
+            "wget"
+            "youtube-dl"
+            "zip"
+            "zsh"
+        )
         for tap_list_task in "${!tap_list[@]}"; do
             rm -rf "$(brew --repo)/Library/Taps/homebrew/${tap_list[$tap_list_task]}" && git clone "https://github.com.cnpmjs.org/Homebrew/${tap_list[$tap_list_task]}.git" "$(brew --repo)/Library/Taps/homebrew/${tap_list[$tap_list_task]}"
-        done && brew update && brew install awk bash curl ffmpeg gh git git-flow git-lfs gnupg grep iperf3 jq knot mailutils mas mercurial mtr nano neofetch p7zip rar unzip vim wget youtube-dl zip zsh && brew cleanup
+        done && brew update && for app_list_task in "${!app_list[@]}"; do
+            brew search --formula ${app_list[$app_list_task]} && if [ "$?" -eq "0" ]; then
+                brew install --formula ${app_list[$app_list_task]}
+            fi
+        done && brew cleanup
     fi
 }
 # Upgrade Packages
