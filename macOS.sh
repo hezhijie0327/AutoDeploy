@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 1.5.4
+# Current Version: 1.5.5
 
 ## How to get and use?
 # /bin/bash -c "$(curl -fsSL 'https://source.zhijie.online/AutoDeploy/main/macOS.sh')"
@@ -123,7 +123,7 @@ function InstallCustomPackages() {
         which "brew" > "/dev/null" 2>&1
         if [ "$?" -eq "0" ]; then
             for app_list_task in "${!app_list[@]}"; do
-                brew search --cask ${app_list[$app_list_task]} && if [ "$?" -eq "0" ]; then
+                brew info --cask ${app_list[$app_list_task]} && if [ "$?" -eq "0" ]; then
                     brew install --cask ${app_list[$app_list_task]}
                 fi
             done
@@ -237,7 +237,7 @@ function InstallDependencyPackages() {
         for tap_list_task in "${!tap_list[@]}"; do
             rm -rf "$(brew --repo)/Library/Taps/homebrew/${tap_list[$tap_list_task]}" && git clone "https://github.com.cnpmjs.org/Homebrew/${tap_list[$tap_list_task]}.git" "$(brew --repo)/Library/Taps/homebrew/${tap_list[$tap_list_task]}"
         done && brew update && for app_list_task in "${!app_list[@]}"; do
-            brew search --formula ${app_list[$app_list_task]} && if [ "$?" -eq "0" ]; then
+            brew info --formula ${app_list[$app_list_task]} && if [ "$?" -eq "0" ]; then
                 brew install --formula ${app_list[$app_list_task]}
             fi
         done && brew cleanup
