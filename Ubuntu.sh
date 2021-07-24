@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 1.6.4
+# Current Version: 1.6.5
 
 ## How to get and use?
 # curl "https://source.zhijie.online/AutoDeploy/main/Ubuntu.sh" | sudo bash
@@ -313,14 +313,25 @@ function ConfigureSystem() {
 # Install Custom Packages
 function InstallCustomPackages() {
     function InstallDockerEngine() {
+        app_list=(
+            "containerd.io"
+            "docker-ce"
+            "docker-ce-cli"
+        )
         curl -fsSL "https://mirrors.ustc.edu.cn/docker-ce/linux/ubuntu/gpg" | gpg --dearmor -o "/usr/share/keyrings/docker-archive-keyring.gpg"
         echo "deb [arch=${mirror_arch} signed-by=/usr/share/keyrings/docker-archive-keyring.gpg] https://mirrors.ustc.edu.cn/docker-ce/linux/ubuntu ${LSBCodename} stable" > "/etc/apt/sources.list.d/docker.list"
-        apt update && apt purge -qy containerd docker docker-engine docker.io runc && apt install -qy containerd.io docker-ce docker-ce-cli
+        apt update && apt purge -qy containerd docker docker-engine docker.io runc && for app_list_task in "${!app_list[@]}"; do
+            apt-cache show ${app_list[$app_list_task]} && if [ "$?" -eq "0" ]; then
+                apt install -qy ${app_list[$app_list_task]}
+            fi
+        done
     }
     function InstallGitHubCLI() {
         curl -fsSL "https://cli.github.com/packages/githubcli-archive-keyring.gpg" | gpg --dearmor -o "/usr/share/keyrings/githubcli-archive-keyring.gpg"
         echo "deb [arch=${mirror_arch} signed-by=/usr/share/keyrings/githubcli-archive-keyring.gpg] https://cli.github.com/packages stable main" > "/etc/apt/sources.list.d/github-cli.list"
-        apt update && apt install -qy gh
+        apt update && apt-cache show gh && if [ "$?" -eq "0" ]; then
+            apt install -qy gh
+        fi
     }
     function InstallOhMyZsh() {
         plugin_list=(
@@ -341,7 +352,55 @@ function InstallCustomPackages() {
 }
 # Install Dependency Packages
 function InstallDependencyPackages() {
-    apt update && apt install -qy apt-transport-https ca-certificates cockpit cockpit-pcp curl dnsutils git git-flow git-lfs gnupg iperf3 jq knot-dnsutils landscape-common lsb-release mailutils mercurial mtr-tiny nano neofetch net-tools netplan.io p7zip-full postfix rar realmd snapd systemd tuned udisks2 udisks2-bcache udisks2-btrfs udisks2-lvm2 udisks2-zram ufw unrar unzip update-notifier-common vim wget zip zsh && snap install core
+    app_list=(
+        "apt-transport-https"
+        "ca-certificates"
+        "cockpit"
+        "cockpit-pcp"
+        "curl"
+        "dnsutils"
+        "git"
+        "git-flow"
+        "git-lfs"
+        "gnupg"
+        "iperf3"
+        "jq"
+        "knot-dnsutils"
+        "landscape-common"
+        "lsb-release"
+        "mailutils"
+        "mercurial"
+        "mtr-tiny"
+        "nano"
+        "neofetch"
+        "net-tools"
+        "netplan.io"
+        "p7zip-full"
+        "postfix"
+        "rar"
+        "realmd"
+        "snapd"
+        "systemd"
+        "tuned"
+        "udisks2"
+        "udisks2-bcache"
+        "udisks2-btrfs"
+        "udisks2-lvm2"
+        "udisks2-zram"
+        "ufw"
+        "unrar"
+        "unzip"
+        "update-notifier-common"
+        "vim"
+        "wget"
+        "zip"
+        "zsh"
+    )
+    apt update && for app_list_task in "${!app_list[@]}"; do
+        apt-cache show ${app_list[$app_list_task]} && if [ "$?" -eq "0" ]; then
+            apt install -qy ${app_list[$app_list_task]}
+        fi
+    done && snap install core
 }
 # Upgrade Packages
 function UpgradePackages() {
