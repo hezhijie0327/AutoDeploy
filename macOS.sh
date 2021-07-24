@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 1.5.2
+# Current Version: 1.5.3
 
 ## How to get and use?
 # /bin/bash -c "$(curl -fsSL 'https://source.zhijie.online/AutoDeploy/main/macOS.sh')"
@@ -105,12 +105,12 @@ function ConfigureSystem() {
 function InstallCustomPackages() {
     function InstallAppFromCask() {
         app_list=(
+            "adguard" # AdGuard
             "betterzip" # BetterZip
             "cleanmymac" # CleanMyMac X
             "cleanshot" # CleanShot X
             "docker" # Docker
             "downie" # Downie 4
-            "folx" # Folx
             "iina" # IINA
             "istat-menus" # iStat Menus
             "logitech-options" # Logi Options
@@ -118,7 +118,6 @@ function InstallCustomPackages() {
             "one-switch" # One Switch
             "parallels" # Parallels Desktop
             "permute" # Permute 3
-            "sourcetree" # Sourcetree
             "visual-studio-code" # Visual Studio Code
         )
         which "brew" > "/dev/null" 2>&1
@@ -133,7 +132,7 @@ function InstallCustomPackages() {
     function InstallAppFromMAS() {
         app_list=(
             "1136220934" # Infuse
-            "1289583905" # Pixelmator Pro
+            "409222199" # Cyberduck
             "419330170" # Moom
             "424389933" # Final Cut Pro
             "424390742" # Compressor
@@ -146,11 +145,12 @@ function InstallCustomPackages() {
             "497799835" # Xcode
             "634148309" # Logic Pro
             "634159523" # MainStage
+            "784801555" # Microsoft OneNote
             "823766827" # OneDrive
-            "824171161" # Affinity Designer
             "824183456" # Affinity Photo
             "836500024" # Wechat
-            "881418622" # Affinity Publisher
+            "937984704" # Amphetamine
+            "985367838" # Microsoft Outlook
             "993841014" # CopyLess 2
         )
         which "mas" > "/dev/null" 2>&1
