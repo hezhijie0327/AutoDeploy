@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 1.7.2
+# Current Version: 1.7.3
 
 ## How to get and use?
 # curl "https://source.zhijie.online/AutoDeploy/main/Ubuntu.sh" | sudo bash
@@ -73,15 +73,22 @@ function GetSystemInformation() {
         else
             wsl_kernel="TRUE"
             function Fix_Resolv_Conf_Issue() {
-                dns_list=(
+                resolv_conf_list=(
                     "223.5.5.5"
                     "223.6.6.6"
                     "2400:3200::1"
                     "2400:3200:baba::1"
                 )
-                rm -rf "/tmp/resolv.tmp" && for dns_list_task in "${!dns_list[@]}"; do
-                    echo "${dns_list[$dns_list_task]}" >> "/tmp/resolv.tmp"
-                done && chattr -i "/etc/resolv.conf" > "/dev/null" 2>&1 && rm -rf "/etc/resolv.conf" && cat "/tmp/resolv.tmp" > "/etc/resolv.conf" && chattr +i "/etc/resolv.conf" > "/dev/null" 2>&1
+                wsl_conf_list=(
+                    "[network]"
+                    "generateResolvConf = false"
+                )
+                rm -rf "/tmp/resolv.tmp" && for resolv_conf_list_task in "${!resolv_conf_list[@]}"; do
+                    echo "nameserver ${resolv_conf_list[$resolv_conf_list_task]}" >> "/tmp/resolv.tmp"
+                done && chattr -i "/etc/resolv.conf" > "/dev/null" 2>&1 && rm -rf "/etc/resolv.conf" && cat "/tmp/resolv.tmp" > "/etc/resolv.conf" && chattr +i "/etc/resolv.conf" > "/dev/null" 2>&1 && rm -rf "/tmp/resolv.tmp"
+                rm -rf "/tmp/wsl.tmp" && for wsl_conf_list_task in "${!wsl_conf_list[@]}"; do
+                    echo "${wsl_conf_list[$wsl_conf_list_task]}" >> "/tmp/wsl.tmp"
+                done && chattr -i "/etc/wsl.conf" > "/dev/null" 2>&1 && cat "/tmp/wsl.tmp" > "/etc/wsl.conf" && chattr +i "/etc/wsl.conf" > "/dev/null" 2>&1 && rm -rf "/tmp/wsl.tmp"
             }
             function Fix_Ubuntu_Advantage_Tools_Upgrade_Error() {
                 if [ ! -d "/run/cloud-init" ]; then
@@ -128,7 +135,7 @@ function SetRepositoryMirror() {
     fi
     rm -rf "/tmp/apt.tmp" && for mirror_list_task in "${!mirror_list[@]}"; do
         echo "${mirror_list[$mirror_list_task]}" >> "/tmp/apt.tmp"
-    done && cat "/tmp/apt.tmp" > "/etc/apt/sources.list"
+    done && cat "/tmp/apt.tmp" > "/etc/apt/sources.list" && rm -rf "/tmp/apt.tmp"
 }
 # Set Readonly Flag
 function SetReadonlyFlag() {
