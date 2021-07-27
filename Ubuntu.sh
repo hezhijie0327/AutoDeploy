@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 1.6.5
+# Current Version: 1.6.6
 
 ## How to get and use?
 # curl "https://source.zhijie.online/AutoDeploy/main/Ubuntu.sh" | sudo bash
@@ -9,6 +9,9 @@
 ## Function
 # Get System Information
 function GetSystemInformation() {
+    function GenerateHostname() {
+        NEW_HOSTNAME="Ubuntu-$(date '+%Y%m%d%H%M%S')"
+    }
     function GetLSBCodename() {
         LSBCodename_LTS="focal"
         LSBCodename_NON_LTS="hirsute"
@@ -45,8 +48,17 @@ function GetSystemInformation() {
             exit 1
         fi
     }
+    function IsWSLKernelRelease() {
+        if [ "$(uname -r | grep 'WSL')" == "" ]; then
+            wsl_kernel="FALSE"
+        else
+            wsl_kernel="TRUE"
+        fi
+    }
+    GenerateHostname
     GetLSBCodename
     IsArmArchitecture
+    IsWSLKernelRelease
 }
 # Set Repository Mirror
 function SetRepositoryMirror() {
@@ -163,7 +175,6 @@ function ConfigurePackages() {
         fi
     }
     function ConfigurePostfix() {
-        NEW_HOSTNAME="Ubuntu-$(date '+%Y%m%d%H%M%S')"
         if [ -f "/etc/postfix/main.cf" ]; then
             CURRENT_HOSTNAME=$(cat "/etc/postfix/main.cf" | grep "myhostname\ \=\ " | sed "s/myhostname\ \=\ //g")
             cat "/etc/postfix/main.cf" | sed "s/${CURRENT_HOSTNAME}/${NEW_HOSTNAME}/g" > "/tmp/main.cf.tmp" && cat "/tmp/main.cf.tmp" > "/etc/postfix/main.cf" && rm -rf "/tmp/main.cf.tmp"
