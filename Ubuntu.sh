@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 1.6.7
+# Current Version: 1.6.8
 
 ## How to get and use?
 # curl "https://source.zhijie.online/AutoDeploy/main/Ubuntu.sh" | sudo bash
@@ -17,9 +17,9 @@ function CallServiceController(){
         echo "An error occurred during processing. Missing (SERVICE_NAME) value, please check it and try again."
         exit 1
     fi
-    if [ "${wsl_kernel}" == "TRUE" ];
+    if [ "${wsl_kernel}" == "TRUE" ]; then
         serivce ${SERVICE_NAME} ${OPRATIONS}
-    elif [ "${wsl_kernel}" == "FALSE" ];
+    elif [ "${wsl_kernel}" == "FALSE" ]; then
         systemctl ${OPRATIONS} ${SERVICE_NAME}
     else
         echo "Unsupported service controller."
@@ -72,6 +72,25 @@ function GetSystemInformation() {
             wsl_kernel="FALSE"
         else
             wsl_kernel="TRUE"
+            function Fix_Ubuntu_Advantage_Tools_Upgrade_Error() {
+                if [ ! -d "/run/cloud-init" ]; then
+                    mkdir "/run/cloud-init"
+                fi
+                if [ ! -f "/run/cloud-init/instance-data.json" ]; then
+                    echo "{}" > "/run/cloud-init/instance-data.json"
+                fi
+            }
+            function Fix_Unsupport_Udev_Issue() {
+                policy_rc_d_list=(
+                    "#!/bin/sh"
+                    "exit 101"
+                )
+                rm -rf "/tmp/policy-rc.d.tmp" && for policy_rc_d_list_task in "${!policy_rc_d_list[@]}"; do
+                    echo "${policy_rc_d_list[$policy_rc_d_list_task]}" >> "/tmp/policy-rc.d.tmp"
+                done && cat "/tmp/policy-rc.d.tmp" > "/usr/sbin/policy-rc.d" && chmod +x "/usr/sbin/policy-rc.d" && dpkg-divert --local --rename --add "/sbin/initctl" && rm -rf "/sbin/initctl" && ln -s "/bin/true" "/sbin/initctl" && rm -rf "/tmp/policy-rc.d.tmp"
+            }
+            Fix_Ubuntu_Advantage_Tools_Upgrade_Error
+            Fix_Unsupported_Udev
         fi
     }
     GenerateHostname
