@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 1.7.3
+# Current Version: 1.7.4
 
 ## How to get and use?
 # curl "https://source.zhijie.online/AutoDeploy/main/Ubuntu.sh" | sudo bash
@@ -85,10 +85,10 @@ function GetSystemInformation() {
                 )
                 rm -rf "/tmp/resolv.tmp" && for resolv_conf_list_task in "${!resolv_conf_list[@]}"; do
                     echo "nameserver ${resolv_conf_list[$resolv_conf_list_task]}" >> "/tmp/resolv.tmp"
-                done && chattr -i "/etc/resolv.conf" > "/dev/null" 2>&1 && rm -rf "/etc/resolv.conf" && cat "/tmp/resolv.tmp" > "/etc/resolv.conf" && chattr +i "/etc/resolv.conf" > "/dev/null" 2>&1 && rm -rf "/tmp/resolv.tmp"
+                done && rm -rf "/etc/resolv.conf" && cat "/tmp/resolv.tmp" > "/etc/resolv.conf" && rm -rf "/tmp/resolv.tmp"
                 rm -rf "/tmp/wsl.tmp" && for wsl_conf_list_task in "${!wsl_conf_list[@]}"; do
                     echo "${wsl_conf_list[$wsl_conf_list_task]}" >> "/tmp/wsl.tmp"
-                done && chattr -i "/etc/wsl.conf" > "/dev/null" 2>&1 && cat "/tmp/wsl.tmp" > "/etc/wsl.conf" && chattr +i "/etc/wsl.conf" > "/dev/null" 2>&1 && rm -rf "/tmp/wsl.tmp"
+                done && cat "/tmp/wsl.tmp" > "/etc/wsl.conf" && rm -rf "/tmp/wsl.tmp"
             }
             function Fix_Ubuntu_Advantage_Tools_Upgrade_Error() {
                 if [ ! -d "/run/cloud-init" ]; then
@@ -148,8 +148,10 @@ function SetReadonlyFlag() {
         "/etc/hostname"
         "/etc/hosts"
         "/etc/netplan/netplan.yaml"
+        "/etc/resolv.conf"
         "/etc/sysctl.conf"
         "/etc/systemd/resolved.conf.d/resolved.conf"
+        "/etc/wsl.conf"
         "/etc/zsh/oh-my-zsh.zshrc"
     )
     if [ "${read_only}" == "TRUE" ]; then
@@ -478,10 +480,10 @@ function UpgradePackages() {
 ## Process
 # Set DEBIAN_FRONTEND to "noninteractive"
 export DEBIAN_FRONTEND="noninteractive"
-# Call GetSystemInformation
-GetSystemInformation
 # Set read_only="FALSE"; Call SetReadonlyFlag
 read_only="FALSE" && SetReadonlyFlag
+# Call GetSystemInformation
+GetSystemInformation
 # Set transport_protocol="http"; Call SetRepositoryMirror
 transport_protocol="http" && SetRepositoryMirror
 # Call InstallDependencyPackages
