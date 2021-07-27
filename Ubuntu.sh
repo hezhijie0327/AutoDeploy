@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 1.7.1
+# Current Version: 1.7.2
 
 ## How to get and use?
 # curl "https://source.zhijie.online/AutoDeploy/main/Ubuntu.sh" | sudo bash
@@ -72,6 +72,17 @@ function GetSystemInformation() {
             wsl_kernel="FALSE"
         else
             wsl_kernel="TRUE"
+            function Fix_Resolv_Conf_Issue() {
+                dns_list=(
+                    "223.5.5.5"
+                    "223.6.6.6"
+                    "2400:3200::1"
+                    "2400:3200:baba::1"
+                )
+                rm -rf "/tmp/resolv.tmp" && for dns_list_task in "${!dns_list[@]}"; do
+                    echo "${dns_list[$dns_list_task]}" >> "/tmp/resolv.tmp"
+                done && chattr -i "/etc/resolv.conf" > "/dev/null" 2>&1 && rm -rf "/etc/resolv.conf" && cat "/tmp/resolv.tmp" > "/etc/resolv.conf" && chattr +i "/etc/resolv.conf" > "/dev/null" 2>&1
+            }
             function Fix_Ubuntu_Advantage_Tools_Upgrade_Error() {
                 if [ ! -d "/run/cloud-init" ]; then
                     mkdir "/run/cloud-init"
@@ -89,6 +100,7 @@ function GetSystemInformation() {
                     echo "${policy_rc_d_list[$policy_rc_d_list_task]}" >> "/tmp/policy-rc.d.tmp"
                 done && cat "/tmp/policy-rc.d.tmp" > "/usr/sbin/policy-rc.d" && chmod +x "/usr/sbin/policy-rc.d" && dpkg-divert --local --rename --add "/sbin/initctl" && rm -rf "/sbin/initctl" && ln -s "/bin/true" "/sbin/initctl" && rm -rf "/tmp/policy-rc.d.tmp"
             }
+            Fix_Resolv_Conf_Issue
             Fix_Ubuntu_Advantage_Tools_Upgrade_Error
             Fix_Unsupport_Udev_Issue
         fi
