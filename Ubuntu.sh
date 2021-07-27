@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 1.7.0
+# Current Version: 1.7.1
 
 ## How to get and use?
 # curl "https://source.zhijie.online/AutoDeploy/main/Ubuntu.sh" | sudo bash
@@ -197,7 +197,7 @@ function ConfigurePackages() {
         )
         network_interface=($(cat "/proc/net/dev" | grep -v "docker0\|lo" | grep "\:" | sed "s/[[:space:]]//g" | cut -d ":" -f 1 | sort | uniq))
         which "netplan" > "/dev/null" 2>&1
-        if [ "$?" -eq "0" ]; then
+        if [ "$?" -eq "0" ] && [ "${wsl_kernel}" == "FALSE" ]; then
             if [ ! -d "/etc/netplan" ]; then
                 mkdir "/etc/netplan"
             else
@@ -227,7 +227,7 @@ function ConfigurePackages() {
             "DNSStubListener=false"
         )
         which "resolvectl" > "/dev/null" 2>&1
-        if [ "$?" -eq "0" ]; then
+        if [ "$?" -eq "0" ] && [ "${wsl_kernel}" == "FALSE" ]; then
             if [ -f "/etc/resolv.conf" ]; then
                 rm -rf "/etc/resolv.conf" && ln -s "/run/systemd/resolve/resolv.conf" "/etc/resolv.conf"
             fi
@@ -267,7 +267,7 @@ function ConfigurePackages() {
     }
     function ConfigureUfw() {
         which "ufw" > "/dev/null" 2>&1
-        if [ "$?" -eq "0" ] && [ -f "/etc/default/ufw" ]; then
+        if [ "$?" -eq "0" ] && [ -f "/etc/default/ufw" ] && [ "${wsl_kernel}" == "FALSE" ]; then
             echo "$(cat '/etc/default/ufw' | sed 's/DEFAULT\_APPLICATION\_POLICY\=\"ACCEPT\"/DEFAULT\_APPLICATION\_POLICY\=\"REJECT\"/g;s/DEFAULT\_APPLICATION\_POLICY\=\"DROP\"/DEFAULT\_APPLICATION\_POLICY\=\"REJECT\"/g;s/DEFAULT\_APPLICATION\_POLICY\=\"SKIP\"/DEFAULT\_APPLICATION\_POLICY\=\"REJECT\"/g;s/DEFAULT\_FORWARD\_POLICY\=\"ACCEPT\"/DEFAULT\_FORWARD\_POLICY\=\"REJECT\"/g;s/DEFAULT\_FORWARD\_POLICY\=\"DROP\"/DEFAULT\_FORWARD\_POLICY\=\"REJECT\"/g;s/DEFAULT\_INPUT\_POLICY\=\"ACCEPT\"/DEFAULT\_INPUT\_POLICY\=\"REJECT\"/g;s/DEFAULT\_INPUT\_POLICY\=\"DROP\"/DEFAULT\_INPUT\_POLICY\=\"REJECT\"/g;s/DEFAULT\_OUTPUT\_POLICY\=\"DROP\"/DEFAULT\_OUTPUT\_POLICY\=\"ACCEPT\"/g;s/DEFAULT\_OUTPUT\_POLICY\=\"REJECT\"/DEFAULT\_OUTPUT\_POLICY\=\"ACCEPT\"/g;s/MANAGE\_BUILTINS\=yes/MANAGE\_BUILTINS\=no/g;s/IPV6\=no/IPV6\=yes/g')" > "/tmp/ufw.tmp"
             cat "/tmp/ufw.tmp" > "/etc/default/ufw" && ufw reload && rm -rf "/tmp/ufw.tmp" && ufw limit 22/tcp && ufw limit 9022/tcp && ufw allow 9090/tcp && ufw enable && ufw status verbose
         fi
@@ -401,85 +401,50 @@ function InstallCustomPackages() {
 }
 # Install Dependency Packages
 function InstallDependencyPackages() {
-    if [ "${wsl_kernel}" == "TRUE" ]; then
-        app_list=(
-            "apt-transport-https"
-            "ca-certificates"
-            "curl"
-            "dnsutils"
-            "git"
-            "git-flow"
-            "git-lfs"
-            "gnupg"
-            "iperf3"
-            "jq"
-            "knot-dnsutils"
-            "landscape-common"
-            "lsb-release"
-            "mailutils"
-            "mercurial"
-            "mtr-tiny"
-            "nano"
-            "neofetch"
-            "net-tools"
-            "p7zip-full"
-            "rar"
-            "realmd"
-            "snapd"
-            "unrar"
-            "unzip"
-            "update-notifier-common"
-            "vim"
-            "wget"
-            "zip"
-            "zsh"
-        )
-    else
-        app_list=(
-            "apt-transport-https"
-            "ca-certificates"
-            "cockpit"
-            "cockpit-pcp"
-            "curl"
-            "dnsutils"
-            "git"
-            "git-flow"
-            "git-lfs"
-            "gnupg"
-            "iperf3"
-            "jq"
-            "knot-dnsutils"
-            "landscape-common"
-            "lsb-release"
-            "mailutils"
-            "mercurial"
-            "mtr-tiny"
-            "nano"
-            "neofetch"
-            "net-tools"
-            "netplan.io"
-            "p7zip-full"
-            "postfix"
-            "rar"
-            "realmd"
-            "snapd"
-            "systemd"
-            "tuned"
-            "udisks2"
-            "udisks2-bcache"
-            "udisks2-btrfs"
-            "udisks2-lvm2"
-            "udisks2-zram"
-            "ufw"
-            "unrar"
-            "unzip"
-            "update-notifier-common"
-            "vim"
-            "wget"
-            "zip"
-            "zsh"
-        )
-    fi
+    app_list=(
+        "apt-transport-https"
+        "ca-certificates"
+        "cockpit"
+        "cockpit-pcp"
+        "curl"
+        "dnsutils"
+        "git"
+        "git-flow"
+        "git-lfs"
+        "gnupg"
+        "iperf3"
+        "jq"
+        "knot-dnsutils"
+        "landscape-common"
+        "lsb-release"
+        "mailutils"
+        "mercurial"
+        "mtr-tiny"
+        "nano"
+        "neofetch"
+        "net-tools"
+        "netplan.io"
+        "p7zip-full"
+        "postfix"
+        "rar"
+        "realmd"
+        "snapd"
+        "systemd"
+        "tuned"
+        "udisks2"
+        "udisks2-bcache"
+        "udisks2-btrfs"
+        "udisks2-lvm2"
+        "udisks2-zram"
+        "ufw"
+        "unrar"
+        "unzip"
+        "update-notifier-common"
+        "vim"
+        "wget"
+        "zip"
+        "zsh"
+    )
     apt update && for app_list_task in "${!app_list[@]}"; do
         apt-cache show ${app_list[$app_list_task]} && if [ "$?" -eq "0" ]; then
             apt install -qy ${app_list[$app_list_task]}
