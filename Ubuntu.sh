@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 1.7.4
+# Current Version: 1.7.5
 
 ## How to get and use?
 # curl "https://source.zhijie.online/AutoDeploy/main/Ubuntu.sh" | sudo bash
@@ -90,6 +90,10 @@ function GetSystemInformation() {
                     echo "${wsl_conf_list[$wsl_conf_list_task]}" >> "/tmp/wsl.tmp"
                 done && cat "/tmp/wsl.tmp" > "/etc/wsl.conf" && rm -rf "/tmp/wsl.tmp"
             }
+            function Fix_Sshd_Server_Issue() {
+                CURRENT_PATH=$(pwd)
+                cd "/etc/ssh" && ssh-keygen -A && cd "${CURRENT_PATH}"
+            }
             function Fix_Ubuntu_Advantage_Tools_Upgrade_Error() {
                 if [ ! -d "/run/cloud-init" ]; then
                     mkdir "/run/cloud-init"
@@ -108,6 +112,7 @@ function GetSystemInformation() {
                 done && cat "/tmp/policy-rc.d.tmp" > "/usr/sbin/policy-rc.d" && chmod +x "/usr/sbin/policy-rc.d" && dpkg-divert --local --rename --add "/sbin/initctl" && rm -rf "/sbin/initctl" && ln -s "/bin/true" "/sbin/initctl" && rm -rf "/tmp/policy-rc.d.tmp"
             }
             Fix_Resolv_Conf_Issue
+            Fix_Sshd_Server_Issue
             Fix_Ubuntu_Advantage_Tools_Upgrade_Error
             Fix_Unsupport_Udev_Issue
         fi
@@ -264,7 +269,7 @@ function ConfigurePackages() {
     }
     function ConfigureSshd() {
         if [ -f "/etc/ssh/sshd_config" ]; then
-            cat "/etc/ssh/sshd_config" | sed "s/\#Port\ 22/Port\ 9022/g" > "/tmp/sshd_config.tmp" && cat "/tmp/sshd_config.tmp" > "/etc/ssh/sshd_config" && rm -rf "/tmp/sshd_config.tmp"
+            cat "/etc/ssh/sshd_config" | sed "s/\#PermitRootLogin\ prohibit\-password/PermitRootLogin\ yes/g;s/\#Port\ 22/Port\ 9022/g" > "/tmp/sshd_config.tmp" && cat "/tmp/sshd_config.tmp" > "/etc/ssh/sshd_config" && rm -rf "/tmp/sshd_config.tmp"
         fi
     }
     function ConfigureSysctl() {
