@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 1.6.9
+# Current Version: 1.7.0
 
 ## How to get and use?
 # curl "https://source.zhijie.online/AutoDeploy/main/Ubuntu.sh" | sudo bash
@@ -133,11 +133,11 @@ function SetReadonlyFlag() {
         "/etc/systemd/resolved.conf.d/resolved.conf"
         "/etc/zsh/oh-my-zsh.zshrc"
     )
-    if [ "${read_only}" == "true" ]; then
+    if [ "${read_only}" == "TRUE" ]; then
         for file_list_task in "${!file_list[@]}"; do
             chattr +i "${file_list[$file_list_task]}" > "/dev/null" 2>&1
         done
-    elif [ "${read_only}" == "false" ]; then
+    elif [ "${read_only}" == "FALSE" ]; then
         for file_list_task in "${!file_list[@]}"; do
             chattr -i "${file_list[$file_list_task]}" > "/dev/null" 2>&1
         done
@@ -401,50 +401,85 @@ function InstallCustomPackages() {
 }
 # Install Dependency Packages
 function InstallDependencyPackages() {
-    app_list=(
-        "apt-transport-https"
-        "ca-certificates"
-        "cockpit"
-        "cockpit-pcp"
-        "curl"
-        "dnsutils"
-        "git"
-        "git-flow"
-        "git-lfs"
-        "gnupg"
-        "iperf3"
-        "jq"
-        "knot-dnsutils"
-        "landscape-common"
-        "lsb-release"
-        "mailutils"
-        "mercurial"
-        "mtr-tiny"
-        "nano"
-        "neofetch"
-        "net-tools"
-        "netplan.io"
-        "p7zip-full"
-        "postfix"
-        "rar"
-        "realmd"
-        "snapd"
-        "systemd"
-        "tuned"
-        "udisks2"
-        "udisks2-bcache"
-        "udisks2-btrfs"
-        "udisks2-lvm2"
-        "udisks2-zram"
-        "ufw"
-        "unrar"
-        "unzip"
-        "update-notifier-common"
-        "vim"
-        "wget"
-        "zip"
-        "zsh"
-    )
+    if [ "${wsl_kernel}" == "TRUE" ]; then
+        app_list=(
+            "apt-transport-https"
+            "ca-certificates"
+            "curl"
+            "dnsutils"
+            "git"
+            "git-flow"
+            "git-lfs"
+            "gnupg"
+            "iperf3"
+            "jq"
+            "knot-dnsutils"
+            "landscape-common"
+            "lsb-release"
+            "mailutils"
+            "mercurial"
+            "mtr-tiny"
+            "nano"
+            "neofetch"
+            "net-tools"
+            "p7zip-full"
+            "rar"
+            "realmd"
+            "snapd"
+            "unrar"
+            "unzip"
+            "update-notifier-common"
+            "vim"
+            "wget"
+            "zip"
+            "zsh"
+        )
+    else
+        app_list=(
+            "apt-transport-https"
+            "ca-certificates"
+            "cockpit"
+            "cockpit-pcp"
+            "curl"
+            "dnsutils"
+            "git"
+            "git-flow"
+            "git-lfs"
+            "gnupg"
+            "iperf3"
+            "jq"
+            "knot-dnsutils"
+            "landscape-common"
+            "lsb-release"
+            "mailutils"
+            "mercurial"
+            "mtr-tiny"
+            "nano"
+            "neofetch"
+            "net-tools"
+            "netplan.io"
+            "p7zip-full"
+            "postfix"
+            "rar"
+            "realmd"
+            "snapd"
+            "systemd"
+            "tuned"
+            "udisks2"
+            "udisks2-bcache"
+            "udisks2-btrfs"
+            "udisks2-lvm2"
+            "udisks2-zram"
+            "ufw"
+            "unrar"
+            "unzip"
+            "update-notifier-common"
+            "vim"
+            "wget"
+            "zip"
+            "zsh"
+        )
+    fi
     apt update && for app_list_task in "${!app_list[@]}"; do
         apt-cache show ${app_list[$app_list_task]} && if [ "$?" -eq "0" ]; then
             apt install -qy ${app_list[$app_list_task]}
@@ -461,8 +496,8 @@ function UpgradePackages() {
 export DEBIAN_FRONTEND="noninteractive"
 # Call GetSystemInformation
 GetSystemInformation
-# Set read_only="false"; Call SetReadonlyFlag
-read_only="false" && SetReadonlyFlag
+# Set read_only="FALSE"; Call SetReadonlyFlag
+read_only="FALSE" && SetReadonlyFlag
 # Set transport_protocol="http"; Call SetRepositoryMirror
 transport_protocol="http" && SetRepositoryMirror
 # Call InstallDependencyPackages
@@ -477,5 +512,5 @@ InstallCustomPackages
 ConfigurePackages
 # Call ConfigureSystem
 ConfigureSystem
-# Set read_only="true"; Call SetReadonlyFlag
-read_only="true" && SetReadonlyFlag
+# Set read_only="TRUE"; Call SetReadonlyFlag
+read_only="TRUE" && SetReadonlyFlag
