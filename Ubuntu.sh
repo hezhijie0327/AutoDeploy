@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 1.6.8
+# Current Version: 1.6.9
 
 ## How to get and use?
 # curl "https://source.zhijie.online/AutoDeploy/main/Ubuntu.sh" | sudo bash
@@ -90,7 +90,7 @@ function GetSystemInformation() {
                 done && cat "/tmp/policy-rc.d.tmp" > "/usr/sbin/policy-rc.d" && chmod +x "/usr/sbin/policy-rc.d" && dpkg-divert --local --rename --add "/sbin/initctl" && rm -rf "/sbin/initctl" && ln -s "/bin/true" "/sbin/initctl" && rm -rf "/tmp/policy-rc.d.tmp"
             }
             Fix_Ubuntu_Advantage_Tools_Upgrade_Error
-            Fix_Unsupported_Udev
+            Fix_Unsupport_Udev_Issue
         fi
     }
     GenerateHostname
