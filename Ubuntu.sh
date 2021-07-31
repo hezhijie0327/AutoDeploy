@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 1.7.6
+# Current Version: 1.7.7
 
 ## How to get and use?
 # curl "https://source.zhijie.online/AutoDeploy/main/Ubuntu.sh" | sudo bash
@@ -269,7 +269,7 @@ function ConfigurePackages() {
     }
     function ConfigureSshd() {
         if [ -f "/etc/ssh/sshd_config" ]; then
-            cat "/etc/ssh/sshd_config" | sed "s/\#PermitRootLogin\ prohibit\-password/PermitRootLogin\ yes/g;s/\#Port\ 22/Port\ 9022/g" > "/tmp/sshd_config.tmp" && cat "/tmp/sshd_config.tmp" > "/etc/ssh/sshd_config" && rm -rf "/tmp/sshd_config.tmp"
+            cat "/etc/ssh/sshd_config" | sed "s/\#PasswordAuthentication\ yes/PasswordAuthentication\ yes/g;s/\#PermitRootLogin\ prohibit\-password/PermitRootLogin\ yes/g;s/\#Port\ 22/Port\ 9022/g" > "/tmp/sshd_config.tmp" && cat "/tmp/sshd_config.tmp" > "/etc/ssh/sshd_config" && rm -rf "/tmp/sshd_config.tmp"
         fi
     }
     function ConfigureSysctl() {
@@ -450,6 +450,8 @@ function InstallDependencyPackages() {
         "neofetch"
         "net-tools"
         "netplan.io"
+        "openssh-client"
+        "openssh-server"
         "p7zip-full"
         "postfix"
         "rar"
