@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 1.7.5
+# Current Version: 1.7.6
 
 ## How to get and use?
 # curl "https://source.zhijie.online/AutoDeploy/main/Ubuntu.sh" | sudo bash
@@ -174,7 +174,7 @@ function ConfigurePackages() {
     function ConfigureCrontab() {
         crontab_list=(
             "0 0 * * * sudo rm -rf /home/*/.*_history /root/.*_history"
-            "0 0 * * 7 export DEBIAN_FRONTEND=\"noninteractive\" && export PATH=\"/snap/bin:/usr/local/bin:/usr/local/sbin:/usr/bin:/usr/sbin:/bin:/sbin\" && sudo apt update && sudo apt dist-upgrade -qy && sudo apt upgrade -qy && sudo apt autoremove -qy && sudo snap refresh"
+            "0 0 * * 7 export DEBIAN_FRONTEND=\"noninteractive\" && export PATH=\"/snap/bin:/usr/local/bin:/usr/local/sbin:/usr/bin:/usr/sbin:/bin:/sbin\" && sudo apt update && sudo apt dist-upgrade -qy && sudo apt upgrade -qy && sudo apt autoremove -qy && sudo apt clean && sudo snap refresh"
             "0 4 * * 7 sudo reboot"
         )
         which "crontab" > "/dev/null" 2>&1
@@ -455,6 +455,7 @@ function InstallDependencyPackages() {
         "rar"
         "realmd"
         "snapd"
+        "sudo"
         "systemd"
         "tuned"
         "udisks2"
@@ -481,6 +482,10 @@ function InstallDependencyPackages() {
 function UpgradePackages() {
     apt update && apt dist-upgrade -qy && apt upgrade -qy && apt autoremove -qy && snap refresh
 }
+# Cleanup Temp Files
+function CleanupTempFiles() {
+    apt clean && rm -rf /tmp/*
+}
 
 ## Process
 # Set DEBIAN_FRONTEND to "noninteractive"
@@ -505,3 +510,5 @@ ConfigurePackages
 ConfigureSystem
 # Set read_only="TRUE"; Call SetReadonlyFlag
 read_only="TRUE" && SetReadonlyFlag
+# Call CleanupTempFiles
+CleanupTempFiles
