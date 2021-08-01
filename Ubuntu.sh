@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 1.7.9
+# Current Version: 1.8.0
 
 ## How to get and use?
 # curl "https://source.zhijie.online/AutoDeploy/main/Ubuntu.sh" | sudo bash
@@ -30,6 +30,9 @@ function CallServiceController(){
 function GetSystemInformation() {
     function GenerateHostname() {
         NEW_HOSTNAME="Ubuntu-$(date '+%Y%m%d%H%M%S')"
+    }
+    function GeneratePassword() {
+        NEW_PASSWORD="Ubuntu$(date '+%Y%m')\!"
     }
     function GetLSBCodename() {
         LSBCodename_LTS="focal"
@@ -118,6 +121,7 @@ function GetSystemInformation() {
         fi
     }
     GenerateHostname
+    GeneratePassword
     GetLSBCodename
     IsArmArchitecture
     IsWSLKernelRelease
@@ -378,6 +382,9 @@ function ConfigureSystem() {
     function ConfigureLocales() {
         apt purge -qy locales && apt update && apt install -qy locales && locale-gen "en_US.UTF-8" && update-locale "en_US.UTF-8"
     }
+    function ConfigureRootPassword() {
+        echo root:${NEW_PASSWORD} | chpasswd
+    }
     function ConfigureTimeZone() {
         if [ -f "/etc/localtime" ]; then
             rm -rf "/etc/localtime"
@@ -386,6 +393,7 @@ function ConfigureSystem() {
     ConfigureDefaultShell
     ConfigureHostfile
     ConfigureLocales
+    ConfigureRootPassword
     ConfigureTimeZone
 }
 # Install Custom Packages
