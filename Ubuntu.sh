@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 1.7.7
+# Current Version: 1.7.8
 
 ## How to get and use?
 # curl "https://source.zhijie.online/AutoDeploy/main/Ubuntu.sh" | sudo bash
@@ -187,6 +187,9 @@ function ConfigurePackages() {
     function ConfigureDockerEngine() {
         docker_list=(
             "{"
+            "  \"experimental\": true,"
+            "  \"fixed-cidr-v6\": \"2001:db8:1::/64\","
+            "  \"ipv6\": true,"
             "  \"registry-mirrors\": ["
             "    \"https://docker.mirrors.ustc.edu.cn\""
             "  ]"
