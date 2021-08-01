@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 1.5.5
+# Current Version: 1.5.6
 
 ## How to get and use?
 # /bin/bash -c "$(curl -fsSL 'https://source.zhijie.online/AutoDeploy/main/macOS.sh')"
@@ -239,6 +239,10 @@ function InstallDependencyPackages() {
         done && brew update && for app_list_task in "${!app_list[@]}"; do
             brew info --formula ${app_list[$app_list_task]} && if [ "$?" -eq "0" ]; then
                 brew install --formula ${app_list[$app_list_task]}
+            else
+                brew info --cask ${app_list[$app_list_task]} && if [ "$?" -eq "0" ]; then
+                    brew install --cask ${app_list[$app_list_task]}
+                fi
             fi
         done && brew cleanup
     fi
