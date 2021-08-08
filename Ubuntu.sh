@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 1.8.4
+# Current Version: 1.8.5
 
 ## How to get and use?
 # curl "https://source.zhijie.online/AutoDeploy/main/Ubuntu.sh" | sudo bash
@@ -118,7 +118,6 @@ function GetSystemInformation() {
         fi
     }
     GenerateHostname
-    GeneratePassword
     GetLSBCodename
     IsArmArchitecture
     IsWSLKernelRelease
