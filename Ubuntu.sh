@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 1.8.6
+# Current Version: 1.8.7
 
 ## How to get and use?
 # curl "https://source.zhijie.online/AutoDeploy/main/Ubuntu.sh" | sudo bash
@@ -173,7 +173,7 @@ function SetReadonlyFlag() {
 function ConfigurePackages() {
     function ConfigureCrontab() {
         crontab_list=(
-            "0 0 * * * sudo rm -rf /root/.*_history"
+            "@reboot sudo rm -rf /root/.*_history"
         )
         which "crontab" > "/dev/null" 2>&1
         if [ "$?" -eq "0" ]; then
