@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 1.5.6
+# Current Version: 1.5.7
 
 ## How to get and use?
 # /bin/bash -c "$(curl -fsSL 'https://source.zhijie.online/AutoDeploy/main/macOS.sh')"
@@ -29,14 +29,13 @@ function GetSystemInformation() {
 function ConfigurePackages() {
     function ConfigureCrontab() {
         crontab_list=(
-            "0 0 * * * rm -rf /Users/*/.*_history"
-            "0 0 * * 7 export HOMEBREW_BOTTLE_DOMAIN=\"https://mirrors.ustc.edu.cn/homebrew-bottles/bottles\" && export PATH=\"/opt/homebrew/bin:/opt/homebrew/sbin:/Library/Apple/usr/bin:/usr/local/bin:/usr/local/sbin:/usr/bin:/usr/sbin:/bin:/sbin\" && brew update && brew upgrade --cask --greedy && brew upgrade --formula && brew cleanup && mas upgrade && softwareupdate -ai"
+            "0 0 * * * rm -rf /Users/${CurrentUsername}/.*_history"
         )
         which "crontab" > "/dev/null" 2>&1
         if [ "$?" -eq "0" ]; then
-            rm -rf "/tmp/crontab.tmp" && for crontab_list_task in "${!crontab_list[@]}"; do
-                echo "${crontab_list[$crontab_list_task]}" >> "/tmp/crontab.tmp"
-            done && sudo crontab -u "${CurrentUsername}" "/tmp/crontab.tmp" && sudo crontab -lu "${CurrentUsername}" && rm -rf "/tmp/crontab.tmp"
+            rm -rf "/tmp/crontab.autodeploy" && for crontab_list_task in "${!crontab_list[@]}"; do
+                echo "${crontab_list[$crontab_list_task]}" >> "/tmp/crontab.autodeploy"
+            done && sudo crontab -u "${CurrentUsername}" "/tmp/crontab.autodeploy" && sudo crontab -lu "${CurrentUsername}" && rm -rf "/tmp/crontab.autodeploy"
         fi
     }
     function ConfigureZsh() {
@@ -74,9 +73,9 @@ function ConfigurePackages() {
         )
         which "zsh" > "/dev/null" 2>&1
         if [ "$?" -eq "0" ] && [ -d "/Users/${CurrentUsername}/.oh-my-zsh" ]; then
-            rm -rf "/tmp/omz.tmp" && for omz_list_task in "${!omz_list[@]}"; do
-                echo "${omz_list[$omz_list_task]}" >> "/tmp/omz.tmp"
-            done && cat "/tmp/omz.tmp" > "/Users/${CurrentUsername}/.zshrc" && rm -rf "/tmp/omz.tmp"
+            rm -rf "/tmp/omz.autodeploy" && for omz_list_task in "${!omz_list[@]}"; do
+                echo "${omz_list[$omz_list_task]}" >> "/tmp/omz.autodeploy"
+            done && cat "/tmp/omz.autodeploy" > "/Users/${CurrentUsername}/.zshrc" && rm -rf "/tmp/omz.autodeploy"
         fi
     }
     ConfigureCrontab
@@ -95,9 +94,9 @@ function ConfigureSystem() {
             "ff02::2 ip6-allrouters"
             "ff02::3 ip6-allhosts"
         )
-        rm -rf "/tmp/hosts.tmp" && for host_list_task in "${!host_list[@]}"; do
-            echo "${host_list[$host_list_task]}" >> "/tmp/hosts.tmp"
-        done && sudo chmod -R 666 "/etc/hosts" && sudo cat "/tmp/hosts.tmp" > "/etc/hosts" && sudo chmod -R 644 "/etc/hosts" && rm -rf "/tmp/hosts.tmp"
+        rm -rf "/tmp/hosts.autodeploy" && for host_list_task in "${!host_list[@]}"; do
+            echo "${host_list[$host_list_task]}" >> "/tmp/hosts.autodeploy"
+        done && sudo chmod -R 666 "/etc/hosts" && sudo cat "/tmp/hosts.autodeploy" > "/etc/hosts" && sudo chmod -R 644 "/etc/hosts" && rm -rf "/tmp/hosts.autodeploy"
     }
     ConfigureHostfile
 }
@@ -244,12 +243,16 @@ function InstallDependencyPackages() {
                     brew install --cask ${app_list[$app_list_task]}
                 fi
             fi
-        done && brew cleanup
+        done
     fi
 }
 # Upgrade Packages
 function UpgradePackages() {
-    brew update && brew upgrade --cask --greedy && brew upgrade --formula && brew cleanup && mas upgrade && softwareupdate -ai
+    brew update && brew upgrade --cask --greedy && brew upgrade --formula && mas upgrade && softwareupdate -ai
+}
+# Cleanup Temp Files
+function CleanupTempFiles() {
+    brew cleanup && rm -rf /Users/${CurrentUsername}/.*_history /tmp/*.autodeploy
 }
 
 ## Process
@@ -265,3 +268,5 @@ InstallCustomPackages
 ConfigurePackages
 # Call ConfigureSystem
 ConfigureSystem
+# Call CleanupTempFiles
+CleanupTempFiles
