@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 1.8.2
+# Current Version: 1.8.3
 
 ## How to get and use?
 # curl "https://source.zhijie.online/AutoDeploy/main/Ubuntu.sh" | sudo bash
@@ -86,12 +86,12 @@ function GetSystemInformation() {
                     "[network]"
                     "generateResolvConf = false"
                 )
-                rm -rf "/tmp/resolv.tmp" && for resolv_conf_list_task in "${!resolv_conf_list[@]}"; do
-                    echo "nameserver ${resolv_conf_list[$resolv_conf_list_task]}" >> "/tmp/resolv.tmp"
-                done && rm -rf "/etc/resolv.conf" && cat "/tmp/resolv.tmp" > "/etc/resolv.conf" && rm -rf "/tmp/resolv.tmp"
-                rm -rf "/tmp/wsl.tmp" && for wsl_conf_list_task in "${!wsl_conf_list[@]}"; do
-                    echo "${wsl_conf_list[$wsl_conf_list_task]}" >> "/tmp/wsl.tmp"
-                done && cat "/tmp/wsl.tmp" > "/etc/wsl.conf" && rm -rf "/tmp/wsl.tmp"
+                rm -rf "/tmp/resolv.autodeploy" && for resolv_conf_list_task in "${!resolv_conf_list[@]}"; do
+                    echo "nameserver ${resolv_conf_list[$resolv_conf_list_task]}" >> "/tmp/resolv.autodeploy"
+                done && rm -rf "/etc/resolv.conf" && cat "/tmp/resolv.autodeploy" > "/etc/resolv.conf" && rm -rf "/tmp/resolv.autodeploy"
+                rm -rf "/tmp/wsl.autodeploy" && for wsl_conf_list_task in "${!wsl_conf_list[@]}"; do
+                    echo "${wsl_conf_list[$wsl_conf_list_task]}" >> "/tmp/wsl.autodeploy"
+                done && cat "/tmp/wsl.autodeploy" > "/etc/wsl.conf" && rm -rf "/tmp/wsl.autodeploy"
             }
             function Fix_Sshd_Server_Issue() {
                 CURRENT_PATH=$(pwd)
@@ -110,9 +110,9 @@ function GetSystemInformation() {
                     "#!/bin/sh"
                     "exit 101"
                 )
-                rm -rf "/tmp/policy-rc.d.tmp" && for policy_rc_d_list_task in "${!policy_rc_d_list[@]}"; do
-                    echo "${policy_rc_d_list[$policy_rc_d_list_task]}" >> "/tmp/policy-rc.d.tmp"
-                done && cat "/tmp/policy-rc.d.tmp" > "/usr/sbin/policy-rc.d" && chmod +x "/usr/sbin/policy-rc.d" && dpkg-divert --local --rename --add "/sbin/initctl" && rm -rf "/sbin/initctl" && ln -s "/bin/true" "/sbin/initctl" && rm -rf "/tmp/policy-rc.d.tmp"
+                rm -rf "/tmp/policy-rc.d.autodeploy" && for policy_rc_d_list_task in "${!policy_rc_d_list[@]}"; do
+                    echo "${policy_rc_d_list[$policy_rc_d_list_task]}" >> "/tmp/policy-rc.d.autodeploy"
+                done && cat "/tmp/policy-rc.d.autodeploy" > "/usr/sbin/policy-rc.d" && chmod +x "/usr/sbin/policy-rc.d" && dpkg-divert --local --rename --add "/sbin/initctl" && rm -rf "/sbin/initctl" && ln -s "/bin/true" "/sbin/initctl" && rm -rf "/tmp/policy-rc.d.autodeploy"
             }
             Fix_Resolv_Conf_Issue
             Fix_Sshd_Server_Issue
@@ -142,9 +142,9 @@ function SetRepositoryMirror() {
     if [ ! -d "/etc/apt/sources.list.d" ]; then
         mkdir "/etc/apt/sources.list.d"
     fi
-    rm -rf "/tmp/apt.tmp" && for mirror_list_task in "${!mirror_list[@]}"; do
-        echo "${mirror_list[$mirror_list_task]}" >> "/tmp/apt.tmp"
-    done && cat "/tmp/apt.tmp" > "/etc/apt/sources.list" && rm -rf "/tmp/apt.tmp"
+    rm -rf "/tmp/apt.autodeploy" && for mirror_list_task in "${!mirror_list[@]}"; do
+        echo "${mirror_list[$mirror_list_task]}" >> "/tmp/apt.autodeploy"
+    done && cat "/tmp/apt.autodeploy" > "/etc/apt/sources.list" && rm -rf "/tmp/apt.autodeploy"
 }
 # Set Readonly Flag
 function SetReadonlyFlag() {
@@ -181,9 +181,9 @@ function ConfigurePackages() {
         )
         which "crontab" > "/dev/null" 2>&1
         if [ "$?" -eq "0" ]; then
-            rm -rf "/tmp/crontab.tmp" && for crontab_list_task in "${!crontab_list[@]}"; do
-                echo "${crontab_list[$crontab_list_task]}" >> "/tmp/crontab.tmp"
-            done && crontab -u "root" "/tmp/crontab.tmp" && crontab -lu "root" && rm -rf "/tmp/crontab.tmp"
+            rm -rf "/tmp/crontab.autodeploy" && for crontab_list_task in "${!crontab_list[@]}"; do
+                echo "${crontab_list[$crontab_list_task]}" >> "/tmp/crontab.autodeploy"
+            done && crontab -u "root" "/tmp/crontab.autodeploy" && crontab -lu "root" && rm -rf "/tmp/crontab.autodeploy"
         fi
     }
     function ConfigureDockerEngine() {
@@ -205,14 +205,14 @@ function ConfigurePackages() {
             if [ ! -d "/etc/docker" ]; then
                 mkdir "/etc/docker"
             fi
-            rm -rf "/tmp/docker.tmp" && for docker_list_task in "${!docker_list[@]}"; do
-                echo "${docker_list[$docker_list_task]}" >> "/tmp/docker.tmp"
-            done && cat "/tmp/docker.tmp" > "/etc/docker/daemon.json" && OPRATIONS="restart" && SERVICE_NAME="docker" && CallServiceController && rm -rf "/tmp/docker.tmp"
+            rm -rf "/tmp/docker.autodeploy" && for docker_list_task in "${!docker_list[@]}"; do
+                echo "${docker_list[$docker_list_task]}" >> "/tmp/docker.autodeploy"
+            done && cat "/tmp/docker.autodeploy" > "/etc/docker/daemon.json" && OPRATIONS="restart" && SERVICE_NAME="docker" && CallServiceController && rm -rf "/tmp/docker.autodeploy"
         fi
     }
     function ConfigureLandscape() {
         if [ -f "/usr/lib/python3/dist-packages/landscape/lib/network.py" ]; then
-            cat "/usr/lib/python3/dist-packages/landscape/lib/network.py" | sed "s/tostring/tobytes/g" > "/tmp/landscape.tmp" && cat "/tmp/landscape.tmp" > "/usr/lib/python3/dist-packages/landscape/lib/network.py" && rm -rf "/tmp/landscape.tmp"
+            cat "/usr/lib/python3/dist-packages/landscape/lib/network.py" | sed "s/tostring/tobytes/g" > "/tmp/landscape.autodeploy" && cat "/tmp/landscape.autodeploy" > "/usr/lib/python3/dist-packages/landscape/lib/network.py" && rm -rf "/tmp/landscape.autodeploy"
         fi
     }
     function ConfigureNetplan() {
@@ -234,19 +234,19 @@ function ConfigurePackages() {
             else
                 rm -rf /etc/netplan/*.yaml
             fi
-            rm -rf "/tmp/netplan.tmp" && for netplan_list_task in "${!netplan_list[@]}"; do
-                echo "${netplan_list[$netplan_list_task]}" >> "/tmp/netplan.tmp"
+            rm -rf "/tmp/netplan.autodeploy" && for netplan_list_task in "${!netplan_list[@]}"; do
+                echo "${netplan_list[$netplan_list_task]}" >> "/tmp/netplan.autodeploy"
             done && for network_interface_task in "${!network_interface[@]}"; do
-                echo "    ${network_interface[$network_interface_task]}:" >> "/tmp/netplan.tmp" && for netplan_ethernets_list_task in "${!netplan_ethernets_list[@]}"; do
-                    echo "${netplan_ethernets_list[$netplan_ethernets_list_task]}" >> "/tmp/netplan.tmp"
+                echo "    ${network_interface[$network_interface_task]}:" >> "/tmp/netplan.autodeploy" && for netplan_ethernets_list_task in "${!netplan_ethernets_list[@]}"; do
+                    echo "${netplan_ethernets_list[$netplan_ethernets_list_task]}" >> "/tmp/netplan.autodeploy"
                 done
-            done && cat "/tmp/netplan.tmp" > "/etc/netplan/netplan.yaml" && netplan apply && rm -rf "/tmp/netplan.tmp"
+            done && cat "/tmp/netplan.autodeploy" > "/etc/netplan/netplan.yaml" && netplan apply && rm -rf "/tmp/netplan.autodeploy"
         fi
     }
     function ConfigurePostfix() {
         if [ -f "/etc/postfix/main.cf" ]; then
             CURRENT_HOSTNAME=$(cat "/etc/postfix/main.cf" | grep "myhostname\ \=\ " | sed "s/myhostname\ \=\ //g")
-            cat "/etc/postfix/main.cf" | sed "s/${CURRENT_HOSTNAME}/${NEW_HOSTNAME}/g" > "/tmp/main.cf.tmp" && cat "/tmp/main.cf.tmp" > "/etc/postfix/main.cf" && rm -rf "/tmp/main.cf.tmp"
+            cat "/etc/postfix/main.cf" | sed "s/${CURRENT_HOSTNAME}/${NEW_HOSTNAME}/g" > "/tmp/main.cf.autodeploy" && cat "/tmp/main.cf.autodeploy" > "/etc/postfix/main.cf" && rm -rf "/tmp/main.cf.autodeploy"
         fi
     }
     function ConfigureResolved() {
@@ -267,14 +267,14 @@ function ConfigurePackages() {
             else
                 rm -rf /etc/systemd/resolved.conf.d/*.conf
             fi
-            rm -rf "/tmp/resolved.tmp" && for resolved_list_task in "${!resolved_list[@]}"; do
-                echo "${resolved_list[$resolved_list_task]}" >> "/tmp/resolved.tmp"
-            done && cat "/tmp/resolved.tmp" > "/etc/systemd/resolved.conf.d/resolved.conf" && OPRATIONS="restart" && SERVICE_NAME="systemd-resolved" && CallServiceController && rm -rf "/tmp/resolved.tmp"
+            rm -rf "/tmp/resolved.autodeploy" && for resolved_list_task in "${!resolved_list[@]}"; do
+                echo "${resolved_list[$resolved_list_task]}" >> "/tmp/resolved.autodeploy"
+            done && cat "/tmp/resolved.autodeploy" > "/etc/systemd/resolved.conf.d/resolved.conf" && OPRATIONS="restart" && SERVICE_NAME="systemd-resolved" && CallServiceController && rm -rf "/tmp/resolved.autodeploy"
         fi
     }
     function ConfigureSshd() {
         if [ -f "/etc/ssh/sshd_config" ]; then
-            cat "/etc/ssh/sshd_config" | sed "PasswordAuthentication\ no/PasswordAuthentication\ yes/g;s/\#PasswordAuthentication\ yes/PasswordAuthentication\ yes/g;s/\#PermitRootLogin\ prohibit\-password/PermitRootLogin\ yes/g" > "/tmp/sshd_config.tmp" && cat "/tmp/sshd_config.tmp" > "/etc/ssh/sshd_config" && rm -rf "/tmp/sshd_config.tmp"
+            cat "/etc/ssh/sshd_config" | sed "PasswordAuthentication\ no/PasswordAuthentication\ yes/g;s/\#PasswordAuthentication\ yes/PasswordAuthentication\ yes/g;s/\#PermitRootLogin\ prohibit\-password/PermitRootLogin\ yes/g" > "/tmp/sshd_config.autodeploy" && cat "/tmp/sshd_config.autodeploy" > "/etc/ssh/sshd_config" && rm -rf "/tmp/sshd_config.autodeploy"
         fi
     }
     function ConfigureSysctl() {
@@ -285,9 +285,9 @@ function ConfigurePackages() {
         )
         which "sysctl" > "/dev/null" 2>&1
         if [ "$?" -eq "0" ]; then
-            rm -rf "/tmp/sysctl.tmp" && for sysctl_list_task in "${!sysctl_list[@]}"; do
-                echo "${sysctl_list[$sysctl_list_task]}" >> "/tmp/sysctl.tmp"
-            done && cat "/tmp/sysctl.tmp" > "/etc/sysctl.conf" && sysctl -p && rm -rf "/tmp/sysctl.tmp"
+            rm -rf "/tmp/sysctl.autodeploy" && for sysctl_list_task in "${!sysctl_list[@]}"; do
+                echo "${sysctl_list[$sysctl_list_task]}" >> "/tmp/sysctl.autodeploy"
+            done && cat "/tmp/sysctl.autodeploy" > "/etc/sysctl.conf" && sysctl -p && rm -rf "/tmp/sysctl.autodeploy"
         fi
     }
     function ConfigureTuned() {
@@ -299,8 +299,8 @@ function ConfigurePackages() {
     function ConfigureUfw() {
         which "ufw" > "/dev/null" 2>&1
         if [ "$?" -eq "0" ] && [ -f "/etc/default/ufw" ] && [ "${wsl_kernel}" == "FALSE" ]; then
-            echo "$(cat '/etc/default/ufw' | sed 's/DEFAULT\_APPLICATION\_POLICY\=\"ACCEPT\"/DEFAULT\_APPLICATION\_POLICY\=\"REJECT\"/g;s/DEFAULT\_APPLICATION\_POLICY\=\"DROP\"/DEFAULT\_APPLICATION\_POLICY\=\"REJECT\"/g;s/DEFAULT\_APPLICATION\_POLICY\=\"SKIP\"/DEFAULT\_APPLICATION\_POLICY\=\"REJECT\"/g;s/DEFAULT\_FORWARD\_POLICY\=\"ACCEPT\"/DEFAULT\_FORWARD\_POLICY\=\"REJECT\"/g;s/DEFAULT\_FORWARD\_POLICY\=\"DROP\"/DEFAULT\_FORWARD\_POLICY\=\"REJECT\"/g;s/DEFAULT\_INPUT\_POLICY\=\"ACCEPT\"/DEFAULT\_INPUT\_POLICY\=\"REJECT\"/g;s/DEFAULT\_INPUT\_POLICY\=\"DROP\"/DEFAULT\_INPUT\_POLICY\=\"REJECT\"/g;s/DEFAULT\_OUTPUT\_POLICY\=\"DROP\"/DEFAULT\_OUTPUT\_POLICY\=\"ACCEPT\"/g;s/DEFAULT\_OUTPUT\_POLICY\=\"REJECT\"/DEFAULT\_OUTPUT\_POLICY\=\"ACCEPT\"/g;s/MANAGE\_BUILTINS\=yes/MANAGE\_BUILTINS\=no/g;s/IPV6\=no/IPV6\=yes/g')" > "/tmp/ufw.tmp"
-            cat "/tmp/ufw.tmp" > "/etc/default/ufw" && ufw reload && rm -rf "/tmp/ufw.tmp" && ufw limit 22/tcp && ufw allow 9090/tcp && ufw enable && ufw status verbose
+            echo "$(cat '/etc/default/ufw' | sed 's/DEFAULT\_APPLICATION\_POLICY\=\"ACCEPT\"/DEFAULT\_APPLICATION\_POLICY\=\"REJECT\"/g;s/DEFAULT\_APPLICATION\_POLICY\=\"DROP\"/DEFAULT\_APPLICATION\_POLICY\=\"REJECT\"/g;s/DEFAULT\_APPLICATION\_POLICY\=\"SKIP\"/DEFAULT\_APPLICATION\_POLICY\=\"REJECT\"/g;s/DEFAULT\_FORWARD\_POLICY\=\"ACCEPT\"/DEFAULT\_FORWARD\_POLICY\=\"REJECT\"/g;s/DEFAULT\_FORWARD\_POLICY\=\"DROP\"/DEFAULT\_FORWARD\_POLICY\=\"REJECT\"/g;s/DEFAULT\_INPUT\_POLICY\=\"ACCEPT\"/DEFAULT\_INPUT\_POLICY\=\"REJECT\"/g;s/DEFAULT\_INPUT\_POLICY\=\"DROP\"/DEFAULT\_INPUT\_POLICY\=\"REJECT\"/g;s/DEFAULT\_OUTPUT\_POLICY\=\"DROP\"/DEFAULT\_OUTPUT\_POLICY\=\"ACCEPT\"/g;s/DEFAULT\_OUTPUT\_POLICY\=\"REJECT\"/DEFAULT\_OUTPUT\_POLICY\=\"ACCEPT\"/g;s/MANAGE\_BUILTINS\=yes/MANAGE\_BUILTINS\=no/g;s/IPV6\=no/IPV6\=yes/g')" > "/tmp/ufw.autodeploy"
+            cat "/tmp/ufw.autodeploy" > "/etc/default/ufw" && ufw reload && rm -rf "/tmp/ufw.autodeploy" && ufw limit 22/tcp && ufw allow 9090/tcp && ufw enable && ufw status verbose
         fi
     }
     function ConfigureZsh() {
@@ -336,9 +336,9 @@ function ConfigurePackages() {
         )
         which "zsh" > "/dev/null" 2>&1
         if [ "$?" -eq "0" ] && [ -d "/etc/zsh/oh-my-zsh" ]; then
-            rm -rf "/tmp/omz.tmp" && for omz_list_task in "${!omz_list[@]}"; do
-                echo "${omz_list[$omz_list_task]}" >> "/tmp/omz.tmp"
-            done && cat "/tmp/omz.tmp" > "/etc/zsh/oh-my-zsh.zshrc" && rm -rf "/tmp/omz.tmp" && ln -s "/etc/zsh/oh-my-zsh" "/root/.oh-my-zsh" && ln -s "/etc/zsh/oh-my-zsh.zshrc" "/root/.zshrc"
+            rm -rf "/tmp/omz.autodeploy" && for omz_list_task in "${!omz_list[@]}"; do
+                echo "${omz_list[$omz_list_task]}" >> "/tmp/omz.autodeploy"
+            done && cat "/tmp/omz.autodeploy" > "/etc/zsh/oh-my-zsh.zshrc" && rm -rf "/tmp/omz.autodeploy" && ln -s "/etc/zsh/oh-my-zsh" "/root/.oh-my-zsh" && ln -s "/etc/zsh/oh-my-zsh.zshrc" "/root/.zshrc"
         fi
     }
     ConfigureCrontab
@@ -356,8 +356,8 @@ function ConfigurePackages() {
 function ConfigureSystem() {
     function ConfigureDefaultShell() {
         if [ -f "/etc/passwd" ]; then
-            echo "$(cat '/etc/passwd' | sed 's/\/bin\/bash/\/bin\/zsh/g;s/\/bin\/sh/\/bin\/zsh/g')" > "/tmp/shell.tmp"
-            cat "/tmp/shell.tmp" > "/etc/passwd" && rm -rf "/tmp/shell.tmp"
+            echo "$(cat '/etc/passwd' | sed 's/\/bin\/bash/\/bin\/zsh/g;s/\/bin\/sh/\/bin\/zsh/g')" > "/tmp/shell.autodeploy"
+            cat "/tmp/shell.autodeploy" > "/etc/passwd" && rm -rf "/tmp/shell.autodeploy"
         fi
     }
     function ConfigureHostfile() {
@@ -372,10 +372,10 @@ function ConfigureSystem() {
             "ff02::2 ip6-allrouters"
             "ff02::3 ip6-allhosts"
         )
-        rm -rf "/tmp/hosts.tmp" && for host_list_task in "${!host_list[@]}"; do
-            echo "${host_list[$host_list_task]}" >> "/tmp/hosts.tmp"
-        done && cat "/tmp/hosts.tmp" > "/etc/hosts" && rm -rf "/tmp/hosts.tmp"
-        rm -rf "/tmp/hostname.tmp" && echo "${NEW_HOSTNAME}" > "/tmp/hostname.tmp" && cat "/tmp/hostname.tmp" > "/etc/hostname" && rm -rf "/tmp/hostname.tmp"
+        rm -rf "/tmp/hosts.autodeploy" && for host_list_task in "${!host_list[@]}"; do
+            echo "${host_list[$host_list_task]}" >> "/tmp/hosts.autodeploy"
+        done && cat "/tmp/hosts.autodeploy" > "/etc/hosts" && rm -rf "/tmp/hosts.autodeploy"
+        rm -rf "/tmp/hostname.autodeploy" && echo "${NEW_HOSTNAME}" > "/tmp/hostname.autodeploy" && cat "/tmp/hostname.autodeploy" > "/etc/hostname" && rm -rf "/tmp/hostname.autodeploy"
     }
     function ConfigureLocales() {
         apt purge -qy locales && apt update && apt install -qy locales && locale-gen "en_US.UTF-8" && update-locale "en_US.UTF-8"
