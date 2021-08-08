@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 1.8.7
+# Current Version: 1.8.8
 
 ## How to get and use?
 # curl "https://source.zhijie.online/AutoDeploy/main/Ubuntu.sh" | sudo bash
@@ -72,6 +72,16 @@ function GetSystemInformation() {
             wsl_kernel="FALSE"
         else
             wsl_kernel="TRUE"
+            function Create_Startup_Script() {
+                startup_list=(
+                    "#!/bin/bash"
+                    "service cron start > \"/dev/null\" 2>&1"
+                    "service ssh start > \"/dev/null\" 2>&1"
+                )
+                rm -rf "/tmp/startup.autodeploy" && for startup_list_task in "${!startup_list[@]}"; do
+                    echo "${startup_list[$startup_list_task]}" >> "/tmp/startup.autodeploy"
+                done && cat "/tmp/startup.autodeploy" > "/opt/startup.sh" && rm -rf "/tmp/startup.autodeploy"
+            }
             function Fix_Resolv_Conf_Issue() {
                 resolv_conf_list=(
                     "223.5.5.5"
@@ -111,6 +121,7 @@ function GetSystemInformation() {
                     echo "${policy_rc_d_list[$policy_rc_d_list_task]}" >> "/tmp/policy-rc.d.autodeploy"
                 done && cat "/tmp/policy-rc.d.autodeploy" > "/usr/sbin/policy-rc.d" && chmod +x "/usr/sbin/policy-rc.d" && dpkg-divert --local --rename --add "/sbin/initctl" && rm -rf "/sbin/initctl" && ln -s "/bin/true" "/sbin/initctl" && rm -rf "/tmp/policy-rc.d.autodeploy"
             }
+            Create_Startup_Script
             Fix_Resolv_Conf_Issue
             Fix_Sshd_Server_Issue
             Fix_Ubuntu_Advantage_Tools_Upgrade_Error
