@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 1.8.8
+# Current Version: 1.8.9
 
 ## How to get and use?
 # curl "https://source.zhijie.online/AutoDeploy/main/Ubuntu.sh" | sudo bash
@@ -74,7 +74,7 @@ function GetSystemInformation() {
             wsl_kernel="TRUE"
             function Create_Startup_Script() {
                 startup_list=(
-                    "#!/bin/bash"
+                    '#!/bin/bash'
                     "service cron start > \"/dev/null\" 2>&1"
                     "service ssh start > \"/dev/null\" 2>&1"
                 )
