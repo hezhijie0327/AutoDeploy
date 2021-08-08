@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 1.8.1
+# Current Version: 1.8.2
 
 ## How to get and use?
 # curl "https://source.zhijie.online/AutoDeploy/main/Ubuntu.sh" | sudo bash
@@ -61,10 +61,10 @@ function GetSystemInformation() {
     function IsArmArchitecture() {
         if [ "$(uname -m)" == "aarch64" ]; then
             mirror_arch="arm64"
-            mirror_path="-ports"
+            mirror_path="ubuntu-ports"
         elif [ "$(uname -m)" == "x86_64" ]; then
             mirror_arch="amd64"
-            mirror_path=""
+            mirror_path="ubuntu"
         else
             echo "Unsupported architecture."
             exit 1
@@ -129,15 +129,15 @@ function GetSystemInformation() {
 # Set Repository Mirror
 function SetRepositoryMirror() {
     mirror_list=(
-        "deb ${transport_protocol}://mirrors.ustc.edu.cn/ubuntu${mirror_path} ${LSBCodename} main restricted universe multiverse"
-        "deb ${transport_protocol}://mirrors.ustc.edu.cn/ubuntu${mirror_path} ${LSBCodename}-backports main restricted universe multiverse"
-        "deb ${transport_protocol}://mirrors.ustc.edu.cn/ubuntu${mirror_path} ${LSBCodename}-proposed main restricted universe multiverse"
-        "deb ${transport_protocol}://mirrors.ustc.edu.cn/ubuntu${mirror_path} ${LSBCodename}-security main restricted universe multiverse"
-        "deb ${transport_protocol}://mirrors.ustc.edu.cn/ubuntu${mirror_path} ${LSBCodename}-updates main restricted universe multiverse"
-        "deb-src ${transport_protocol}://mirrors.ustc.edu.cn/ubuntu${mirror_path} ${LSBCodename}-backports main restricted universe multiverse"
-        "deb-src ${transport_protocol}://mirrors.ustc.edu.cn/ubuntu${mirror_path} ${LSBCodename}-proposed main restricted universe multiverse"
-        "deb-src ${transport_protocol}://mirrors.ustc.edu.cn/ubuntu${mirror_path} ${LSBCodename}-security main restricted universe multiverse"
-        "deb-src ${transport_protocol}://mirrors.ustc.edu.cn/ubuntu${mirror_path} ${LSBCodename}-updates main restricted universe multiverse"
+        "deb ${transport_protocol}://mirrors.ustc.edu.cn/${mirror_path} ${LSBCodename} main restricted universe multiverse"
+        "deb ${transport_protocol}://mirrors.ustc.edu.cn/${mirror_path} ${LSBCodename}-backports main restricted universe multiverse"
+        "deb ${transport_protocol}://mirrors.ustc.edu.cn/${mirror_path} ${LSBCodename}-proposed main restricted universe multiverse"
+        "deb ${transport_protocol}://mirrors.ustc.edu.cn/${mirror_path} ${LSBCodename}-security main restricted universe multiverse"
+        "deb ${transport_protocol}://mirrors.ustc.edu.cn/${mirror_path} ${LSBCodename}-updates main restricted universe multiverse"
+        "deb-src ${transport_protocol}://mirrors.ustc.edu.cn/${mirror_path} ${LSBCodename}-backports main restricted universe multiverse"
+        "deb-src ${transport_protocol}://mirrors.ustc.edu.cn/${mirror_path} ${LSBCodename}-proposed main restricted universe multiverse"
+        "deb-src ${transport_protocol}://mirrors.ustc.edu.cn/${mirror_path} ${LSBCodename}-security main restricted universe multiverse"
+        "deb-src ${transport_protocol}://mirrors.ustc.edu.cn/${mirror_path} ${LSBCodename}-updates main restricted universe multiverse"
     )
     if [ ! -d "/etc/apt/sources.list.d" ]; then
         mkdir "/etc/apt/sources.list.d"
@@ -177,9 +177,7 @@ function SetReadonlyFlag() {
 function ConfigurePackages() {
     function ConfigureCrontab() {
         crontab_list=(
-            "0 0 * * * sudo rm -rf /home/*/.*_history /root/.*_history"
-            "0 0 * * 7 export DEBIAN_FRONTEND=\"noninteractive\" && export PATH=\"/snap/bin:/usr/local/bin:/usr/local/sbin:/usr/bin:/usr/sbin:/bin:/sbin\" && sudo apt update && sudo apt dist-upgrade -qy && sudo apt upgrade -qy && sudo apt autoremove -qy && sudo apt clean && sudo snap refresh"
-            "0 4 * * 7 sudo reboot"
+            "0 0 * * * sudo rm -rf /root/.*_history"
         )
         which "crontab" > "/dev/null" 2>&1
         if [ "$?" -eq "0" ]; then
@@ -310,7 +308,7 @@ function ConfigurePackages() {
             "export DEBIAN_FRONTEND=\"noninteractive\""
             "export EDITOR=\"nano\""
             "export GPG_TTY=\$\(tty\)"
-            "export PATH=\"/snap/bin:/usr/local/bin:/usr/local/sbin:/usr/bin:/usr/sbin:/bin:/sbin\""
+            "export PATH=\"/usr/local/bin:/usr/local/sbin:/usr/bin:/usr/sbin:/bin:/sbin\""
             "export ZSH=\"\$HOME/.oh-my-zsh\""
             "plugins=(zsh-autosuggestions zsh-completions zsh-history-substring-search zsh-syntax-highlighting)"
             "ZSH_CACHE_DIR=\"\$ZSH/cache\""
@@ -467,7 +465,6 @@ function InstallDependencyPackages() {
         "postfix"
         "rar"
         "realmd"
-        "snapd"
         "sudo"
         "systemd"
         "tuned"
@@ -489,15 +486,15 @@ function InstallDependencyPackages() {
         apt-cache show ${app_list[$app_list_task]} && if [ "$?" -eq "0" ]; then
             apt install -qy ${app_list[$app_list_task]}
         fi
-    done && snap install core
+    done
 }
 # Upgrade Packages
 function UpgradePackages() {
-    apt update && apt dist-upgrade -qy && apt upgrade -qy && apt autoremove -qy && snap refresh
+    apt update && apt dist-upgrade -qy && apt upgrade -qy && apt autoremove -qy
 }
 # Cleanup Temp Files
 function CleanupTempFiles() {
-    apt clean && rm -rf /tmp/*
+    apt clean && rm -rf /root/.*_history /tmp/*
 }
 
 ## Process
