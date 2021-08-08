@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 1.8.3
+# Current Version: 1.8.4
 
 ## How to get and use?
 # curl "https://source.zhijie.online/AutoDeploy/main/Ubuntu.sh" | sudo bash
@@ -30,9 +30,6 @@ function CallServiceController(){
 function GetSystemInformation() {
     function GenerateHostname() {
         NEW_HOSTNAME="Ubuntu-$(date '+%Y%m%d%H%M%S')"
-    }
-    function GeneratePassword() {
-        NEW_PASSWORD="Ubuntu$(date '+%Y%m')\!"
     }
     function GetLSBCodename() {
         LSBCodename_LTS="focal"
@@ -246,7 +243,7 @@ function ConfigurePackages() {
     function ConfigurePostfix() {
         if [ -f "/etc/postfix/main.cf" ]; then
             CURRENT_HOSTNAME=$(cat "/etc/postfix/main.cf" | grep "myhostname\ \=\ " | sed "s/myhostname\ \=\ //g")
-            cat "/etc/postfix/main.cf" | sed "s/${CURRENT_HOSTNAME}/${NEW_HOSTNAME}/g" > "/tmp/main.cf.autodeploy" && cat "/tmp/main.cf.autodeploy" > "/etc/postfix/main.cf" && rm -rf "/tmp/main.cf.autodeploy"
+            cat "/etc/postfix/main.cf" | sed "s/$CURRENT_HOSTNAME/$NEW_HOSTNAME/g" > "/tmp/main.cf.autodeploy" && cat "/tmp/main.cf.autodeploy" > "/etc/postfix/main.cf" && rm -rf "/tmp/main.cf.autodeploy"
         fi
     }
     function ConfigureResolved() {
@@ -380,9 +377,6 @@ function ConfigureSystem() {
     function ConfigureLocales() {
         apt purge -qy locales && apt update && apt install -qy locales && locale-gen "en_US.UTF-8" && update-locale "en_US.UTF-8"
     }
-    function ConfigureRootPassword() {
-        echo root:${NEW_PASSWORD} | chpasswd
-    }
     function ConfigureTimeZone() {
         if [ -f "/etc/localtime" ]; then
             rm -rf "/etc/localtime"
@@ -391,7 +385,6 @@ function ConfigureSystem() {
     ConfigureDefaultShell
     ConfigureHostfile
     ConfigureLocales
-    ConfigureRootPassword
     ConfigureTimeZone
 }
 # Install Custom Packages
