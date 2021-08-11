@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 1.5.9
+# Current Version: 1.6.0
 
 ## How to get and use?
 # /bin/bash -c "$(curl -fsSL 'https://source.zhijie.online/AutoDeploy/main/macOS.sh')"
@@ -281,6 +281,7 @@ function InstallDependencyPackages() {
             "mtr"
             "nano"
             "neofetch"
+            "openssh"
             "p7zip"
             "rar"
             "unzip"
