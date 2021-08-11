@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 1.5.8
+# Current Version: 1.5.9
 
 ## How to get and use?
 # /bin/bash -c "$(curl -fsSL 'https://source.zhijie.online/AutoDeploy/main/macOS.sh')"
@@ -39,44 +39,82 @@ function ConfigurePackages() {
         fi
     }
     function ConfigureZsh() {
-        omz_list=(
-            "export EDITOR=\"nano\""
-            "export GPG_TTY=\$\(tty\)"
-            "export HOMEBREW_BOTTLE_DOMAIN=\"https://mirrors.ustc.edu.cn/homebrew-bottles/bottles\""
-            "export HOMEBREW_GITHUB_API_TOKEN=\"your_token_here\""
-            "export PATH=\"/opt/homebrew/bin:/opt/homebrew/sbin:/Library/Apple/usr/bin:/usr/local/bin:/usr/local/sbin:/usr/bin:/usr/sbin:/bin:/sbin\""
-            "export ZSH=\"\$HOME/.oh-my-zsh\""
-            "plugins=(zsh-autosuggestions zsh-completions zsh-history-substring-search zsh-syntax-highlighting)"
-            "ZSH_CACHE_DIR=\"\$ZSH/cache\""
-            "ZSH_CUSTOM=\"\$ZSH/custom\""
-            "ZSH_THEME=\"ys\""
-            "DISABLE_AUTO_UPDATE=\"false\""
-            "DISABLE_UPDATE_PROMPT=\"false\""
-            "UPDATE_ZSH_DAYS=\"30\""
-            "ZSH_COMPDUMP=\"\$ZSH_CACHE_DIR/.zcompdump\""
-            "ZSH_DISABLE_COMPFIX=\"false\""
-            "CASE_SENSITIVE=\"true\""
-            "COMPLETION_WAITING_DOTS=\"true\""
-            "DISABLE_AUTO_TITLE=\"false\""
-            "DISABLE_LS_COLORS=\"false\""
-            "DISABLE_MAGIC_FUNCTIONS=\"false\""
-            "DISABLE_UNTRACKED_FILES_DIRTY=\"false\""
-            "ENABLE_CORRECTION=\"true\""
-            "HIST_STAMPS=\"yyyy-mm-dd\""
-            "HYPHEN_INSENSITIVE=\"false\""
-            "ZSH_THEME_RANDOM_QUIET=\"true\""
-            "ZSH_AUTOSUGGEST_HIGHLIGHT_STYLE=\"bg=250,fg=238,bold,underline\""
-            "ZSH_AUTOSUGGEST_STRATEGY=(match_prev_cmd history completion)"
-            "ZSH_AUTOSUGGEST_USE_ASYNC=\"true\""
-            "source \"\$(brew --repository)/Library/Taps/homebrew/homebrew-command-not-found/handler.sh\""
-            "source \"\$ZSH/oh-my-zsh.sh\""
-        )
-        which "zsh" > "/dev/null" 2>&1
-        if [ "$?" -eq "0" ] && [ -d "/Users/${CurrentUsername}/.oh-my-zsh" ]; then
-            rm -rf "/tmp/omz.autodeploy" && for omz_list_task in "${!omz_list[@]}"; do
-                echo "${omz_list[$omz_list_task]}" >> "/tmp/omz.autodeploy"
-            done && cat "/tmp/omz.autodeploy" > "/Users/${CurrentUsername}/.zshrc" && rm -rf "/tmp/omz.autodeploy"
-        fi
+        function GenerateCommandPath() {
+            default_path_list=(
+                "/bin"
+                "/sbin"
+                "/usr/bin"
+                "/usr/sbin"
+                "/usr/local/bin"
+                "/usr/local/sbin"
+                "/opt/homebrew/bin"
+                "/opt/homebrew/sbin"
+            )
+            for default_path_list_task in "${!default_path_list[@]}"; do
+                DEFAULT_PATH="${default_path_list[$default_path_list_task]}:${DEFAULT_PATH}"
+                DEFAULT_PATH=$(echo "${DEFAULT_PATH}" | sed "s/\:$//g")
+            done
+            custom_path_list=(
+                "coreutils/libexec/gnubin"
+                "curl/bin"
+                "findutils/libexec/gnubin"
+                "gawk/libexec/gnubin"
+                "gnu-indent/libexec/gnubin"
+                "gnu-sed/libexec/gnubin"
+                "gnu-tar/libexec/gnubin"
+                "gnu-time/libexec/gnubin"
+                "gnu-units/libexec/gnubin"
+                "gnu-which/libexec/gnubin"
+                "grep/libexec/gnubin"
+                "libtool/libexec/gnubin"
+            )
+            export PATH="${DEFAULT_PATH}" && BREW_PATH="$(brew --prefix)/opt" && for custom_path_list_task in "${!custom_path_list[@]}"; do
+                CUSTOM_PATH="${BREW_PATH}/${custom_path_list[$custom_path_list_task]}:${CUSTOM_PATH}"
+                CUSTOM_PATH=$(echo "${CUSTOM_PATH}" | sed "s/\:$//g")
+            done
+        }
+        function GenerateOMZProfile() {
+            omz_list=(
+                "export EDITOR=\"nano\""
+                "export GPG_TTY=\$\(tty\)"
+                "export HOMEBREW_BOTTLE_DOMAIN=\"https://mirrors.ustc.edu.cn/homebrew-bottles/bottles\""
+                "export HOMEBREW_GITHUB_API_TOKEN=\"your_token_here\""
+                "export PATH=\"${CUSTOM_PATH}:${DEFAULT_PATH}\""
+                "export ZSH=\"\$HOME/.oh-my-zsh\""
+                "plugins=(zsh-autosuggestions zsh-completions zsh-history-substring-search zsh-syntax-highlighting)"
+                "ZSH_CACHE_DIR=\"\$ZSH/cache\""
+                "ZSH_CUSTOM=\"\$ZSH/custom\""
+                "ZSH_THEME=\"ys\""
+                "DISABLE_AUTO_UPDATE=\"false\""
+                "DISABLE_UPDATE_PROMPT=\"false\""
+                "UPDATE_ZSH_DAYS=\"30\""
+                "ZSH_COMPDUMP=\"\$ZSH_CACHE_DIR/.zcompdump\""
+                "ZSH_DISABLE_COMPFIX=\"false\""
+                "CASE_SENSITIVE=\"true\""
+                "COMPLETION_WAITING_DOTS=\"true\""
+                "DISABLE_AUTO_TITLE=\"false\""
+                "DISABLE_LS_COLORS=\"false\""
+                "DISABLE_MAGIC_FUNCTIONS=\"false\""
+                "DISABLE_UNTRACKED_FILES_DIRTY=\"false\""
+                "ENABLE_CORRECTION=\"true\""
+                "HIST_STAMPS=\"yyyy-mm-dd\""
+                "HYPHEN_INSENSITIVE=\"false\""
+                "ZSH_THEME_RANDOM_QUIET=\"true\""
+                "ZSH_AUTOSUGGEST_HIGHLIGHT_STYLE=\"bg=250,fg=238,bold,underline\""
+                "ZSH_AUTOSUGGEST_STRATEGY=(match_prev_cmd history completion)"
+                "ZSH_AUTOSUGGEST_USE_ASYNC=\"true\""
+                "source \"\$(brew --repository)/Library/Taps/homebrew/homebrew-command-not-found/handler.sh\""
+                "source \"\$ZSH/oh-my-zsh.sh\""
+            )
+            which "zsh" > "/dev/null" 2>&1
+            if [ "$?" -eq "0" ] && [ -d "/Users/${CurrentUsername}/.oh-my-zsh" ]; then
+                rm -rf "/tmp/omz.autodeploy" && for omz_list_task in "${!omz_list[@]}"; do
+                    echo "${omz_list[$omz_list_task]}" >> "/tmp/omz.autodeploy"
+                done && cat "/tmp/omz.autodeploy" > "/Users/${CurrentUsername}/.zshrc" && rm -rf "/tmp/omz.autodeploy"
+            fi
+        }
+        GenerateCommandPath
+        GenerateOMZProfile
     }
     ConfigureCrontab
     ConfigureZsh
@@ -198,22 +236,41 @@ function InstallDependencyPackages() {
         "homebrew-services"
         "homebrew-test-bot"
     )
-    export PATH="/opt/homebrew/bin:/opt/homebrew/sbin:/Library/Apple/usr/bin:/usr/local/bin:/usr/local/sbin:/usr/bin:/usr/sbin:/bin:/sbin"
+    export PATH="/opt/homebrew/sbin:/opt/homebrew/bin:${PATH}"
     which "brew" > "/dev/null" 2>&1
     if [ "$?" -eq "1" ]; then
         /bin/bash -c "$(curl -fsSL 'https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh' | sed 's/https\:\/\/github\.com/https\:\/\/github\.com\.cnpmjs\.org/g')"
     fi && export HOMEBREW_BOTTLE_DOMAIN="https://mirrors.ustc.edu.cn/homebrew-bottles/bottles"
     if [ -d "$(brew --repo)/Library/Taps/homebrew" ]; then
         app_list=(
-            "awk"
             "bash"
+            "coreutils"
             "curl"
             "ffmpeg"
+            "findutils"
+            "gawk"
             "gh"
             "git"
             "git-flow"
             "git-lfs"
+            "gnu-apl"
+            "gnu-barcode"
+            "gnu-chess"
+            "gnu-cobol"
+            "gnu-complexity"
+            "gnu-getopt"
+            "gnu-go"
+            "gnu-indent"
+            "gnu-scientific-library"
+            "gnu-sed"
+            "gnu-shogi"
+            "gnu-tar"
+            "gnu-time"
+            "gnu-typist"
+            "gnu-units"
+            "gnu-which"
             "gnupg"
+            "gnutls"
             "grep"
             "iperf3"
             "jq"
