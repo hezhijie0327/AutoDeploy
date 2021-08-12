@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 1.9.0
+# Current Version: 1.9.1
 
 ## How to get and use?
 # curl "https://source.zhijie.online/AutoDeploy/main/Ubuntu.sh" | sudo bash
@@ -482,6 +482,7 @@ function InstallDependencyPackages() {
         "update-notifier-common"
         "vim"
         "wget"
+        "whois"
         "zip"
         "zsh"
     )
