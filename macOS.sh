@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 1.6.0
+# Current Version: 1.6.1
 
 ## How to get and use?
 # /bin/bash -c "$(curl -fsSL 'https://source.zhijie.online/AutoDeploy/main/macOS.sh')"
@@ -67,6 +67,7 @@ function ConfigurePackages() {
                 "gnu-which/libexec/gnubin"
                 "grep/libexec/gnubin"
                 "libtool/libexec/gnubin"
+                "whois/bin"
             )
             export PATH="${DEFAULT_PATH}" && BREW_PATH="$(brew --prefix)/opt" && for custom_path_list_task in "${!custom_path_list[@]}"; do
                 CUSTOM_PATH="${BREW_PATH}/${custom_path_list[$custom_path_list_task]}:${CUSTOM_PATH}"
@@ -287,6 +288,7 @@ function InstallDependencyPackages() {
             "unzip"
             "vim"
             "wget"
+            "whois"
             "youtube-dl"
             "zip"
             "zsh"
