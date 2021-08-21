@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 1.9.2
+# Current Version: 1.9.3
 
 ## How to get and use?
 # curl "https://source.zhijie.online/AutoDeploy/main/Ubuntu.sh" | sudo bash
@@ -439,6 +439,7 @@ function InstallCustomPackages() {
 # Install Dependency Packages
 function InstallDependencyPackages() {
     app_list=(
+        "apt-file"
         "apt-transport-https"
         "ca-certificates"
         "cockpit"
