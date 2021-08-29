@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 1.9.4
+# Current Version: 1.9.5
 
 ## How to get and use?
 # curl "https://source.zhijie.online/AutoDeploy/main/Ubuntu.sh" | sudo bash
@@ -472,6 +472,7 @@ function InstallDependencyPackages() {
         "realmd"
         "sudo"
         "systemd"
+        "tshark"
         "tuned"
         "udisks2"
         "udisks2-bcache"
