@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 1.9.5
+# Current Version: 1.9.6
 
 ## How to get and use?
 # curl "https://source.zhijie.online/AutoDeploy/main/Ubuntu.sh" | sudo bash
@@ -289,7 +289,7 @@ function ConfigurePackages() {
             "net.ipv4.ip_forward = 1"
             "net.ipv4.tcp_congestion_control = bbr"
             "net.ipv4.tcp_fastopen = 3"
-            "net.ipv6.conf.all.forwarding=1"
+            "net.ipv6.conf.all.forwarding = 1"
         )
         which "sysctl" > "/dev/null" 2>&1
         if [ "$?" -eq "0" ]; then
