@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 1.9.7
+# Current Version: 1.9.8
 
 ## How to get and use?
 # curl "https://source.zhijie.online/AutoDeploy/main/Ubuntu.sh" | sudo bash
@@ -366,6 +366,25 @@ function ConfigureSystem() {
             cat "/tmp/shell.autodeploy" > "/etc/passwd" && rm -rf "/tmp/shell.autodeploy"
         fi
     }
+    function ConfigureDefaultUser() {
+        crontab_list=(
+            "@reboot rm -rf /home/ubuntu/.*_history"
+        )
+        userdel -rf "ubuntu" > "/dev/null" 2>&1
+        useradd -d "/home/ubuntu" -s "/bin/zsh" -m "ubuntu" && echo 'ubuntu':'*Ubuntu123*' | chpasswd && adduser "ubuntu" "sudo"
+        if [ -d "/etc/zsh/oh-my-zsh" ]; then
+            cp -rf "/etc/zsh/oh-my-zsh" "/home/ubuntu/.oh-my-zsh"
+            if [ -f "/etc/zsh/oh-my-zsh.zshrc" ]; then
+                cp -rf "/etc/zsh/oh-my-zsh.zshrc" "/home/ubuntu/.zshrc"
+            fi
+        fi
+        which "crontab" > "/dev/null" 2>&1
+        if [ "$?" -eq "0" ]; then
+            rm -rf "/tmp/crontab.autodeploy" && for crontab_list_task in "${!crontab_list[@]}"; do
+                echo "${crontab_list[$crontab_list_task]}" >> "/tmp/crontab.autodeploy"
+            done && crontab -u "ubuntu" "/tmp/crontab.autodeploy" && crontab -lu "ubuntu" && rm -rf "/tmp/crontab.autodeploy"
+        fi
+    }
     function ConfigureHostfile() {
         host_list=(
             "127.0.0.1 localhost"
@@ -392,6 +411,7 @@ function ConfigureSystem() {
         fi && ln -s "/usr/share/zoneinfo/Asia/Shanghai" "/etc/localtime"
     }
     ConfigureDefaultShell
+    ConfigureDefaultUser
     ConfigureHostfile
     ConfigureLocales
     ConfigureTimeZone
