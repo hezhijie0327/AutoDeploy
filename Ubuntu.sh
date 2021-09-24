@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 1.9.8
+# Current Version: 1.9.9
 
 ## How to get and use?
 # curl "https://source.zhijie.online/AutoDeploy/main/Ubuntu.sh" | sudo bash
@@ -367,22 +367,24 @@ function ConfigureSystem() {
         fi
     }
     function ConfigureDefaultUser() {
+        DEFAULT_USERNAME="ubuntu"
+        DEFAULT_PASSWORD="*Ubuntu123*"
         crontab_list=(
-            "@reboot rm -rf /home/ubuntu/.*_history"
+            "@reboot rm -rf /home/${DEFAULT_USERNAME}/.*_history"
         )
-        userdel -rf "ubuntu" > "/dev/null" 2>&1
-        useradd -d "/home/ubuntu" -s "/bin/zsh" -m "ubuntu" && echo 'ubuntu':'*Ubuntu123*' | chpasswd && adduser "ubuntu" "sudo"
+        userdel -rf "${DEFAULT_USERNAME}" > "/dev/null" 2>&1
+        useradd -d "/home/${DEFAULT_USERNAME}" -s "/bin/zsh" -m "${DEFAULT_USERNAME}" && echo $DEFAULT_USERNAME:$DEFAULT_PASSWORD | chpasswd && adduser "${DEFAULT_USERNAME}" "sudo"
         if [ -d "/etc/zsh/oh-my-zsh" ]; then
-            cp -rf "/etc/zsh/oh-my-zsh" "/home/ubuntu/.oh-my-zsh"
+            cp -rf "/etc/zsh/oh-my-zsh" "/home/${DEFAULT_USERNAME}/.oh-my-zsh"
             if [ -f "/etc/zsh/oh-my-zsh.zshrc" ]; then
-                cp -rf "/etc/zsh/oh-my-zsh.zshrc" "/home/ubuntu/.zshrc"
+                cp -rf "/etc/zsh/oh-my-zsh.zshrc" "/home/${DEFAULT_USERNAME}/.zshrc"
             fi
         fi
         which "crontab" > "/dev/null" 2>&1
         if [ "$?" -eq "0" ]; then
             rm -rf "/tmp/crontab.autodeploy" && for crontab_list_task in "${!crontab_list[@]}"; do
                 echo "${crontab_list[$crontab_list_task]}" >> "/tmp/crontab.autodeploy"
-            done && crontab -u "ubuntu" "/tmp/crontab.autodeploy" && crontab -lu "ubuntu" && rm -rf "/tmp/crontab.autodeploy"
+            done && crontab -u "${DEFAULT_USERNAME}" "/tmp/crontab.autodeploy" && crontab -lu "${DEFAULT_USERNAME}" && rm -rf "/tmp/crontab.autodeploy"
         fi
     }
     function ConfigureHostfile() {
