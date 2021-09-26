@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 1.9.9
+# Current Version: 2.0.0
 
 ## How to get and use?
 # curl "https://source.zhijie.online/AutoDeploy/main/Ubuntu.sh" | sudo bash
@@ -80,7 +80,10 @@ function GetSystemInformation() {
                 )
                 rm -rf "/tmp/startup.autodeploy" && for startup_list_task in "${!startup_list[@]}"; do
                     echo "${startup_list[$startup_list_task]}" >> "/tmp/startup.autodeploy"
-                done && cat "/tmp/startup.autodeploy" > "/opt/startup.sh" && rm -rf "/tmp/startup.autodeploy"
+                done && cat "/tmp/startup.autodeploy" > "/opt/startup.sh" && chmod +x "/opt/startup.sh" && rm -rf "/tmp/startup.autodeploy"
+                rm -rf "/tmp/startup.sudo.autodeploy" && if [ ! -d "/etc/sudoers.d" ]; then
+                    mkdir "/etc/sudoers.d"
+                fi && echo "%sudo ALL=NOPASSWD: /opt/startup.sh" > "/etc/sudoers.d/startup" && rm -rf "/tmp/startup.sudo.autodeploy"
             }
             function Fix_Resolv_Conf_Issue() {
                 resolv_conf_list=(
