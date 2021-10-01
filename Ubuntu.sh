@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 2.0.5
+# Current Version: 2.0.6
 
 ## How to get and use?
 # curl "https://source.zhijie.online/AutoDeploy/main/Ubuntu.sh" | sudo bash
@@ -430,9 +430,9 @@ function ConfigureSystem() {
             userdel -rf "${DEFAULT_USERNAME}" > "/dev/null" 2>&1
             useradd -d "/home/${DEFAULT_USERNAME}" -s "/bin/zsh" -m "${DEFAULT_USERNAME}" && echo $DEFAULT_USERNAME:$DEFAULT_PASSWORD | chpasswd && adduser "${DEFAULT_USERNAME}" "sudo"
             if [ -d "/etc/zsh/oh-my-zsh" ]; then
-                cp -rf "/etc/zsh/oh-my-zsh" "/home/${DEFAULT_USERNAME}/.oh-my-zsh"
+                cp -rf "/etc/zsh/oh-my-zsh" "/home/${DEFAULT_USERNAME}/.oh-my-zsh" && chown -R $DEFAULT_USERNAME:$DEFAULT_USERNAME "/home/${DEFAULT_USERNAME}/.oh-my-zsh"
                 if [ -f "/etc/zsh/oh-my-zsh.zshrc" ]; then
-                    cp -rf "/etc/zsh/oh-my-zsh.zshrc" "/home/${DEFAULT_USERNAME}/.zshrc"
+                    cp -rf "/etc/zsh/oh-my-zsh.zshrc" "/home/${DEFAULT_USERNAME}/.zshrc" && chown -R $DEFAULT_USERNAME:$DEFAULT_USERNAME "/home/${DEFAULT_USERNAME}/.zshrc"
                 fi
             fi
             which "crontab" > "/dev/null" 2>&1
@@ -492,13 +492,6 @@ function InstallCustomPackages() {
             done
         fi
     }
-    function InstallGitHubCLI() {
-        curl -fsSL "https://cli.github.com/packages/githubcli-archive-keyring.gpg" | gpg --dearmor -o "/usr/share/keyrings/githubcli-archive-keyring.gpg"
-        echo "deb [arch=${mirror_arch} signed-by=/usr/share/keyrings/githubcli-archive-keyring.gpg] https://cli.github.com/packages stable main" > "/etc/apt/sources.list.d/github-cli.list"
-        apt update && apt-cache show gh && if [ "$?" -eq "0" ]; then
-            apt install -qy gh
-        fi
-    }
     function InstallOhMyZsh() {
         plugin_list=(
             "zsh-autosuggestions"
@@ -513,7 +506,6 @@ function InstallCustomPackages() {
         fi
     }
     InstallDockerEngine
-    InstallGitHubCLI
     InstallOhMyZsh
 }
 # Install Dependency Packages
