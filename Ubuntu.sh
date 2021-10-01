@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 2.0.0
+# Current Version: 2.0.1
 
 ## How to get and use?
 # curl "https://source.zhijie.online/AutoDeploy/main/Ubuntu.sh" | sudo bash
@@ -98,10 +98,10 @@ function GetSystemInformation() {
                 )
                 rm -rf "/tmp/resolv.autodeploy" && for resolv_conf_list_task in "${!resolv_conf_list[@]}"; do
                     echo "nameserver ${resolv_conf_list[$resolv_conf_list_task]}" >> "/tmp/resolv.autodeploy"
-                done && chattr -i "/etc/resolv.conf" && rm -rf "/etc/resolv.conf" && cat "/tmp/resolv.autodeploy" > "/etc/resolv.conf" && rm -rf "/tmp/resolv.autodeploy" && chattr +i "/etc/resolv.conf"
+                done && if [ -f "/etc/resolv.conf" ]; then chattr -i "/etc/resolv.conf"; fi && rm -rf "/etc/resolv.conf" && cat "/tmp/resolv.autodeploy" > "/etc/resolv.conf" && rm -rf "/tmp/resolv.autodeploy" && chattr +i "/etc/resolv.conf"
                 rm -rf "/tmp/wsl.autodeploy" && for wsl_conf_list_task in "${!wsl_conf_list[@]}"; do
                     echo "${wsl_conf_list[$wsl_conf_list_task]}" >> "/tmp/wsl.autodeploy"
-                done && chattr -i "/etc/wsl.conf" && rm -rf "/etc/wsl.conf" && cat "/tmp/wsl.autodeploy" > "/etc/wsl.conf" && rm -rf "/tmp/wsl.autodeploy" && chattr +i "/etc/wsl.conf"
+                done && if [ -f "/etc/wsl.conf" ]; then chattr -i "/etc/wsl.conf"; fi && rm -rf "/etc/wsl.conf" && cat "/tmp/wsl.autodeploy" > "/etc/wsl.conf" && rm -rf "/tmp/wsl.autodeploy" && chattr +i "/etc/wsl.conf"
             }
             function Fix_Sshd_Server_Issue() {
                 CURRENT_PATH=$(pwd)
@@ -172,11 +172,15 @@ function SetReadonlyFlag() {
     )
     if [ "${read_only}" == "TRUE" ]; then
         for file_list_task in "${!file_list[@]}"; do
-            chattr +i "${file_list[$file_list_task]}" > "/dev/null" 2>&1
+            if [ -d "${file_list[$file_list_task]}" ] || [ -f "${file_list[$file_list_task]}" ]; then
+                chattr +i "${file_list[$file_list_task]}"
+            fi
         done
     elif [ "${read_only}" == "FALSE" ]; then
         for file_list_task in "${!file_list[@]}"; do
-            chattr -i "${file_list[$file_list_task]}" > "/dev/null" 2>&1
+            if [ -d "${file_list[$file_list_task]}" ] || [ -f "${file_list[$file_list_task]}" ]; then
+                chattr -i "${file_list[$file_list_task]}"
+            fi
         done
     fi
 }
@@ -235,7 +239,7 @@ function ConfigurePackages() {
         )
         network_interface=($(cat "/proc/net/dev" | grep -v "docker0\|lo" | grep "\:" | sed "s/[[:space:]]//g" | cut -d ":" -f 1 | sort | uniq))
         which "netplan" > "/dev/null" 2>&1
-        if [ "$?" -eq "0" ] && [ "${wsl_kernel}" == "FALSE" ]; then
+        if [ "$?" -eq "0" ]; then
             if [ ! -d "/etc/netplan" ]; then
                 mkdir "/etc/netplan"
             else
@@ -265,7 +269,7 @@ function ConfigurePackages() {
             "DNSStubListener=false"
         )
         which "resolvectl" > "/dev/null" 2>&1
-        if [ "$?" -eq "0" ] && [ "${wsl_kernel}" == "FALSE" ]; then
+        if [ "$?" -eq "0" ]; then
             if [ -f "/etc/resolv.conf" ]; then
                 rm -rf "/etc/resolv.conf" && ln -s "/run/systemd/resolve/resolv.conf" "/etc/resolv.conf"
             fi
@@ -307,7 +311,7 @@ function ConfigurePackages() {
     }
     function ConfigureUfw() {
         which "ufw" > "/dev/null" 2>&1
-        if [ "$?" -eq "0" ] && [ -f "/etc/default/ufw" ] && [ "${wsl_kernel}" == "FALSE" ]; then
+        if [ "$?" -eq "0" ] && [ -f "/etc/default/ufw" ]; then
             echo "$(cat '/etc/default/ufw' | sed 's/DEFAULT\_APPLICATION\_POLICY\=\"ACCEPT\"/DEFAULT\_APPLICATION\_POLICY\=\"REJECT\"/g;s/DEFAULT\_APPLICATION\_POLICY\=\"DROP\"/DEFAULT\_APPLICATION\_POLICY\=\"REJECT\"/g;s/DEFAULT\_APPLICATION\_POLICY\=\"SKIP\"/DEFAULT\_APPLICATION\_POLICY\=\"REJECT\"/g;s/DEFAULT\_FORWARD\_POLICY\=\"DROP\"/DEFAULT\_FORWARD\_POLICY\=\"ACCEPT\"/g;s/DEFAULT\_FORWARD\_POLICY\=\"REJECT\"/DEFAULT\_FORWARD\_POLICY\=\"ACCEPT\"/g;s/DEFAULT\_INPUT\_POLICY\=\"ACCEPT\"/DEFAULT\_INPUT\_POLICY\=\"REJECT\"/g;s/DEFAULT\_INPUT\_POLICY\=\"DROP\"/DEFAULT\_INPUT\_POLICY\=\"REJECT\"/g;s/DEFAULT\_OUTPUT\_POLICY\=\"DROP\"/DEFAULT\_OUTPUT\_POLICY\=\"ACCEPT\"/g;s/DEFAULT\_OUTPUT\_POLICY\=\"REJECT\"/DEFAULT\_OUTPUT\_POLICY\=\"ACCEPT\"/g;s/MANAGE\_BUILTINS\=yes/MANAGE\_BUILTINS\=no/g;s/IPV6\=no/IPV6\=yes/g')" > "/tmp/ufw.autodeploy"
             cat "/tmp/ufw.autodeploy" > "/etc/default/ufw" && ufw reload && rm -rf "/tmp/ufw.autodeploy" && ufw limit 22/tcp && ufw allow 9090/tcp && ufw enable && ufw status verbose
         fi
@@ -429,13 +433,15 @@ function InstallCustomPackages() {
             "docker-ce"
             "docker-ce-cli"
         )
-        curl -fsSL "https://mirrors.ustc.edu.cn/docker-ce/linux/ubuntu/gpg" | gpg --dearmor -o "/usr/share/keyrings/docker-archive-keyring.gpg"
-        echo "deb [arch=${mirror_arch} signed-by=/usr/share/keyrings/docker-archive-keyring.gpg] https://mirrors.ustc.edu.cn/docker-ce/linux/ubuntu ${LSBCodename} stable" > "/etc/apt/sources.list.d/docker.list"
-        apt update && apt purge -qy containerd docker docker-engine docker.io runc && for app_list_task in "${!app_list[@]}"; do
-            apt-cache show ${app_list[$app_list_task]} && if [ "$?" -eq "0" ]; then
-                apt install -qy ${app_list[$app_list_task]}
-            fi
-        done
+        if [ "${wsl_kernel}" == "FALSE" ]; then
+            curl -fsSL "https://mirrors.ustc.edu.cn/docker-ce/linux/ubuntu/gpg" | gpg --dearmor -o "/usr/share/keyrings/docker-archive-keyring.gpg"
+            echo "deb [arch=${mirror_arch} signed-by=/usr/share/keyrings/docker-archive-keyring.gpg] https://mirrors.ustc.edu.cn/docker-ce/linux/ubuntu ${LSBCodename} stable" > "/etc/apt/sources.list.d/docker.list"
+            apt update && apt purge -qy containerd docker docker-engine docker.io runc && for app_list_task in "${!app_list[@]}"; do
+                apt-cache show ${app_list[$app_list_task]} && if [ "$?" -eq "0" ]; then
+                    apt install -qy ${app_list[$app_list_task]}
+                fi
+            done
+        fi
     }
     function InstallGitHubCLI() {
         curl -fsSL "https://cli.github.com/packages/githubcli-archive-keyring.gpg" | gpg --dearmor -o "/usr/share/keyrings/githubcli-archive-keyring.gpg"
@@ -463,12 +469,17 @@ function InstallCustomPackages() {
 }
 # Install Dependency Packages
 function InstallDependencyPackages() {
-    app_list=(
+    additional_app_list=(
+        "cockpit"
+        "cockpit-pcp"
+        "netplan.io"
+        "systemd"
+        "ufw"
+    )
+    default_app_list=(
         "apt-file"
         "apt-transport-https"
         "ca-certificates"
-        "cockpit"
-        "cockpit-pcp"
         "curl"
         "dnsutils"
         "git"
@@ -486,7 +497,6 @@ function InstallDependencyPackages() {
         "nano"
         "neofetch"
         "net-tools"
-        "netplan.io"
         "openssh-client"
         "openssh-server"
         "p7zip-full"
@@ -494,7 +504,6 @@ function InstallDependencyPackages() {
         "rar"
         "realmd"
         "sudo"
-        "systemd"
         "tshark"
         "tuned"
         "udisks2"
@@ -502,7 +511,6 @@ function InstallDependencyPackages() {
         "udisks2-btrfs"
         "udisks2-lvm2"
         "udisks2-zram"
-        "ufw"
         "unrar"
         "unzip"
         "update-notifier-common"
@@ -512,9 +520,15 @@ function InstallDependencyPackages() {
         "zip"
         "zsh"
     )
-    apt update && for app_list_task in "${!app_list[@]}"; do
-        apt-cache show ${app_list[$app_list_task]} && if [ "$?" -eq "0" ]; then
-            apt install -qy ${app_list[$app_list_task]}
+    apt update && if [ "${wsl_kernel}" == "FALSE" ]; then
+        for additional_app_list_task in "${!additional_app_list[@]}"; do
+            apt-cache show ${additional_app_list[$additional_app_list_task]} && if [ "$?" -eq "0" ]; then
+                apt install -qy ${additional_app_list[$additional_app_list_task]}
+            fi
+        done
+    fi && for default_app_list_task in "${!default_app_list[@]}"; do
+        apt-cache show ${default_app_list[$default_app_list_task]} && if [ "$?" -eq "0" ]; then
+            apt install -qy ${default_app_list[$default_app_list_task]}
         fi
     done
 }
