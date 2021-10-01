@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 2.0.1
+# Current Version: 2.0.2
 
 ## How to get and use?
 # curl "https://source.zhijie.online/AutoDeploy/main/Ubuntu.sh" | sudo bash
@@ -472,9 +472,19 @@ function InstallDependencyPackages() {
     additional_app_list=(
         "cockpit"
         "cockpit-pcp"
+        "landscape-common"
+        "lsb-release"
         "netplan.io"
+        "realmd"
         "systemd"
+        "tuned"
+        "udisks2"
+        "udisks2-bcache"
+        "udisks2-btrfs"
+        "udisks2-lvm2"
+        "udisks2-zram"
         "ufw"
+        "update-notifier-common"
     )
     default_app_list=(
         "apt-file"
@@ -489,8 +499,6 @@ function InstallDependencyPackages() {
         "iperf3"
         "jq"
         "knot-dnsutils"
-        "landscape-common"
-        "lsb-release"
         "mailutils"
         "mercurial"
         "mtr-tiny"
@@ -502,35 +510,31 @@ function InstallDependencyPackages() {
         "p7zip-full"
         "postfix"
         "rar"
-        "realmd"
         "sudo"
         "tshark"
-        "tuned"
-        "udisks2"
-        "udisks2-bcache"
-        "udisks2-btrfs"
-        "udisks2-lvm2"
-        "udisks2-zram"
         "unrar"
         "unzip"
-        "update-notifier-common"
         "vim"
         "wget"
         "whois"
         "zip"
         "zsh"
     )
-    apt update && if [ "${wsl_kernel}" == "FALSE" ]; then
+    apt update && for default_app_list_task in "${!default_app_list[@]}"; do
+        apt-cache show ${default_app_list[$default_app_list_task]} && if [ "$?" -eq "0" ]; then
+            apt install -qy ${default_app_list[$default_app_list_task]}
+        fi
+    done && if [ "${wsl_kernel}" == "FALSE" ]; then
         for additional_app_list_task in "${!additional_app_list[@]}"; do
             apt-cache show ${additional_app_list[$additional_app_list_task]} && if [ "$?" -eq "0" ]; then
                 apt install -qy ${additional_app_list[$additional_app_list_task]}
             fi
         done
-    fi && for default_app_list_task in "${!default_app_list[@]}"; do
-        apt-cache show ${default_app_list[$default_app_list_task]} && if [ "$?" -eq "0" ]; then
-            apt install -qy ${default_app_list[$default_app_list_task]}
-        fi
-    done
+    else
+        for additional_app_list_task in "${!additional_app_list[@]}"; do
+            apt purge -qy ${additional_app_list[$additional_app_list_task]}
+        done && apt autoremove -qy && rm -rf "/etc/systemd"
+    fi
 }
 # Upgrade Packages
 function UpgradePackages() {
