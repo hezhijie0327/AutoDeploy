@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 1.6.2
+# Current Version: 1.6.3
 
 ## How to get and use?
 # /bin/bash -c "$(curl -fsSL 'https://source.zhijie.online/AutoDeploy/main/macOS.sh')"
@@ -143,19 +143,17 @@ function ConfigureSystem() {
 function InstallCustomPackages() {
     function InstallAppFromCask() {
         app_list=(
-            "adguard" # AdGuard
             "betterzip" # BetterZip
             "cleanmymac" # CleanMyMac X
             "cleanshot" # CleanShot X
             "docker" # Docker
             "downie" # Downie 4
+            "firefox" # Firefox
             "iina" # IINA
-            "istat-menus" # iStat Menus
             "logitech-options" # Logi Options
-            "microsoft-teams" # Microsoft Teams
-            "one-switch" # One Switch
             "parallels" # Parallels Desktop
             "permute" # Permute 3
+            "pixelsnap" # PixelSnap 2
             "visual-studio-code" # Visual Studio Code
         )
         which "brew" > "/dev/null" 2>&1
@@ -183,12 +181,9 @@ function InstallCustomPackages() {
             "497799835" # Xcode
             "634148309" # Logic Pro
             "634159523" # MainStage
-            "784801555" # Microsoft OneNote
             "823766827" # OneDrive
             "824183456" # Affinity Photo
             "836500024" # Wechat
-            "937984704" # Amphetamine
-            "985367838" # Microsoft Outlook
             "993841014" # CopyLess 2
         )
         which "mas" > "/dev/null" 2>&1
@@ -250,7 +245,6 @@ function InstallDependencyPackages() {
             "ffmpeg"
             "findutils"
             "gawk"
-            "gh"
             "git"
             "git-flow"
             "git-lfs"
