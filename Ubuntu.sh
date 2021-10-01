@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 2.0.3
+# Current Version: 2.0.4
 
 ## How to get and use?
 # curl "https://source.zhijie.online/AutoDeploy/main/Ubuntu.sh" | sudo bash
@@ -269,7 +269,7 @@ function ConfigurePackages() {
             "DNSStubListener=false"
         )
         which "resolvectl" > "/dev/null" 2>&1
-        if [ "$?" -eq "0" ]; then
+        if [ "$?" -eq "0" ] && [ "${wsl_kernel}" == "FALSE" ]; then
             if [ -f "/etc/resolv.conf" ]; then
                 rm -rf "/etc/resolv.conf" && ln -s "/run/systemd/resolve/resolv.conf" "/etc/resolv.conf"
             fi
@@ -472,19 +472,8 @@ function InstallDependencyPackages() {
     additional_app_list=(
         "cockpit"
         "cockpit-pcp"
-        "landscape-common"
-        "lsb-release"
         "netplan.io"
-        "realmd"
-        "systemd"
-        "tuned"
-        "udisks2"
-        "udisks2-bcache"
-        "udisks2-btrfs"
-        "udisks2-lvm2"
-        "udisks2-zram"
         "ufw"
-        "update-notifier-common"
     )
     default_app_list=(
         "apt-file"
@@ -499,6 +488,8 @@ function InstallDependencyPackages() {
         "iperf3"
         "jq"
         "knot-dnsutils"
+        "landscape-common"
+        "lsb-release"
         "mailutils"
         "mercurial"
         "mtr-tiny"
@@ -512,20 +503,24 @@ function InstallDependencyPackages() {
         "python3"
         "python3-pip"
         "rar"
+        "realmd"
         "sudo"
+        "systemd"
         "tshark"
+        "tuned"
+        "udisks2"
+        "udisks2-bcache"
+        "udisks2-btrfs"
+        "udisks2-lvm2"
+        "udisks2-zram"
         "unrar"
         "unzip"
+        "update-notifier-common"
         "vim"
         "wget"
         "whois"
         "zip"
         "zsh"
-    )
-    cleanup_list=(
-        "/etc/default/networkd-dispatcher"
-        "/etc/systemd"
-        "/usr/lib/systemd"
     )
     apt update && for default_app_list_task in "${!default_app_list[@]}"; do
         apt-cache show ${default_app_list[$default_app_list_task]} && if [ "$?" -eq "0" ]; then
@@ -540,8 +535,6 @@ function InstallDependencyPackages() {
     else
         for additional_app_list_task in "${!additional_app_list[@]}"; do
             apt purge -qy ${additional_app_list[$additional_app_list_task]}
-        done && apt autoremove -qy && for cleanup_list_task in "${!cleanup_list[@]}"; do
-            rm -rf ${cleanup_list[$cleanup_list_task]}
         done
     fi
 }
