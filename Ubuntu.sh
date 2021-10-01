@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 2.0.2
+# Current Version: 2.0.3
 
 ## How to get and use?
 # curl "https://source.zhijie.online/AutoDeploy/main/Ubuntu.sh" | sudo bash
@@ -509,6 +509,8 @@ function InstallDependencyPackages() {
         "openssh-server"
         "p7zip-full"
         "postfix"
+        "python3"
+        "python3-pip"
         "rar"
         "sudo"
         "tshark"
@@ -519,6 +521,11 @@ function InstallDependencyPackages() {
         "whois"
         "zip"
         "zsh"
+    )
+    cleanup_list=(
+        "/etc/default/networkd-dispatcher"
+        "/etc/systemd"
+        "/usr/lib/systemd"
     )
     apt update && for default_app_list_task in "${!default_app_list[@]}"; do
         apt-cache show ${default_app_list[$default_app_list_task]} && if [ "$?" -eq "0" ]; then
@@ -533,7 +540,9 @@ function InstallDependencyPackages() {
     else
         for additional_app_list_task in "${!additional_app_list[@]}"; do
             apt purge -qy ${additional_app_list[$additional_app_list_task]}
-        done && apt autoremove -qy && rm -rf "/etc/systemd"
+        done && apt autoremove -qy && for cleanup_list_task in "${!cleanup_list[@]}"; do
+            rm -rf ${cleanup_list[$cleanup_list_task]}
+        done
     fi
 }
 # Upgrade Packages
