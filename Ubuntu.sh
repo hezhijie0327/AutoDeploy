@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 2.0.6
+# Current Version: 2.0.7
 
 ## How to get and use?
 # curl "https://source.zhijie.online/AutoDeploy/main/Ubuntu.sh" | sudo bash
@@ -105,7 +105,12 @@ function GetSystemInformation() {
                 )
                 rm -rf "/tmp/resolv.autodeploy" && for resolv_conf_list_task in "${!resolv_conf_list[@]}"; do
                     echo "nameserver ${resolv_conf_list[$resolv_conf_list_task]}" >> "/tmp/resolv.autodeploy"
-                done && if [ -f "/etc/resolv.conf" ]; then chattr -i "/etc/resolv.conf"; fi && rm -rf "/etc/resolv.conf" && cat "/tmp/resolv.autodeploy" > "/etc/resolv.conf" && rm -rf "/tmp/resolv.autodeploy" && chattr +i "/etc/resolv.conf"
+                done && if [ -f "/etc/resolv.conf" ]; then
+                    chattr -i "/etc/resolv.conf" > "/dev/null" 2>&1
+                    if [ "$?" -eq "1" ]; then
+                        rm -rf "/etc/resolv.conf"
+                    fi
+                fi && rm -rf "/etc/resolv.conf" && cat "/tmp/resolv.autodeploy" > "/etc/resolv.conf" && rm -rf "/tmp/resolv.autodeploy" && chattr +i "/etc/resolv.conf"
                 rm -rf "/tmp/wsl.autodeploy" && for wsl_conf_list_task in "${!wsl_conf_list[@]}"; do
                     echo "${wsl_conf_list[$wsl_conf_list_task]}" >> "/tmp/wsl.autodeploy"
                 done && if [ -f "/etc/wsl.conf" ]; then chattr -i "/etc/wsl.conf"; fi && rm -rf "/etc/wsl.conf" && cat "/tmp/wsl.autodeploy" > "/etc/wsl.conf" && rm -rf "/tmp/wsl.autodeploy" && chattr +i "/etc/wsl.conf"
@@ -168,7 +173,6 @@ function SetReadonlyFlag() {
     file_list=(
         "/etc/apt/sources.list"
         "/etc/apt/sources.list.d/docker.list"
-        "/etc/apt/sources.list.d/github-cli.list"
         "/etc/default/ufw"
         "/etc/docker/daemon.json"
         "/etc/hostname"
