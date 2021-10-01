@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 2.0.7
+# Current Version: 2.0.8
 
 ## How to get and use?
 # curl "https://source.zhijie.online/AutoDeploy/main/Ubuntu.sh" | sudo bash
@@ -316,7 +316,12 @@ function ConfigurePackages() {
                 )
                 rm -rf "/tmp/resolv.autodeploy" && for resolv_conf_list_task in "${!resolv_conf_list[@]}"; do
                     echo "nameserver ${resolv_conf_list[$resolv_conf_list_task]}" >> "/tmp/resolv.autodeploy"
-                done && if [ -f "/etc/resolv.conf" ]; then chattr -i "/etc/resolv.conf"; fi && rm -rf "/etc/resolv.conf" && cat "/tmp/resolv.autodeploy" > "/etc/resolv.conf" && rm -rf "/tmp/resolv.autodeploy" && chattr +i "/etc/resolv.conf"
+                done && if [ -f "/etc/resolv.conf" ]; then
+                    chattr -i "/etc/resolv.conf" > "/dev/null" 2>&1
+                    if [ "$?" -eq "1" ]; then
+                        rm -rf "/etc/resolv.conf"
+                    fi
+                fi && rm -rf "/etc/resolv.conf" && cat "/tmp/resolv.autodeploy" > "/etc/resolv.conf" && rm -rf "/tmp/resolv.autodeploy" && chattr +i "/etc/resolv.conf"
             fi
         else
             resolv_conf_list=(
@@ -327,7 +332,12 @@ function ConfigurePackages() {
             )
             rm -rf "/tmp/resolv.autodeploy" && for resolv_conf_list_task in "${!resolv_conf_list[@]}"; do
                 echo "nameserver ${resolv_conf_list[$resolv_conf_list_task]}" >> "/tmp/resolv.autodeploy"
-            done && if [ -f "/etc/resolv.conf" ]; then chattr -i "/etc/resolv.conf"; fi && rm -rf "/etc/resolv.conf" && cat "/tmp/resolv.autodeploy" > "/etc/resolv.conf" && rm -rf "/tmp/resolv.autodeploy" && chattr +i "/etc/resolv.conf"
+            done && if [ -f "/etc/resolv.conf" ]; then
+                chattr -i "/etc/resolv.conf" > "/dev/null" 2>&1
+                if [ "$?" -eq "1" ]; then
+                    rm -rf "/etc/resolv.conf"
+                fi
+            fi && rm -rf "/etc/resolv.conf" && cat "/tmp/resolv.autodeploy" > "/etc/resolv.conf" && rm -rf "/tmp/resolv.autodeploy" && chattr +i "/etc/resolv.conf"
         fi
     }
     function ConfigureSshd() {
@@ -380,7 +390,7 @@ function ConfigurePackages() {
             "ZSH_THEME=\"ys\""
             "DISABLE_AUTO_UPDATE=\"false\""
             "DISABLE_UPDATE_PROMPT=\"false\""
-            "UPDATE_ZSH_DAYS=\"30\""
+            "UPDATE_ZSH_DAYS=\"7\""
             "ZSH_COMPDUMP=\"\$ZSH_CACHE_DIR/.zcompdump\""
             "ZSH_DISABLE_COMPFIX=\"false\""
             "CASE_SENSITIVE=\"true\""
