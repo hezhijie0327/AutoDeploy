@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 2.0.4
+# Current Version: 2.0.5
 
 ## How to get and use?
 # curl "https://source.zhijie.online/AutoDeploy/main/Ubuntu.sh" | sudo bash
@@ -65,6 +65,13 @@ function GetSystemInformation() {
         else
             echo "Unsupported architecture."
             exit 1
+        fi
+    }
+    function IsDockerEnvironment() {
+        if [ -f "/.dockerenv" ]; then
+            docker_environment="TRUE"
+        else
+            docker_environment="FALSE"
         fi
     }
     function IsWSLKernelRelease() {
@@ -134,6 +141,7 @@ function GetSystemInformation() {
     GenerateHostname
     GetLSBCodename
     IsArmArchitecture
+    IsDockerEnvironment
     IsWSLKernelRelease
 }
 # Set Repository Mirror
@@ -210,15 +218,25 @@ function ConfigurePackages() {
         )
         which "docker" > "/dev/null" 2>&1
         if [ "$?" -eq "0" ]; then
+            if [ "${docker_environment}" == "FALSE" ] && [ "${wsl_kernel}" == "FALSE" ]; then
+                if [ ! -d "/docker" ]; then
+                    mkdir "/docker"
+                fi
+                if [ ! -d "/etc/docker" ]; then
+                    mkdir "/etc/docker"
+                fi
+                rm -rf "/tmp/docker.autodeploy" && for docker_list_task in "${!docker_list[@]}"; do
+                    echo "${docker_list[$docker_list_task]}" >> "/tmp/docker.autodeploy"
+                done && cat "/tmp/docker.autodeploy" > "/etc/docker/daemon.json" && OPRATIONS="restart" && SERVICE_NAME="docker" && CallServiceController && rm -rf "/tmp/docker.autodeploy"
+            elif [ "${docker_environment}" == "FALSE" ]; then
+                if [ ! -d "/docker" ]; then
+                    mkdir "/docker"
+                fi
+            fi
+        else
             if [ ! -d "/docker" ]; then
                 mkdir "/docker"
             fi
-            if [ ! -d "/etc/docker" ]; then
-                mkdir "/etc/docker"
-            fi
-            rm -rf "/tmp/docker.autodeploy" && for docker_list_task in "${!docker_list[@]}"; do
-                echo "${docker_list[$docker_list_task]}" >> "/tmp/docker.autodeploy"
-            done && cat "/tmp/docker.autodeploy" > "/etc/docker/daemon.json" && OPRATIONS="restart" && SERVICE_NAME="docker" && CallServiceController && rm -rf "/tmp/docker.autodeploy"
         fi
     }
     function ConfigureLandscape() {
@@ -251,7 +269,10 @@ function ConfigurePackages() {
                 echo "    ${network_interface[$network_interface_task]}:" >> "/tmp/netplan.autodeploy" && for netplan_ethernets_list_task in "${!netplan_ethernets_list[@]}"; do
                     echo "${netplan_ethernets_list[$netplan_ethernets_list_task]}" >> "/tmp/netplan.autodeploy"
                 done
-            done && cat "/tmp/netplan.autodeploy" > "/etc/netplan/netplan.yaml" && netplan apply && rm -rf "/tmp/netplan.autodeploy"
+            done && cat "/tmp/netplan.autodeploy" > "/etc/netplan/netplan.yaml" && rm -rf "/tmp/netplan.autodeploy"
+            if [ "${docker_environment}" == "FALSE" ] && [ "${wsl_kernel}" == "FALSE" ]; then
+                netplan apply
+            fi
         fi
     }
     function ConfigurePostfix() {
@@ -269,23 +290,45 @@ function ConfigurePackages() {
             "DNSStubListener=false"
         )
         which "resolvectl" > "/dev/null" 2>&1
-        if [ "$?" -eq "0" ] && [ "${wsl_kernel}" == "FALSE" ]; then
-            if [ -f "/etc/resolv.conf" ]; then
-                rm -rf "/etc/resolv.conf" && ln -s "/run/systemd/resolve/resolv.conf" "/etc/resolv.conf"
-            fi
-            if [ ! -d "/etc/systemd/resolved.conf.d" ]; then
-                mkdir "/etc/systemd/resolved.conf.d"
+        if [ "$?" -eq "0" ]; then
+            if [ "${docker_environment}" == "FALSE" ] && [ "${wsl_kernel}" == "FALSE" ]; then
+                if [ -f "/etc/resolv.conf" ]; then
+                    rm -rf "/etc/resolv.conf" && ln -s "/run/systemd/resolve/resolv.conf" "/etc/resolv.conf"
+                fi
+                if [ ! -d "/etc/systemd/resolved.conf.d" ]; then
+                    mkdir "/etc/systemd/resolved.conf.d"
+                else
+                    rm -rf /etc/systemd/resolved.conf.d/*.conf
+                fi
+                rm -rf "/tmp/resolved.autodeploy" && for resolved_list_task in "${!resolved_list[@]}"; do
+                    echo "${resolved_list[$resolved_list_task]}" >> "/tmp/resolved.autodeploy"
+                done && cat "/tmp/resolved.autodeploy" > "/etc/systemd/resolved.conf.d/resolved.conf" && OPRATIONS="restart" && SERVICE_NAME="systemd-resolved" && CallServiceController && rm -rf "/tmp/resolved.autodeploy"
             else
-                rm -rf /etc/systemd/resolved.conf.d/*.conf
+                resolv_conf_list=(
+                    "223.5.5.5"
+                    "223.6.6.6"
+                    "2400:3200::1"
+                    "2400:3200:baba::1"
+                )
+                rm -rf "/tmp/resolv.autodeploy" && for resolv_conf_list_task in "${!resolv_conf_list[@]}"; do
+                    echo "nameserver ${resolv_conf_list[$resolv_conf_list_task]}" >> "/tmp/resolv.autodeploy"
+                done && if [ -f "/etc/resolv.conf" ]; then chattr -i "/etc/resolv.conf"; fi && rm -rf "/etc/resolv.conf" && cat "/tmp/resolv.autodeploy" > "/etc/resolv.conf" && rm -rf "/tmp/resolv.autodeploy" && chattr +i "/etc/resolv.conf"
             fi
-            rm -rf "/tmp/resolved.autodeploy" && for resolved_list_task in "${!resolved_list[@]}"; do
-                echo "${resolved_list[$resolved_list_task]}" >> "/tmp/resolved.autodeploy"
-            done && cat "/tmp/resolved.autodeploy" > "/etc/systemd/resolved.conf.d/resolved.conf" && OPRATIONS="restart" && SERVICE_NAME="systemd-resolved" && CallServiceController && rm -rf "/tmp/resolved.autodeploy"
+        else
+            resolv_conf_list=(
+                "223.5.5.5"
+                "223.6.6.6"
+                "2400:3200::1"
+                "2400:3200:baba::1"
+            )
+            rm -rf "/tmp/resolv.autodeploy" && for resolv_conf_list_task in "${!resolv_conf_list[@]}"; do
+                echo "nameserver ${resolv_conf_list[$resolv_conf_list_task]}" >> "/tmp/resolv.autodeploy"
+            done && if [ -f "/etc/resolv.conf" ]; then chattr -i "/etc/resolv.conf"; fi && rm -rf "/etc/resolv.conf" && cat "/tmp/resolv.autodeploy" > "/etc/resolv.conf" && rm -rf "/tmp/resolv.autodeploy" && chattr +i "/etc/resolv.conf"
         fi
     }
     function ConfigureSshd() {
         if [ -f "/etc/ssh/sshd_config" ]; then
-            cat "/etc/ssh/sshd_config" | sed "s/PasswordAuthentication\ no/PasswordAuthentication\ yes/g;s/\#PasswordAuthentication\ yes/PasswordAuthentication\ yes/g;s/\#PermitRootLogin\ prohibit\-password/PermitRootLogin\ yes/g" > "/tmp/sshd_config.autodeploy" && cat "/tmp/sshd_config.autodeploy" > "/etc/ssh/sshd_config" && rm -rf "/tmp/sshd_config.autodeploy"
+            cat "/etc/ssh/sshd_config" | sed "s/PasswordAuthentication\ no/PasswordAuthentication\ yes/g;s/\#PasswordAuthentication\ yes/PasswordAuthentication\ yes/g;s/\#PermitRootLogin\ prohibit\-password/PermitRootLogin\ yes/g;s/\#Port\ 22/Port 9022/g" > "/tmp/sshd_config.autodeploy" && cat "/tmp/sshd_config.autodeploy" > "/etc/ssh/sshd_config" && rm -rf "/tmp/sshd_config.autodeploy"
         fi
     }
     function ConfigureSysctl() {
@@ -312,8 +355,12 @@ function ConfigurePackages() {
     function ConfigureUfw() {
         which "ufw" > "/dev/null" 2>&1
         if [ "$?" -eq "0" ] && [ -f "/etc/default/ufw" ]; then
-            echo "$(cat '/etc/default/ufw' | sed 's/DEFAULT\_APPLICATION\_POLICY\=\"ACCEPT\"/DEFAULT\_APPLICATION\_POLICY\=\"REJECT\"/g;s/DEFAULT\_APPLICATION\_POLICY\=\"DROP\"/DEFAULT\_APPLICATION\_POLICY\=\"REJECT\"/g;s/DEFAULT\_APPLICATION\_POLICY\=\"SKIP\"/DEFAULT\_APPLICATION\_POLICY\=\"REJECT\"/g;s/DEFAULT\_FORWARD\_POLICY\=\"DROP\"/DEFAULT\_FORWARD\_POLICY\=\"ACCEPT\"/g;s/DEFAULT\_FORWARD\_POLICY\=\"REJECT\"/DEFAULT\_FORWARD\_POLICY\=\"ACCEPT\"/g;s/DEFAULT\_INPUT\_POLICY\=\"ACCEPT\"/DEFAULT\_INPUT\_POLICY\=\"REJECT\"/g;s/DEFAULT\_INPUT\_POLICY\=\"DROP\"/DEFAULT\_INPUT\_POLICY\=\"REJECT\"/g;s/DEFAULT\_OUTPUT\_POLICY\=\"DROP\"/DEFAULT\_OUTPUT\_POLICY\=\"ACCEPT\"/g;s/DEFAULT\_OUTPUT\_POLICY\=\"REJECT\"/DEFAULT\_OUTPUT\_POLICY\=\"ACCEPT\"/g;s/MANAGE\_BUILTINS\=yes/MANAGE\_BUILTINS\=no/g;s/IPV6\=no/IPV6\=yes/g')" > "/tmp/ufw.autodeploy"
-            cat "/tmp/ufw.autodeploy" > "/etc/default/ufw" && ufw reload && rm -rf "/tmp/ufw.autodeploy" && ufw limit 22/tcp && ufw allow 9090/tcp && ufw enable && ufw status verbose
+            echo "$(cat '/etc/default/ufw' | sed 's/DEFAULT\_APPLICATION\_POLICY\=\"ACCEPT\"/DEFAULT\_APPLICATION\_POLICY\=\"REJECT\"/g;s/DEFAULT\_APPLICATION\_POLICY\=\"DROP\"/DEFAULT\_APPLICATION\_POLICY\=\"REJECT\"/g;s/DEFAULT\_APPLICATION\_POLICY\=\"SKIP\"/DEFAULT\_APPLICATION\_POLICY\=\"REJECT\"/g;s/DEFAULT\_FORWARD\_POLICY\=\"DROP\"/DEFAULT\_FORWARD\_POLICY\=\"ACCEPT\"/g;s/DEFAULT\_FORWARD\_POLICY\=\"REJECT\"/DEFAULT\_FORWARD\_POLICY\=\"ACCEPT\"/g;s/DEFAULT\_INPUT\_POLICY\=\"ACCEPT\"/DEFAULT\_INPUT\_POLICY\=\"REJECT\"/g;s/DEFAULT\_INPUT\_POLICY\=\"DROP\"/DEFAULT\_INPUT\_POLICY\=\"REJECT\"/g;s/DEFAULT\_OUTPUT\_POLICY\=\"DROP\"/DEFAULT\_OUTPUT\_POLICY\=\"ACCEPT\"/g;s/DEFAULT\_OUTPUT\_POLICY\=\"REJECT\"/DEFAULT\_OUTPUT\_POLICY\=\"ACCEPT\"/g;s/MANAGE\_BUILTINS\=yes/MANAGE\_BUILTINS\=no/g;s/IPV6\=no/IPV6\=yes/g')" > "/tmp/ufw.autodeploy" && cat "/tmp/ufw.autodeploy" > "/etc/default/ufw" && rm -rf "/tmp/ufw.autodeploy"
+            if [ "${docker_environment}" == "FALSE" ] && [ "${wsl_kernel}" == "FALSE" ]; then
+                ufw reload && ufw limit 22/tcp && ufw limit 9022/tcp && ufw allow 9090/tcp && ufw enable && ufw status verbose
+            else
+                ufw disable > "/dev/null" 2>&1
+            fi
         fi
     }
     function ConfigureZsh() {
@@ -374,24 +421,26 @@ function ConfigureSystem() {
         fi
     }
     function ConfigureDefaultUser() {
-        DEFAULT_USERNAME="ubuntu"
-        DEFAULT_PASSWORD="*Ubuntu123*"
-        crontab_list=(
-            "@reboot rm -rf /home/${DEFAULT_USERNAME}/.*_history"
-        )
-        userdel -rf "${DEFAULT_USERNAME}" > "/dev/null" 2>&1
-        useradd -d "/home/${DEFAULT_USERNAME}" -s "/bin/zsh" -m "${DEFAULT_USERNAME}" && echo $DEFAULT_USERNAME:$DEFAULT_PASSWORD | chpasswd && adduser "${DEFAULT_USERNAME}" "sudo"
-        if [ -d "/etc/zsh/oh-my-zsh" ]; then
-            cp -rf "/etc/zsh/oh-my-zsh" "/home/${DEFAULT_USERNAME}/.oh-my-zsh"
-            if [ -f "/etc/zsh/oh-my-zsh.zshrc" ]; then
-                cp -rf "/etc/zsh/oh-my-zsh.zshrc" "/home/${DEFAULT_USERNAME}/.zshrc"
+        if [ "${docker_environment}" == "FALSE" ]; then
+            DEFAULT_USERNAME="ubuntu"
+            DEFAULT_PASSWORD="*Ubuntu123*"
+            crontab_list=(
+                "@reboot rm -rf /home/${DEFAULT_USERNAME}/.*_history"
+            )
+            userdel -rf "${DEFAULT_USERNAME}" > "/dev/null" 2>&1
+            useradd -d "/home/${DEFAULT_USERNAME}" -s "/bin/zsh" -m "${DEFAULT_USERNAME}" && echo $DEFAULT_USERNAME:$DEFAULT_PASSWORD | chpasswd && adduser "${DEFAULT_USERNAME}" "sudo"
+            if [ -d "/etc/zsh/oh-my-zsh" ]; then
+                cp -rf "/etc/zsh/oh-my-zsh" "/home/${DEFAULT_USERNAME}/.oh-my-zsh"
+                if [ -f "/etc/zsh/oh-my-zsh.zshrc" ]; then
+                    cp -rf "/etc/zsh/oh-my-zsh.zshrc" "/home/${DEFAULT_USERNAME}/.zshrc"
+                fi
             fi
-        fi
-        which "crontab" > "/dev/null" 2>&1
-        if [ "$?" -eq "0" ]; then
-            rm -rf "/tmp/crontab.autodeploy" && for crontab_list_task in "${!crontab_list[@]}"; do
-                echo "${crontab_list[$crontab_list_task]}" >> "/tmp/crontab.autodeploy"
-            done && crontab -u "${DEFAULT_USERNAME}" "/tmp/crontab.autodeploy" && crontab -lu "${DEFAULT_USERNAME}" && rm -rf "/tmp/crontab.autodeploy"
+            which "crontab" > "/dev/null" 2>&1
+            if [ "$?" -eq "0" ]; then
+                rm -rf "/tmp/crontab.autodeploy" && for crontab_list_task in "${!crontab_list[@]}"; do
+                    echo "${crontab_list[$crontab_list_task]}" >> "/tmp/crontab.autodeploy"
+                done && crontab -u "${DEFAULT_USERNAME}" "/tmp/crontab.autodeploy" && crontab -lu "${DEFAULT_USERNAME}" && rm -rf "/tmp/crontab.autodeploy"
+            fi
         fi
     }
     function ConfigureHostfile() {
@@ -433,7 +482,7 @@ function InstallCustomPackages() {
             "docker-ce"
             "docker-ce-cli"
         )
-        if [ "${wsl_kernel}" == "FALSE" ]; then
+        if [ "${docker_environment}" == "FALSE" ] && [ "${wsl_kernel}" == "FALSE" ]; then
             curl -fsSL "https://mirrors.ustc.edu.cn/docker-ce/linux/ubuntu/gpg" | gpg --dearmor -o "/usr/share/keyrings/docker-archive-keyring.gpg"
             echo "deb [arch=${mirror_arch} signed-by=/usr/share/keyrings/docker-archive-keyring.gpg] https://mirrors.ustc.edu.cn/docker-ce/linux/ubuntu ${LSBCodename} stable" > "/etc/apt/sources.list.d/docker.list"
             apt update && apt purge -qy containerd docker docker-engine docker.io runc && for app_list_task in "${!app_list[@]}"; do
@@ -469,16 +518,12 @@ function InstallCustomPackages() {
 }
 # Install Dependency Packages
 function InstallDependencyPackages() {
-    additional_app_list=(
-        "cockpit"
-        "cockpit-pcp"
-        "netplan.io"
-        "ufw"
-    )
-    default_app_list=(
+    app_list=(
         "apt-file"
         "apt-transport-https"
         "ca-certificates"
+        "cockpit"
+        "cockpit-pcp"
         "curl"
         "dnsutils"
         "git"
@@ -496,6 +541,7 @@ function InstallDependencyPackages() {
         "nano"
         "neofetch"
         "net-tools"
+        "netplan.io"
         "openssh-client"
         "openssh-server"
         "p7zip-full"
@@ -513,6 +559,7 @@ function InstallDependencyPackages() {
         "udisks2-btrfs"
         "udisks2-lvm2"
         "udisks2-zram"
+        "ufw"
         "unrar"
         "unzip"
         "update-notifier-common"
@@ -522,21 +569,11 @@ function InstallDependencyPackages() {
         "zip"
         "zsh"
     )
-    apt update && for default_app_list_task in "${!default_app_list[@]}"; do
-        apt-cache show ${default_app_list[$default_app_list_task]} && if [ "$?" -eq "0" ]; then
-            apt install -qy ${default_app_list[$default_app_list_task]}
+    apt update && for app_list_task in "${!app_list[@]}"; do
+        apt-cache show ${app_list[$app_list_task]} && if [ "$?" -eq "0" ]; then
+            apt install -qy ${app_list[$app_list_task]}
         fi
-    done && if [ "${wsl_kernel}" == "FALSE" ]; then
-        for additional_app_list_task in "${!additional_app_list[@]}"; do
-            apt-cache show ${additional_app_list[$additional_app_list_task]} && if [ "$?" -eq "0" ]; then
-                apt install -qy ${additional_app_list[$additional_app_list_task]}
-            fi
-        done
-    else
-        for additional_app_list_task in "${!additional_app_list[@]}"; do
-            apt purge -qy ${additional_app_list[$additional_app_list_task]}
-        done
-    fi
+    done
 }
 # Upgrade Packages
 function UpgradePackages() {
