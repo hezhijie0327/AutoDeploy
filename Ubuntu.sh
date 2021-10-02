@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 2.0.9
+# Current Version: 2.1.0
 
 ## How to get and use?
 # curl "https://source.zhijie.online/AutoDeploy/main/Ubuntu.sh" | sudo bash
@@ -341,10 +341,10 @@ function ConfigurePackages() {
         fi
     }
     function ConfigureSshd() {
-        if [ -f "/etc/ssh/sshd_config" ]; then
+        if [ -f "/usr/share/openssh/sshd_config" ]; then
             if [ "${docker_environment}" == "FALSE" ] && [ "${wsl_kernel}" == "FALSE" ]; then
                 SSHD_CONFIG_ADDITIONAL="s/\#Port\ 22/Port 9022/g"
-            fi && cat "/etc/ssh/sshd_config" | sed "s/PasswordAuthentication\ no/PasswordAuthentication\ yes/g;s/\#PasswordAuthentication\ yes/PasswordAuthentication\ yes/g;s/\#PermitRootLogin\ prohibit\-password/PermitRootLogin\ yes/g;$SSHD_CONFIG_ADDITIONAL" > "/tmp/sshd_config.autodeploy" && cat "/tmp/sshd_config.autodeploy" > "/etc/ssh/sshd_config" && rm -rf "/tmp/sshd_config.autodeploy"
+            fi && cat "/usr/share/openssh/sshd_config" | sed "s/\#PasswordAuthentication\ yes/PasswordAuthentication\ yes/g;s/\#PermitRootLogin\ prohibit\-password/PermitRootLogin\ yes/g;${SSHD_CONFIG_ADDITIONAL}" > "/tmp/sshd_config.autodeploy" && cat "/tmp/sshd_config.autodeploy" > "/etc/ssh/sshd_config" && rm -rf "/tmp/sshd_config.autodeploy"
         fi
     }
     function ConfigureSysctl() {
