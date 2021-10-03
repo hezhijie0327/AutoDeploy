@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 1.6.3
+# Current Version: 1.6.4
 
 ## How to get and use?
 # /bin/bash -c "$(curl -fsSL 'https://source.zhijie.online/AutoDeploy/main/macOS.sh')"
@@ -88,7 +88,7 @@ function ConfigurePackages() {
                 "ZSH_THEME=\"ys\""
                 "DISABLE_AUTO_UPDATE=\"false\""
                 "DISABLE_UPDATE_PROMPT=\"false\""
-                "UPDATE_ZSH_DAYS=\"30\""
+                "UPDATE_ZSH_DAYS=\"7\""
                 "ZSH_COMPDUMP=\"\$ZSH_CACHE_DIR/.zcompdump\""
                 "ZSH_DISABLE_COMPFIX=\"false\""
                 "CASE_SENSITIVE=\"true\""
@@ -278,6 +278,7 @@ function InstallDependencyPackages() {
             "neofetch"
             "openssh"
             "p7zip"
+            "python3"
             "rar"
             "unzip"
             "vim"
