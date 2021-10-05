@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 1.6.4
+# Current Version: 1.6.5
 
 ## How to get and use?
 # /bin/bash -c "$(curl -fsSL 'https://source.zhijie.online/AutoDeploy/main/macOS.sh')"
@@ -150,10 +150,11 @@ function InstallCustomPackages() {
             "downie" # Downie 4
             "firefox" # Firefox
             "iina" # IINA
-            "logitech-options" # Logi Options
+            "istat-menus" # iStat Menus
             "parallels" # Parallels Desktop
             "permute" # Permute 3
             "pixelsnap" # PixelSnap 2
+            "steermouse" # SteerMouse
             "visual-studio-code" # Visual Studio Code
         )
         which "brew" > "/dev/null" 2>&1
