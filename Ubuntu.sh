@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 2.1.0
+# Current Version: 2.1.1
 
 ## How to get and use?
 # curl "https://source.zhijie.online/AutoDeploy/main/Ubuntu.sh" | sudo bash
@@ -243,6 +243,16 @@ function ConfigurePackages() {
             fi
         fi
     }
+    function ConfigureGrub() {
+        which "update-grub" > "/dev/null" 2>&1
+        if [ "$?" -eq "0" ]; then
+            if [ "${docker_environment}" == "FALSE" ] && [ "${wsl_kernel}" == "FALSE" ]; then
+                if [ -f "/usr/share/grub/default/grub" ]; then
+                    rm -rf "/tmp/grub.autodeploy" && cat "/usr/share/grub/default/grub" > "/tmp/grub.autodeploy" && cat "/tmp/grub.autodeploy" > "/etc/default/grub" && update-grub && rm -rf "/tmp/grub.autodeploy"
+                fi
+            fi
+        fi
+    }
     function ConfigureLandscape() {
         if [ -f "/usr/lib/python3/dist-packages/landscape/lib/network.py" ]; then
             cat "/usr/lib/python3/dist-packages/landscape/lib/network.py" | sed "s/tostring/tobytes/g" > "/tmp/landscape.autodeploy" && cat "/tmp/landscape.autodeploy" > "/usr/lib/python3/dist-packages/landscape/lib/network.py" && rm -rf "/tmp/landscape.autodeploy"
@@ -421,6 +431,7 @@ function ConfigurePackages() {
     }
     ConfigureCrontab
     ConfigureDockerEngine
+    ConfigureGrub
     ConfigureLandscape
     ConfigureNetplan
     ConfigurePostfix
@@ -546,7 +557,6 @@ function InstallDependencyPackages() {
         "landscape-common"
         "lsb-release"
         "mailutils"
-        "mercurial"
         "mtr-tiny"
         "nano"
         "neofetch"
