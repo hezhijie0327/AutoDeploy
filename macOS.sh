@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 1.6.5
+# Current Version: 1.6.6
 
 ## How to get and use?
 # /bin/bash -c "$(curl -fsSL 'https://source.zhijie.online/AutoDeploy/main/macOS.sh')"
@@ -273,7 +273,6 @@ function InstallDependencyPackages() {
             "knot"
             "mailutils"
             "mas"
-            "mercurial"
             "mtr"
             "nano"
             "neofetch"
