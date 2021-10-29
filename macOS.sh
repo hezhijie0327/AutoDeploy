@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 1.6.6
+# Current Version: 1.6.7
 
 ## How to get and use?
 # /bin/bash -c "$(curl -fsSL 'https://source.zhijie.online/AutoDeploy/main/macOS.sh')"
@@ -150,7 +150,6 @@ function InstallCustomPackages() {
             "downie" # Downie 4
             "firefox" # Firefox
             "iina" # IINA
-            "istat-menus" # iStat Menus
             "parallels" # Parallels Desktop
             "permute" # Permute 3
             "pixelsnap" # PixelSnap 2
@@ -169,6 +168,7 @@ function InstallCustomPackages() {
     function InstallAppFromMAS() {
         app_list=(
             "1136220934" # Infuse
+            "1365531024" # 1Blocker
             "409222199" # Cyberduck
             "419330170" # Moom
             "424389933" # Final Cut Pro
