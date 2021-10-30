@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 1.6.7
+# Current Version: 1.6.8
 
 ## How to get and use?
 # /bin/bash -c "$(curl -fsSL 'https://source.zhijie.online/AutoDeploy/main/macOS.sh')"
@@ -228,7 +228,6 @@ function InstallDependencyPackages() {
         "homebrew-command-not-found"
         "homebrew-core"
         "homebrew-formula-analytics"
-        "homebrew-json"
         "homebrew-portable-ruby"
         "homebrew-services"
         "homebrew-test-bot"
