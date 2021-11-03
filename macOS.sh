@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 1.6.8
+# Current Version: 1.6.9
 
 ## How to get and use?
 # /bin/bash -c "$(curl -fsSL 'https://source.zhijie.online/AutoDeploy/main/macOS.sh')"
@@ -185,6 +185,7 @@ function InstallCustomPackages() {
             "823766827" # OneDrive
             "824183456" # Affinity Photo
             "836500024" # Wechat
+            "899247664" # TestFlight
             "993841014" # CopyLess 2
         )
         which "mas" > "/dev/null" 2>&1
