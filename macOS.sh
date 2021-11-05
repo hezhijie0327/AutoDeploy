@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 1.6.9
+# Current Version: 1.7.0
 
 ## How to get and use?
 # /bin/bash -c "$(curl -fsSL 'https://source.zhijie.online/AutoDeploy/main/macOS.sh')"
@@ -269,6 +269,7 @@ function InstallDependencyPackages() {
             "gnutls"
             "grep"
             "iperf3"
+            "iproute2mac"
             "jq"
             "knot"
             "mailutils"
