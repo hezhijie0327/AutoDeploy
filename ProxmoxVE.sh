@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 1.0.3
+# Current Version: 1.0.4
 
 ## How to get and use?
 # curl "https://source.zhijie.online/AutoDeploy/main/ProxmoxVE.sh" | sudo bash
@@ -13,7 +13,7 @@ function GetSystemInformation() {
         NEW_DOMAIN="localdomain"
     }
     function GenerateHostname() {
-        NEW_HOSTNAME="PVE-$(date '+%Y%m%d%H%M%S')"
+        NEW_HOSTNAME="ProxmoxVE-$(date '+%Y%m%d%H%M%S')"
     }
     function GetLSBCodename() {
         LSBCodename=$(cat "/etc/os-release" | grep "CODENAME" | cut -f 2 -d "=")
@@ -177,27 +177,6 @@ function ConfigureSystem() {
             cat "/tmp/shell.autodeploy" > "/etc/passwd" && rm -rf "/tmp/shell.autodeploy"
         fi
     }
-    function ConfigureDefaultUser() {
-        DEFAULT_USERNAME="proxmox"
-        DEFAULT_PASSWORD="*Proxmox123*"
-        crontab_list=(
-            "@reboot rm -rf /home/${DEFAULT_USERNAME}/.*_history"
-        )
-        userdel -rf "${DEFAULT_USERNAME}" > "/dev/null" 2>&1
-        useradd -d "/home/${DEFAULT_USERNAME}" -s "/bin/zsh" -m "${DEFAULT_USERNAME}" && echo $DEFAULT_USERNAME:$DEFAULT_PASSWORD | chpasswd && adduser "${DEFAULT_USERNAME}" "sudo"
-        if [ -d "/etc/zsh/oh-my-zsh" ]; then
-            cp -rf "/etc/zsh/oh-my-zsh" "/home/${DEFAULT_USERNAME}/.oh-my-zsh" && chown -R $DEFAULT_USERNAME:$DEFAULT_USERNAME "/home/${DEFAULT_USERNAME}/.oh-my-zsh"
-            if [ -f "/etc/zsh/oh-my-zsh.zshrc" ]; then
-                cp -rf "/etc/zsh/oh-my-zsh.zshrc" "/home/${DEFAULT_USERNAME}/.zshrc" && chown -R $DEFAULT_USERNAME:$DEFAULT_USERNAME "/home/${DEFAULT_USERNAME}/.zshrc"
-            fi
-        fi
-        which "crontab" > "/dev/null" 2>&1
-        if [ "$?" -eq "0" ]; then
-            rm -rf "/tmp/crontab.autodeploy" && for crontab_list_task in "${!crontab_list[@]}"; do
-                echo "${crontab_list[$crontab_list_task]}" >> "/tmp/crontab.autodeploy"
-            done && crontab -u "${DEFAULT_USERNAME}" "/tmp/crontab.autodeploy" && crontab -lu "${DEFAULT_USERNAME}" && rm -rf "/tmp/crontab.autodeploy"
-        fi
-    }
     function ConfigureHostfile() {
         host_list=(
             "${CURRENT_MANAGEMENT_IP} ${NEW_HOSTNAME}.${NEW_DOMAIN} ${NEW_HOSTNAME}"
@@ -224,7 +203,6 @@ function ConfigureSystem() {
         fi && ln -s "/usr/share/zoneinfo/Asia/Shanghai" "/etc/localtime"
     }
     ConfigureDefaultShell
-    ConfigureDefaultUser
     ConfigureHostfile
     ConfigureLocales
     ConfigureTimeZone
