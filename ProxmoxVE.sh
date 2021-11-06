@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 1.0.0
+# Current Version: 1.0.1
 
 ## How to get and use?
 # curl "https://source.zhijie.online/AutoDeploy/main/ProxmoxVE.sh" | sudo bash
@@ -33,11 +33,15 @@ function SetRepositoryMirror() {
         "deb ${transport_protocol}://mirrors.ustc.edu.cn/debian ${LSBCodename} main contrib non-free"
         "deb ${transport_protocol}://mirrors.ustc.edu.cn/debian ${LSBCodename}-backports main contrib non-free"
         "deb ${transport_protocol}://mirrors.ustc.edu.cn/debian ${LSBCodename}-updates main contrib non-free"
-        "deb ${transport_protocol}://mirrors.ustc.edu.cn/proxmox/debian ${LSBCodename} pve-no-subscription pvetest"
         "deb-src ${transport_protocol}://mirrors.ustc.edu.cn/debian-security ${LSBCodename}-security main contrib non-free"
         "deb-src ${transport_protocol}://mirrors.ustc.edu.cn/debian ${LSBCodename} main contrib non-free"
         "deb-src ${transport_protocol}://mirrors.ustc.edu.cn/debian ${LSBCodename}-backports main contrib non-free"
         "deb-src ${transport_protocol}://mirrors.ustc.edu.cn/debian ${LSBCodename}-updates main contrib non-free"
+    )
+    proxmox_mirror_list=(
+        "# deb ${transport_protocol}://enterprise.proxmox.com/debian/pve ${LSBCodename} pve-enterprise"
+        "deb ${transport_protocol}://mirrors.ustc.edu.cn/proxmox/debian ${LSBCodename} pve-no-subscription"
+        "# deb ${transport_protocol}://mirrors.ustc.edu.cn/proxmox/debian ${LSBCodename} pvetest"
     )
     if [ ! -d "/etc/apt/sources.list.d" ]; then
         mkdir "/etc/apt/sources.list.d"
@@ -47,18 +51,20 @@ function SetRepositoryMirror() {
     rm -rf "/tmp/apt.autodeploy" && for mirror_list_task in "${!mirror_list[@]}"; do
         echo "${mirror_list[$mirror_list_task]}" >> "/tmp/apt.autodeploy"
     done && cat "/tmp/apt.autodeploy" > "/etc/apt/sources.list" && rm -rf "/tmp/apt.autodeploy"
+    rm -rf "/tmp/apt.autodeploy" && for proxmox_mirror_list_task in "${!proxmox_mirror_list[@]}"; do
+        echo "${proxmox_mirror_list[$proxmox_mirror_list_task]}" >> "/tmp/apt.autodeploy"
+    done && cat "/tmp/apt.autodeploy" > "/etc/apt/sources.list.d/pve.list" && rm -rf "/tmp/apt.autodeploy"
 }
 # Set Readonly Flag
 function SetReadonlyFlag() {
     file_list=(
         "/etc/apt/sources.list"
         "/etc/apt/sources.list.d/docker.list"
-        "/etc/default/ufw"
+        "/etc/apt/sources.list.d/pve.list"
         "/etc/docker/daemon.json"
         "/etc/hostname"
         "/etc/hosts"
         "/etc/modules"
-        "/etc/sysctl.conf"
         "/etc/zsh/oh-my-zsh.zshrc"
     )
     if [ "${read_only}" == "TRUE" ]; then
@@ -148,28 +154,6 @@ function ConfigurePackages() {
             cat "/usr/share/openssh/sshd_config" | sed "s/\#PasswordAuthentication\ yes/PasswordAuthentication\ yes/g;s/\#PermitRootLogin\ prohibit\-password/PermitRootLogin\ yes/g" > "/tmp/sshd_config.autodeploy" && cat "/tmp/sshd_config.autodeploy" > "/etc/ssh/sshd_config" && rm -rf "/tmp/sshd_config.autodeploy"
         fi
     }
-    function ConfigureSysctl() {
-        sysctl_list=(
-            "net.core.default_qdisc = fq"
-            "net.ipv4.ip_forward = 1"
-            "net.ipv4.tcp_congestion_control = bbr"
-            "net.ipv4.tcp_fastopen = 3"
-            "net.ipv6.conf.all.forwarding = 1"
-        )
-        which "sysctl" > "/dev/null" 2>&1
-        if [ "$?" -eq "0" ]; then
-            rm -rf "/tmp/sysctl.autodeploy" && for sysctl_list_task in "${!sysctl_list[@]}"; do
-                echo "${sysctl_list[$sysctl_list_task]}" >> "/tmp/sysctl.autodeploy"
-            done && cat "/tmp/sysctl.autodeploy" > "/etc/sysctl.conf" && sysctl -p && rm -rf "/tmp/sysctl.autodeploy"
-        fi
-    }
-    function ConfigureUfw() {
-        which "ufw" > "/dev/null" 2>&1
-        if [ "$?" -eq "0" ] && [ -f "/etc/default/ufw" ]; then
-            echo "$(cat '/etc/default/ufw' | sed 's/DEFAULT\_APPLICATION\_POLICY\=\"ACCEPT\"/DEFAULT\_APPLICATION\_POLICY\=\"REJECT\"/g;s/DEFAULT\_APPLICATION\_POLICY\=\"DROP\"/DEFAULT\_APPLICATION\_POLICY\=\"REJECT\"/g;s/DEFAULT\_APPLICATION\_POLICY\=\"SKIP\"/DEFAULT\_APPLICATION\_POLICY\=\"REJECT\"/g;s/DEFAULT\_FORWARD\_POLICY\=\"DROP\"/DEFAULT\_FORWARD\_POLICY\=\"ACCEPT\"/g;s/DEFAULT\_FORWARD\_POLICY\=\"REJECT\"/DEFAULT\_FORWARD\_POLICY\=\"ACCEPT\"/g;s/DEFAULT\_INPUT\_POLICY\=\"ACCEPT\"/DEFAULT\_INPUT\_POLICY\=\"REJECT\"/g;s/DEFAULT\_INPUT\_POLICY\=\"DROP\"/DEFAULT\_INPUT\_POLICY\=\"REJECT\"/g;s/DEFAULT\_OUTPUT\_POLICY\=\"DROP\"/DEFAULT\_OUTPUT\_POLICY\=\"ACCEPT\"/g;s/DEFAULT\_OUTPUT\_POLICY\=\"REJECT\"/DEFAULT\_OUTPUT\_POLICY\=\"ACCEPT\"/g;s/MANAGE\_BUILTINS\=yes/MANAGE\_BUILTINS\=no/g;s/IPV6\=no/IPV6\=yes/g')" > "/tmp/ufw.autodeploy" && cat "/tmp/ufw.autodeploy" > "/etc/default/ufw" && rm -rf "/tmp/ufw.autodeploy"
-            ufw limit 22/tcp && ufw allow 8006/tcp && ufw enable && ufw status verbose
-        fi
-    }
     function ConfigureZsh() {
         omz_list=(
             "export DEBIAN_FRONTEND=\"noninteractive\""
@@ -214,8 +198,6 @@ function ConfigurePackages() {
     ConfigureModule
     ConfigurePostfix
     ConfigureSshd
-    ConfigureSysctl
-    ConfigureUfw
     ConfigureZsh
 }
 # Configure System
@@ -248,7 +230,7 @@ function ConfigureSystem() {
         fi
     }
     function ConfigureHostfile() {
-        host_list=
+        host_list=(
             "${CURRENT_MANAGEMENT_IP} ${NEW_HOSTNAME}.${NEW_DOMAIN}"
             "127.0.0.1 localhost"
             "255.255.255.255 broadcasthost"
@@ -346,7 +328,6 @@ function InstallDependencyPackages() {
         "udisks2-btrfs"
         "udisks2-lvm2"
         "udisks2-zram"
-        "ufw"
         "unrar"
         "unzip"
         "vim"
