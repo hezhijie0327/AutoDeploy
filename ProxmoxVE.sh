@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 1.0.2
+# Current Version: 1.0.3
 
 ## How to get and use?
 # curl "https://source.zhijie.online/AutoDeploy/main/ProxmoxVE.sh" | sudo bash
@@ -59,9 +59,7 @@ function SetRepositoryMirror() {
 function SetReadonlyFlag() {
     file_list=(
         "/etc/apt/sources.list"
-        "/etc/apt/sources.list.d/docker.list"
         "/etc/apt/sources.list.d/pve.list"
-        "/etc/docker/daemon.json"
         "/etc/hostname"
         "/etc/hosts"
         "/etc/modules"
@@ -92,34 +90,6 @@ function ConfigurePackages() {
             rm -rf "/tmp/crontab.autodeploy" && for crontab_list_task in "${!crontab_list[@]}"; do
                 echo "${crontab_list[$crontab_list_task]}" >> "/tmp/crontab.autodeploy"
             done && crontab -u "root" "/tmp/crontab.autodeploy" && crontab -lu "root" && rm -rf "/tmp/crontab.autodeploy"
-        fi
-    }
-    function ConfigureDockerEngine() {
-        docker_list=(
-            "{"
-            "  \"experimental\": true,"
-            "  \"fixed-cidr-v6\": \"2001:db8:1::/64\","
-            "  \"ipv6\": true,"
-            "  \"registry-mirrors\": ["
-            "    \"https://docker.mirrors.ustc.edu.cn\""
-            "  ]"
-            "}"
-        )
-        which "docker" > "/dev/null" 2>&1
-        if [ "$?" -eq "0" ]; then
-            if [ ! -d "/docker" ]; then
-                mkdir "/docker"
-            fi
-            if [ ! -d "/etc/docker" ]; then
-                mkdir "/etc/docker"
-            fi
-            rm -rf "/tmp/docker.autodeploy" && for docker_list_task in "${!docker_list[@]}"; do
-                echo "${docker_list[$docker_list_task]}" >> "/tmp/docker.autodeploy"
-            done && cat "/tmp/docker.autodeploy" > "/etc/docker/daemon.json" && OPRATIONS="restart" && SERVICE_NAME="docker" && CallServiceController && rm -rf "/tmp/docker.autodeploy"
-        else
-            if [ ! -d "/docker" ]; then
-                mkdir "/docker"
-            fi
         fi
     }
     function ConfigureGrub() {
@@ -193,7 +163,6 @@ function ConfigurePackages() {
         fi
     }
     ConfigureCrontab
-    ConfigureDockerEngine
     ConfigureGrub
     ConfigureModule
     ConfigurePostfix
@@ -262,20 +231,6 @@ function ConfigureSystem() {
 }
 # Install Custom Packages
 function InstallCustomPackages() {
-    function InstallDockerEngine() {
-        app_list=(
-            "containerd.io"
-            "docker-ce"
-            "docker-ce-cli"
-        )
-        curl -fsSL "https://mirrors.ustc.edu.cn/docker-ce/linux/debian/gpg" | gpg --dearmor -o "/usr/share/keyrings/docker-archive-keyring.gpg"
-        echo "deb [arch=amd64 signed-by=/usr/share/keyrings/docker-archive-keyring.gpg] https://mirrors.ustc.edu.cn/docker-ce/linux/debian ${LSBCodename} stable" > "/etc/apt/sources.list.d/docker.list"
-        apt update && apt purge -qy containerd docker docker-engine docker.io runc && for app_list_task in "${!app_list[@]}"; do
-            apt-cache show ${app_list[$app_list_task]} && if [ "$?" -eq "0" ]; then
-                apt install -qy ${app_list[$app_list_task]}
-            fi
-        done
-    }
     function InstallOhMyZsh() {
         plugin_list=(
             "zsh-autosuggestions"
@@ -289,7 +244,6 @@ function InstallCustomPackages() {
             done
         fi
     }
-    InstallDockerEngine
     InstallOhMyZsh
 }
 # Install Dependency Packages
@@ -313,6 +267,7 @@ function InstallDependencyPackages() {
         "nano"
         "neofetch"
         "net-tools"
+        "ntfs-3g"
         "openssh-client"
         "openssh-server"
         "p7zip-full"
