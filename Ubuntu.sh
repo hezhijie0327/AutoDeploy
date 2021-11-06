@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 2.1.3
+# Current Version: 2.1.4
 
 ## How to get and use?
 # curl "https://source.zhijie.online/AutoDeploy/main/Ubuntu.sh" | sudo bash
@@ -308,10 +308,6 @@ function ConfigurePackages() {
         which "resolvectl" > "/dev/null" 2>&1
         if [ "$?" -eq "0" ]; then
             if [ "${docker_environment}" == "FALSE" ] && [ "${wsl_kernel}" == "FALSE" ]; then
-                if [ -f "/etc/resolv.conf" ]; then
-                    chattr -i "/etc/resolv.conf" > "/dev/null" 2>&1
-                    rm -rf "/etc/resolv.conf" && ln -s "/run/systemd/resolve/resolv.conf" "/etc/resolv.conf"
-                fi
                 if [ ! -d "/etc/systemd/resolved.conf.d" ]; then
                     mkdir "/etc/systemd/resolved.conf.d"
                 else
@@ -319,7 +315,10 @@ function ConfigurePackages() {
                 fi
                 rm -rf "/tmp/resolved.autodeploy" && for resolved_list_task in "${!resolved_list[@]}"; do
                     echo "${resolved_list[$resolved_list_task]}" >> "/tmp/resolved.autodeploy"
-                done && cat "/tmp/resolved.autodeploy" > "/etc/systemd/resolved.conf.d/resolved.conf" && OPRATIONS="restart" && SERVICE_NAME="systemd-resolved" && CallServiceController && rm -rf "/tmp/resolved.autodeploy"
+                done && cat "/tmp/resolved.autodeploy" > "/etc/systemd/resolved.conf.d/resolved.conf" && OPRATIONS="restart" && SERVICE_NAME="systemd-resolved" && CallServiceController && rm -rf "/tmp/resolved.autodeploy" && if [ -f "/etc/resolv.conf" ]; then
+                    chattr -i "/etc/resolv.conf" > "/dev/null" 2>&1
+                    rm -rf "/etc/resolv.conf" && ln -s "/run/systemd/resolve/resolv.conf" "/etc/resolv.conf"
+                fi
             else
                 resolv_conf_list=(
                     "223.5.5.5"
