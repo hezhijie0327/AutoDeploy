@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 1.1.0
+# Current Version: 1.1.1
 
 ## How to get and use?
 # curl "https://source.zhijie.online/AutoDeploy/main/ProxmoxVE.sh" | sudo bash
@@ -71,13 +71,13 @@ function SetReadonlyFlag() {
     if [ "${read_only}" == "TRUE" ]; then
         for file_list_task in "${!file_list[@]}"; do
             if [ -d "${file_list[$file_list_task]}" ] || [ -f "${file_list[$file_list_task]}" ]; then
-                chattr +i "${file_list[$file_list_task]}"
+                chattr +i "${file_list[$file_list_task]}" > "/dev/null" 2>&1
             fi
         done
     elif [ "${read_only}" == "FALSE" ]; then
         for file_list_task in "${!file_list[@]}"; do
             if [ -d "${file_list[$file_list_task]}" ] || [ -f "${file_list[$file_list_task]}" ]; then
-                chattr -i "${file_list[$file_list_task]}"
+                chattr -i "${file_list[$file_list_task]}" > "/dev/null" 2>&1
             fi
         done
     fi
@@ -118,8 +118,28 @@ function ConfigurePackages() {
     }
     function ConfigurePostfix() {
         if [ -f "/etc/postfix/main.cf" ]; then
-            CURRENT_HOSTNAME=$(cat "/etc/postfix/main.cf" | grep "myhostname\=" | sed "s/myhostname\=//g")
-            cat "/etc/postfix/main.cf" | sed "s/$CURRENT_HOSTNAME/$NEW_HOSTNAME/g" > "/tmp/main.cf.autodeploy" && cat "/tmp/main.cf.autodeploy" > "/etc/postfix/main.cf" && rm -rf "/tmp/main.cf.autodeploy"
+            if [ "$(cat '/etc/postfix/main.cf' | grep 'myhostname\=')" != "" ]; then
+                CURRENT_HOSTNAME=$(cat "/etc/postfix/main.cf" | grep "myhostname\=" | sed "s/myhostname\=//g")
+                cat "/etc/postfix/main.cf" | sed "s/$CURRENT_HOSTNAME/$NEW_HOSTNAME/g" > "/tmp/main.cf.autodeploy" && cat "/tmp/main.cf.autodeploy" > "/etc/postfix/main.cf" && rm -rf "/tmp/main.cf.autodeploy"
+            fi
+        fi
+    }
+    function ConfigureSysctl() {
+        sysctl_list=(
+            "net.core.default_qdisc = fq"
+            "net.ipv4.ip_forward = 1"
+            "net.ipv4.tcp_congestion_control = bbr"
+            "net.ipv4.tcp_fastopen = 3"
+            "net.ipv6.conf.all.forwarding = 1"
+        )
+        which "sysctl" > "/dev/null" 2>&1
+        if [ "$?" -eq "0" ]; then
+            rm -rf "/tmp/sysctl.autodeploy" && for sysctl_list_task in "${!sysctl_list[@]}"; do
+                sysctl -w "$(echo ${sysctl_list[$sysctl_list_task]} | sed 's/\ //g')" > "/dev/null" 2>&1
+                if [ "$?" -eq "0" ]; then
+                    echo "${sysctl_list[$sysctl_list_task]}" >> "/tmp/sysctl.autodeploy"
+                fi
+            done && cat "/tmp/sysctl.autodeploy" > "/etc/sysctl.conf" && sysctl -p && rm -rf "/tmp/sysctl.autodeploy"
         fi
     }
     function ConfigureSshd() {
@@ -170,6 +190,7 @@ function ConfigurePackages() {
     ConfigureModule
     ConfigurePostfix
     ConfigureSshd
+    ConfigureSysctl
     ConfigureZsh
 }
 # Configure System
