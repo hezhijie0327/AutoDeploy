@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 1.0.4
+# Current Version: 1.0.5
 
 ## How to get and use?
 # curl "https://source.zhijie.online/AutoDeploy/main/ProxmoxVE.sh" | sudo bash
@@ -53,13 +53,13 @@ function SetRepositoryMirror() {
     done && cat "/tmp/apt.autodeploy" > "/etc/apt/sources.list" && rm -rf "/tmp/apt.autodeploy"
     rm -rf "/tmp/apt.autodeploy" && for proxmox_mirror_list_task in "${!proxmox_mirror_list[@]}"; do
         echo "${proxmox_mirror_list[$proxmox_mirror_list_task]}" >> "/tmp/apt.autodeploy"
-    done && cat "/tmp/apt.autodeploy" > "/etc/apt/sources.list.d/pve.list" && rm -rf "/tmp/apt.autodeploy"
+    done && cat "/tmp/apt.autodeploy" > "/etc/apt/sources.list.d/proxmox.list" && rm -rf "/tmp/apt.autodeploy" && sed -i "s/http\:\/\/download\.proxmox\.com/https\:\/\/mirrors\.ustc\.edu\.cn\/proxmox/g" "/usr/share/perl5/PVE/APLInfo.pm"
 }
 # Set Readonly Flag
 function SetReadonlyFlag() {
     file_list=(
         "/etc/apt/sources.list"
-        "/etc/apt/sources.list.d/pve.list"
+        "/etc/apt/sources.list.d/proxmox.list"
         "/etc/hostname"
         "/etc/hosts"
         "/etc/modules"
