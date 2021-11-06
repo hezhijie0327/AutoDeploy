@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 2.1.2
+# Current Version: 2.1.3
 
 ## How to get and use?
 # curl "https://source.zhijie.online/AutoDeploy/main/Ubuntu.sh" | sudo bash
@@ -309,6 +309,7 @@ function ConfigurePackages() {
         if [ "$?" -eq "0" ]; then
             if [ "${docker_environment}" == "FALSE" ] && [ "${wsl_kernel}" == "FALSE" ]; then
                 if [ -f "/etc/resolv.conf" ]; then
+                    chattr -i "/etc/resolv.conf" > "/dev/null" 2>&1
                     rm -rf "/etc/resolv.conf" && ln -s "/run/systemd/resolve/resolv.conf" "/etc/resolv.conf"
                 fi
                 if [ ! -d "/etc/systemd/resolved.conf.d" ]; then
