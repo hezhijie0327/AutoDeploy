@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 2.1.1
+# Current Version: 2.1.2
 
 ## How to get and use?
 # curl "https://source.zhijie.online/AutoDeploy/main/Ubuntu.sh" | sudo bash
@@ -185,13 +185,13 @@ function SetReadonlyFlag() {
     if [ "${read_only}" == "TRUE" ]; then
         for file_list_task in "${!file_list[@]}"; do
             if [ -d "${file_list[$file_list_task]}" ] || [ -f "${file_list[$file_list_task]}" ]; then
-                chattr +i "${file_list[$file_list_task]}"
+                chattr +i "${file_list[$file_list_task]}" > "/dev/null" 2>&1
             fi
         done
     elif [ "${read_only}" == "FALSE" ]; then
         for file_list_task in "${!file_list[@]}"; do
             if [ -d "${file_list[$file_list_task]}" ] || [ -f "${file_list[$file_list_task]}" ]; then
-                chattr -i "${file_list[$file_list_task]}"
+                chattr -i "${file_list[$file_list_task]}" > "/dev/null" 2>&1
             fi
         done
     fi
@@ -291,8 +291,10 @@ function ConfigurePackages() {
     }
     function ConfigurePostfix() {
         if [ -f "/etc/postfix/main.cf" ]; then
-            CURRENT_HOSTNAME=$(cat "/etc/postfix/main.cf" | grep "myhostname\ \=\ " | sed "s/myhostname\ \=\ //g")
-            cat "/etc/postfix/main.cf" | sed "s/$CURRENT_HOSTNAME/$NEW_HOSTNAME/g" > "/tmp/main.cf.autodeploy" && cat "/tmp/main.cf.autodeploy" > "/etc/postfix/main.cf" && rm -rf "/tmp/main.cf.autodeploy"
+            if [ "$(cat '/etc/postfix/main.cf' | grep 'myhostname\ \=\ ')" != "" ]; then
+                CURRENT_HOSTNAME=$(cat "/etc/postfix/main.cf" | grep "myhostname\ \=\ " | sed "s/myhostname\ \=\ //g")
+                cat "/etc/postfix/main.cf" | sed "s/$CURRENT_HOSTNAME/$NEW_HOSTNAME/g" > "/tmp/main.cf.autodeploy" && cat "/tmp/main.cf.autodeploy" > "/etc/postfix/main.cf" && rm -rf "/tmp/main.cf.autodeploy"
+            fi
         fi
     }
     function ConfigureResolved() {
@@ -368,7 +370,10 @@ function ConfigurePackages() {
         which "sysctl" > "/dev/null" 2>&1
         if [ "$?" -eq "0" ]; then
             rm -rf "/tmp/sysctl.autodeploy" && for sysctl_list_task in "${!sysctl_list[@]}"; do
-                echo "${sysctl_list[$sysctl_list_task]}" >> "/tmp/sysctl.autodeploy"
+                sysctl -w "$(echo ${sysctl_list[$sysctl_list_task]} | sed 's/\ //g')" > "/dev/null" 2>&1
+                if [ "$?" -eq "0" ]; then
+                    echo "${sysctl_list[$sysctl_list_task]}" >> "/tmp/sysctl.autodeploy"
+                fi
             done && cat "/tmp/sysctl.autodeploy" > "/etc/sysctl.conf" && sysctl -p && rm -rf "/tmp/sysctl.autodeploy"
         fi
     }
@@ -562,6 +567,7 @@ function InstallDependencyPackages() {
         "neofetch"
         "net-tools"
         "netplan.io"
+        "ntfs-3g"
         "openssh-client"
         "openssh-server"
         "p7zip-full"
