@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 1.0.5
+# Current Version: 1.0.6
 
 ## How to get and use?
 # curl "https://source.zhijie.online/AutoDeploy/main/ProxmoxVE.sh" | sudo bash
@@ -194,18 +194,8 @@ function ConfigureSystem() {
         done && cat "/tmp/hosts.autodeploy" > "/etc/hosts" && rm -rf "/tmp/hosts.autodeploy"
         rm -rf "/tmp/hostname.autodeploy" && echo "${NEW_HOSTNAME}" > "/tmp/hostname.autodeploy" && cat "/tmp/hostname.autodeploy" > "/etc/hostname" && rm -rf "/tmp/hostname.autodeploy"
     }
-    function ConfigureLocales() {
-        apt purge -qy locales && apt update && apt install -qy locales && locale-gen "en_US.UTF-8" && update-locale "en_US.UTF-8"
-    }
-    function ConfigureTimeZone() {
-        if [ -f "/etc/localtime" ]; then
-            rm -rf "/etc/localtime"
-        fi && ln -s "/usr/share/zoneinfo/Asia/Shanghai" "/etc/localtime"
-    }
     ConfigureDefaultShell
     ConfigureHostfile
-    ConfigureLocales
-    ConfigureTimeZone
 }
 # Install Custom Packages
 function InstallCustomPackages() {
