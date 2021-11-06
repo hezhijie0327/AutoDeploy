@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 2.1.4
+# Current Version: 2.1.5
 
 ## How to get and use?
 # curl "https://source.zhijie.online/AutoDeploy/main/Ubuntu.sh" | sudo bash
@@ -72,6 +72,20 @@ function GetSystemInformation() {
             docker_environment="TRUE"
         else
             docker_environment="FALSE"
+        fi
+    }
+    function IsKVMEnvironment() {
+        if [ "$(lscpu | grep 'Hypervisor vendor' | cut -d ':' -f 2 | tr -d ' ')" == "KVM" ]; then
+            kvm_environment="TRUE"
+        else
+            kvm_environment="FALSE"
+        fi
+    }
+    function IsVMwareEnvironment() {
+        if [ "$(lscpu | grep 'Hypervisor vendor' | cut -d ':' -f 2 | tr -d ' ')" == "VMware" ]; then
+            vmware_environment="TRUE"
+        else
+            vmware_environment="FALSE"
         fi
     }
     function IsWSLKernelRelease() {
@@ -147,6 +161,8 @@ function GetSystemInformation() {
     GetLSBCodename
     IsArmArchitecture
     IsDockerEnvironment
+    IsKVMEnvironment
+    IsVMwareEnvironment
     IsWSLKernelRelease
 }
 # Set Repository Mirror
@@ -599,7 +615,15 @@ function InstallDependencyPackages() {
         apt-cache show ${app_list[$app_list_task]} && if [ "$?" -eq "0" ]; then
             apt install -qy ${app_list[$app_list_task]}
         fi
-    done
+    done && if [ "${kvm_environment}" == "TRUE" ]; then
+        apt-cache show qemu-guest-agent && if [ "$?" -eq "0" ]; then
+            apt install -qy qemu-guest-agent
+        fi
+    fi && if [ "${vmware_environment}" == "TRUE" ]; then
+        apt-cache show open-vm-tools && if [ "$?" -eq "0" ]; then
+            apt install -qy open-vm-tools
+        fi
+    fi
 }
 # Upgrade Packages
 function UpgradePackages() {
