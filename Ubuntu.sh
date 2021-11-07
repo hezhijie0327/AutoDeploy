@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 2.1.7
+# Current Version: 2.1.8
 
 ## How to get and use?
 # curl "https://source.zhijie.online/AutoDeploy/main/Ubuntu.sh" | sudo bash
@@ -260,7 +260,7 @@ function ConfigurePackages() {
         )
         which "docker" > "/dev/null" 2>&1
         if [ "$?" -eq "0" ]; then
-            if [ "${docker_environment}" == "FALSE" ]; then
+            if [ "${docker_environment}" == "FALSE" ] && [ "${wsl_environment}" == "FALSE" ]; then
                 if [ ! -d "/docker" ]; then
                     mkdir "/docker"
                 fi
