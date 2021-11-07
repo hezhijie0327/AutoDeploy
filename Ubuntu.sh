@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 2.1.5
+# Current Version: 2.1.6
 
 ## How to get and use?
 # curl "https://source.zhijie.online/AutoDeploy/main/Ubuntu.sh" | sudo bash
@@ -17,9 +17,9 @@ function CallServiceController(){
         echo "An error occurred during processing. Missing (SERVICE_NAME) value, please check it and try again."
         exit 1
     fi
-    if [ "${wsl_kernel}" == "TRUE" ]; then
+    if [ "${wsl_environment}" == "TRUE" ]; then
         serivce ${SERVICE_NAME} ${OPRATIONS}
-    elif [ "${wsl_kernel}" == "FALSE" ]; then
+    elif [ "${wsl_environment}" == "FALSE" ]; then
         systemctl ${OPRATIONS} ${SERVICE_NAME}
     else
         echo "Unsupported service controller."
@@ -67,103 +67,125 @@ function GetSystemInformation() {
             exit 1
         fi
     }
-    function IsDockerEnvironment() {
-        if [ -f "/.dockerenv" ]; then
-            docker_environment="TRUE"
-        else
-            docker_environment="FALSE"
-        fi
+    function IsContainerEnvironment() {
+        function CheckDockerEnvironment() {
+            if [ -f "/.dockerenv" ]; then
+                docker_environment="TRUE"
+            else
+                docker_environment="FALSE"
+            fi
+        }
+        function CheckLXCEnvironment() {
+            if [ -f "/proc/1/environ" ]; then
+                if [ "$(cat '/proc/1/environ' | grep -a 'lxc')" != "" ]; then
+                    lxc_environment="TRUE"
+                else
+                    lxc_environment="FALSE"
+                fi
+            fi
+        }
+        CheckDockerEnvironment
+        CheckLXCEnvironment
     }
-    function IsKVMEnvironment() {
-        if [ "$(lscpu | grep 'Hypervisor vendor' | cut -d ':' -f 2 | tr -d ' ')" == "KVM" ]; then
-            kvm_environment="TRUE"
-        else
-            kvm_environment="FALSE"
-        fi
-    }
-    function IsVMwareEnvironment() {
-        if [ "$(lscpu | grep 'Hypervisor vendor' | cut -d ':' -f 2 | tr -d ' ')" == "VMware" ]; then
-            vmware_environment="TRUE"
-        else
-            vmware_environment="FALSE"
-        fi
-    }
-    function IsWSLKernelRelease() {
-        if [ "$(uname -r | grep 'WSL')" == "" ]; then
-            wsl_kernel="FALSE"
-        else
-            wsl_kernel="TRUE"
-            function Create_Startup_Script() {
-                startup_list=(
-                    '#!/bin/bash'
-                    "service cron start > \"/dev/null\" 2>&1"
-                    "service ssh start > \"/dev/null\" 2>&1"
-                )
-                rm -rf "/tmp/startup.autodeploy" && for startup_list_task in "${!startup_list[@]}"; do
-                    echo "${startup_list[$startup_list_task]}" >> "/tmp/startup.autodeploy"
-                done && cat "/tmp/startup.autodeploy" > "/opt/startup.sh" && chmod +x "/opt/startup.sh" && rm -rf "/tmp/startup.autodeploy"
-                rm -rf "/tmp/startup.sudo.autodeploy" && if [ ! -d "/etc/sudoers.d" ]; then
-                    mkdir "/etc/sudoers.d"
-                fi && echo "%sudo ALL=NOPASSWD: /opt/startup.sh" > "/etc/sudoers.d/startup" && rm -rf "/tmp/startup.sudo.autodeploy"
-            }
-            function Fix_Resolv_Conf_Issue() {
-                resolv_conf_list=(
-                    "223.5.5.5"
-                    "223.6.6.6"
-                    "2400:3200::1"
-                    "2400:3200:baba::1"
-                )
-                wsl_conf_list=(
-                    "[network]"
-                    "generateResolvConf = false"
-                )
-                rm -rf "/tmp/resolv.autodeploy" && for resolv_conf_list_task in "${!resolv_conf_list[@]}"; do
-                    echo "nameserver ${resolv_conf_list[$resolv_conf_list_task]}" >> "/tmp/resolv.autodeploy"
-                done && if [ -f "/etc/resolv.conf" ]; then
-                    chattr -i "/etc/resolv.conf" > "/dev/null" 2>&1
-                    if [ "$?" -eq "1" ]; then
-                        rm -rf "/etc/resolv.conf"
+    function IsVirtualEnvironment() {
+        function CheckKVMEnvironment() {
+            which "lscpu" > "/dev/null" 2>&1
+            if [ "$?" -eq "0" ]; then
+                if [ "$(lscpu | grep 'Hypervisor vendor' | cut -d ':' -f 2 | tr -d ' ')" == "KVM" ]; then
+                    kvm_environment="TRUE"
+                else
+                    kvm_environment="FALSE"
+                fi
+            fi
+        }
+        function CheckVMWareEnvironment() {
+            which "lscpu" > "/dev/null" 2>&1
+            if [ "$?" -eq "0" ]; then
+                if [ "$(lscpu | grep 'Hypervisor vendor' | cut -d ':' -f 2 | tr -d ' ')" == "VMware" ]; then
+                    vmware_environment="TRUE"
+                else
+                    vmware_environment="FALSE"
+                fi
+            fi
+        }
+        function CheckWSLEnvironment() {
+            if [ "$(uname -r | grep 'WSL')" == "" ]; then
+                wsl_environment="FALSE"
+            else
+                wsl_environment="TRUE"
+                function Create_Startup_Script() {
+                    startup_list=(
+                        '#!/bin/bash'
+                        "service cron start > \"/dev/null\" 2>&1"
+                        "service ssh start > \"/dev/null\" 2>&1"
+                    )
+                    rm -rf "/tmp/startup.autodeploy" && for startup_list_task in "${!startup_list[@]}"; do
+                        echo "${startup_list[$startup_list_task]}" >> "/tmp/startup.autodeploy"
+                    done && cat "/tmp/startup.autodeploy" > "/opt/startup.sh" && chmod +x "/opt/startup.sh" && rm -rf "/tmp/startup.autodeploy"
+                    rm -rf "/tmp/startup.sudo.autodeploy" && if [ ! -d "/etc/sudoers.d" ]; then
+                        mkdir "/etc/sudoers.d"
+                    fi && echo "%sudo ALL=NOPASSWD: /opt/startup.sh" > "/etc/sudoers.d/startup" && rm -rf "/tmp/startup.sudo.autodeploy"
+                }
+                function Fix_Resolv_Conf_Issue() {
+                    resolv_conf_list=(
+                        "223.5.5.5"
+                        "223.6.6.6"
+                        "2400:3200::1"
+                        "2400:3200:baba::1"
+                    )
+                    wsl_conf_list=(
+                        "[network]"
+                        "generateResolvConf = false"
+                    )
+                    rm -rf "/tmp/resolv.autodeploy" && for resolv_conf_list_task in "${!resolv_conf_list[@]}"; do
+                        echo "nameserver ${resolv_conf_list[$resolv_conf_list_task]}" >> "/tmp/resolv.autodeploy"
+                    done && if [ -f "/etc/resolv.conf" ]; then
+                        chattr -i "/etc/resolv.conf" > "/dev/null" 2>&1
+                        if [ "$?" -eq "1" ]; then
+                            rm -rf "/etc/resolv.conf"
+                        fi
+                    fi && rm -rf "/etc/resolv.conf" && cat "/tmp/resolv.autodeploy" > "/etc/resolv.conf" && rm -rf "/tmp/resolv.autodeploy" && chattr +i "/etc/resolv.conf"
+                    rm -rf "/tmp/wsl.autodeploy" && for wsl_conf_list_task in "${!wsl_conf_list[@]}"; do
+                        echo "${wsl_conf_list[$wsl_conf_list_task]}" >> "/tmp/wsl.autodeploy"
+                    done && if [ -f "/etc/wsl.conf" ]; then chattr -i "/etc/wsl.conf"; fi && rm -rf "/etc/wsl.conf" && cat "/tmp/wsl.autodeploy" > "/etc/wsl.conf" && rm -rf "/tmp/wsl.autodeploy" && chattr +i "/etc/wsl.conf"
+                }
+                function Fix_Sshd_Server_Issue() {
+                    CURRENT_PATH=$(pwd)
+                    cd "/etc/ssh" && ssh-keygen -A && cd "${CURRENT_PATH}"
+                }
+                function Fix_Ubuntu_Advantage_Tools_Upgrade_Error() {
+                    if [ ! -d "/run/cloud-init" ]; then
+                        mkdir "/run/cloud-init"
                     fi
-                fi && rm -rf "/etc/resolv.conf" && cat "/tmp/resolv.autodeploy" > "/etc/resolv.conf" && rm -rf "/tmp/resolv.autodeploy" && chattr +i "/etc/resolv.conf"
-                rm -rf "/tmp/wsl.autodeploy" && for wsl_conf_list_task in "${!wsl_conf_list[@]}"; do
-                    echo "${wsl_conf_list[$wsl_conf_list_task]}" >> "/tmp/wsl.autodeploy"
-                done && if [ -f "/etc/wsl.conf" ]; then chattr -i "/etc/wsl.conf"; fi && rm -rf "/etc/wsl.conf" && cat "/tmp/wsl.autodeploy" > "/etc/wsl.conf" && rm -rf "/tmp/wsl.autodeploy" && chattr +i "/etc/wsl.conf"
-            }
-            function Fix_Sshd_Server_Issue() {
-                CURRENT_PATH=$(pwd)
-                cd "/etc/ssh" && ssh-keygen -A && cd "${CURRENT_PATH}"
-            }
-            function Fix_Ubuntu_Advantage_Tools_Upgrade_Error() {
-                if [ ! -d "/run/cloud-init" ]; then
-                    mkdir "/run/cloud-init"
-                fi
-                if [ ! -f "/run/cloud-init/instance-data.json" ]; then
-                    echo "{}" > "/run/cloud-init/instance-data.json"
-                fi
-            }
-            function Fix_Unsupport_Udev_Issue() {
-                policy_rc_d_list=(
-                    "#!/bin/sh"
-                    "exit 101"
-                )
-                rm -rf "/tmp/policy-rc.d.autodeploy" && for policy_rc_d_list_task in "${!policy_rc_d_list[@]}"; do
-                    echo "${policy_rc_d_list[$policy_rc_d_list_task]}" >> "/tmp/policy-rc.d.autodeploy"
-                done && cat "/tmp/policy-rc.d.autodeploy" > "/usr/sbin/policy-rc.d" && chmod +x "/usr/sbin/policy-rc.d" && dpkg-divert --local --rename --add "/sbin/initctl" && rm -rf "/sbin/initctl" && ln -s "/bin/true" "/sbin/initctl" && rm -rf "/tmp/policy-rc.d.autodeploy"
-            }
-            Create_Startup_Script
-            Fix_Resolv_Conf_Issue
-            Fix_Sshd_Server_Issue
-            Fix_Ubuntu_Advantage_Tools_Upgrade_Error
-            Fix_Unsupport_Udev_Issue
-        fi
+                    if [ ! -f "/run/cloud-init/instance-data.json" ]; then
+                        echo "{}" > "/run/cloud-init/instance-data.json"
+                    fi
+                }
+                function Fix_Unsupport_Udev_Issue() {
+                    policy_rc_d_list=(
+                        "#!/bin/sh"
+                        "exit 101"
+                    )
+                    rm -rf "/tmp/policy-rc.d.autodeploy" && for policy_rc_d_list_task in "${!policy_rc_d_list[@]}"; do
+                        echo "${policy_rc_d_list[$policy_rc_d_list_task]}" >> "/tmp/policy-rc.d.autodeploy"
+                    done && cat "/tmp/policy-rc.d.autodeploy" > "/usr/sbin/policy-rc.d" && chmod +x "/usr/sbin/policy-rc.d" && dpkg-divert --local --rename --add "/sbin/initctl" && rm -rf "/sbin/initctl" && ln -s "/bin/true" "/sbin/initctl" && rm -rf "/tmp/policy-rc.d.autodeploy"
+                }
+                Create_Startup_Script
+                Fix_Resolv_Conf_Issue
+                Fix_Sshd_Server_Issue
+                Fix_Ubuntu_Advantage_Tools_Upgrade_Error
+                Fix_Unsupport_Udev_Issue
+            fi
+        }
+        CheckKVMEnvironment
+        CheckVMWareEnvironment
+        CheckWSLEnvironment
     }
     GenerateHostname
     GetLSBCodename
     IsArmArchitecture
-    IsDockerEnvironment
-    IsKVMEnvironment
-    IsVMwareEnvironment
-    IsWSLKernelRelease
+    IsContainerEnvironment
+    IsVirtualEnvironment
 }
 # Set Repository Mirror
 function SetRepositoryMirror() {
@@ -238,7 +260,7 @@ function ConfigurePackages() {
         )
         which "docker" > "/dev/null" 2>&1
         if [ "$?" -eq "0" ]; then
-            if [ "${docker_environment}" == "FALSE" ] && [ "${wsl_kernel}" == "FALSE" ]; then
+            if [ "${docker_environment}" == "FALSE" ] && [ "${wsl_environment}" == "FALSE" ]; then
                 if [ ! -d "/docker" ]; then
                     mkdir "/docker"
                 fi
@@ -248,7 +270,7 @@ function ConfigurePackages() {
                 rm -rf "/tmp/docker.autodeploy" && for docker_list_task in "${!docker_list[@]}"; do
                     echo "${docker_list[$docker_list_task]}" >> "/tmp/docker.autodeploy"
                 done && cat "/tmp/docker.autodeploy" > "/etc/docker/daemon.json" && OPRATIONS="restart" && SERVICE_NAME="docker" && CallServiceController && rm -rf "/tmp/docker.autodeploy"
-            elif [ "${docker_environment}" == "FALSE" ]; then
+            elif [ "${docker_environment}" == "FALSE" ] && [ "${wsl_environment}" == "TRUE" ]; then
                 if [ ! -d "/docker" ]; then
                     mkdir "/docker"
                 fi
@@ -262,7 +284,7 @@ function ConfigurePackages() {
     function ConfigureGrub() {
         which "update-grub" > "/dev/null" 2>&1
         if [ "$?" -eq "0" ]; then
-            if [ "${docker_environment}" == "FALSE" ] && [ "${wsl_kernel}" == "FALSE" ]; then
+            if [ "${docker_environment}" == "FALSE" ] && [ "${wsl_environment}" == "FALSE" ]; then
                 if [ -f "/usr/share/grub/default/grub" ]; then
                     rm -rf "/tmp/grub.autodeploy" && cat "/usr/share/grub/default/grub" > "/tmp/grub.autodeploy" && cat "/tmp/grub.autodeploy" > "/etc/default/grub" && update-grub && rm -rf "/tmp/grub.autodeploy"
                 fi
@@ -300,7 +322,7 @@ function ConfigurePackages() {
                     echo "${netplan_ethernets_list[$netplan_ethernets_list_task]}" >> "/tmp/netplan.autodeploy"
                 done
             done && cat "/tmp/netplan.autodeploy" > "/etc/netplan/netplan.yaml" && rm -rf "/tmp/netplan.autodeploy"
-            if [ "${docker_environment}" == "FALSE" ] && [ "${wsl_kernel}" == "FALSE" ]; then
+            if [ "${docker_environment}" == "FALSE" ] && [ "${lxc_environment}" == "FALSE" ] && [ "${wsl_environment}" == "FALSE" ]; then
                 netplan apply
             fi
         fi
@@ -323,7 +345,7 @@ function ConfigurePackages() {
         )
         which "resolvectl" > "/dev/null" 2>&1
         if [ "$?" -eq "0" ]; then
-            if [ "${docker_environment}" == "FALSE" ] && [ "${wsl_kernel}" == "FALSE" ]; then
+            if [ "${docker_environment}" == "FALSE" ] && [ "${lxc_environment}" == "FALSE" ] && [ "${wsl_environment}" == "FALSE" ]; then
                 if [ ! -d "/etc/systemd/resolved.conf.d" ]; then
                     mkdir "/etc/systemd/resolved.conf.d"
                 else
@@ -370,7 +392,7 @@ function ConfigurePackages() {
     }
     function ConfigureSshd() {
         if [ -f "/usr/share/openssh/sshd_config" ]; then
-            if [ "${docker_environment}" == "FALSE" ] && [ "${wsl_kernel}" == "FALSE" ]; then
+            if [ "${docker_environment}" == "FALSE" ] && [ "${wsl_environment}" == "FALSE" ]; then
                 SSHD_CONFIG_ADDITIONAL="s/\#Port\ 22/Port 9022/g"
             fi && cat "/usr/share/openssh/sshd_config" | sed "s/\#PasswordAuthentication\ yes/PasswordAuthentication\ yes/g;s/\#PermitRootLogin\ prohibit\-password/PermitRootLogin\ yes/g;${SSHD_CONFIG_ADDITIONAL}" > "/tmp/sshd_config.autodeploy" && cat "/tmp/sshd_config.autodeploy" > "/etc/ssh/sshd_config" && rm -rf "/tmp/sshd_config.autodeploy"
         fi
@@ -403,8 +425,8 @@ function ConfigurePackages() {
         which "ufw" > "/dev/null" 2>&1
         if [ "$?" -eq "0" ] && [ -f "/etc/default/ufw" ]; then
             echo "$(cat '/etc/default/ufw' | sed 's/DEFAULT\_APPLICATION\_POLICY\=\"ACCEPT\"/DEFAULT\_APPLICATION\_POLICY\=\"REJECT\"/g;s/DEFAULT\_APPLICATION\_POLICY\=\"DROP\"/DEFAULT\_APPLICATION\_POLICY\=\"REJECT\"/g;s/DEFAULT\_APPLICATION\_POLICY\=\"SKIP\"/DEFAULT\_APPLICATION\_POLICY\=\"REJECT\"/g;s/DEFAULT\_FORWARD\_POLICY\=\"DROP\"/DEFAULT\_FORWARD\_POLICY\=\"ACCEPT\"/g;s/DEFAULT\_FORWARD\_POLICY\=\"REJECT\"/DEFAULT\_FORWARD\_POLICY\=\"ACCEPT\"/g;s/DEFAULT\_INPUT\_POLICY\=\"ACCEPT\"/DEFAULT\_INPUT\_POLICY\=\"REJECT\"/g;s/DEFAULT\_INPUT\_POLICY\=\"DROP\"/DEFAULT\_INPUT\_POLICY\=\"REJECT\"/g;s/DEFAULT\_OUTPUT\_POLICY\=\"DROP\"/DEFAULT\_OUTPUT\_POLICY\=\"ACCEPT\"/g;s/DEFAULT\_OUTPUT\_POLICY\=\"REJECT\"/DEFAULT\_OUTPUT\_POLICY\=\"ACCEPT\"/g;s/MANAGE\_BUILTINS\=yes/MANAGE\_BUILTINS\=no/g;s/IPV6\=no/IPV6\=yes/g')" > "/tmp/ufw.autodeploy" && cat "/tmp/ufw.autodeploy" > "/etc/default/ufw" && rm -rf "/tmp/ufw.autodeploy"
-            if [ "${docker_environment}" == "FALSE" ] && [ "${wsl_kernel}" == "FALSE" ]; then
-                ufw reload && ufw limit 22/tcp && if [ "${docker_environment}" == "FALSE" ] && [ "${wsl_kernel}" == "FALSE" ]; then
+            if [ "${docker_environment}" == "FALSE" ] && [ "${lxc_environment}" == "FALSE" ] && [ "${wsl_environment}" == "FALSE" ]; then
+                ufw reload && ufw limit 22/tcp && if [ "${docker_environment}" == "FALSE" ] && [ "${lxc_environment}" == "FALSE" ] && [ "${wsl_environment}" == "FALSE" ]; then
                     ufw limit 9022/tcp
                 fi && ufw allow 9090/tcp && ufw enable && ufw status verbose
             else
@@ -532,7 +554,7 @@ function InstallCustomPackages() {
             "docker-ce"
             "docker-ce-cli"
         )
-        if [ "${docker_environment}" == "FALSE" ] && [ "${wsl_kernel}" == "FALSE" ]; then
+        if [ "${docker_environment}" == "FALSE" ] && [ "${lxc_environment}" == "FALSE" ] && [ "${wsl_environment}" == "FALSE" ]; then
             curl -fsSL "https://mirrors.ustc.edu.cn/docker-ce/linux/ubuntu/gpg" | gpg --dearmor -o "/usr/share/keyrings/docker-archive-keyring.gpg"
             echo "deb [arch=${mirror_arch} signed-by=/usr/share/keyrings/docker-archive-keyring.gpg] https://mirrors.ustc.edu.cn/docker-ce/linux/ubuntu ${LSBCodename} stable" > "/etc/apt/sources.list.d/docker.list"
             apt update && apt purge -qy containerd docker docker-engine docker.io runc && for app_list_task in "${!app_list[@]}"; do
