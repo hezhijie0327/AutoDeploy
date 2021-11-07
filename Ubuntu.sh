@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 2.1.6
+# Current Version: 2.1.7
 
 ## How to get and use?
 # curl "https://source.zhijie.online/AutoDeploy/main/Ubuntu.sh" | sudo bash
@@ -260,7 +260,7 @@ function ConfigurePackages() {
         )
         which "docker" > "/dev/null" 2>&1
         if [ "$?" -eq "0" ]; then
-            if [ "${docker_environment}" == "FALSE" ] && [ "${wsl_environment}" == "FALSE" ]; then
+            if [ "${docker_environment}" == "FALSE" ]; then
                 if [ ! -d "/docker" ]; then
                     mkdir "/docker"
                 fi
@@ -270,12 +270,9 @@ function ConfigurePackages() {
                 rm -rf "/tmp/docker.autodeploy" && for docker_list_task in "${!docker_list[@]}"; do
                     echo "${docker_list[$docker_list_task]}" >> "/tmp/docker.autodeploy"
                 done && cat "/tmp/docker.autodeploy" > "/etc/docker/daemon.json" && OPRATIONS="restart" && SERVICE_NAME="docker" && CallServiceController && rm -rf "/tmp/docker.autodeploy"
-            elif [ "${docker_environment}" == "FALSE" ] && [ "${wsl_environment}" == "TRUE" ]; then
-                if [ ! -d "/docker" ]; then
-                    mkdir "/docker"
-                fi
             fi
-        else
+        fi
+        if [ "${wsl_environment}" == "TRUE" ]; then
             if [ ! -d "/docker" ]; then
                 mkdir "/docker"
             fi
@@ -284,7 +281,7 @@ function ConfigurePackages() {
     function ConfigureGrub() {
         which "update-grub" > "/dev/null" 2>&1
         if [ "$?" -eq "0" ]; then
-            if [ "${docker_environment}" == "FALSE" ] && [ "${wsl_environment}" == "FALSE" ]; then
+            if [ "${docker_environment}" == "FALSE" ] && [ "${lxc_environment}" == "FALSE" ] && [ "${wsl_environment}" == "FALSE" ]; then
                 if [ -f "/usr/share/grub/default/grub" ]; then
                     rm -rf "/tmp/grub.autodeploy" && cat "/usr/share/grub/default/grub" > "/tmp/grub.autodeploy" && cat "/tmp/grub.autodeploy" > "/etc/default/grub" && update-grub && rm -rf "/tmp/grub.autodeploy"
                 fi
@@ -425,8 +422,8 @@ function ConfigurePackages() {
         which "ufw" > "/dev/null" 2>&1
         if [ "$?" -eq "0" ] && [ -f "/etc/default/ufw" ]; then
             echo "$(cat '/etc/default/ufw' | sed 's/DEFAULT\_APPLICATION\_POLICY\=\"ACCEPT\"/DEFAULT\_APPLICATION\_POLICY\=\"REJECT\"/g;s/DEFAULT\_APPLICATION\_POLICY\=\"DROP\"/DEFAULT\_APPLICATION\_POLICY\=\"REJECT\"/g;s/DEFAULT\_APPLICATION\_POLICY\=\"SKIP\"/DEFAULT\_APPLICATION\_POLICY\=\"REJECT\"/g;s/DEFAULT\_FORWARD\_POLICY\=\"DROP\"/DEFAULT\_FORWARD\_POLICY\=\"ACCEPT\"/g;s/DEFAULT\_FORWARD\_POLICY\=\"REJECT\"/DEFAULT\_FORWARD\_POLICY\=\"ACCEPT\"/g;s/DEFAULT\_INPUT\_POLICY\=\"ACCEPT\"/DEFAULT\_INPUT\_POLICY\=\"REJECT\"/g;s/DEFAULT\_INPUT\_POLICY\=\"DROP\"/DEFAULT\_INPUT\_POLICY\=\"REJECT\"/g;s/DEFAULT\_OUTPUT\_POLICY\=\"DROP\"/DEFAULT\_OUTPUT\_POLICY\=\"ACCEPT\"/g;s/DEFAULT\_OUTPUT\_POLICY\=\"REJECT\"/DEFAULT\_OUTPUT\_POLICY\=\"ACCEPT\"/g;s/MANAGE\_BUILTINS\=yes/MANAGE\_BUILTINS\=no/g;s/IPV6\=no/IPV6\=yes/g')" > "/tmp/ufw.autodeploy" && cat "/tmp/ufw.autodeploy" > "/etc/default/ufw" && rm -rf "/tmp/ufw.autodeploy"
-            if [ "${docker_environment}" == "FALSE" ] && [ "${lxc_environment}" == "FALSE" ] && [ "${wsl_environment}" == "FALSE" ]; then
-                ufw reload && ufw limit 22/tcp && if [ "${docker_environment}" == "FALSE" ] && [ "${lxc_environment}" == "FALSE" ] && [ "${wsl_environment}" == "FALSE" ]; then
+            if [ "${docker_environment}" == "FALSE" ] && [ "${wsl_environment}" == "FALSE" ]; then
+                ufw reload && ufw limit 22/tcp && if [ "${docker_environment}" == "FALSE" ] && [ "${wsl_environment}" == "FALSE" ]; then
                     ufw limit 9022/tcp
                 fi && ufw allow 9090/tcp && ufw enable && ufw status verbose
             else
@@ -554,7 +551,7 @@ function InstallCustomPackages() {
             "docker-ce"
             "docker-ce-cli"
         )
-        if [ "${docker_environment}" == "FALSE" ] && [ "${lxc_environment}" == "FALSE" ] && [ "${wsl_environment}" == "FALSE" ]; then
+        if [ "${docker_environment}" == "FALSE" ] && [ "${wsl_environment}" == "FALSE" ]; then
             curl -fsSL "https://mirrors.ustc.edu.cn/docker-ce/linux/ubuntu/gpg" | gpg --dearmor -o "/usr/share/keyrings/docker-archive-keyring.gpg"
             echo "deb [arch=${mirror_arch} signed-by=/usr/share/keyrings/docker-archive-keyring.gpg] https://mirrors.ustc.edu.cn/docker-ce/linux/ubuntu ${LSBCodename} stable" > "/etc/apt/sources.list.d/docker.list"
             apt update && apt purge -qy containerd docker docker-engine docker.io runc && for app_list_task in "${!app_list[@]}"; do
