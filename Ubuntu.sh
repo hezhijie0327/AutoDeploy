@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 2.1.9
+# Current Version: 2.2.0
 
 ## How to get and use?
 # curl "https://source.zhijie.online/AutoDeploy/main/Ubuntu.sh" | sudo bash
@@ -325,7 +325,7 @@ function ConfigurePackages() {
                     echo "${netplan_ethernets_list[$netplan_ethernets_list_task]}" >> "/tmp/netplan.autodeploy"
                 done
             done && cat "/tmp/netplan.autodeploy" > "/etc/netplan/netplan.yaml" && rm -rf "/tmp/netplan.autodeploy"
-            if [ "${docker_environment}" == "FALSE" ] && [ "${lxc_environment}" == "FALSE" ] && [ "${wsl_environment}" == "FALSE" ]; then
+            if [ "${docker_environment}" == "FALSE" ] && [ "${wsl_environment}" == "FALSE" ]; then
                 netplan apply
             fi
         fi
@@ -348,7 +348,7 @@ function ConfigurePackages() {
         )
         which "resolvectl" > "/dev/null" 2>&1
         if [ "$?" -eq "0" ]; then
-            if [ "${docker_environment}" == "FALSE" ] && [ "${lxc_environment}" == "FALSE" ] && [ "${wsl_environment}" == "FALSE" ]; then
+            if [ "${docker_environment}" == "FALSE" ] && [ "${wsl_environment}" == "FALSE" ]; then
                 if [ ! -d "/etc/systemd/resolved.conf.d" ]; then
                     mkdir "/etc/systemd/resolved.conf.d"
                 else
