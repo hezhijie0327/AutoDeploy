@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 1.1.4
+# Current Version: 1.1.5
 
 ## How to get and use?
 # curl "https://source.zhijie.online/AutoDeploy/main/ProxmoxVE.sh" | sudo bash
@@ -231,36 +231,34 @@ function ConfigureSystem() {
         fi
     }
     function ConfigureDefaultUser() {
-        if [ "${docker_environment}" == "FALSE" ]; then
-            DEFAULT_USERNAME="proxmox"
-            DEFAULT_PASSWORD="*Proxmox123*"
-            crontab_list=(
-                "@reboot rm -rf /home/${DEFAULT_USERNAME}/.*_history"
-            )
-            userdel -rf "${DEFAULT_USERNAME}" > "/dev/null" 2>&1
-            useradd -d "/home/${DEFAULT_USERNAME}" -s "/bin/zsh" -m "${DEFAULT_USERNAME}" && echo $DEFAULT_USERNAME:$DEFAULT_PASSWORD | chpasswd && adduser "${DEFAULT_USERNAME}" "sudo"
-            if [ -d "/etc/zsh/oh-my-zsh" ]; then
-                cp -rf "/etc/zsh/oh-my-zsh" "/home/${DEFAULT_USERNAME}/.oh-my-zsh" && chown -R $DEFAULT_USERNAME:$DEFAULT_USERNAME "/home/${DEFAULT_USERNAME}/.oh-my-zsh"
-                if [ -f "/etc/zsh/oh-my-zsh.zshrc" ]; then
-                    cp -rf "/etc/zsh/oh-my-zsh.zshrc" "/home/${DEFAULT_USERNAME}/.zshrc" && chown -R $DEFAULT_USERNAME:$DEFAULT_USERNAME "/home/${DEFAULT_USERNAME}/.zshrc"
-                fi
+        DEFAULT_USERNAME="proxmox"
+        DEFAULT_PASSWORD="*Proxmox123*"
+        crontab_list=(
+            "@reboot rm -rf /home/${DEFAULT_USERNAME}/.*_history"
+        )
+        userdel -rf "${DEFAULT_USERNAME}" > "/dev/null" 2>&1
+        useradd -d "/home/${DEFAULT_USERNAME}" -s "/bin/zsh" -m "${DEFAULT_USERNAME}" && echo $DEFAULT_USERNAME:$DEFAULT_PASSWORD | chpasswd && adduser "${DEFAULT_USERNAME}" "sudo"
+        if [ -d "/etc/zsh/oh-my-zsh" ]; then
+            cp -rf "/etc/zsh/oh-my-zsh" "/home/${DEFAULT_USERNAME}/.oh-my-zsh" && chown -R $DEFAULT_USERNAME:$DEFAULT_USERNAME "/home/${DEFAULT_USERNAME}/.oh-my-zsh"
+            if [ -f "/etc/zsh/oh-my-zsh.zshrc" ]; then
+                cp -rf "/etc/zsh/oh-my-zsh.zshrc" "/home/${DEFAULT_USERNAME}/.zshrc" && chown -R $DEFAULT_USERNAME:$DEFAULT_USERNAME "/home/${DEFAULT_USERNAME}/.zshrc"
             fi
-            which "crontab" > "/dev/null" 2>&1
-            if [ "$?" -eq "0" ]; then
-                rm -rf "/tmp/crontab.autodeploy" && for crontab_list_task in "${!crontab_list[@]}"; do
-                    echo "${crontab_list[$crontab_list_task]}" >> "/tmp/crontab.autodeploy"
-                done && crontab -u "${DEFAULT_USERNAME}" "/tmp/crontab.autodeploy" && crontab -lu "${DEFAULT_USERNAME}" && rm -rf "/tmp/crontab.autodeploy"
-            fi
-            which "pveum" > "/dev/null" 2>&1
-            if [ "$?" -eq "0" ]; then
-                if [ "$(pveum group list | grep 'LADM')" == "" ]; then
-                    pveum groupadd "LADM" -comment "Local Administrators"
-                else
-                    pveum group modify "LADM" -comment "Local Administrators"
-                fi && pveum aclmod "/" -group "LADM" -role "Administrator" && if [ "$(pveum user list | grep ${DEFAULT_USERNAME}@pam)" == "" ]; then
-                    pveum useradd "${DEFAULT_USERNAME}@pam"
-                fi && pveum usermod "${DEFAULT_USERNAME}@pam" -group "LADM" && pveum usermod "root@pam" -group "LADM"
-            fi
+        fi
+        which "crontab" > "/dev/null" 2>&1
+        if [ "$?" -eq "0" ]; then
+            rm -rf "/tmp/crontab.autodeploy" && for crontab_list_task in "${!crontab_list[@]}"; do
+                echo "${crontab_list[$crontab_list_task]}" >> "/tmp/crontab.autodeploy"
+            done && crontab -u "${DEFAULT_USERNAME}" "/tmp/crontab.autodeploy" && crontab -lu "${DEFAULT_USERNAME}" && rm -rf "/tmp/crontab.autodeploy"
+        fi
+        which "pveum" > "/dev/null" 2>&1
+        if [ "$?" -eq "0" ]; then
+            if [ "$(pveum group list | grep 'LADM')" == "" ]; then
+                pveum groupadd "LADM" -comment "Local Administrators"
+            else
+                pveum group modify "LADM" -comment "Local Administrators"
+            fi && pveum aclmod "/" -group "LADM" -role "Administrator" && if [ "$(pveum user list | grep ${DEFAULT_USERNAME}@pam)" == "" ]; then
+                pveum useradd "${DEFAULT_USERNAME}@pam"
+            fi && pveum usermod "${DEFAULT_USERNAME}@pam" -group "LADM" && pveum usermod "root@pam" -group "LADM"
         fi
     }
     function ConfigureHostfile() {
