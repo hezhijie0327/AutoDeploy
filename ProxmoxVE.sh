@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 1.1.3
+# Current Version: 1.1.4
 
 ## How to get and use?
 # curl "https://source.zhijie.online/AutoDeploy/main/ProxmoxVE.sh" | sudo bash
@@ -232,8 +232,8 @@ function ConfigureSystem() {
     }
     function ConfigureDefaultUser() {
         if [ "${docker_environment}" == "FALSE" ]; then
-            DEFAULT_USERNAME="ubuntu"
-            DEFAULT_PASSWORD="*Ubuntu123*"
+            DEFAULT_USERNAME="proxmox"
+            DEFAULT_PASSWORD="*Proxmox123*"
             crontab_list=(
                 "@reboot rm -rf /home/${DEFAULT_USERNAME}/.*_history"
             )
