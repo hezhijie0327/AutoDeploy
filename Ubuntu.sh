@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 2.2.0
+# Current Version: 2.2.1
 
 ## How to get and use?
 # curl "https://source.zhijie.online/AutoDeploy/main/Ubuntu.sh" | sudo bash
@@ -122,6 +122,7 @@ function GetSystemInformation() {
                 function Create_Startup_Script() {
                     startup_list=(
                         '#!/bin/bash'
+                        "service chrony start > \"/dev/null\" 2>&1"
                         "service cron start > \"/dev/null\" 2>&1"
                         "service ssh start > \"/dev/null\" 2>&1"
                     )
@@ -242,6 +243,36 @@ function SetReadonlyFlag() {
 }
 # Configure Packages
 function ConfigurePackages() {
+    function ConfigureChrony() {
+        if [ "${docker_environment}" == "FALSE" ]; then
+            chrony_list=(
+                "allow"
+                "clientloglimit 65536"
+                "driftfile '/var/lib/chrony/chrony.drift'"
+                "dumpdir '/run/chrony'"
+                "keyfile '/etc/chrony/chrony.keys'"
+                "leapsectz right/UTC"
+                "logdir '/var/log/chrony'"
+                "makestep 1 3"
+                "ratelimit burst 8 interval 3 leak 2"
+                "rtcsync"
+                "server ntp.ntsc.ac.cn iburst prefer"
+                "server cn.ntp.org.cn iburst"
+                "server time.apple.com iburst"
+                "server time.windows.com iburst"
+                "server time.izatcloud.net iburst"
+                "server pool.ntp.org iburst"
+                "server asia.pool.ntp.org iburst"
+                "server cn.pool.ntp.org iburst"
+            )
+            which "chronyc" > "/dev/null" 2>&1
+            if [ "$?" -eq "0" ]; then
+                rm -rf "/tmp/chrony.autodeploy" && for chrony_list_task in "${!chrony_list[@]}"; do
+                    echo "${chrony_list[$chrony_list_task]}" >> "/tmp/chrony.autodeploy"
+                done && cat "/tmp/chrony.autodeploy" > "/etc/chrony/chrony.conf" && rm -rf "/tmp/chrony.autodeploy" && OPRATIONS="restart" && SERVICE_NAME="chrony" && CallServiceController
+            fi
+        fi
+    }
     function ConfigureCrontab() {
         crontab_list=(
             "@reboot sudo rm -rf /root/.*_history"
@@ -589,6 +620,7 @@ function InstallDependencyPackages() {
         "apt-file"
         "apt-transport-https"
         "ca-certificates"
+        "chrony"
         "cockpit"
         "cockpit-pcp"
         "curl"
