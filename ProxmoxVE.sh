@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 1.2.0
+# Current Version: 1.2.1
 
 ## How to get and use?
 # curl "https://source.zhijie.online/AutoDeploy/main/ProxmoxVE.sh" | sudo bash
@@ -25,7 +25,7 @@ function GetSystemInformation() {
         function CheckKVMEnvironment() {
             which "lscpu" > "/dev/null" 2>&1
             if [ "$?" -eq "0" ]; then
-                if [ "$(lscpu | grep 'Hypervisor vendor' | cut -d ':' -f 2 | tr -d ' ')" == "KVM" ]; then
+                if [ "$(lscpu | grep 'Hypervisor vendor' | cut -d ':' -f 2 | tr -d ' ' | tr 'A-Z' 'a-z' | grep 'kvm\|qemu')" != "" ]; then
                     kvm_environment="TRUE"
                 else
                     kvm_environment="FALSE"
@@ -34,10 +34,10 @@ function GetSystemInformation() {
                 kvm_environment="FALSE"
             fi
         }
-        function CheckVMWareEnvironment() {
+        function CheckVMwareEnvironment() {
             which "lscpu" > "/dev/null" 2>&1
             if [ "$?" -eq "0" ]; then
-                if [ "$(lscpu | grep 'Hypervisor vendor' | cut -d ':' -f 2 | tr -d ' ')" == "VMware" ]; then
+                if [ "$(lscpu | grep 'Hypervisor vendor' | cut -d ':' -f 2 | tr -d ' ' | tr 'A-Z' 'a-z' | grep 'vmware')" != "" ]; then
                     vmware_environment="TRUE"
                 else
                     vmware_environment="FALSE"
@@ -46,8 +46,21 @@ function GetSystemInformation() {
                 vmware_environment="FALSE"
             fi
         }
+        function CheckVirtualBoxEnvironment() {
+            which "lscpu" > "/dev/null" 2>&1
+            if [ "$?" -eq "0" ]; then
+                if [ "$(lscpu | grep 'Hypervisor vendor' | cut -d ':' -f 2 | tr -d ' ' | tr 'A-Z' 'a-z' | grep 'oracle\|virtualbox')" != "" ]; then
+                    virtualbox_environment="TRUE"
+                else
+                    virtualbox_environment="FALSE"
+                fi
+            else
+                virtualbox_environment="FALSE"
+            fi
+        }
         CheckKVMEnvironment
-        CheckVMWareEnvironment
+        CheckVMwareEnvironment
+        CheckVirtualBoxEnvironment
     }
     GenerateDomain
     GenerateHostname
@@ -381,6 +394,10 @@ function InstallDependencyPackages() {
     fi && if [ "${vmware_environment}" == "TRUE" ]; then
         apt-cache show open-vm-tools && if [ "$?" -eq "0" ]; then
             apt install -qy open-vm-tools
+        fi
+    fi && if [ "${virtualbox_environment}" == "TRUE" ]; then
+        apt-cache show virtualbox-guest-dkms && if [ "$?" -eq "0" ]; then
+            apt install -qy virtualbox-guest-dkms
         fi
     fi
 }
