@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 2.2.5
+# Current Version: 2.2.6
 
 ## How to get and use?
 # curl "https://source.zhijie.online/AutoDeploy/main/Ubuntu.sh" | sudo bash
@@ -657,6 +657,7 @@ function InstallDependencyPackages() {
         "neofetch"
         "net-tools"
         "netplan.io"
+        "nmap"
         "ntfs-3g"
         "openssh-client"
         "openssh-server"
