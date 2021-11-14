@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 2.2.2
+# Current Version: 2.2.3
 
 ## How to get and use?
 # curl "https://source.zhijie.online/AutoDeploy/main/Ubuntu.sh" | sudo bash
@@ -508,6 +508,7 @@ function ConfigurePackages() {
             done && cat "/tmp/omz.autodeploy" > "/etc/zsh/oh-my-zsh.zshrc" && rm -rf "/tmp/omz.autodeploy" && ln -s "/etc/zsh/oh-my-zsh" "/root/.oh-my-zsh" && ln -s "/etc/zsh/oh-my-zsh.zshrc" "/root/.zshrc"
         fi
     }
+    ConfigureChrony
     ConfigureCrontab
     ConfigureDockerEngine
     ConfigureGrub
