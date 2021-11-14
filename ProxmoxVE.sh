@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 1.1.6
+# Current Version: 1.1.7
 
 ## How to get and use?
 # curl "https://source.zhijie.online/AutoDeploy/main/ProxmoxVE.sh" | sudo bash
@@ -113,6 +113,36 @@ function SetReadonlyFlag() {
 }
 # Configure Packages
 function ConfigurePackages() {
+    function ConfigureChrony() {
+        if [ "${docker_environment}" == "FALSE" ]; then
+            chrony_list=(
+                "allow"
+                "clientloglimit 65536"
+                "driftfile /var/lib/chrony/chrony.drift"
+                "dumpdir /run/chrony"
+                "keyfile /etc/chrony/chrony.keys"
+                "leapsectz right/UTC"
+                "logdir /var/log/chrony"
+                "makestep 1 3"
+                "ratelimit burst 8 interval 3 leak 2"
+                "rtcsync"
+                "server ntp.ntsc.ac.cn iburst prefer"
+                "server cn.ntp.org.cn iburst"
+                "server time.apple.com iburst"
+                "server time.windows.com iburst"
+                "server time.izatcloud.net iburst"
+                "server pool.ntp.org iburst"
+                "server asia.pool.ntp.org iburst"
+                "server cn.pool.ntp.org iburst"
+            )
+            which "chronyc" > "/dev/null" 2>&1
+            if [ "$?" -eq "0" ]; then
+                chrony_environment="TRUE" && rm -rf "/tmp/chrony.autodeploy" && for chrony_list_task in "${!chrony_list[@]}"; do
+                    echo "${chrony_list[$chrony_list_task]}" >> "/tmp/chrony.autodeploy"
+                done && cat "/tmp/chrony.autodeploy" > "/etc/chrony/chrony.conf" && rm -rf "/tmp/chrony.autodeploy" && OPRATIONS="restart" && SERVICE_NAME="chrony" && CallServiceController && chronyc activity && chronyc tracking && chronyc clients
+            fi
+        fi
+    }
     function ConfigureCrontab() {
         crontab_list=(
             "@reboot sudo rm -rf /root/.*_history"
@@ -214,6 +244,7 @@ function ConfigurePackages() {
             done && cat "/tmp/omz.autodeploy" > "/etc/zsh/oh-my-zsh.zshrc" && rm -rf "/tmp/omz.autodeploy" && ln -s "/etc/zsh/oh-my-zsh" "/root/.oh-my-zsh" && ln -s "/etc/zsh/oh-my-zsh.zshrc" "/root/.zshrc"
         fi
     }
+    ConfigureChrony
     ConfigureCrontab
     ConfigureGrub
     ConfigureModule
@@ -306,6 +337,7 @@ function InstallDependencyPackages() {
         "apt-transport-https"
         "ca-certificates"
         "ceph"
+        "chrony"
         "curl"
         "dnsutils"
         "git"
