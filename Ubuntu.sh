@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 2.2.3
+# Current Version: 2.2.4
 
 ## How to get and use?
 # curl "https://source.zhijie.online/AutoDeploy/main/Ubuntu.sh" | sudo bash
@@ -218,6 +218,7 @@ function SetReadonlyFlag() {
     file_list=(
         "/etc/apt/sources.list"
         "/etc/apt/sources.list.d/docker.list"
+        "/etc/chrony/chrony.conf"
         "/etc/default/ufw"
         "/etc/docker/daemon.json"
         "/etc/hostname"
