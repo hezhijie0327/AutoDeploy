@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 1.2.2
+# Current Version: 1.2.3
 
 ## How to get and use?
 # curl "https://source.zhijie.online/AutoDeploy/main/ProxmoxVE.sh" | sudo bash
@@ -139,7 +139,7 @@ function ConfigurePackages() {
             "ratelimit burst 8 interval 3 leak 2"
             "rtcsync"
             "server ntp.ntsc.ac.cn iburst prefer"
-            "server cn.ntp.org.cn iburst"
+            "server cn.ntp.org.cn iburst prefer"
             "server time.apple.com iburst"
             "server time.windows.com iburst"
             "server time.izatcloud.net iburst"
