@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 1.2.4
+# Current Version: 1.2.5
 
 ## How to get and use?
 # curl "https://source.zhijie.online/AutoDeploy/main/ProxmoxVE.sh" | sudo bash
@@ -17,15 +17,15 @@ function GetSystemInformation() {
     }
     function GetCPUVendorID() {
         CPU_VENDOR_ID=$(cat '/proc/cpuinfo' | grep 'vendor_id' | uniq | awk -F ':' '{print $2}' | awk -F ' ' '{print $1}')
-        if [ "${CPU_VENDOR_ID}" == "GenuineIntel" ]; then
-            CPU_VENDOR_ID="Intel"
-            ADDITIONAL_GRUB="intel_iommu=on \\"
-        elif [ "${CPU_VENDOR_ID}" == "AuthenticAMD" ]; then
+        if [ "${CPU_VENDOR_ID}" == "AuthenticAMD" ]; then
             CPU_VENDOR_ID="AMD"
-            ADDITIONAL_GRUB="amd_iommu=on \\"
+            ENABLE_IOMMU=" \\amd_iommu=on \\iommu=pt"
+        elif [ "${CPU_VENDOR_ID}" == "GenuineIntel" ]; then
+            CPU_VENDOR_ID="Intel"
+            ENABLE_IOMMU=" \\intel_iommu=on \\iommu=pt"
         else
             CPU_VENDOR_ID="Unknown"
-            ADDITIONAL_GRUB=""
+            ENABLE_IOMMU=""
         fi
     }
     function GetLSBCodename() {
@@ -183,7 +183,7 @@ function ConfigurePackages() {
         which "update-grub" > "/dev/null" 2>&1
         if [ "$?" -eq "0" ]; then
             if [ -f "/usr/share/grub/default/grub" ]; then
-                rm -rf "/tmp/grub.autodeploy" && cat "/usr/share/grub/default/grub" | sed "s/GRUB\_CMDLINE\_LINUX\_DEFAULT\=\"quiet\"/GRUB\_CMDLINE\_LINUX\_DEFAULT\=\"quiet\ ${ADDITIONAL_GRUB}iommu\=pt\"/g" > "/tmp/grub.autodeploy" && cat "/tmp/grub.autodeploy" > "/etc/default/grub" && update-grub && rm -rf "/tmp/grub.autodeploy"
+                rm -rf "/tmp/grub.autodeploy" && cat "/usr/share/grub/default/grub" | sed "s/GRUB\_CMDLINE\_LINUX\_DEFAULT\=\"quiet\"/GRUB\_CMDLINE\_LINUX\_DEFAULT\=\"quiet${ENABLE_IOMMU}\"/g" > "/tmp/grub.autodeploy" && cat "/tmp/grub.autodeploy" > "/etc/default/grub" && update-grub && rm -rf "/tmp/grub.autodeploy"
             fi
         fi
     }
