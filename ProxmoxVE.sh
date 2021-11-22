@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 1.2.6
+# Current Version: 1.2.7
 
 ## How to get and use?
 # curl "https://source.zhijie.online/AutoDeploy/main/ProxmoxVE.sh" | sudo bash
@@ -26,9 +26,6 @@ function GetSystemInformation() {
         else
             CPU_VENDOR_ID="Unknown"
             ENABLE_IOMMU=""
-        fi
-        if [ "${ENABLE_IOMMU}" != "" ]; then
-            echo "# options vfio_iommu_type1 allow_unsafe_interrupts=1" > "/etc/modprobe.d/iommu_unsafe_interrupts.conf"
         fi
     }
     function GetLSBCodename() {
@@ -124,7 +121,9 @@ function SetReadonlyFlag() {
         "/etc/chrony/chrony.conf"
         "/etc/hostname"
         "/etc/hosts"
+        "/etc/modprobe.d/iommu_unsafe_interrupts.conf"
         "/etc/modules"
+        "/etc/sysctl.conf"
         "/etc/zsh/oh-my-zsh.zshrc"
     )
     if [ "${read_only}" == "TRUE" ]; then
@@ -197,11 +196,15 @@ function ConfigurePackages() {
             "vfio_pci"
             "vfio_virqfd"
         )
-        if [ -f "/etc/modules" ]; then
-            rm -rf "/etc/modules"
-        fi && rm -rf "/tmp/module.autodeploy" && for module_list_task in "${!module_list[@]}"; do
-            echo "${module_list[$module_list_task]}" >> "/tmp/module.autodeploy"
-        done && cat "/tmp/module.autodeploy" > "/etc/modules" && rm -rf "/tmp/module.autodeploy"
+        if [ "${ENABLE_IOMMU}" != "" ]; then
+            if [ -f "/etc/modules" ]; then
+                rm -rf "/etc/modules"
+            fi && rm -rf "/tmp/module.autodeploy" && for module_list_task in "${!module_list[@]}"; do
+                echo "${module_list[$module_list_task]}" >> "/tmp/module.autodeploy"
+            done && cat "/tmp/module.autodeploy" > "/etc/modules" && rm -rf "/tmp/module.autodeploy" && if [ -f "/etc/modprobe.d/iommu_unsafe_interrupts.conf" ]; then
+                rm -rf "/etc/modprobe.d/iommu_unsafe_interrupts.conf"
+            fi && echo "# options vfio_iommu_type1 allow_unsafe_interrupts=1" > "/etc/modprobe.d/iommu_unsafe_interrupts.conf"
+        fi
     }
     function ConfigurePostfix() {
         if [ -f "/etc/postfix/main.cf" ]; then
