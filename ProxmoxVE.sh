@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 1.2.7
+# Current Version: 1.2.8
 
 ## How to get and use?
 # curl "https://source.zhijie.online/AutoDeploy/main/ProxmoxVE.sh" | sudo bash
@@ -19,10 +19,10 @@ function GetSystemInformation() {
         CPU_VENDOR_ID=$(cat '/proc/cpuinfo' | grep 'vendor_id' | uniq | awk -F ':' '{print $2}' | awk -F ' ' '{print $1}')
         if [ "${CPU_VENDOR_ID}" == "AuthenticAMD" ]; then
             CPU_VENDOR_ID="AMD"
-            ENABLE_IOMMU=" \\amd_iommu=on \\iommu=pt"
+            ENABLE_IOMMU=" amd_iommu=on iommu=pt pcie_acs_override=downstream"
         elif [ "${CPU_VENDOR_ID}" == "GenuineIntel" ]; then
             CPU_VENDOR_ID="Intel"
-            ENABLE_IOMMU=" \\intel_iommu=on \\iommu=pt"
+            ENABLE_IOMMU=" intel_iommu=on iommu=pt pcie_acs_override=downstream"
         else
             CPU_VENDOR_ID="Unknown"
             ENABLE_IOMMU=""
@@ -189,7 +189,7 @@ function ConfigurePackages() {
             fi
         fi
     }
-    function ConfigureModule() {
+    function ConfigureIOMMU() {
         module_list=(
             "vfio"
             "vfio_iommu_type1"
@@ -278,7 +278,7 @@ function ConfigurePackages() {
     ConfigureChrony
     ConfigureCrontab
     ConfigureGrub
-    ConfigureModule
+    ConfigureIOMMU
     ConfigurePostfix
     ConfigureSshd
     ConfigureSysctl
