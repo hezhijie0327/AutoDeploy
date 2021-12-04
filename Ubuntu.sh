@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 2.2.9
+# Current Version: 2.3.0
 
 ## How to get and use?
 # curl "https://source.zhijie.online/AutoDeploy/main/Ubuntu.sh" | sudo bash
@@ -485,12 +485,17 @@ function ConfigurePackages() {
         fi
     }
     function ConfigureWireGuard() {
+        WAN_INTERFACE=$(cat '/proc/net/dev' | grep -v 'docker0\|lo\|wg0' | grep ':' | sed 's/[[:space:]]//g' | cut -d ':' -f 1 | sort | uniq | head -n 1)
         wireguard_list=(
             "[Interface]"
             "Address = 192.168.224.$((RANDOM %253 + 1))/19"
             "ListenPort = 51820"
-            "PostDown = iptables -D FORWARD -i %i -j ACCEPT; iptables -t nat -D POSTROUTING -o $(cat '/proc/net/dev' | grep -v 'docker0\|lo\|wg0' | grep ':' | sed 's/[[:space:]]//g' | cut -d ':' -f 1 | sort | uniq | head -n 1) -j MASQUERADE"
-            "PostUp = iptables -A FORWARD -i %i -j ACCEPT; iptables -t nat -A POSTROUTING -o $(cat '/proc/net/dev' | grep -v 'docker0\|lo\|wg0' | grep ':' | sed 's/[[:space:]]//g' | cut -d ':' -f 1 | sort | uniq | head -n 1) -j MASQUERADE"
+            "PreDown = ufw route delete allow in on wg0 out on ${WAN_INTERFACE}"
+            "PostDown = iptables -D FORWARD -i %i -j ACCEPT; iptables -t nat -D POSTROUTING -o ${WAN_INTERFACE} -j MASQUERADE"
+            "PreDown = ip6tables -t nat -D POSTROUTING -o ${WAN_INTERFACE} -j MASQUERADE"
+            "PostUp = ufw route allow in on wg0 out on ${WAN_INTERFACE}"
+            "PostUp = iptables -A FORWARD -i %i -j ACCEPT; iptables -t nat -A POSTROUTING -o ${WAN_INTERFACE} -j MASQUERADE"
+            "PostUp = ip6tables -t nat -I POSTROUTING -o ${WAN_INTERFACE} -j MASQUERADE"
             "PrivateKey = $(wg genkey | tee '/etc/wireguard/private.key')"
             "#[Peer]"
             "#AllowedIPs = 192.168.224.0/19"
