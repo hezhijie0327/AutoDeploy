@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 2.2.7
+# Current Version: 2.2.8
 
 ## How to get and use?
 # curl "https://source.zhijie.online/AutoDeploy/main/Ubuntu.sh" | sudo bash
@@ -355,7 +355,7 @@ function ConfigurePackages() {
             "      dhcp4: true"
             "      dhcp6: true"
         )
-        network_interface=($(cat "/proc/net/dev" | grep -v "docker0\|lo" | grep "\:" | sed "s/[[:space:]]//g" | cut -d ":" -f 1 | sort | uniq))
+        network_interface=($(cat "/proc/net/dev" | grep -v "docker0\|lo\|wg0" | grep "\:" | sed "s/[[:space:]]//g" | cut -d ":" -f 1 | sort | uniq))
         which "netplan" > "/dev/null" 2>&1
         if [ "$?" -eq "0" ]; then
             if [ ! -d "/etc/netplan" ]; then
@@ -477,10 +477,33 @@ function ConfigurePackages() {
                 ufw reload && ufw limit 22/tcp && if [ "${chrony_environment}" == "TRUE" ]; then
                     ufw insert 1 allow 123/udp && ufw allow 323/udp
                 fi && if [ "${docker_environment}" == "FALSE" ] && [ "${wsl_environment}" == "FALSE" ]; then
-                    ufw limit 9022/tcp
+                    ufw allow 51820/udp && ufw limit 9022/tcp
                 fi && ufw allow 9090/tcp && ufw enable && ufw status verbose
             else
                 ufw disable > "/dev/null" 2>&1
+            fi
+        fi
+    }
+    function ConfigureWireGuard() {
+        wireguard_list=(
+            "[Interface]"
+            "Address = 192.168.224.$((RANDOM %253 + 1))/19"
+            "ListenPort = 51820"
+            "PostDown = iptables -D FORWARD -i %i -j ACCEPT; iptables -t nat -D POSTROUTING -o $(cat '/proc/net/dev' | grep -v 'docker0\|lo\|wg0' | grep ':' | sed 's/[[:space:]]//g' | cut -d ':' -f 1 | sort | uniq | head -n 1) -j MASQUERADE"
+            "PostUp = iptables -A FORWARD -i %i -j ACCEPT; iptables -t nat -A POSTROUTING -o $(cat '/proc/net/dev' | grep -v 'docker0\|lo\|wg0' | grep ':' | sed 's/[[:space:]]//g' | cut -d ':' -f 1 | sort | uniq | head -n 1) -j MASQUERADE"
+            "PrivateKey = $(wg genkey | tee '/etc/wireguard/private.key')"
+            "#[Peer]"
+            "#AllowedIPs = 192.168.224.0/19"
+            "#Endpoint = 127.0.0.1:51820"
+            "#PersistentKeepalive = 5"
+            "#PublicKey = $(cat '/etc/wireguard/private.key' | wg pubkey | tee '/etc/wireguard/public.key')"
+        )
+        which "wg" > "/dev/null" 2>&1
+        if [ "$?" -eq "0" ]; then
+            rm -rf "/tmp/wireguard.autodeploy" && for wireguard_list_task in "${!wireguard_list[@]}"; do
+                echo "${wireguard_list[$wireguard_list_task]}" >> "/tmp/wireguard.autodeploy"
+            done && cat "/tmp/wireguard.autodeploy" > "/etc/wireguard/wg0.conf" && rm -rf "/tmp/wireguard.autodeploy" && if [ "${docker_environment}" == "FALSE" ] && [ "${wsl_environment}" == "FALSE" ]; then
+                OPRATIONS="enable" && SERVICE_NAME="wg-quick@wg0.service" && CallServiceController && OPRATIONS="start" && CallServiceController && wg
             fi
         fi
     }
@@ -533,6 +556,7 @@ function ConfigurePackages() {
     ConfigureSshd
     ConfigureSysctl
     ConfigureUfw
+    ConfigureWireGuard
     ConfigureZsh
 }
 # Configure System
@@ -682,6 +706,7 @@ function InstallDependencyPackages() {
         "update-notifier-common"
         "vim"
         "wget"
+        "wireguard"
         "whois"
         "zip"
         "zsh"
