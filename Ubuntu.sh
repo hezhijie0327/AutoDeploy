@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 2.3.0
+# Current Version: 2.3.1
 
 ## How to get and use?
 # curl "https://source.zhijie.online/AutoDeploy/main/Ubuntu.sh" | sudo bash
@@ -491,7 +491,7 @@ function ConfigurePackages() {
             "Address = 192.168.224.$((RANDOM %253 + 1))/19"
             "ListenPort = 51820"
             "PreDown = ufw route delete allow in on wg0 out on ${WAN_INTERFACE}"
-            "PostDown = iptables -D FORWARD -i %i -j ACCEPT; iptables -t nat -D POSTROUTING -o ${WAN_INTERFACE} -j MASQUERADE"
+            "PreDown = iptables -D FORWARD -i %i -j ACCEPT; iptables -t nat -D POSTROUTING -o ${WAN_INTERFACE} -j MASQUERADE"
             "PreDown = ip6tables -t nat -D POSTROUTING -o ${WAN_INTERFACE} -j MASQUERADE"
             "PostUp = ufw route allow in on wg0 out on ${WAN_INTERFACE}"
             "PostUp = iptables -A FORWARD -i %i -j ACCEPT; iptables -t nat -A POSTROUTING -o ${WAN_INTERFACE} -j MASQUERADE"
