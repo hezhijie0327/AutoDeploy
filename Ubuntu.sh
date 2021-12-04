@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 2.2.8
+# Current Version: 2.2.9
 
 ## How to get and use?
 # curl "https://source.zhijie.online/AutoDeploy/main/Ubuntu.sh" | sudo bash
@@ -706,8 +706,8 @@ function InstallDependencyPackages() {
         "update-notifier-common"
         "vim"
         "wget"
-        "wireguard"
         "whois"
+        "wireguard"
         "zip"
         "zsh"
     )
