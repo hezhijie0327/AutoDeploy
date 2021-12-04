@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 2.3.1
+# Current Version: 2.3.2
 
 ## How to get and use?
 # curl "https://source.zhijie.online/AutoDeploy/main/Ubuntu.sh" | sudo bash
@@ -485,10 +485,16 @@ function ConfigurePackages() {
         fi
     }
     function ConfigureWireGuard() {
+        if [ -f "/var/lib/dbus/machine-id" ]; then
+            PREFIX_V6=$(echo $(date "+%s%N")$(cat "/var/lib/dbus/machine-id") | sha1sum | cut -c 31-)
+            TUNNEL_V6=$(echo ", fd$(echo ${PREFIX_V6} | cut -c 1-2):$(echo ${PREFIX_V6} | cut -c 3-6):$(echo ${PREFIX_V6} | cut -c 7-10)::/64")
+        else
+            TUNNEL_V6=""
+        fi
         WAN_INTERFACE=$(cat '/proc/net/dev' | grep -v 'docker0\|lo\|wg0' | grep ':' | sed 's/[[:space:]]//g' | cut -d ':' -f 1 | sort | uniq | head -n 1)
         wireguard_list=(
             "[Interface]"
-            "Address = 192.168.224.$((RANDOM %253 + 1))/19"
+            "Address = 192.168.224.$((RANDOM %253 + 1))/19${TUNNEL_V6}"
             "ListenPort = 51820"
             "PreDown = ufw route delete allow in on wg0 out on ${WAN_INTERFACE}"
             "PreDown = iptables -D FORWARD -i %i -j ACCEPT; iptables -t nat -D POSTROUTING -o ${WAN_INTERFACE} -j MASQUERADE"
