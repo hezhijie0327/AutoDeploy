@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 2.3.3
+# Current Version: 2.3.4
 
 ## How to get and use?
 # curl "https://source.zhijie.online/AutoDeploy/main/Ubuntu.sh" | sudo bash
@@ -485,15 +485,21 @@ function ConfigurePackages() {
         fi
     }
     function ConfigureWireGuard() {
-        if [ -f "/var/lib/dbus/machine-id" ]; then
-            RANDOM_HEX=$(echo "obase=16;$((RANDOM %65534 + 1))" | bc | tr "A-Z" "a-z")
-            UNIQUE_PREFIX=$(echo $(date "+%s%N")$(cat "/var/lib/dbus/machine-id") | sha1sum | cut -c 31-)
-            TUNNEL_PREFIX_V6=$(echo "fd$(echo ${UNIQUE_PREFIX} | cut -c 1-2):$(echo ${UNIQUE_PREFIX} | cut -c 3-6):$(echo ${UNIQUE_PREFIX} | cut -c 7-10)::")
-            TUNNEL_CIDR_V6=$(echo ", ${TUNNEL_PREFIX_V6}/64")
-            TUNNEL_CLIENT_V6=$(echo ", ${TUNNEL_PREFIX_V6}${RANDOM_HEX}/64")
-        else
-            TUNNEL_CIDR_V6=""
-            TUNNEL_CLIENT_V6=""
+        which "bc" > "/dev/null" 2>&1
+        if [ "$?" -eq "0" ]; then
+            which "sha1sum" > "/dev/null" 2>&1
+            if [ "$?" -eq "0" ]; then
+                if [ -f "/var/lib/dbus/machine-id" ]; then
+                    RANDOM_HEX=$(echo "obase=16;$((RANDOM %65534 + 1))" | bc | tr "A-Z" "a-z")
+                    UNIQUE_PREFIX=$(echo $(date "+%s%N")$(cat "/var/lib/dbus/machine-id") | sha1sum | cut -c 31-)
+                    TUNNEL_PREFIX_V6=$(echo "fd$(echo ${UNIQUE_PREFIX} | cut -c 1-2):$(echo ${UNIQUE_PREFIX} | cut -c 3-6):$(echo ${UNIQUE_PREFIX} | cut -c 7-10)::")
+                    TUNNEL_CIDR_V6=$(echo ", ${TUNNEL_PREFIX_V6}/64")
+                    TUNNEL_CLIENT_V6=$(echo ", ${TUNNEL_PREFIX_V6}${RANDOM_HEX}/64")
+                else
+                    TUNNEL_CIDR_V6=""
+                    TUNNEL_CLIENT_V6=""
+                fi
+            fi
         fi
         WAN_INTERFACE=$(cat '/proc/net/dev' | grep -v 'docker0\|lo\|wg0' | grep ':' | sed 's/[[:space:]]//g' | cut -d ':' -f 1 | sort | uniq | head -n 1)
         wireguard_list=(
