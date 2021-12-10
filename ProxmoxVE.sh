@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 1.2.8
+# Current Version: 1.2.9
 
 ## How to get and use?
 # curl "https://source.zhijie.online/AutoDeploy/main/ProxmoxVE.sh" | sudo bash
@@ -181,6 +181,48 @@ function ConfigurePackages() {
             done && crontab -u "root" "/tmp/crontab.autodeploy" && crontab -lu "root" && rm -rf "/tmp/crontab.autodeploy"
         fi
     }
+    function ConfigureFail2Ban() {
+        fail2ban_list=(
+            "[proxmox]"
+            "bantime = 604800"
+            "enabled = true"
+            "filter = proxmox"
+            "findtime = 60"
+            "logpath = /var/log/daemon.log"
+            "maxretry = 5"
+            "port = 8006"
+            "[sshd]"
+            "bantime = 604800"
+            "enabled = true"
+            "filter = sshd"
+            "findtime = 60"
+            "logpath = /var/log/auth.log"
+            "maxretry = 5"
+            "port = 22"
+        )
+        fail2ban_proxmox_list=(
+            "[Definition]"
+            "failregex = pvedaemon\[.*authentication failure; rhost=<HOST> user=.* msg=.*"
+            "ignoreregex ="
+        )
+        which "fail2ban-client" > "/dev/null" 2>&1
+        if [ "$?" -eq "0" ]; then
+            if [ -d "/etc/fail2ban/jail.d" ]; then
+                rm -rf /etc/fail2ban/jail.d/*
+            else
+                mkdir "/etc/fail2ban/jail.d"
+            fi
+            if [ -f "/etc/fail2ban/jail.conf" ]; then
+                cat "/etc/fail2ban/jail.conf" > "/etc/fail2ban/jail.local"
+            fi
+            rm -rf "/tmp/fail2ban.autodeploy" && for fail2ban_proxmox_list_task in "${!fail2ban_proxmox_list[@]}"; do
+                echo "${fail2ban_proxmox_list[$fail2ban_proxmox_list_task]}" >> "/tmp/fail2ban.autodeploy"
+            done && cat "/tmp/fail2ban.autodeploy" > "/etc/fail2ban/filter.d/proxmox.conf" && rm -rf "/tmp/fail2ban.autodeploy"
+            rm -rf "/tmp/fail2ban.autodeploy" && for fail2ban_list_task in "${!fail2ban_list[@]}"; do
+                echo "${fail2ban_list[$fail2ban_list_task]}" >> "/tmp/fail2ban.autodeploy"
+            done && cat "/tmp/fail2ban.autodeploy" > "/etc/fail2ban/jail.d/fail2ban_default.conf" && rm -rf "/tmp/fail2ban.autodeploy" && fail2ban-client reload && fail2ban-client status
+        fi
+    }
     function ConfigureGrub() {
         which "update-grub" > "/dev/null" 2>&1
         if [ "$?" -eq "0" ]; then
@@ -277,6 +319,7 @@ function ConfigurePackages() {
     }
     ConfigureChrony
     ConfigureCrontab
+    ConfigureFail2Ban
     ConfigureGrub
     ConfigureIOMMU
     ConfigurePostfix
@@ -371,6 +414,7 @@ function InstallDependencyPackages() {
         "chrony"
         "curl"
         "dnsutils"
+        "fail2ban"
         "git"
         "git-flow"
         "git-lfs"
