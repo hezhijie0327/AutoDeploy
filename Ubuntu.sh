@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 2.3.5
+# Current Version: 2.3.6
 
 ## How to get and use?
 # curl "https://source.zhijie.online/AutoDeploy/main/Ubuntu.sh" | sudo bash
@@ -234,6 +234,8 @@ function SetReadonlyFlag() {
         "/etc/chrony/chrony.conf"
         "/etc/default/ufw"
         "/etc/docker/daemon.json"
+        "/etc/fail2ban/jail.local"
+        "/etc/fail2ban/jail.d/fail2ban_default.conf"
         "/etc/hostname"
         "/etc/hosts"
         "/etc/netplan/netplan.yaml"
