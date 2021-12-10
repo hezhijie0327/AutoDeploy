@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 2.3.4
+# Current Version: 2.3.5
 
 ## How to get and use?
 # curl "https://source.zhijie.online/AutoDeploy/main/Ubuntu.sh" | sudo bash
@@ -329,6 +329,32 @@ function ConfigurePackages() {
             fi
         fi
     }
+    function ConfigureFail2Ban() {
+        fail2ban_list=(
+            "[sshd]"
+            "bantime = 604800"
+            "enabled = true"
+            "filter = sshd"
+            "findtime = 60"
+            "maxretry = 5"
+        )
+        which "fail2ban-client" > "/dev/null" 2>&1
+        if [ "$?" -eq "0" ]; then
+            if [ -d "/etc/fail2ban/jail.d" ]; then
+                rm -rf /etc/fail2ban/jail.d/*
+            else
+                mkdir "/etc/fail2ban/jail.d"
+            fi
+            if [ -f "/etc/fail2ban/jail.conf" ]; then
+                cat "/etc/fail2ban/jail.conf" | sed "s/banaction\ \=\ iptables\-multiport/banaction\ \=\ ufw/g;s/banaction\ \=\ iptables\-multiport\-log/banaction\ \=\ ufw/g;s/banaction\ \=\ ufw\-log/banaction\ \=\ ufw/g;s/banaction\_allports\ \=\ iptables\-allports/banaction\_allports\ \=\ ufw/g" > "/etc/fail2ban/jail.local"
+            fi
+            rm -rf "/tmp/fail2ban.autodeploy" && for fail2ban_list_task in "${!fail2ban_list[@]}"; do
+                echo "${fail2ban_list[$fail2ban_list_task]}" >> "/tmp/fail2ban.autodeploy"
+            done && cat "/tmp/fail2ban.autodeploy" > "/etc/fail2ban/jail.d/fail2ban_default.conf" && rm -rf "/tmp/fail2ban.autodeploy" && if [ "${docker_environment}" == "FALSE" ] && [ "${wsl_environment}" == "FALSE" ]; then
+                fail2ban-client reload && fail2ban-client status
+            fi
+        fi
+    }
     function ConfigureGrub() {
         which "update-grub" > "/dev/null" 2>&1
         if [ "$?" -eq "0" ]; then
@@ -569,6 +595,7 @@ function ConfigurePackages() {
     ConfigureChrony
     ConfigureCrontab
     ConfigureDockerEngine
+    ConfigureFail2Ban
     ConfigureGrub
     ConfigureLandscape
     ConfigureNetplan
@@ -687,6 +714,7 @@ function InstallDependencyPackages() {
         "cockpit-pcp"
         "curl"
         "dnsutils"
+        "fail2ban"
         "git"
         "git-flow"
         "git-lfs"
