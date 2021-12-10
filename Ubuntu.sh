@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 2.3.6
+# Current Version: 2.3.7
 
 ## How to get and use?
 # curl "https://source.zhijie.online/AutoDeploy/main/Ubuntu.sh" | sudo bash
@@ -338,7 +338,9 @@ function ConfigurePackages() {
             "enabled = true"
             "filter = sshd"
             "findtime = 60"
+            "logpath = /var/log/auth.log"
             "maxretry = 5"
+            "port = 9022"
         )
         which "fail2ban-client" > "/dev/null" 2>&1
         if [ "$?" -eq "0" ]; then
