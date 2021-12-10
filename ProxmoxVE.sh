@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 1.2.9
+# Current Version: 1.3.0
 
 ## How to get and use?
 # curl "https://source.zhijie.online/AutoDeploy/main/ProxmoxVE.sh" | sudo bash
@@ -119,6 +119,8 @@ function SetReadonlyFlag() {
         "/etc/apt/sources.list"
         "/etc/apt/sources.list.d/proxmox.list"
         "/etc/chrony/chrony.conf"
+        "/etc/fail2ban/jail.local"
+        "/etc/fail2ban/jail.d/fail2ban_default.conf"
         "/etc/hostname"
         "/etc/hosts"
         "/etc/modprobe.d/iommu_unsafe_interrupts.conf"
