@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 2.4.0
+# Current Version: 2.4.1
 
 ## How to get and use?
 # curl "https://source.zhijie.online/AutoDeploy/main/Ubuntu.sh" | sudo bash
@@ -290,6 +290,22 @@ function ConfigurePackages() {
             fi
         fi
     }
+    function ConfigureCockpit() {
+        cockpit_list=(
+            "[Session]"
+            "IdleTimeout = 60"
+            "[WebService]"
+            "MaxStartups = 3:75:5"
+        )
+        which "cockpit-bridge" > "/dev/null" 2>&1
+        if [ "$?" -eq "0" ]; then
+            rm -rf "/tmp/cockpit.autodeploy" && for cockpit_list_task in "${!cockpit_list[@]}"; do
+                echo "${cockpit_list[$cockpit_list_task]}" >> "/tmp/cockpit.autodeploy"
+            done && cat "/tmp/cockpit.autodeploy" > "/etc/cockpit/cockpit.conf" && rm -rf "/tmp/cockpit.autodeploy" && if [ "${docker_environment}" == "FALSE" ] && [ "${wsl_environment}" == "FALSE" ]; then
+                OPRATIONS="restart" && SERVICE_NAME="cockpit.service" && CallServiceController
+            fi
+        fi
+    }
     function ConfigureCrontab() {
         crontab_list=(
             "@reboot sudo rm -rf /root/.*_history"
@@ -334,14 +350,6 @@ function ConfigurePackages() {
     }
     function ConfigureFail2Ban() {
         fail2ban_list=(
-            "[pam-generic]"
-            "bantime = 604800"
-            "enabled = true"
-            "filter = pam-generic"
-            "findtime = 60"
-            "logpath = /var/log/auth.log"
-            "maxretry = 5"
-            "port = 9090"
             "[sshd]"
             "bantime = 604800"
             "enabled = true"
@@ -609,6 +617,7 @@ function ConfigurePackages() {
         fi
     }
     ConfigureChrony
+    ConfigureCockpit
     ConfigureCrontab
     ConfigureDockerEngine
     ConfigureFail2Ban
