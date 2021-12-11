@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 2.4.1
+# Current Version: 2.4.2
 
 ## How to get and use?
 # curl "https://source.zhijie.online/AutoDeploy/main/Ubuntu.sh" | sudo bash
@@ -232,6 +232,7 @@ function SetReadonlyFlag() {
         "/etc/apt/sources.list"
         "/etc/apt/sources.list.d/docker.list"
         "/etc/chrony/chrony.conf"
+        "/etc/cockpit/cockpit.conf"
         "/etc/default/ufw"
         "/etc/docker/daemon.json"
         "/etc/fail2ban/fail2ban.local"
