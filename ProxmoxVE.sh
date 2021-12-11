@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 1.3.0
+# Current Version: 1.3.1
 
 ## How to get and use?
 # curl "https://source.zhijie.online/AutoDeploy/main/ProxmoxVE.sh" | sudo bash
@@ -119,6 +119,7 @@ function SetReadonlyFlag() {
         "/etc/apt/sources.list"
         "/etc/apt/sources.list.d/proxmox.list"
         "/etc/chrony/chrony.conf"
+        "/etc/fail2ban/fail2ban.local"
         "/etc/fail2ban/jail.local"
         "/etc/fail2ban/jail.d/fail2ban_default.conf"
         "/etc/hostname"
@@ -213,6 +214,9 @@ function ConfigurePackages() {
                 rm -rf /etc/fail2ban/jail.d/*
             else
                 mkdir "/etc/fail2ban/jail.d"
+            fi
+            if [ -f "/etc/fail2ban/fail2ban.conf" ]; then
+                cat "/etc/fail2ban/fail2ban.conf" > "/etc/fail2ban/fail2ban.local"
             fi
             if [ -f "/etc/fail2ban/jail.conf" ]; then
                 cat "/etc/fail2ban/jail.conf" > "/etc/fail2ban/jail.local"
