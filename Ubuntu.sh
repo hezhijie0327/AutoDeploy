@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 2.3.9
+# Current Version: 2.4.0
 
 ## How to get and use?
 # curl "https://source.zhijie.online/AutoDeploy/main/Ubuntu.sh" | sudo bash
@@ -234,6 +234,7 @@ function SetReadonlyFlag() {
         "/etc/chrony/chrony.conf"
         "/etc/default/ufw"
         "/etc/docker/daemon.json"
+        "/etc/fail2ban/fail2ban.local"
         "/etc/fail2ban/jail.local"
         "/etc/fail2ban/jail.d/fail2ban_default.conf"
         "/etc/hostname"
@@ -356,6 +357,9 @@ function ConfigurePackages() {
                 rm -rf /etc/fail2ban/jail.d/*
             else
                 mkdir "/etc/fail2ban/jail.d"
+            fi
+            if [ -f "/etc/fail2ban/fail2ban.conf" ]; then
+                cat "/etc/fail2ban/fail2ban.conf" > "/etc/fail2ban/fail2ban.local"
             fi
             if [ -f "/etc/fail2ban/jail.conf" ]; then
                 cat "/etc/fail2ban/jail.conf" | sed "s/action\ \=\ iptables\-allports/action\ \=\ ufw/g;s/banaction\ \=\ iptables\-multiport/banaction\ \=\ ufw/g;s/banaction\ \=\ iptables\-multiport\-log/banaction\ \=\ ufw/g;s/banaction\ \=\ ufw\-log/banaction\ \=\ ufw/g;s/banaction\_allports\ \=\ iptables\-allports/banaction\_allports\ \=\ ufw/g" > "/etc/fail2ban/jail.local"
