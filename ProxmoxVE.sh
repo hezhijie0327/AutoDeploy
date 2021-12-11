@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 1.3.2
+# Current Version: 1.3.3
 
 ## How to get and use?
 # curl "https://source.zhijie.online/AutoDeploy/main/ProxmoxVE.sh" | sudo bash
@@ -27,6 +27,9 @@ function GetSystemInformation() {
             CPU_VENDOR_ID="Unknown"
             ENABLE_IOMMU=""
         fi
+    }
+    function GetHostname() {
+        OLD_HOSTNAME=$(cat "/etc/hostname")
     }
     function GetLSBCodename() {
         LSBCodename=$(cat "/etc/os-release" | grep "CODENAME" | cut -f 2 -d "=")
@@ -78,6 +81,7 @@ function GetSystemInformation() {
     GenerateDomain
     GenerateHostname
     GetCPUVendorID
+    GetHostname
     GetLSBCodename
     GetManagementIPAddress
     IsVirtualEnvironment
@@ -390,9 +394,29 @@ function ConfigureSystem() {
         done && cat "/tmp/hosts.autodeploy" > "/etc/hosts" && rm -rf "/tmp/hosts.autodeploy"
         rm -rf "/tmp/hostname.autodeploy" && echo "${NEW_HOSTNAME}" > "/tmp/hostname.autodeploy" && cat "/tmp/hostname.autodeploy" > "/etc/hostname" && rm -rf "/tmp/hostname.autodeploy"
     }
+    function ConfigureProxmoxVENode() {
+        if [ "${OLD_HOSTNAME}" != "${NEW_HOSTNAME}" ]; then
+            if [ -d "/etc/pve/nodes/${OLD_HOSTNAME}" ]; then
+                tar -czvf "/etc/pve/nodes/${OLD_HOSTNAME}.tar.gz" "/etc/pve/nodes/${OLD_HOSTNAME}" && if [ -f "/etc/pve/nodes/${OLD_HOSTNAME}.tar.gz" ]; then
+                    rm -rf "/etc/pve/nodes/${OLD_HOSTNAME}"
+                fi
+            fi
+            if [ -f "/var/lib/rrdcached/db/pve2-node/${OLD_HOSTNAME}" ]; then
+                cp -rf "/var/lib/rrdcached/db/pve2-node/${OLD_HOSTNAME}" "/var/lib/rrdcached/db/pve2-node/${NEW_HOSTNAME}" && if [ -f "/var/lib/rrdcached/db/pve2-node/${NEW_HOSTNAME}" ]; then
+                    rm -rf "/var/lib/rrdcached/db/pve2-node/${OLD_HOSTNAME}"
+                fi
+            fi
+            if [ -d "/var/lib/rrdcached/db/pve2-storage/${OLD_HOSTNAME}" ]; then
+                cp -rf "/var/lib/rrdcached/db/pve2-storage/${OLD_HOSTNAME}" "/var/lib/rrdcached/db/pve2-storage/${NEW_HOSTNAME}" && if [ -d "/var/lib/rrdcached/db/pve2-storage/${NEW_HOSTNAME}" ]; then
+                    rm -rf "/var/lib/rrdcached/db/pve2-storage/${OLD_HOSTNAME}"
+                fi
+            fi
+        fi
+    }
     ConfigureDefaultShell
     ConfigureDefaultUser
     ConfigureHostfile
+    ConfigureProxmoxVENode
 }
 # Install Custom Packages
 function InstallCustomPackages() {
