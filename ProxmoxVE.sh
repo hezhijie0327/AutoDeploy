@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 1.3.3
+# Current Version: 1.3.4
 
 ## How to get and use?
 # curl "https://source.zhijie.online/AutoDeploy/main/ProxmoxVE.sh" | sudo bash
@@ -470,6 +470,7 @@ function InstallDependencyPackages() {
         "rar"
         "sudo"
         "systemd"
+        "tcpdump"
         "tshark"
         "unrar"
         "unzip"
