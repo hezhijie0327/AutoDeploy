@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 1.3.4
+# Current Version: 1.3.5
 
 ## How to get and use?
 # curl "https://source.zhijie.online/AutoDeploy/main/ProxmoxVE.sh" | sudo bash
@@ -500,7 +500,7 @@ function InstallDependencyPackages() {
 }
 # Upgrade Packages
 function UpgradePackages() {
-    apt update && apt dist-upgrade -qy && apt upgrade -qy && apt autoremove -qy
+    apt update && apt -t ${LSBCodename}-backports dist-upgrade -qy && apt -t ${LSBCodename}-backports upgrade -qy && apt autoremove -qy
 }
 # Cleanup Temp Files
 function CleanupTempFiles() {
