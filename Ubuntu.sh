@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 2.4.2
+# Current Version: 2.4.3
 
 ## How to get and use?
 # curl "https://source.zhijie.online/AutoDeploy/main/Ubuntu.sh" | sudo bash
@@ -768,6 +768,7 @@ function InstallDependencyPackages() {
         "realmd"
         "sudo"
         "systemd"
+        "tcpdump"
         "tshark"
         "tuned"
         "udisks2"
