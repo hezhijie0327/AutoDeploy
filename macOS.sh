@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 1.7.1
+# Current Version: 1.7.2
 
 ## How to get and use?
 # /bin/bash -c "$(curl -fsSL 'https://source.zhijie.online/AutoDeploy/main/macOS.sh')"
@@ -282,6 +282,7 @@ function InstallDependencyPackages() {
             "p7zip"
             "python3"
             "rar"
+            "tcpdump"
             "unzip"
             "vim"
             "wget"
