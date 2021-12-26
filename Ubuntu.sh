@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 2.4.3
+# Current Version: 2.4.4
 
 ## How to get and use?
 # curl "https://source.zhijie.online/AutoDeploy/main/Ubuntu.sh" | sudo bash
@@ -807,7 +807,7 @@ function InstallDependencyPackages() {
 }
 # Upgrade Packages
 function UpgradePackages() {
-    apt update && apt dist-upgrade -qy && apt upgrade -qy && apt autoremove -qy
+    apt update && apt -t ${LSBCodename}-backports dist-upgrade -qy && apt -t ${LSBCodename}-backports upgrade -qy && apt autoremove -qy
 }
 # Cleanup Temp Files
 function CleanupTempFiles() {
