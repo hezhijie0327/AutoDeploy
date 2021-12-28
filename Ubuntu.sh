@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 2.4.6
+# Current Version: 2.4.7
 
 ## How to get and use?
 # curl "https://source.zhijie.online/AutoDeploy/main/Ubuntu.sh" | sudo bash
@@ -309,6 +309,7 @@ function ConfigurePackages() {
     }
     function ConfigureCrontab() {
         crontab_list=(
+            "0 0 * * 7 export CODENAME=$(lsb_release -cs) && sudo apt update && sudo apt -t ${CODENAME}-backports dist-upgrade -yq && sudo apt -t ${CODENAME}-backports upgrade -yq && sudo apt autoremove -yq"
             "@reboot sudo rm -rf /root/.*_history"
         )
         which "crontab" > "/dev/null" 2>&1
