@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 1.3.5
+# Current Version: 1.3.6
 
 ## How to get and use?
 # curl "https://source.zhijie.online/AutoDeploy/main/ProxmoxVE.sh" | sudo bash
@@ -180,6 +180,7 @@ function ConfigurePackages() {
     }
     function ConfigureCrontab() {
         crontab_list=(
+            "0 0 * * 7 sudo apt update && sudo apt -t ${LSBCodename}-backports dist-upgrade -yq && sudo apt -t ${LSBCodename}-backports upgrade -yq && sudo apt autoremove -yq"
             "@reboot sudo rm -rf /root/.*_history"
         )
         which "crontab" > "/dev/null" 2>&1
