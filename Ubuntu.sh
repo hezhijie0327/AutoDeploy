@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 2.4.5
+# Current Version: 2.4.6
 
 ## How to get and use?
 # curl "https://source.zhijie.online/AutoDeploy/main/Ubuntu.sh" | sudo bash
@@ -33,9 +33,9 @@ function GetSystemInformation() {
     }
     function GetLSBCodename() {
         LSBCodename_LTS="focal"
-        LSBCodename_NON_LTS="hirsute"
+        LSBCodename_NON_LTS="impish"
         Version_LTS="20.04"
-        Version_NON_LTS="21.04"
+        Version_NON_LTS="21.10"
         which "lsb_release" > "/dev/null" 2>&1
         if [ "$?" -eq "0" ]; then
             if [ "$(lsb_release -ds | grep 'LTS')" == "" ]; then
