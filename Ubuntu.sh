@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 2.4.8
+# Current Version: 2.4.9
 
 ## How to get and use?
 # curl "https://source.zhijie.online/AutoDeploy/main/Ubuntu.sh" | sudo bash
@@ -309,7 +309,7 @@ function ConfigurePackages() {
     }
     function ConfigureCrontab() {
         crontab_list=(
-            "0 0 * * 7 sudo apt update && sudo apt -t ${LSBCodename}-backports dist-upgrade -yq && sudo apt -t ${LSBCodename}-backports upgrade -yq && sudo apt autoremove -yq"
+            "0 0 * * 7 sudo apt update && sudo apt dist-upgrade -qy && sudo apt -t ${LSBCodename}-backports dist-upgrade -qy && sudo apt upgrade -qy && sudo apt -t ${LSBCodename}-backports upgrade -qy && sudo apt autoremove -qy"
             "@reboot sudo rm -rf /root/.*_history"
         )
         which "crontab" > "/dev/null" 2>&1
@@ -809,7 +809,7 @@ function InstallDependencyPackages() {
 }
 # Upgrade Packages
 function UpgradePackages() {
-    apt update && apt -t ${LSBCodename}-backports dist-upgrade -qy && apt -t ${LSBCodename}-backports upgrade -qy && apt autoremove -qy
+    apt update && apt dist-upgrade -qy && apt -t ${LSBCodename}-backports dist-upgrade -qy && apt upgrade -qy && apt -t ${LSBCodename}-backports upgrade -qy && apt autoremove -qy
 }
 # Cleanup Temp Files
 function CleanupTempFiles() {
