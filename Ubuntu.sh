@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 2.5.8
+# Current Version: 2.5.9
 
 ## How to get and use?
 # curl "https://source.zhijie.online/AutoDeploy/main/Ubuntu.sh" | sudo bash
@@ -184,6 +184,8 @@ function SetRepositoryMirror() {
     )
     if [ ! -d "/etc/apt/sources.list.d" ]; then
         mkdir "/etc/apt/sources.list.d"
+    else
+        rm -rf /etc/apt/sources.list.d/*.*
     fi
     rm -rf "/tmp/apt.autodeploy" && for mirror_list_task in "${!mirror_list[@]}"; do
         echo "${mirror_list[$mirror_list_task]}" >> "/tmp/apt.autodeploy"
