@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 1.0.1
+# Current Version: 1.0.2
 
 ## How to get and use?
 # curl "https://source.zhijie.online/AutoDeploy/main/Raspbian.sh" | sudo bash
@@ -198,6 +198,11 @@ function ConfigurePackages() {
             fi
         fi
     }
+    function ConfigureLandscape() {
+        if [ -f "/usr/lib/python3/dist-packages/landscape/lib/network.py" ]; then
+            cat "/usr/lib/python3/dist-packages/landscape/lib/network.py" | sed "s/tostring/tobytes/g" > "/tmp/landscape.autodeploy" && cat "/tmp/landscape.autodeploy" > "/usr/lib/python3/dist-packages/landscape/lib/network.py" && rm -rf "/tmp/landscape.autodeploy"
+        fi
+    }
     function ConfigureNetplan() {
         netplan_list=(
             "network:"
@@ -378,6 +383,7 @@ function ConfigurePackages() {
     ConfigureDockerEngine
     ConfigureFail2Ban
     ConfigureGrub
+    ConfigureLandscape
     ConfigureNetplan
     ConfigurePostfix
     ConfigureResolved
@@ -498,6 +504,7 @@ function InstallDependencyPackages() {
         "iperf3"
         "jq"
         "knot-dnsutils"
+        "landscape-common"
         "lsb-release"
         "mailutils"
         "mtr-tiny"
@@ -529,6 +536,7 @@ function InstallDependencyPackages() {
         "ufw"
         "unrar"
         "unzip"
+        "update-notifier-common"
         "vim"
         "virt-what"
         "wget"
