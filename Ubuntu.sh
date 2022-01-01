@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 2.5.4
+# Current Version: 2.5.5
 
 ## How to get and use?
 # curl "https://source.zhijie.online/AutoDeploy/main/Ubuntu.sh" | sudo bash
@@ -145,13 +145,21 @@ function GetSystemInformation() {
             LSBCodename="${LSBCodename_LATEST}"
         fi
     }
-    function IsArmArchitecture() {
-        if [ "$(uname -m)" == "aarch64" ]; then
-            mirror_arch="arm64"
-            mirror_path="ubuntu-ports"
-        elif [ "$(uname -m)" == "x86_64" ]; then
-            mirror_arch="amd64"
-            mirror_path="ubuntu"
+    function GetOSArchitecture() {
+        which "dpkg" > "/dev/null" 2>&1
+        if [ "$?" -eq "0" ]; then
+            OSArchitecture=$(dpkg --print-architecture)
+        else
+            if [ "$(uname -m)" == "aarch64" ]; then
+                OSArchitecture="arm64"
+            elif [ "$(uname -m)" == "x86_64" ]; then
+                OSArchitecture="amd64"
+            fi
+        fi
+        if [ "${OSArchitecture}" == "arm64" ]; then
+            MIRROR_URL="ubuntu-ports"
+        elif [ "${OSArchitecture}" == "amd64" ]; then
+            MIRROR_URL="ubuntu"
         else
             echo "Unsupported architecture."
             exit 1
@@ -160,19 +168,19 @@ function GetSystemInformation() {
     CheckMachineEnvironment
     GenerateHostname
     GetLSBCodename
-    IsArmArchitecture
+    GetOSArchitecture
 }
 # Set Repository Mirror
 function SetRepositoryMirror() {
     mirror_list=(
-        "deb ${transport_protocol}://mirrors.ustc.edu.cn/${mirror_path} ${LSBCodename} main restricted universe multiverse"
-        "deb ${transport_protocol}://mirrors.ustc.edu.cn/${mirror_path} ${LSBCodename}-backports main restricted universe multiverse"
-        "deb ${transport_protocol}://mirrors.ustc.edu.cn/${mirror_path} ${LSBCodename}-security main restricted universe multiverse"
-        "deb ${transport_protocol}://mirrors.ustc.edu.cn/${mirror_path} ${LSBCodename}-updates main restricted universe multiverse"
-        "deb-src ${transport_protocol}://mirrors.ustc.edu.cn/${mirror_path} ${LSBCodename} main restricted universe multiverse"
-        "deb-src ${transport_protocol}://mirrors.ustc.edu.cn/${mirror_path} ${LSBCodename}-backports main restricted universe multiverse"
-        "deb-src ${transport_protocol}://mirrors.ustc.edu.cn/${mirror_path} ${LSBCodename}-security main restricted universe multiverse"
-        "deb-src ${transport_protocol}://mirrors.ustc.edu.cn/${mirror_path} ${LSBCodename}-updates main restricted universe multiverse"
+        "deb ${transport_protocol}://mirrors.ustc.edu.cn/${MIRROR_URL} ${LSBCodename} main restricted universe multiverse"
+        "deb ${transport_protocol}://mirrors.ustc.edu.cn/${MIRROR_URL} ${LSBCodename}-backports main restricted universe multiverse"
+        "deb ${transport_protocol}://mirrors.ustc.edu.cn/${MIRROR_URL} ${LSBCodename}-security main restricted universe multiverse"
+        "deb ${transport_protocol}://mirrors.ustc.edu.cn/${MIRROR_URL} ${LSBCodename}-updates main restricted universe multiverse"
+        "deb-src ${transport_protocol}://mirrors.ustc.edu.cn/${MIRROR_URL} ${LSBCodename} main restricted universe multiverse"
+        "deb-src ${transport_protocol}://mirrors.ustc.edu.cn/${MIRROR_URL} ${LSBCodename}-backports main restricted universe multiverse"
+        "deb-src ${transport_protocol}://mirrors.ustc.edu.cn/${MIRROR_URL} ${LSBCodename}-security main restricted universe multiverse"
+        "deb-src ${transport_protocol}://mirrors.ustc.edu.cn/${MIRROR_URL} ${LSBCodename}-updates main restricted universe multiverse"
     )
     if [ ! -d "/etc/apt/sources.list.d" ]; then
         mkdir "/etc/apt/sources.list.d"
@@ -657,7 +665,7 @@ function InstallCustomPackages() {
         )
         if [ "${container_environment}" != "docker" ] && [ "${container_environment}" != "wsl2" ]; then
             curl -fsSL "https://mirrors.ustc.edu.cn/docker-ce/linux/ubuntu/gpg" | gpg --dearmor -o "/usr/share/keyrings/docker-archive-keyring.gpg"
-            echo "deb [arch=${mirror_arch} signed-by=/usr/share/keyrings/docker-archive-keyring.gpg] https://mirrors.ustc.edu.cn/docker-ce/linux/ubuntu ${LSBCodename} stable" > "/etc/apt/sources.list.d/docker.list"
+            echo "deb [arch=${OSArchitecture} signed-by=/usr/share/keyrings/docker-archive-keyring.gpg] https://mirrors.ustc.edu.cn/docker-ce/linux/ubuntu ${LSBCodename} stable" > "/etc/apt/sources.list.d/docker.list"
             apt update && apt purge -qy containerd docker docker-engine docker.io runc && for app_list_task in "${!app_list[@]}"; do
                 apt-cache show ${app_list[$app_list_task]} && if [ "$?" -eq "0" ]; then
                     apt install -qy ${app_list[$app_list_task]}
