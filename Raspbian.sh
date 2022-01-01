@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 1.0.0
+# Current Version: 1.0.1
 
 ## How to get and use?
 # curl "https://source.zhijie.online/AutoDeploy/main/Raspbian.sh" | sudo bash
@@ -378,7 +378,6 @@ function ConfigurePackages() {
     ConfigureDockerEngine
     ConfigureFail2Ban
     ConfigureGrub
-    ConfigureLandscape
     ConfigureNetplan
     ConfigurePostfix
     ConfigureResolved
