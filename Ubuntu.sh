@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 2.5.3
+# Current Version: 2.5.4
 
 ## How to get and use?
 # curl "https://source.zhijie.online/AutoDeploy/main/Ubuntu.sh" | sudo bash
@@ -133,12 +133,16 @@ function GetSystemInformation() {
                 else
                     LSBCodename="${LSBCodename_LTS}"
                 fi
-            else
-                LSBCodename="${LSBCodename_LTS}"
             fi
         fi
         if [ "$(awk -v NUM1=$Version_LTS -v NUM2=$Version_NON_LTS 'BEGIN{print (NUM1 > NUM2) ? 1 : 0}')" -eq "1" ]; then
             LSBCodename="${LSBCodename_LTS}"
+            LSBCodename_LATEST="${LSBCodename_LTS}"
+        else
+            LSBCodename_LATEST="${LSBCodename_NON_LTS}"
+        fi
+        if [ "${LSBCodename}" == "" ]; then
+            LSBCodename="${LSBCodename_LATEST}"
         fi
     }
     function IsArmArchitecture() {
