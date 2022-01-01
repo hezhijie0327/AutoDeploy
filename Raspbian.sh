@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 1.0.3
+# Current Version: 1.0.4
 
 ## How to get and use?
 # curl "https://source.zhijie.online/AutoDeploy/main/Raspbian.sh" | sudo bash
@@ -40,6 +40,8 @@ function SetRepositoryMirror() {
     )
     if [ ! -d "/etc/apt/sources.list.d" ]; then
         mkdir "/etc/apt/sources.list.d"
+    else
+        rm -rf /etc/apt/sources.list.d/*.*
     fi
     rm -rf "/tmp/apt.autodeploy" && for mirror_list_task in "${!mirror_list[@]}"; do
         echo "${mirror_list[$mirror_list_task]}" >> "/tmp/apt.autodeploy"
@@ -228,8 +230,8 @@ function ConfigurePackages() {
     }
     function ConfigurePostfix() {
         if [ -f "/etc/postfix/main.cf" ]; then
-            if [ "$(cat '/etc/postfix/main.cf' | grep 'myhostname\=')" != "" ]; then
-                CURRENT_HOSTNAME=$(cat "/etc/postfix/main.cf" | grep "myhostname\=" | sed "s/myhostname\=//g")
+            if [ "$(cat '/etc/postfix/main.cf' | grep 'myhostname\ \=')" != "" ]; then
+                CURRENT_HOSTNAME=$(cat "/etc/postfix/main.cf" | grep "myhostname\ \=" | sed "s/myhostname\ \=\ //g")
                 cat "/etc/postfix/main.cf" | sed "s/$CURRENT_HOSTNAME/$NEW_HOSTNAME/g" > "/tmp/main.cf.autodeploy" && cat "/tmp/main.cf.autodeploy" > "/etc/postfix/main.cf" && rm -rf "/tmp/main.cf.autodeploy"
             fi
         fi
@@ -251,7 +253,7 @@ function ConfigurePackages() {
             fi
             rm -rf "/tmp/resolved.autodeploy" && for resolved_list_task in "${!resolved_list[@]}"; do
                 echo "${resolved_list[$resolved_list_task]}" >> "/tmp/resolved.autodeploy"
-            done && cat "/tmp/resolved.autodeploy" > "/etc/systemd/resolved.conf.d/resolved.conf" && systemctl restart systemd-resolved.service && rm -rf "/tmp/resolved.autodeploy" && if [ -f "/etc/resolv.conf" ]; then
+            done && cat "/tmp/resolved.autodeploy" > "/etc/systemd/resolved.conf.d/resolved.conf" && systemctl enable systemd-resolved.service && systemctl restart systemd-resolved.service && rm -rf "/tmp/resolved.autodeploy" && if [ -f "/etc/resolv.conf" ]; then
                 chattr -i "/etc/resolv.conf" > "/dev/null" 2>&1
                 rm -rf "/etc/resolv.conf" && ln -s "/run/systemd/resolve/resolv.conf" "/etc/resolv.conf"
             fi
