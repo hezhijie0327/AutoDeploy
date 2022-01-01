@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 1.3.7
+# Current Version: 1.3.8
 
 ## How to get and use?
 # curl "https://source.zhijie.online/AutoDeploy/main/ProxmoxVE.sh" | sudo bash
@@ -9,6 +9,14 @@
 ## Function
 # Get System Information
 function GetSystemInformation() {
+    function CheckHypervisorEnvironment() {
+        which "virt-what" > "/dev/null" 2>&1
+        if [ "$?" -eq "1" ]; then
+            apt update && apt install virt-what -qy
+        fi && hypervisor_environment=$(virt-what) && if [ "${hypervisor_environment}" == "" ]; then
+            hypervisor_environment="none"
+        fi
+    }
     function GenerateDomain() {
         NEW_DOMAIN="localdomain"
     }
@@ -37,54 +45,13 @@ function GetSystemInformation() {
     function GetManagementIPAddress() {
         CURRENT_MANAGEMENT_IP=$(ip address show vmbr0 | grep "inet" | awk '{print $2}' | sort | head -n 1 | sed "s/\/.*//")
     }
-    function IsVirtualEnvironment() {
-        function CheckKVMEnvironment() {
-            which "lscpu" > "/dev/null" 2>&1
-            if [ "$?" -eq "0" ]; then
-                if [ "$(lscpu | grep 'Hypervisor vendor' | cut -d ':' -f 2 | tr -d ' ' | tr 'A-Z' 'a-z' | grep 'kvm\|qemu')" != "" ]; then
-                    kvm_environment="TRUE"
-                else
-                    kvm_environment="FALSE"
-                fi
-            else
-                kvm_environment="FALSE"
-            fi
-        }
-        function CheckVMwareEnvironment() {
-            which "lscpu" > "/dev/null" 2>&1
-            if [ "$?" -eq "0" ]; then
-                if [ "$(lscpu | grep 'Hypervisor vendor' | cut -d ':' -f 2 | tr -d ' ' | tr 'A-Z' 'a-z' | grep 'vmware')" != "" ]; then
-                    vmware_environment="TRUE"
-                else
-                    vmware_environment="FALSE"
-                fi
-            else
-                vmware_environment="FALSE"
-            fi
-        }
-        function CheckVirtualBoxEnvironment() {
-            which "lscpu" > "/dev/null" 2>&1
-            if [ "$?" -eq "0" ]; then
-                if [ "$(lscpu | grep 'Hypervisor vendor' | cut -d ':' -f 2 | tr -d ' ' | tr 'A-Z' 'a-z' | grep 'oracle\|virtualbox')" != "" ]; then
-                    virtualbox_environment="TRUE"
-                else
-                    virtualbox_environment="FALSE"
-                fi
-            else
-                virtualbox_environment="FALSE"
-            fi
-        }
-        CheckKVMEnvironment
-        CheckVMwareEnvironment
-        CheckVirtualBoxEnvironment
-    }
+    CheckHypervisorEnvironment
     GenerateDomain
     GenerateHostname
     GetCPUVendorID
     GetHostname
     GetLSBCodename
     GetManagementIPAddress
-    IsVirtualEnvironment
 }
 # Set Repository Mirror
 function SetRepositoryMirror() {
@@ -476,6 +443,7 @@ function InstallDependencyPackages() {
         "unrar"
         "unzip"
         "vim"
+        "virt-what"
         "wget"
         "whois"
         "zip"
@@ -485,15 +453,15 @@ function InstallDependencyPackages() {
         apt-cache show ${app_list[$app_list_task]} && if [ "$?" -eq "0" ]; then
             apt install -qy ${app_list[$app_list_task]}
         fi
-    done && if [ "${kvm_environment}" == "TRUE" ]; then
+    done && if [ "${hypervisor_environment}" == "kvm" ]; then
         apt-cache show qemu-guest-agent && if [ "$?" -eq "0" ]; then
             apt install -qy qemu-guest-agent
         fi
-    fi && if [ "${vmware_environment}" == "TRUE" ]; then
+    fi && if [ "${hypervisor_environment}" == "vmware" ]; then
         apt-cache show open-vm-tools && if [ "$?" -eq "0" ]; then
             apt install -qy open-vm-tools
         fi
-    fi && if [ "${virtualbox_environment}" == "TRUE" ]; then
+    fi && if [ "${hypervisor_environment}" == "virtualbox" ]; then
         apt-cache show virtualbox-guest-dkms && if [ "$?" -eq "0" ]; then
             apt install -qy virtualbox-guest-dkms
         fi
