@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 2.5.1
+# Current Version: 2.5.2
 
 ## How to get and use?
 # curl "https://source.zhijie.online/AutoDeploy/main/Ubuntu.sh" | sudo bash
@@ -742,11 +742,11 @@ function InstallDependencyPackages() {
         apt-cache show qemu-guest-agent && if [ "$?" -eq "0" ]; then
             apt install -qy qemu-guest-agent
         fi
-    fi && if [ "${hypervisor_environment}" == "vmware" ]; then
+    elif [ "${hypervisor_environment}" == "vmware" ]; then
         apt-cache show open-vm-tools && if [ "$?" -eq "0" ]; then
             apt install -qy open-vm-tools
         fi
-    fi && if [ "${hypervisor_environment}" == "virtualbox" ]; then
+    elif [ "${hypervisor_environment}" == "virtualbox" ]; then
         apt-cache show virtualbox-guest-dkms && if [ "$?" -eq "0" ]; then
             apt install -qy virtualbox-guest-dkms
         fi
