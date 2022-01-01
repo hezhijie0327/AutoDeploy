@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 2.5.7
+# Current Version: 2.5.8
 
 ## How to get and use?
 # curl "https://source.zhijie.online/AutoDeploy/main/Ubuntu.sh" | sudo bash
@@ -18,7 +18,7 @@ function CallServiceController(){
         exit 1
     fi
     if [ "${container_environment}" == "lxc" ] || [ "${container_environment}" == "none" ]; then
-        systemctl ${OPRATIONS} ${SERVICE_NAME}
+        systemctl ${OPRATIONS} ${SERVICE_NAME}.service
     else
         serivce ${SERVICE_NAME} ${OPRATIONS}
     fi
@@ -266,7 +266,7 @@ function ConfigurePackages() {
             rm -rf "/tmp/cockpit.autodeploy" && for cockpit_list_task in "${!cockpit_list[@]}"; do
                 echo "${cockpit_list[$cockpit_list_task]}" >> "/tmp/cockpit.autodeploy"
             done && cat "/tmp/cockpit.autodeploy" > "/etc/cockpit/cockpit.conf" && rm -rf "/tmp/cockpit.autodeploy" && if [ "${container_environment}" != "docker" ] && [ "${container_environment}" != "wsl2" ]; then
-                OPRATIONS="restart" && SERVICE_NAME="cockpit.service" && CallServiceController
+                OPRATIONS="restart" && SERVICE_NAME="cockpit" && CallServiceController
             fi
         fi
     }
@@ -304,7 +304,7 @@ function ConfigurePackages() {
                 fi
                 rm -rf "/tmp/docker.autodeploy" && for docker_list_task in "${!docker_list[@]}"; do
                     echo "${docker_list[$docker_list_task]}" >> "/tmp/docker.autodeploy"
-                done && cat "/tmp/docker.autodeploy" > "/etc/docker/daemon.json" && OPRATIONS="restart" && SERVICE_NAME="docker.service" && CallServiceController && rm -rf "/tmp/docker.autodeploy"
+                done && cat "/tmp/docker.autodeploy" > "/etc/docker/daemon.json" && OPRATIONS="restart" && SERVICE_NAME="docker" && CallServiceController && rm -rf "/tmp/docker.autodeploy"
             fi
         fi
         if [ "${container_environment}" == "wsl2" ]; then
@@ -416,7 +416,7 @@ function ConfigurePackages() {
                 fi
                 rm -rf "/tmp/resolved.autodeploy" && for resolved_list_task in "${!resolved_list[@]}"; do
                     echo "${resolved_list[$resolved_list_task]}" >> "/tmp/resolved.autodeploy"
-                done && cat "/tmp/resolved.autodeploy" > "/etc/systemd/resolved.conf.d/resolved.conf" && OPRATIONS="restart" && SERVICE_NAME="systemd-resolved.service" && CallServiceController && rm -rf "/tmp/resolved.autodeploy" && if [ -f "/etc/resolv.conf" ]; then
+                done && cat "/tmp/resolved.autodeploy" > "/etc/systemd/resolved.conf.d/resolved.conf" && OPRATIONS="restart" && SERVICE_NAME="systemd-resolved" && CallServiceController && rm -rf "/tmp/resolved.autodeploy" && if [ -f "/etc/resolv.conf" ]; then
                     chattr -i "/etc/resolv.conf" > "/dev/null" 2>&1
                     rm -rf "/etc/resolv.conf" && ln -s "/run/systemd/resolve/resolv.conf" "/etc/resolv.conf"
                 fi
@@ -535,7 +535,7 @@ function ConfigurePackages() {
             rm -rf "/tmp/wireguard.autodeploy" && for wireguard_list_task in "${!wireguard_list[@]}"; do
                 echo "${wireguard_list[$wireguard_list_task]}" >> "/tmp/wireguard.autodeploy"
             done && cat "/tmp/wireguard.autodeploy" > "/etc/wireguard/wg0.conf" && rm -rf "/tmp/wireguard.autodeploy" && if [ "${container_environment}" != "docker" ] && [ "${container_environment}" != "wsl2" ]; then
-                OPRATIONS="enable" && SERVICE_NAME="wg-quick@wg0.service" && CallServiceController && OPRATIONS="start" && CallServiceController && wg
+                OPRATIONS="enable" && SERVICE_NAME="wg-quick@wg0" && CallServiceController && OPRATIONS="start" && CallServiceController && wg
             fi
         fi
     }
