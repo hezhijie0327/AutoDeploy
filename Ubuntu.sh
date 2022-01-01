@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 2.5.0
+# Current Version: 2.5.1
 
 ## How to get and use?
 # curl "https://source.zhijie.online/AutoDeploy/main/Ubuntu.sh" | sudo bash
@@ -233,9 +233,9 @@ function ConfigurePackages() {
             )
             which "chronyc" > "/dev/null" 2>&1
             if [ "$?" -eq "0" ]; then
-                chrony_environment="TRUE" && rm -rf "/tmp/chrony.autodeploy" && for chrony_list_task in "${!chrony_list[@]}"; do
+                rm -rf "/tmp/chrony.autodeploy" && for chrony_list_task in "${!chrony_list[@]}"; do
                     echo "${chrony_list[$chrony_list_task]}" >> "/tmp/chrony.autodeploy"
-                done && cat "/tmp/chrony.autodeploy" > "/etc/chrony/chrony.conf" && rm -rf "/tmp/chrony.autodeploy" && OPRATIONS="restart" && SERVICE_NAME="chrony" && CallServiceController && chronyc activity && chronyc tracking && chronyc clients
+                done && cat "/tmp/chrony.autodeploy" > "/etc/chrony/chrony.conf" && rm -rf "/tmp/chrony.autodeploy" && OPRATIONS="restart" && SERVICE_NAME="chrony" && CallServiceController && sleep 5s && chronyc activity && chronyc tracking && chronyc clients
             fi
         fi
     }
@@ -474,11 +474,7 @@ function ConfigurePackages() {
         if [ "$?" -eq "0" ] && [ -f "/etc/default/ufw" ]; then
             echo "$(cat '/etc/default/ufw' | sed 's/DEFAULT\_APPLICATION\_POLICY\=\"ACCEPT\"/DEFAULT\_APPLICATION\_POLICY\=\"REJECT\"/g;s/DEFAULT\_APPLICATION\_POLICY\=\"DROP\"/DEFAULT\_APPLICATION\_POLICY\=\"REJECT\"/g;s/DEFAULT\_APPLICATION\_POLICY\=\"SKIP\"/DEFAULT\_APPLICATION\_POLICY\=\"REJECT\"/g;s/DEFAULT\_FORWARD\_POLICY\=\"DROP\"/DEFAULT\_FORWARD\_POLICY\=\"ACCEPT\"/g;s/DEFAULT\_FORWARD\_POLICY\=\"REJECT\"/DEFAULT\_FORWARD\_POLICY\=\"ACCEPT\"/g;s/DEFAULT\_INPUT\_POLICY\=\"ACCEPT\"/DEFAULT\_INPUT\_POLICY\=\"REJECT\"/g;s/DEFAULT\_INPUT\_POLICY\=\"DROP\"/DEFAULT\_INPUT\_POLICY\=\"REJECT\"/g;s/DEFAULT\_OUTPUT\_POLICY\=\"DROP\"/DEFAULT\_OUTPUT\_POLICY\=\"ACCEPT\"/g;s/DEFAULT\_OUTPUT\_POLICY\=\"REJECT\"/DEFAULT\_OUTPUT\_POLICY\=\"ACCEPT\"/g;s/MANAGE\_BUILTINS\=yes/MANAGE\_BUILTINS\=no/g;s/IPV6\=no/IPV6\=yes/g')" > "/tmp/ufw.autodeploy" && cat "/tmp/ufw.autodeploy" > "/etc/default/ufw" && rm -rf "/tmp/ufw.autodeploy"
             if [ "${container_environment}" != "docker" ] && [ "${container_environment}" != "wsl2" ]; then
-                ufw reload && ufw limit 22/tcp && if [ "${chrony_environment}" == "TRUE" ]; then
-                    ufw insert 1 allow 123/udp && ufw allow 323/udp
-                fi && if [ "${container_environment}" != "docker" ] && [ "${container_environment}" != "wsl2" ]; then
-                    ufw allow 51820/udp && ufw limit 9022/tcp
-                fi && ufw allow 9090/tcp && ufw enable && ufw status verbose
+                ufw reload && ufw insert allow 123/udp && ufw limit 22/tcp && ufw allow 323/udp && ufw allow 51820/udp && ufw limit 9022/tcp && ufw allow 9090/tcp && ufw enable && ufw status verbose
             else
                 ufw disable > "/dev/null" 2>&1
             fi
