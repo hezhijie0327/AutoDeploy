@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 1.0.4
+# Current Version: 1.0.5
 
 ## How to get and use?
 # curl "https://source.zhijie.online/AutoDeploy/main/Raspbian.sh" | sudo bash
@@ -38,6 +38,13 @@ function SetRepositoryMirror() {
         "deb ${transport_protocol}://mirrors.ustc.edu.cn/raspbian/raspbian ${LSBCodename} main contrib non-free rpi"
         "deb-src ${transport_protocol}://mirrors.ustc.edu.cn/raspbian/raspbian ${LSBCodename} main contrib non-free rpi"
     )
+    public_key_list=(
+        "0E98404D386FA1D9"
+        "112695A0E562B32A"
+        "54404762BBB6E853"
+        "605C66F00D6C9793"
+        "648ACFD622F3D138"
+    )
     if [ ! -d "/etc/apt/sources.list.d" ]; then
         mkdir "/etc/apt/sources.list.d"
     else
@@ -49,6 +56,9 @@ function SetRepositoryMirror() {
     rm -rf "/tmp/apt.autodeploy" && for raspbian_mirror_list_task in "${!raspbian_mirror_list[@]}"; do
         echo "${raspbian_mirror_list[$raspbian_mirror_list_task]}" >> "/tmp/apt.autodeploy"
     done && cat "/tmp/apt.autodeploy" > "/etc/apt/sources.list.d/raspbian.list" && rm -rf "/tmp/apt.autodeploy"
+    for public_key_list_task in "${!public_key_list[@]}"; do
+        apt-key adv --keyserver keyserver.ubuntu.com --recv-keys "${public_key_list[$public_key_list_task]}"
+    done
 }
 # Set Readonly Flag
 function SetReadonlyFlag() {
@@ -110,7 +120,7 @@ function ConfigurePackages() {
         if [ "$?" -eq "0" ]; then
             rm -rf "/tmp/chrony.autodeploy" && for chrony_list_task in "${!chrony_list[@]}"; do
                 echo "${chrony_list[$chrony_list_task]}" >> "/tmp/chrony.autodeploy"
-            done && cat "/tmp/chrony.autodeploy" > "/etc/chrony/chrony.conf" && rm -rf "/tmp/chrony.autodeploy" && systemctl restart chrony.service && sleep 5s && chronyc activity && chronyc tracking && chronyc clients
+            done && cat "/tmp/chrony.autodeploy" > "/etc/chrony/chrony.conf" && rm -rf "/tmp/chrony.autodeploy" && systemctl enable chrony.service && systemctl restart chrony.service && sleep 5s && chronyc activity && chronyc tracking && chronyc clients
         fi
     }
     function ConfigureCockpit() {
@@ -124,7 +134,7 @@ function ConfigurePackages() {
         if [ "$?" -eq "0" ]; then
             rm -rf "/tmp/cockpit.autodeploy" && for cockpit_list_task in "${!cockpit_list[@]}"; do
                 echo "${cockpit_list[$cockpit_list_task]}" >> "/tmp/cockpit.autodeploy"
-            done && cat "/tmp/cockpit.autodeploy" > "/etc/cockpit/cockpit.conf" && rm -rf "/tmp/cockpit.autodeploy" && systemctl restart cockpit.service
+            done && cat "/tmp/cockpit.autodeploy" > "/etc/cockpit/cockpit.conf" && rm -rf "/tmp/cockpit.autodeploy" && systemctl enable cockpit.service && systemctl restart cockpit.service
         fi
     }
     function ConfigureCrontab() {
@@ -160,7 +170,7 @@ function ConfigurePackages() {
             fi
             rm -rf "/tmp/docker.autodeploy" && for docker_list_task in "${!docker_list[@]}"; do
                 echo "${docker_list[$docker_list_task]}" >> "/tmp/docker.autodeploy"
-            done && cat "/tmp/docker.autodeploy" > "/etc/docker/daemon.json" && systemctl restart docker.service && rm -rf "/tmp/docker.autodeploy"
+            done && cat "/tmp/docker.autodeploy" > "/etc/docker/daemon.json" && systemctl enable docker.service && systemctl restart docker.service && rm -rf "/tmp/docker.autodeploy"
         fi
     }
     function ConfigureFail2Ban() {
