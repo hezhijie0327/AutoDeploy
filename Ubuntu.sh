@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 2.5.9
+# Current Version: 2.6.0
 
 ## How to get and use?
 # curl "https://source.zhijie.online/AutoDeploy/main/Ubuntu.sh" | sudo bash
@@ -342,7 +342,7 @@ function ConfigurePackages() {
             rm -rf "/tmp/fail2ban.autodeploy" && for fail2ban_list_task in "${!fail2ban_list[@]}"; do
                 echo "${fail2ban_list[$fail2ban_list_task]}" >> "/tmp/fail2ban.autodeploy"
             done && cat "/tmp/fail2ban.autodeploy" > "/etc/fail2ban/jail.d/fail2ban_default.conf" && rm -rf "/tmp/fail2ban.autodeploy" && if [ "${container_environment}" != "docker" ] && [ "${container_environment}" != "wsl2" ]; then
-                fail2ban-client reload && fail2ban-client status
+                fail2ban-client reload && sleep 5s && fail2ban-client status
             fi
         fi
     }
