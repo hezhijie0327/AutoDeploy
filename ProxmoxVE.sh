@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 1.3.9
+# Current Version: 1.4.0
 
 ## How to get and use?
 # curl "https://source.zhijie.online/AutoDeploy/main/ProxmoxVE.sh" | sudo bash
@@ -142,7 +142,7 @@ function ConfigurePackages() {
         if [ "$?" -eq "0" ]; then
             rm -rf "/tmp/chrony.autodeploy" && for chrony_list_task in "${!chrony_list[@]}"; do
                 echo "${chrony_list[$chrony_list_task]}" >> "/tmp/chrony.autodeploy"
-            done && cat "/tmp/chrony.autodeploy" > "/etc/chrony/chrony.conf" && rm -rf "/tmp/chrony.autodeploy" && systemctl restart chrony.service && chronyc activity && chronyc tracking && chronyc clients
+            done && cat "/tmp/chrony.autodeploy" > "/etc/chrony/chrony.conf" && rm -rf "/tmp/chrony.autodeploy" && systemctl restart chrony.service && sleep 5s && chronyc activity && chronyc tracking && chronyc clients
         fi
     }
     function ConfigureCrontab() {
