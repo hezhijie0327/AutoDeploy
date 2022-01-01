@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 2.4.9
+# Current Version: 2.5.0
 
 ## How to get and use?
 # curl "https://source.zhijie.online/AutoDeploy/main/Ubuntu.sh" | sudo bash
@@ -17,120 +17,22 @@ function CallServiceController(){
         echo "An error occurred during processing. Missing (SERVICE_NAME) value, please check it and try again."
         exit 1
     fi
-    if [ "${wsl_environment}" == "TRUE" ]; then
-        serivce ${SERVICE_NAME} ${OPRATIONS}
-    elif [ "${wsl_environment}" == "FALSE" ]; then
+    if [ "${container_environment}" == "lxc" ] || [ "${container_environment}" == "none" ]; then
         systemctl ${OPRATIONS} ${SERVICE_NAME}
     else
-        echo "Unsupported service controller."
-        exit 1
+        serivce ${SERVICE_NAME} ${OPRATIONS}
     fi
 }
 # Get System Information
 function GetSystemInformation() {
-    function GenerateHostname() {
-        NEW_HOSTNAME="Ubuntu-$(date '+%Y%m%d%H%M%S')"
-    }
-    function GetLSBCodename() {
-        LSBCodename_LTS="focal"
-        LSBCodename_NON_LTS="impish"
-        Version_LTS="20.04"
-        Version_NON_LTS="21.10"
-        which "lsb_release" > "/dev/null" 2>&1
-        if [ "$?" -eq "0" ]; then
-            if [ "$(lsb_release -ds | grep 'LTS')" == "" ]; then
-                LSBCodename="${LSBCodename_NON_LTS}"
-            else
-                LSBCodename="${LSBCodename_LTS}"
-            fi
-        else
-            if [ -f '/etc/issue' ]; then
-                if [ "$(cat '/etc/issue' | grep 'LTS')" == "" ]; then
-                    LSBCodename="${LSBCodename_NON_LTS}"
-                else
-                    LSBCodename="${LSBCodename_LTS}"
-                fi
-            else
-                LSBCodename="${LSBCodename_LTS}"
-            fi
-        fi
-    }
-    function IsArmArchitecture() {
-        if [ "$(uname -m)" == "aarch64" ]; then
-            mirror_arch="arm64"
-            mirror_path="ubuntu-ports"
-        elif [ "$(uname -m)" == "x86_64" ]; then
-            mirror_arch="amd64"
-            mirror_path="ubuntu"
-        else
-            echo "Unsupported architecture."
-            exit 1
-        fi
-    }
-    function IsContainerEnvironment() {
-        function CheckDockerEnvironment() {
+    function CheckMachineEnvironment() {
+        CheckContainerEnvironment() {
             if [ -f "/.dockerenv" ]; then
-                docker_environment="TRUE"
-            else
-                docker_environment="FALSE"
-            fi
-        }
-        function CheckLXCEnvironment() {
-            if [ -f "/proc/1/environ" ]; then
-                if [ "$(cat '/proc/1/environ' | grep -a 'lxc')" != "" ]; then
-                    lxc_environment="TRUE"
-                else
-                    lxc_environment="FALSE"
-                fi
-            else
-                lxc_environment="FALSE"
-            fi
-        }
-        CheckDockerEnvironment
-        CheckLXCEnvironment
-    }
-    function IsVirtualEnvironment() {
-        function CheckKVMEnvironment() {
-            which "lscpu" > "/dev/null" 2>&1
-            if [ "$?" -eq "0" ]; then
-                if [ "$(lscpu | grep 'Hypervisor vendor' | cut -d ':' -f 2 | tr -d ' ' | tr 'A-Z' 'a-z' | grep 'kvm\|qemu')" != "" ]; then
-                    kvm_environment="TRUE"
-                else
-                    kvm_environment="FALSE"
-                fi
-            else
-                kvm_environment="FALSE"
-            fi
-        }
-        function CheckVMwareEnvironment() {
-            which "lscpu" > "/dev/null" 2>&1
-            if [ "$?" -eq "0" ]; then
-                if [ "$(lscpu | grep 'Hypervisor vendor' | cut -d ':' -f 2 | tr -d ' ' | tr 'A-Z' 'a-z' | grep 'vmware')" != "" ]; then
-                    vmware_environment="TRUE"
-                else
-                    vmware_environment="FALSE"
-                fi
-            else
-                vmware_environment="FALSE"
-            fi
-        }
-        function CheckVirtualBoxEnvironment() {
-            which "lscpu" > "/dev/null" 2>&1
-            if [ "$?" -eq "0" ]; then
-                if [ "$(lscpu | grep 'Hypervisor vendor' | cut -d ':' -f 2 | tr -d ' ' | tr 'A-Z' 'a-z' | grep 'oracle\|virtualbox')" != "" ]; then
-                    virtualbox_environment="TRUE"
-                else
-                    virtualbox_environment="FALSE"
-                fi
-            else
-                virtualbox_environment="FALSE"
-            fi
-        }
-        function CheckWSLEnvironment() {
-            if [ "$(uname -r | grep 'WSL')" == "" ]; then
-                wsl_environment="FALSE"
-            else
-                wsl_environment="TRUE"
+                container_environment="docker"
+            elif [ "$(cat '/proc/1/environ' | grep -a 'lxc')" != "" ]; then
+                container_environment="lxc"
+            elif [ "$(uname -r | grep 'WSL')" != "" ]; then
+                container_environment="wsl2"
                 function Create_Startup_Script() {
                     startup_list=(
                         '#!/bin/bash'
@@ -194,18 +96,64 @@ function GetSystemInformation() {
                 Fix_Sshd_Server_Issue
                 Fix_Ubuntu_Advantage_Tools_Upgrade_Error
                 Fix_Unsupport_Udev_Issue
+            else
+                container_environment="none"
             fi
         }
-        CheckKVMEnvironment
-        CheckVMwareEnvironment
-        CheckVirtualBoxEnvironment
-        CheckWSLEnvironment
+        CheckHypervisorEnvironment() {
+            which "virt-what" > "/dev/null" 2>&1
+            if [ "$?" -eq "1" ]; then
+                apt update && apt install virt-what -qy
+            fi && hypervisor_environment=$(virt-what) && if [ "${hypervisor_environment}" == "" ]; then
+                hypervisor_environment="none"
+            fi
+        }
+        CheckContainerEnvironment
+        CheckHypervisorEnvironment
     }
+    function GenerateHostname() {
+        NEW_HOSTNAME="Ubuntu-$(date '+%Y%m%d%H%M%S')"
+    }
+    function GetLSBCodename() {
+        LSBCodename_LTS="focal"
+        LSBCodename_NON_LTS="impish"
+        Version_LTS="20.04"
+        Version_NON_LTS="21.10"
+        which "lsb_release" > "/dev/null" 2>&1
+        if [ "$?" -eq "0" ]; then
+            if [ "$(lsb_release -ds | grep 'LTS')" == "" ]; then
+                LSBCodename="${LSBCodename_NON_LTS}"
+            else
+                LSBCodename="${LSBCodename_LTS}"
+            fi
+        else
+            if [ -f '/etc/issue' ]; then
+                if [ "$(cat '/etc/issue' | grep 'LTS')" == "" ]; then
+                    LSBCodename="${LSBCodename_NON_LTS}"
+                else
+                    LSBCodename="${LSBCodename_LTS}"
+                fi
+            else
+                LSBCodename="${LSBCodename_LTS}"
+            fi
+        fi
+    }
+    function IsArmArchitecture() {
+        if [ "$(uname -m)" == "aarch64" ]; then
+            mirror_arch="arm64"
+            mirror_path="ubuntu-ports"
+        elif [ "$(uname -m)" == "x86_64" ]; then
+            mirror_arch="amd64"
+            mirror_path="ubuntu"
+        else
+            echo "Unsupported architecture."
+            exit 1
+        fi
+    }
+    CheckMachineEnvironment
     GenerateHostname
     GetLSBCodename
     IsArmArchitecture
-    IsContainerEnvironment
-    IsVirtualEnvironment
 }
 # Set Repository Mirror
 function SetRepositoryMirror() {
@@ -262,7 +210,7 @@ function SetReadonlyFlag() {
 # Configure Packages
 function ConfigurePackages() {
     function ConfigureChrony() {
-        if [ "${docker_environment}" == "FALSE" ]; then
+        if [ "${container_environment}" != "docker" ]; then
             chrony_list=(
                 "allow"
                 "clientloglimit 65536"
@@ -302,7 +250,7 @@ function ConfigurePackages() {
         if [ "$?" -eq "0" ]; then
             rm -rf "/tmp/cockpit.autodeploy" && for cockpit_list_task in "${!cockpit_list[@]}"; do
                 echo "${cockpit_list[$cockpit_list_task]}" >> "/tmp/cockpit.autodeploy"
-            done && cat "/tmp/cockpit.autodeploy" > "/etc/cockpit/cockpit.conf" && rm -rf "/tmp/cockpit.autodeploy" && if [ "${docker_environment}" == "FALSE" ] && [ "${wsl_environment}" == "FALSE" ]; then
+            done && cat "/tmp/cockpit.autodeploy" > "/etc/cockpit/cockpit.conf" && rm -rf "/tmp/cockpit.autodeploy" && if [ "${container_environment}" != "docker" ] && [ "${container_environment}" != "wsl2" ]; then
                 OPRATIONS="restart" && SERVICE_NAME="cockpit.service" && CallServiceController
             fi
         fi
@@ -332,7 +280,7 @@ function ConfigurePackages() {
         )
         which "docker" > "/dev/null" 2>&1
         if [ "$?" -eq "0" ]; then
-            if [ "${docker_environment}" == "FALSE" ] && [ "${wsl_environment}" == "FALSE" ]; then
+            if [ "${container_environment}" != "docker" ] && [ "${container_environment}" != "wsl2" ]; then
                 if [ ! -d "/docker" ]; then
                     mkdir "/docker"
                 fi
@@ -344,7 +292,7 @@ function ConfigurePackages() {
                 done && cat "/tmp/docker.autodeploy" > "/etc/docker/daemon.json" && OPRATIONS="restart" && SERVICE_NAME="docker" && CallServiceController && rm -rf "/tmp/docker.autodeploy"
             fi
         fi
-        if [ "${wsl_environment}" == "TRUE" ]; then
+        if [ "${container_environment}" == "wsl2" ]; then
             if [ ! -d "/docker" ]; then
                 mkdir "/docker"
             fi
@@ -376,7 +324,7 @@ function ConfigurePackages() {
             fi
             rm -rf "/tmp/fail2ban.autodeploy" && for fail2ban_list_task in "${!fail2ban_list[@]}"; do
                 echo "${fail2ban_list[$fail2ban_list_task]}" >> "/tmp/fail2ban.autodeploy"
-            done && cat "/tmp/fail2ban.autodeploy" > "/etc/fail2ban/jail.d/fail2ban_default.conf" && rm -rf "/tmp/fail2ban.autodeploy" && if [ "${docker_environment}" == "FALSE" ] && [ "${wsl_environment}" == "FALSE" ]; then
+            done && cat "/tmp/fail2ban.autodeploy" > "/etc/fail2ban/jail.d/fail2ban_default.conf" && rm -rf "/tmp/fail2ban.autodeploy" && if [ "${container_environment}" != "docker" ] && [ "${container_environment}" != "wsl2" ]; then
                 fail2ban-client reload && fail2ban-client status
             fi
         fi
@@ -384,7 +332,7 @@ function ConfigurePackages() {
     function ConfigureGrub() {
         which "update-grub" > "/dev/null" 2>&1
         if [ "$?" -eq "0" ]; then
-            if [ "${docker_environment}" == "FALSE" ] && [ "${lxc_environment}" == "FALSE" ] && [ "${wsl_environment}" == "FALSE" ]; then
+            if [ "${container_environment}" != "docker" ] && [ "${container_environment}" != "lxc" ] && [ "${container_environment}" != "wsl2" ]; then
                 if [ -f "/usr/share/grub/default/grub" ]; then
                     rm -rf "/tmp/grub.autodeploy" && cat "/usr/share/grub/default/grub" > "/tmp/grub.autodeploy" && cat "/tmp/grub.autodeploy" > "/etc/default/grub" && update-grub && rm -rf "/tmp/grub.autodeploy"
                 fi
@@ -422,7 +370,7 @@ function ConfigurePackages() {
                     echo "${netplan_ethernets_list[$netplan_ethernets_list_task]}" >> "/tmp/netplan.autodeploy"
                 done
             done && cat "/tmp/netplan.autodeploy" > "/etc/netplan/netplan.yaml" && rm -rf "/tmp/netplan.autodeploy"
-            if [ "${docker_environment}" == "FALSE" ] && [ "${wsl_environment}" == "FALSE" ]; then
+            if [ "${container_environment}" != "docker" ] && [ "${container_environment}" != "wsl2" ]; then
                 netplan apply
             fi
         fi
@@ -445,7 +393,7 @@ function ConfigurePackages() {
         )
         which "resolvectl" > "/dev/null" 2>&1
         if [ "$?" -eq "0" ]; then
-            if [ "${docker_environment}" == "FALSE" ] && [ "${wsl_environment}" == "FALSE" ]; then
+            if [ "${container_environment}" != "docker" ] && [ "${container_environment}" != "wsl2" ]; then
                 if [ ! -d "/etc/systemd/resolved.conf.d" ]; then
                     mkdir "/etc/systemd/resolved.conf.d"
                 else
@@ -492,7 +440,7 @@ function ConfigurePackages() {
     }
     function ConfigureSshd() {
         if [ -f "/usr/share/openssh/sshd_config" ]; then
-            if [ "${docker_environment}" == "FALSE" ] && [ "${wsl_environment}" == "FALSE" ]; then
+            if [ "${container_environment}" != "docker" ] && [ "${container_environment}" != "wsl2" ]; then
                 SSHD_CONFIG_ADDITIONAL="s/\#Port\ 22/Port 9022/g"
             fi && cat "/usr/share/openssh/sshd_config" | sed "s/\#PasswordAuthentication\ yes/PasswordAuthentication\ yes/g;s/\#PermitRootLogin\ prohibit\-password/PermitRootLogin\ yes/g;${SSHD_CONFIG_ADDITIONAL}" > "/tmp/sshd_config.autodeploy" && cat "/tmp/sshd_config.autodeploy" > "/etc/ssh/sshd_config" && rm -rf "/tmp/sshd_config.autodeploy"
         fi
@@ -525,10 +473,10 @@ function ConfigurePackages() {
         which "ufw" > "/dev/null" 2>&1
         if [ "$?" -eq "0" ] && [ -f "/etc/default/ufw" ]; then
             echo "$(cat '/etc/default/ufw' | sed 's/DEFAULT\_APPLICATION\_POLICY\=\"ACCEPT\"/DEFAULT\_APPLICATION\_POLICY\=\"REJECT\"/g;s/DEFAULT\_APPLICATION\_POLICY\=\"DROP\"/DEFAULT\_APPLICATION\_POLICY\=\"REJECT\"/g;s/DEFAULT\_APPLICATION\_POLICY\=\"SKIP\"/DEFAULT\_APPLICATION\_POLICY\=\"REJECT\"/g;s/DEFAULT\_FORWARD\_POLICY\=\"DROP\"/DEFAULT\_FORWARD\_POLICY\=\"ACCEPT\"/g;s/DEFAULT\_FORWARD\_POLICY\=\"REJECT\"/DEFAULT\_FORWARD\_POLICY\=\"ACCEPT\"/g;s/DEFAULT\_INPUT\_POLICY\=\"ACCEPT\"/DEFAULT\_INPUT\_POLICY\=\"REJECT\"/g;s/DEFAULT\_INPUT\_POLICY\=\"DROP\"/DEFAULT\_INPUT\_POLICY\=\"REJECT\"/g;s/DEFAULT\_OUTPUT\_POLICY\=\"DROP\"/DEFAULT\_OUTPUT\_POLICY\=\"ACCEPT\"/g;s/DEFAULT\_OUTPUT\_POLICY\=\"REJECT\"/DEFAULT\_OUTPUT\_POLICY\=\"ACCEPT\"/g;s/MANAGE\_BUILTINS\=yes/MANAGE\_BUILTINS\=no/g;s/IPV6\=no/IPV6\=yes/g')" > "/tmp/ufw.autodeploy" && cat "/tmp/ufw.autodeploy" > "/etc/default/ufw" && rm -rf "/tmp/ufw.autodeploy"
-            if [ "${docker_environment}" == "FALSE" ] && [ "${wsl_environment}" == "FALSE" ]; then
+            if [ "${container_environment}" != "docker" ] && [ "${container_environment}" != "wsl2" ]; then
                 ufw reload && ufw limit 22/tcp && if [ "${chrony_environment}" == "TRUE" ]; then
                     ufw insert 1 allow 123/udp && ufw allow 323/udp
-                fi && if [ "${docker_environment}" == "FALSE" ] && [ "${wsl_environment}" == "FALSE" ]; then
+                fi && if [ "${container_environment}" != "docker" ] && [ "${container_environment}" != "wsl2" ]; then
                     ufw allow 51820/udp && ufw limit 9022/tcp
                 fi && ufw allow 9090/tcp && ufw enable && ufw status verbose
             else
@@ -575,7 +523,7 @@ function ConfigurePackages() {
         if [ "$?" -eq "0" ]; then
             rm -rf "/tmp/wireguard.autodeploy" && for wireguard_list_task in "${!wireguard_list[@]}"; do
                 echo "${wireguard_list[$wireguard_list_task]}" >> "/tmp/wireguard.autodeploy"
-            done && cat "/tmp/wireguard.autodeploy" > "/etc/wireguard/wg0.conf" && rm -rf "/tmp/wireguard.autodeploy" && if [ "${docker_environment}" == "FALSE" ] && [ "${wsl_environment}" == "FALSE" ]; then
+            done && cat "/tmp/wireguard.autodeploy" > "/etc/wireguard/wg0.conf" && rm -rf "/tmp/wireguard.autodeploy" && if [ "${container_environment}" != "docker" ] && [ "${container_environment}" != "wsl2" ]; then
                 OPRATIONS="enable" && SERVICE_NAME="wg-quick@wg0.service" && CallServiceController && OPRATIONS="start" && CallServiceController && wg
             fi
         fi
@@ -643,7 +591,7 @@ function ConfigureSystem() {
         fi
     }
     function ConfigureDefaultUser() {
-        if [ "${docker_environment}" == "FALSE" ]; then
+        if [ "${container_environment}" != "docker" ]; then
             DEFAULT_USERNAME="ubuntu"
             DEFAULT_PASSWORD="*Ubuntu123*"
             crontab_list=(
@@ -704,7 +652,7 @@ function InstallCustomPackages() {
             "docker-ce"
             "docker-ce-cli"
         )
-        if [ "${docker_environment}" == "FALSE" ] && [ "${wsl_environment}" == "FALSE" ]; then
+        if [ "${container_environment}" != "docker" ] && [ "${container_environment}" != "wsl2" ]; then
             curl -fsSL "https://mirrors.ustc.edu.cn/docker-ce/linux/ubuntu/gpg" | gpg --dearmor -o "/usr/share/keyrings/docker-archive-keyring.gpg"
             echo "deb [arch=${mirror_arch} signed-by=/usr/share/keyrings/docker-archive-keyring.gpg] https://mirrors.ustc.edu.cn/docker-ce/linux/ubuntu ${LSBCodename} stable" > "/etc/apt/sources.list.d/docker.list"
             apt update && apt purge -qy containerd docker docker-engine docker.io runc && for app_list_task in "${!app_list[@]}"; do
@@ -783,6 +731,7 @@ function InstallDependencyPackages() {
         "unzip"
         "update-notifier-common"
         "vim"
+        "virt-what"
         "wget"
         "whois"
         "wireguard"
@@ -793,15 +742,15 @@ function InstallDependencyPackages() {
         apt-cache show ${app_list[$app_list_task]} && if [ "$?" -eq "0" ]; then
             apt install -qy ${app_list[$app_list_task]}
         fi
-    done && if [ "${kvm_environment}" == "TRUE" ]; then
+    done && if [ "${hypervisor_environment}" == "kvm" ]; then
         apt-cache show qemu-guest-agent && if [ "$?" -eq "0" ]; then
             apt install -qy qemu-guest-agent
         fi
-    fi && if [ "${vmware_environment}" == "TRUE" ]; then
+    fi && if [ "${hypervisor_environment}" == "vmware" ]; then
         apt-cache show open-vm-tools && if [ "$?" -eq "0" ]; then
             apt install -qy open-vm-tools
         fi
-    fi && if [ "${virtualbox_environment}" == "TRUE" ]; then
+    fi && if [ "${hypervisor_environment}" == "virtualbox" ]; then
         apt-cache show virtualbox-guest-dkms && if [ "$?" -eq "0" ]; then
             apt install -qy virtualbox-guest-dkms
         fi
