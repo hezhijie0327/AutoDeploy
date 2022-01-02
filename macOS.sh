@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 1.7.6
+# Current Version: 1.7.7
 
 ## How to get and use?
 # /bin/bash -c "$(curl -fsSL 'https://source.zhijie.online/AutoDeploy/main/macOS.sh')"
@@ -63,12 +63,12 @@ function ConfigurePackages() {
             "[Interface]"
             "Address = ${TUNNEL_CLIENT_V4}, ${TUNNEL_CLIENT_V6}"
             "ListenPort = 51820"
-            "PrivateKey = $(wg genkey | sudo tee '/etc/wireguard/private.key')"
+            "PrivateKey = $(wg genkey | tee '/etc/wireguard/private.key')"
             "#[Peer]"
             "#AllowedIPs = ${TUNNEL_CLIENT_V4}, ${TUNNEL_CLIENT_V6}"
             "#Endpoint = 127.0.0.1:51820"
             "#PersistentKeepalive = 5"
-            "#PublicKey = $(cat '/etc/wireguard/private.key' | wg pubkey | sudo tee '/etc/wireguard/public.key')"
+            "#PublicKey = $(cat '/etc/wireguard/private.key' | wg pubkey | tee '/etc/wireguard/public.key')"
         )
         which "wg" > "/dev/null" 2>&1
         if [ "$?" -eq "0" ]; then
