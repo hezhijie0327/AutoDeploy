@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 1.7.5
+# Current Version: 1.7.6
 
 ## How to get and use?
 # /bin/bash -c "$(curl -fsSL 'https://source.zhijie.online/AutoDeploy/main/macOS.sh')"
@@ -74,7 +74,7 @@ function ConfigurePackages() {
         if [ "$?" -eq "0" ]; then
             rm -rf "/tmp/wireguard.autodeploy" && for wireguard_list_task in "${!wireguard_list[@]}"; do
                 echo "${wireguard_list[$wireguard_list_task]}" >> "/tmp/wireguard.autodeploy"
-            done && sudo cat "/tmp/wireguard.autodeploy" > "/etc/wireguard/wg0.conf" && sudo chmod 600 /"/etc/wireguard/wg0.conf" && rm -rf "/tmp/wireguard.autodeploy" && wg-quick up wg0 && sudo wg
+            done && cat "/tmp/wireguard.autodeploy" > "/etc/wireguard/wg0.conf" && chmod 600 "/etc/wireguard/wg0.conf" && rm -rf "/tmp/wireguard.autodeploy" && wg-quick up wg0 && sudo wg
         fi
     }
     function ConfigureZsh() {
