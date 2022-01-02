@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 1.7.4
+# Current Version: 1.7.5
 
 ## How to get and use?
 # /bin/bash -c "$(curl -fsSL 'https://source.zhijie.online/AutoDeploy/main/macOS.sh')"
@@ -36,6 +36,45 @@ function ConfigurePackages() {
             rm -rf "/tmp/crontab.autodeploy" && for crontab_list_task in "${!crontab_list[@]}"; do
                 echo "${crontab_list[$crontab_list_task]}" >> "/tmp/crontab.autodeploy"
             done && sudo crontab -u "${CurrentUsername}" "/tmp/crontab.autodeploy" && sudo crontab -lu "${CurrentUsername}" && rm -rf "/tmp/crontab.autodeploy"
+        fi
+    }
+    function ConfigureWireGuard() {
+        TUNNEL_CLIENT_V4="192.168.$((255 - RANDOM %32)).$((RANDOM %253 + 1))/32"
+        which "bc" > "/dev/null" 2>&1
+        if [ "$?" -eq "0" ]; then
+            which "sha1sum" > "/dev/null" 2>&1
+            if [ "$?" -eq "0" ]; then
+                which "uuidgen" > "/dev/null" 2>&1
+                if [ "$?" -eq "0" ]; then
+                    RANDOM_HEX_CIDR=$(echo "obase=16;$((RANDOM %65534 + 1))" | bc | tr "A-Z" "a-z")
+                    RANDOM_HEX_CLIENT=$(echo "obase=16;$((65536 - RANDOM %65535))" | bc | tr "A-Z" "a-z")
+                    UNIQUE_PREFIX=$(echo $(date "+%s%N")$(uuidgen | tr -d "-" | tr "A-Z" "a-z") | sha1sum | cut -c 31-)
+                    TUNNEL_PREFIX="fd$(echo ${UNIQUE_PREFIX} | cut -c 1-2):$(echo ${UNIQUE_PREFIX} | cut -c 3-6):$(echo ${UNIQUE_PREFIX} | cut -c 7-10)::"
+                    TUNNEL_CLIENT_V6="${TUNNEL_PREFIX}${RANDOM_HEX_CIDR}:${RANDOM_HEX_CLIENT}/128"
+                else
+                    TUNNEL_CLIENT_V6=""
+                fi
+            fi
+        fi
+        if [ ! -d "/etc/wireguard" ]; then
+            sudo mkdir "/etc/wireguard" && sudo chown ${CurrentUsername}:staff "/etc/wireguard"
+        fi
+        wireguard_list=(
+            "[Interface]"
+            "Address = ${TUNNEL_CLIENT_V4}, ${TUNNEL_CLIENT_V6}"
+            "ListenPort = 51820"
+            "PrivateKey = $(wg genkey | sudo tee '/etc/wireguard/private.key')"
+            "#[Peer]"
+            "#AllowedIPs = ${TUNNEL_CLIENT_V4}, ${TUNNEL_CLIENT_V6}"
+            "#Endpoint = 127.0.0.1:51820"
+            "#PersistentKeepalive = 5"
+            "#PublicKey = $(cat '/etc/wireguard/private.key' | wg pubkey | sudo tee '/etc/wireguard/public.key')"
+        )
+        which "wg" > "/dev/null" 2>&1
+        if [ "$?" -eq "0" ]; then
+            rm -rf "/tmp/wireguard.autodeploy" && for wireguard_list_task in "${!wireguard_list[@]}"; do
+                echo "${wireguard_list[$wireguard_list_task]}" >> "/tmp/wireguard.autodeploy"
+            done && sudo cat "/tmp/wireguard.autodeploy" > "/etc/wireguard/wg0.conf" && sudo chmod 600 /"/etc/wireguard/wg0.conf" && rm -rf "/tmp/wireguard.autodeploy" && wg-quick up wg0 && sudo wg
         fi
     }
     function ConfigureZsh() {
@@ -118,6 +157,7 @@ function ConfigurePackages() {
         GenerateOMZProfile
     }
     ConfigureCrontab
+    ConfigureWireGuard
     ConfigureZsh
 }
 # Configure System
@@ -287,6 +327,7 @@ function InstallDependencyPackages() {
             "vim"
             "wget"
             "whois"
+            "wireguard-tools"
             "wireshark"
             "youtube-dl"
             "zip"
