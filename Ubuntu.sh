@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 2.6.1
+# Current Version: 2.6.2
 
 ## How to get and use?
 # curl "https://source.zhijie.online/AutoDeploy/main/Ubuntu.sh" | sudo bash
@@ -274,6 +274,7 @@ function ConfigurePackages() {
     }
     function ConfigureCrontab() {
         crontab_list=(
+            "0 */6 * * * sudo systemctl restart wg-quick@wg0.service"
             "0 0 * * 7 sudo apt update && sudo apt dist-upgrade -qy && sudo apt -t ${LSBCodename}-backports dist-upgrade -qy && sudo apt upgrade -qy && sudo apt -t ${LSBCodename}-backports upgrade -qy && sudo apt autoremove -qy"
             "@reboot sudo rm -rf /root/.*_history"
         )
