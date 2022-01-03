@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 1.7.8
+# Current Version: 1.7.9
 
 ## How to get and use?
 # /bin/bash -c "$(curl -fsSL 'https://source.zhijie.online/AutoDeploy/main/macOS.sh')"
@@ -46,11 +46,10 @@ function ConfigurePackages() {
             if [ "$?" -eq "0" ]; then
                 which "uuidgen" > "/dev/null" 2>&1
                 if [ "$?" -eq "0" ]; then
-                    RANDOM_HEX_CIDR=$(echo "obase=16;$((RANDOM %65534 + 1))" | bc | tr "A-Z" "a-z")
-                    RANDOM_HEX_CLIENT=$(echo "obase=16;$((65536 - RANDOM %65535))" | bc | tr "A-Z" "a-z")
+                    UNIQUE_CLIENT=$(echo "obase=16;$((RANDOM %65534 + 1))" | bc | tr "A-Z" "a-z")
                     UNIQUE_PREFIX=$(echo $(date "+%s%N")$(uuidgen | tr -d "-" | tr "A-Z" "a-z") | sha1sum | cut -c 31-)
-                    TUNNEL_PREFIX="fd$(echo ${UNIQUE_PREFIX} | cut -c 1-2):$(echo ${UNIQUE_PREFIX} | cut -c 3-6):$(echo ${UNIQUE_PREFIX} | cut -c 7-10)::"
-                    TUNNEL_CLIENT_V6="${TUNNEL_PREFIX}${RANDOM_HEX_CIDR}:${RANDOM_HEX_CLIENT}/128"
+                    TUNNEL_PREFIX="fd$(echo ${UNIQUE_PREFIX} | cut -c 1-2):$(echo ${UNIQUE_PREFIX} | cut -c 3-6):$(echo ${UNIQUE_PREFIX} | cut -c 7-10)"
+                    TUNNEL_CLIENT_V6="${TUNNEL_PREFIX}::${UNIQUE_CLIENT}/128"
                 else
                     TUNNEL_CLIENT_V6=""
                 fi
