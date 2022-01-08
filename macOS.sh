@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 1.7.9
+# Current Version: 1.8.0
 
 ## How to get and use?
 # /bin/bash -c "$(curl -fsSL 'https://source.zhijie.online/AutoDeploy/main/macOS.sh')"
@@ -39,14 +39,14 @@ function ConfigurePackages() {
         fi
     }
     function ConfigureWireGuard() {
-        TUNNEL_CLIENT_V4="192.168.$((255 - RANDOM %32)).$((RANDOM %253 + 1))/32"
+        TUNNEL_CLIENT_V4="192.168.$(shuf -i '224-255' -n 1).$(shuf -i '1-254' -n 1)/32"
         which "bc" > "/dev/null" 2>&1
         if [ "$?" -eq "0" ]; then
             which "sha1sum" > "/dev/null" 2>&1
             if [ "$?" -eq "0" ]; then
                 which "uuidgen" > "/dev/null" 2>&1
                 if [ "$?" -eq "0" ]; then
-                    UNIQUE_CLIENT=$(echo "obase=16;$((RANDOM %65534 + 1))" | bc | tr "A-Z" "a-z")
+                    UNIQUE_CLIENT=$(echo "obase=16;$(shuf -i '1-65535' -n 1)" | bc | tr "A-Z" "a-z")
                     UNIQUE_PREFIX=$(echo $(date "+%s%N")$(uuidgen | tr -d "-" | tr "A-Z" "a-z") | sha1sum | cut -c 31-)
                     TUNNEL_PREFIX="fd$(echo ${UNIQUE_PREFIX} | cut -c 1-2):$(echo ${UNIQUE_PREFIX} | cut -c 3-6):$(echo ${UNIQUE_PREFIX} | cut -c 7-10)"
                     TUNNEL_CLIENT_V6="${TUNNEL_PREFIX}::${UNIQUE_CLIENT}/128"
