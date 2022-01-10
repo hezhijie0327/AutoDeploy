@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 2.6.7
+# Current Version: 2.6.8
 
 ## How to get and use?
 # curl "https://source.zhijie.online/AutoDeploy/main/Ubuntu.sh" | sudo bash
@@ -519,12 +519,8 @@ function ConfigurePackages() {
             "[Interface]"
             "Address = ${TUNNEL_CLIENT_V4}, ${TUNNEL_CLIENT_V6}"
             "ListenPort = 51820"
-            "PreDown = ufw route delete allow in on wg0 out on ${WAN_INTERFACE}"
-            "PreDown = iptables -D FORWARD -i %i -j ACCEPT; iptables -t nat -D POSTROUTING -o ${WAN_INTERFACE} -j MASQUERADE"
-            "PreDown = ip6tables -t nat -D POSTROUTING -o ${WAN_INTERFACE} -j MASQUERADE"
-            "PostUp = ufw route allow in on wg0 out on ${WAN_INTERFACE}"
-            "PostUp = iptables -A FORWARD -i %i -j ACCEPT; iptables -t nat -A POSTROUTING -o ${WAN_INTERFACE} -j MASQUERADE"
-            "PostUp = ip6tables -t nat -I POSTROUTING -o ${WAN_INTERFACE} -j MASQUERADE"
+            "PreDown = ufw route delete allow in on wg0 out on ${WAN_INTERFACE}; iptables -D FORWARD -i %i -j ACCEPT; iptables -t nat -D POSTROUTING -o ${WAN_INTERFACE} -j MASQUERADE; ip6tables -t nat -D POSTROUTING -o ${WAN_INTERFACE} -j MASQUERADE"
+            "PostUp = ufw route allow in on wg0 out on ${WAN_INTERFACE}; iptables -A FORWARD -i %i -j ACCEPT; iptables -t nat -A POSTROUTING -o ${WAN_INTERFACE} -j MASQUERADE; ip6tables -t nat -I POSTROUTING -o ${WAN_INTERFACE} -j MASQUERADE"
             "PrivateKey = $(wg genkey | tee '/etc/wireguard/private.key')"
             "#[Peer]"
             "#AllowedIPs = ${TUNNEL_CLIENT_V4}, ${TUNNEL_CLIENT_V6}"
