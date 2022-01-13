@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 1.4.1
+# Current Version: 1.4.2
 
 ## How to get and use?
 # curl "https://source.zhijie.online/AutoDeploy/main/ProxmoxVE.sh" | sudo bash
@@ -435,6 +435,7 @@ function InstallDependencyPackages() {
         "postfix"
         "python3"
         "python3-pip"
+        "qrencode"
         "rar"
         "sudo"
         "systemd"
