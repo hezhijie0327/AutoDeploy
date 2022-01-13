@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 2.6.8
+# Current Version: 2.6.9
 
 ## How to get and use?
 # curl "https://source.zhijie.online/AutoDeploy/main/Ubuntu.sh" | sudo bash
@@ -723,6 +723,7 @@ function InstallDependencyPackages() {
         "postfix"
         "python3"
         "python3-pip"
+        "qrencode"
         "rar"
         "realmd"
         "sudo"
