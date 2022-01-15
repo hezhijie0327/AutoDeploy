@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 2.6.9
+# Current Version: 2.7.0
 
 ## How to get and use?
 # curl "https://source.zhijie.online/AutoDeploy/main/Ubuntu.sh" | sudo bash
@@ -14,11 +14,17 @@ function CallServiceController(){
         exit 1
     fi
     if [ "${SERVICE_NAME}" == "" ]; then
-        echo "An error occurred during processing. Missing (SERVICE_NAME) value, please check it and try again."
-        exit 1
+        if [ "${OPRATIONS}" != "daemon-reload" ]; then
+            echo "An error occurred during processing. Missing (SERVICE_NAME) value, please check it and try again."
+            exit 1
+        fi
     fi
     if [ "${container_environment}" == "lxc" ] || [ "${container_environment}" == "none" ]; then
-        systemctl ${OPRATIONS} ${SERVICE_NAME}.service
+        if [ "${OPRATIONS}" == "daemon-reload" ]; then
+            systemctl daemon-reload
+        else
+            systemctl ${OPRATIONS} ${SERVICE_NAME}.service
+        fi
     else
         serivce ${SERVICE_NAME} ${OPRATIONS}
     fi
@@ -533,7 +539,12 @@ function ConfigurePackages() {
             rm -rf "/tmp/wireguard.autodeploy" && for wireguard_list_task in "${!wireguard_list[@]}"; do
                 echo "${wireguard_list[$wireguard_list_task]}" >> "/tmp/wireguard.autodeploy"
             done && cat "/tmp/wireguard.autodeploy" > "/etc/wireguard/wg0.conf" && rm -rf "/tmp/wireguard.autodeploy" && if [ "${container_environment}" != "docker" ] && [ "${container_environment}" != "wsl2" ]; then
-                OPRATIONS="enable" && SERVICE_NAME="wg-quick@wg0" && CallServiceController && OPRATIONS="start" && CallServiceController && wg
+                OPRATIONS="enable" && SERVICE_NAME="wg-quick@wg0" && CallServiceController && if [ -f "/lib/systemd/system/wg-quick@.service" ]; then
+                    if [ ! -f "/lib/systemd/system/wg-quick@.service.bak" ]; then
+                        cp "/lib/systemd/system/wg-quick@.service" "/lib/systemd/system/wg-quick@.service.bak"
+                    fi
+                    cat "/lib/systemd/system/wg-quick@.service.bak" | sed "s/RestartSec\=5\nRestart\=always//g;s/RemainAfterExit\=yes/RemainAfterExit\=yes\nRestartSec\=5\nRestart\=always/g;s/Type\=oneshot/\#Type\=oneshot/g" > "/tmp/wireguard.autodeploy" && cat "/tmp/wireguard.autodeploy" > "/lib/systemd/system/wg-quick@.service" && rm -rf "/tmp/wireguard.autodeploy" && OPRATIONS="daemon-reload" && CallServiceController
+                fi && OPRATIONS="start" && CallServiceController && wg
             fi
         fi
     }
