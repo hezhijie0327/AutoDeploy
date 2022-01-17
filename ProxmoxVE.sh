@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 1.4.3
+# Current Version: 1.4.4
 
 ## How to get and use?
 # curl "https://source.zhijie.online/AutoDeploy/main/ProxmoxVE.sh" | sudo bash
@@ -202,6 +202,31 @@ function ConfigurePackages() {
             done && cat "/tmp/fail2ban.autodeploy" > "/etc/fail2ban/jail.d/fail2ban_default.conf" && rm -rf "/tmp/fail2ban.autodeploy" && fail2ban-client reload && sleep 5s && fail2ban-client status
         fi
     }
+    function ConfigureGit() {
+        gitconfig_key_list=(
+            "http.proxy"
+            "https.proxy"
+            "user.name"
+            "user.email"
+            "url.https://github.com.cnpmjs.org/.insteadOf"
+        )
+        gitconfig_value_list=(
+            ""
+            ""
+            ""
+            ""
+            "https://github.com/"
+        )
+        which "git" > "/dev/null" 2>&1
+        if [ "$?" -eq "0" ]; then
+            for gitconfig_list_task in "${!gitconfig_key_list[@]}"; do
+                git config --global --unset ${gitconfig_key_list[$gitconfig_list_task]}
+                if [ "${gitconfig_value_list[$gitconfig_list_task]}" != "" ]; then
+                    git config --global ${gitconfig_key_list[$gitconfig_list_task]} "${gitconfig_value_list[$gitconfig_list_task]}"
+                fi
+            done
+        fi
+    }
     function ConfigureGrub() {
         which "update-grub" > "/dev/null" 2>&1
         if [ "$?" -eq "0" ]; then
@@ -315,6 +340,7 @@ function ConfigurePackages() {
     ConfigureChrony
     ConfigureCrontab
     ConfigureFail2Ban
+    ConfigureGit
     ConfigureGrub
     ConfigureIOMMU
     ConfigurePostfix
