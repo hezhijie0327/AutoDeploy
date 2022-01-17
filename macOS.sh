@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 1.8.1
+# Current Version: 1.8.2
 
 ## How to get and use?
 # /bin/bash -c "$(curl -fsSL 'https://source.zhijie.online/AutoDeploy/main/macOS.sh')"
@@ -36,6 +36,22 @@ function ConfigurePackages() {
             rm -rf "/tmp/crontab.autodeploy" && for crontab_list_task in "${!crontab_list[@]}"; do
                 echo "${crontab_list[$crontab_list_task]}" >> "/tmp/crontab.autodeploy"
             done && sudo crontab -u "${CurrentUsername}" "/tmp/crontab.autodeploy" && sudo crontab -lu "${CurrentUsername}" && rm -rf "/tmp/crontab.autodeploy"
+        fi
+    }
+    function ConfigurePythonPyPI() {
+        which "pip3" > "/dev/null" 2>&1
+        if [ "$?" -eq "0" ]; then
+            WHICH_PIP="pip3"
+        else
+            which "pip" > "/dev/null" 2>&1
+            if [ "$?" -eq "0" ]; then
+                WHICH_PIP="pip"
+            else
+                WHICH_PIP="null"
+            fi
+        fi
+        if [ "${WHICH_PIP}" != "null" ]; then
+            ${WHICH_PIP} config set global.index-url "https://mirrors.ustc.edu.cn/pypi/web/simple"
         fi
     }
     function ConfigureWireGuard() {
@@ -156,6 +172,7 @@ function ConfigurePackages() {
         GenerateOMZProfile
     }
     ConfigureCrontab
+    ConfigurePythonPyPI
     ConfigureWireGuard
     ConfigureZsh
 }
