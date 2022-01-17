@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 1.4.2
+# Current Version: 1.4.3
 
 ## How to get and use?
 # curl "https://source.zhijie.online/AutoDeploy/main/ProxmoxVE.sh" | sudo bash
@@ -235,6 +235,22 @@ function ConfigurePackages() {
             fi
         fi
     }
+    function ConfigurePythonPyPI() {
+        which "pip3" > "/dev/null" 2>&1
+        if [ "$?" -eq "0" ]; then
+            WHICH_PIP="pip3"
+        else
+            which "pip" > "/dev/null" 2>&1
+            if [ "$?" -eq "0" ]; then
+                WHICH_PIP="pip"
+            else
+                WHICH_PIP="null"
+            fi
+        fi
+        if [ "${WHICH_PIP}" != "null" ]; then
+            ${WHICH_PIP} config set global.index-url "https://mirrors.ustc.edu.cn/pypi/web/simple"
+        fi
+    }
     function ConfigureSysctl() {
         sysctl_list=(
             "net.core.default_qdisc = fq"
@@ -302,6 +318,7 @@ function ConfigurePackages() {
     ConfigureGrub
     ConfigureIOMMU
     ConfigurePostfix
+    ConfigurePythonPyPI
     ConfigureSshd
     ConfigureSysctl
     ConfigureZsh
