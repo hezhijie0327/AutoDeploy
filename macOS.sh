@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 1.8.2
+# Current Version: 1.8.3
 
 ## How to get and use?
 # /bin/bash -c "$(curl -fsSL 'https://source.zhijie.online/AutoDeploy/main/macOS.sh')"
@@ -36,6 +36,31 @@ function ConfigurePackages() {
             rm -rf "/tmp/crontab.autodeploy" && for crontab_list_task in "${!crontab_list[@]}"; do
                 echo "${crontab_list[$crontab_list_task]}" >> "/tmp/crontab.autodeploy"
             done && sudo crontab -u "${CurrentUsername}" "/tmp/crontab.autodeploy" && sudo crontab -lu "${CurrentUsername}" && rm -rf "/tmp/crontab.autodeploy"
+        fi
+    }
+    function ConfigureGit() {
+        gitconfig_key_list=(
+            "http.proxy"
+            "https.proxy"
+            "user.name"
+            "user.email"
+            "url.https://github.com.cnpmjs.org/.insteadOf"
+        )
+        gitconfig_value_list=(
+            ""
+            ""
+            ""
+            ""
+            "https://github.com/"
+        )
+        which "git" > "/dev/null" 2>&1
+        if [ "$?" -eq "0" ]; then
+            for gitconfig_list_task in "${!gitconfig_key_list[@]}"; do
+                git config --global --unset ${gitconfig_key_list[$gitconfig_list_task]}
+                if [ "${gitconfig_value_list[$gitconfig_list_task]}" != "" ]; then
+                    git config --global ${gitconfig_key_list[$gitconfig_list_task]} "${gitconfig_value_list[$gitconfig_list_task]}"
+                fi
+            done
         fi
     }
     function ConfigurePythonPyPI() {
@@ -172,6 +197,7 @@ function ConfigurePackages() {
         GenerateOMZProfile
     }
     ConfigureCrontab
+    ConfigureGit
     ConfigurePythonPyPI
     ConfigureWireGuard
     ConfigureZsh
