@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 2.7.2
+# Current Version: 2.7.3
 
 ## How to get and use?
 # curl "https://source.zhijie.online/AutoDeploy/main/Ubuntu.sh" | sudo bash
@@ -361,10 +361,10 @@ function ConfigurePackages() {
             "url.https://github.com.cnpmjs.org/.insteadOf"
         )
         gitconfig_value_list=(
-            ""
-            ""
-            ""
-            ""
+            "${GIT_HTTP_PROXY}"
+            "${GIT_HTTPS_PROXY}"
+            "${GIT_USER_NAME}"
+            "${GIT_USER_EMAIL}"
             "https://github.com/"
         )
         which "git" > "/dev/null" 2>&1
@@ -667,6 +667,18 @@ function ConfigureSystem() {
                 if [ -f "/etc/zsh/oh-my-zsh.zshrc" ]; then
                     cp -rf "/etc/zsh/oh-my-zsh.zshrc" "/home/${DEFAULT_USERNAME}/.zshrc" && chown -R $DEFAULT_USERNAME:$DEFAULT_USERNAME "/home/${DEFAULT_USERNAME}/.zshrc"
                 fi
+            fi
+            if [ -f "/root/.gitconfig" ]; then
+                mv "/root/.gitconfig" "/root/.gitconfig.bak" && GIT_HTTP_PROXY="" && GIT_HTTPS_PROXY="" && GIT_USER_NAME="" && GIT_USER_EMAIL="" && ConfigureGit && mv "/root/.gitconfig" "/home/${DEFAULT_USERNAME}/.gitconfig" && chown -R $DEFAULT_USERNAME:$DEFAULT_USERNAME "/home/${DEFAULT_USERNAME}/.gitconfig" && mv "/root/.gitconfig.bak" "/root/.gitconfig"
+            fi
+            if [ -f "/root/.config/pip/pip.conf" ]; then
+                if [ -d "/home/${DEFAULT_USERNAME}/.config" ]; then
+                    mkdir "/home/${DEFAULT_USERNAME}/.config"
+                fi
+                if [ -d "/home/${DEFAULT_USERNAME}/.config/pip" ]; then
+                    mkdir "/home/${DEFAULT_USERNAME}/.config/pip"
+                fi
+                rm -rf "/home/${DEFAULT_USERNAME}/.config/pip/pip.conf" && cp "/root/.config/pip/pip.conf" "/home/${DEFAULT_USERNAME}/.config/pip/pip.conf" && chown -R $DEFAULT_USERNAME:$DEFAULT_USERNAME "/home/${DEFAULT_USERNAME}/.config/pip/pip.conf"
             fi
             which "crontab" > "/dev/null" 2>&1
             if [ "$?" -eq "0" ]; then
