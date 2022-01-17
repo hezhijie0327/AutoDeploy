@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 2.7.1
+# Current Version: 2.7.2
 
 ## How to get and use?
 # curl "https://source.zhijie.online/AutoDeploy/main/Ubuntu.sh" | sudo bash
@@ -352,6 +352,31 @@ function ConfigurePackages() {
             fi
         fi
     }
+    function ConfigureGit() {
+        gitconfig_key_list=(
+            "http.proxy"
+            "https.proxy"
+            "user.name"
+            "user.email"
+            "url.https://github.com.cnpmjs.org/.insteadOf"
+        )
+        gitconfig_value_list=(
+            ""
+            ""
+            ""
+            ""
+            "https://github.com/"
+        )
+        which "git" > "/dev/null" 2>&1
+        if [ "$?" -eq "0" ]; then
+            for gitconfig_list_task in "${!gitconfig_key_list[@]}"; do
+                git config --global --unset ${gitconfig_key_list[$gitconfig_list_task]}
+                if [ "${gitconfig_value_list[$gitconfig_list_task]}" != "" ]; then
+                    git config --global ${gitconfig_key_list[$gitconfig_list_task]} "${gitconfig_value_list[$gitconfig_list_task]}"
+                fi
+            done
+        fi
+    }
     function ConfigureGrub() {
         which "update-grub" > "/dev/null" 2>&1
         if [ "$?" -eq "0" ]; then
@@ -607,6 +632,7 @@ function ConfigurePackages() {
     ConfigureCrontab
     ConfigureDockerEngine
     ConfigureFail2Ban
+    ConfigureGit
     ConfigureGrub
     ConfigureLandscape
     ConfigureNetplan
