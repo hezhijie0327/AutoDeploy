@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 2.7.0
+# Current Version: 2.7.1
 
 ## How to get and use?
 # curl "https://source.zhijie.online/AutoDeploy/main/Ubuntu.sh" | sudo bash
@@ -406,6 +406,22 @@ function ConfigurePackages() {
             fi
         fi
     }
+    function ConfigurePythonPyPI() {
+        which "pip3" > "/dev/null" 2>&1
+        if [ "$?" -eq "0" ]; then
+            WHICH_PIP="pip3"
+        else
+            which "pip" > "/dev/null" 2>&1
+            if [ "$?" -eq "0" ]; then
+                WHICH_PIP="pip"
+            else
+                WHICH_PIP="null"
+            fi
+        fi
+        if [ "${WHICH_PIP}" != "null" ]; then
+            ${WHICH_PIP} config set global.index-url "https://mirrors.ustc.edu.cn/pypi/web/simple"
+        fi
+    }
     function ConfigureResolved() {
         resolved_list=(
             "[Resolve]"
@@ -595,6 +611,7 @@ function ConfigurePackages() {
     ConfigureLandscape
     ConfigureNetplan
     ConfigurePostfix
+    ConfigurePythonPyPI
     ConfigureResolved
     ConfigureSshd
     ConfigureSysctl
