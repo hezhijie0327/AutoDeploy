@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 1.4.5
+# Current Version: 1.4.6
 
 ## How to get and use?
 # curl "https://source.zhijie.online/AutoDeploy/main/ProxmoxVE.sh" | sudo bash
@@ -375,13 +375,13 @@ function ConfigureSystem() {
             mv "/root/.gitconfig" "/root/.gitconfig.bak" && GIT_HTTP_PROXY="" && GIT_HTTPS_PROXY="" && GIT_USER_NAME="" && GIT_USER_EMAIL="" && ConfigureGit && mv "/root/.gitconfig" "/home/${DEFAULT_USERNAME}/.gitconfig" && chown -R $DEFAULT_USERNAME:$DEFAULT_USERNAME "/home/${DEFAULT_USERNAME}/.gitconfig" && mv "/root/.gitconfig.bak" "/root/.gitconfig"
         fi
         if [ -f "/root/.config/pip/pip.conf" ]; then
-            if [ -d "/home/${DEFAULT_USERNAME}/.config" ]; then
+            if [ ! -d "/home/${DEFAULT_USERNAME}/.config" ]; then
                 mkdir "/home/${DEFAULT_USERNAME}/.config"
             fi
-            if [ -d "/home/${DEFAULT_USERNAME}/.config/pip" ]; then
+            if [ ! -d "/home/${DEFAULT_USERNAME}/.config/pip" ]; then
                 mkdir "/home/${DEFAULT_USERNAME}/.config/pip"
             fi
-            rm -rf "/home/${DEFAULT_USERNAME}/.config/pip/pip.conf" && cp "/root/.config/pip/pip.conf" "/home/${DEFAULT_USERNAME}/.config/pip/pip.conf" && chown -R $DEFAULT_USERNAME:$DEFAULT_USERNAME "/home/${DEFAULT_USERNAME}/.config/pip/pip.conf"
+            rm -rf "/home/${DEFAULT_USERNAME}/.config/pip/pip.conf" && cp -rf "/root/.config/pip/pip.conf" "/home/${DEFAULT_USERNAME}/.config/pip/pip.conf" && chown -R $DEFAULT_USERNAME:$DEFAULT_USERNAME "/home/${DEFAULT_USERNAME}/.config/pip/pip.conf"
         fi
         which "crontab" > "/dev/null" 2>&1
         if [ "$?" -eq "0" ]; then
