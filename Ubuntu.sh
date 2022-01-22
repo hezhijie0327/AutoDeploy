@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 2.7.5
+# Current Version: 2.7.6
 
 ## How to get and use?
 # curl "https://source.zhijie.online/AutoDeploy/main/Ubuntu.sh" | sudo bash
@@ -655,13 +655,14 @@ function ConfigureSystem() {
     }
     function ConfigureDefaultUser() {
         if [ "${container_environment}" != "docker" ]; then
+            DEFAULT_FULLNAME="Ubuntu User"
             DEFAULT_USERNAME="ubuntu"
             DEFAULT_PASSWORD="*Ubuntu123*"
             crontab_list=(
                 "@reboot rm -rf /home/${DEFAULT_USERNAME}/.*_history"
             )
             userdel -rf "${DEFAULT_USERNAME}" > "/dev/null" 2>&1
-            useradd -d "/home/${DEFAULT_USERNAME}" -s "/bin/zsh" -m "${DEFAULT_USERNAME}" && echo $DEFAULT_USERNAME:$DEFAULT_PASSWORD | chpasswd && adduser "${DEFAULT_USERNAME}" "docker" && adduser "${DEFAULT_USERNAME}" "sudo"
+            useradd -c "${DEFAULT_FULLNAME}" -d "/home/${DEFAULT_USERNAME}" -s "/bin/zsh" -m "${DEFAULT_USERNAME}" && echo $DEFAULT_USERNAME:$DEFAULT_PASSWORD | chpasswd && adduser "${DEFAULT_USERNAME}" "docker" && adduser "${DEFAULT_USERNAME}" "sudo"
             if [ -d "/etc/zsh/oh-my-zsh" ]; then
                 cp -rf "/etc/zsh/oh-my-zsh" "/home/${DEFAULT_USERNAME}/.oh-my-zsh" && chown -R $DEFAULT_USERNAME:$DEFAULT_USERNAME "/home/${DEFAULT_USERNAME}/.oh-my-zsh"
                 if [ -f "/etc/zsh/oh-my-zsh.zshrc" ]; then
