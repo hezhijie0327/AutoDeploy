@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 2.7.7
+# Current Version: 2.7.8
 
 ## How to get and use?
 # curl "https://source.zhijie.online/AutoDeploy/main/Ubuntu.sh" | sudo bash
@@ -560,23 +560,27 @@ function ConfigurePackages() {
                     TUNNEL_CLIENT_V6=""
                 fi
             fi
+        fi && WAN_INTERFACE=$(cat '/proc/net/dev' | grep -v 'docker0\|lo\|wg0' | grep ':' | sed 's/[[:space:]]//g' | cut -d ':' -f 1 | sort | uniq | head -n 1)
+        if [ ! -d "/etc/wireguard" ]; then
+            mkdir "/etc/wireguard"
+        else
+            rm -rf /etc/wireguard/*
         fi
-        WAN_INTERFACE=$(cat '/proc/net/dev' | grep -v 'docker0\|lo\|wg0' | grep ':' | sed 's/[[:space:]]//g' | cut -d ':' -f 1 | sort | uniq | head -n 1)
-        wireguard_list=(
-            "[Interface]"
-            "Address = ${TUNNEL_CLIENT_V4}, ${TUNNEL_CLIENT_V6}"
-            "ListenPort = 51820"
-            "PreDown = ufw route delete allow in on wg0 out on ${WAN_INTERFACE}; iptables -D FORWARD -i %i -j ACCEPT; iptables -t nat -D POSTROUTING -o ${WAN_INTERFACE} -j MASQUERADE; ip6tables -t nat -D POSTROUTING -o ${WAN_INTERFACE} -j MASQUERADE"
-            "PostUp = ufw route allow in on wg0 out on ${WAN_INTERFACE}; iptables -A FORWARD -i %i -j ACCEPT; iptables -t nat -A POSTROUTING -o ${WAN_INTERFACE} -j MASQUERADE; ip6tables -t nat -I POSTROUTING -o ${WAN_INTERFACE} -j MASQUERADE"
-            "PrivateKey = $(wg genkey | tee '/etc/wireguard/private.key')"
-            "#[Peer]"
-            "#AllowedIPs = ${TUNNEL_CLIENT_V4}, ${TUNNEL_CLIENT_V6}"
-            "#Endpoint = 127.0.0.1:51820"
-            "#PersistentKeepalive = 5"
-            "#PublicKey = $(cat '/etc/wireguard/private.key' | wg pubkey | tee '/etc/wireguard/public.key')"
-        )
         which "wg" > "/dev/null" 2>&1
         if [ "$?" -eq "0" ]; then
+            wireguard_list=(
+                "[Interface]"
+                "Address = ${TUNNEL_CLIENT_V4}, ${TUNNEL_CLIENT_V6}"
+                "ListenPort = 51820"
+                "PreDown = ufw route delete allow in on wg0 out on ${WAN_INTERFACE}; iptables -D FORWARD -i %i -j ACCEPT; iptables -t nat -D POSTROUTING -o ${WAN_INTERFACE} -j MASQUERADE; ip6tables -t nat -D POSTROUTING -o ${WAN_INTERFACE} -j MASQUERADE"
+                "PostUp = ufw route allow in on wg0 out on ${WAN_INTERFACE}; iptables -A FORWARD -i %i -j ACCEPT; iptables -t nat -A POSTROUTING -o ${WAN_INTERFACE} -j MASQUERADE; ip6tables -t nat -I POSTROUTING -o ${WAN_INTERFACE} -j MASQUERADE"
+                "PrivateKey = $(wg genkey | tee '/tmp/wireguard.autodeploy')"
+                "#[Peer]"
+                "#AllowedIPs = ${TUNNEL_CLIENT_V4}, ${TUNNEL_CLIENT_V6}"
+                "#Endpoint = 127.0.0.1:51820"
+                "#PersistentKeepalive = 5"
+                "#PublicKey = $(cat '/tmp/wireguard.autodeploy' | wg pubkey)"
+            )
             rm -rf "/tmp/wireguard.autodeploy" && for wireguard_list_task in "${!wireguard_list[@]}"; do
                 echo "${wireguard_list[$wireguard_list_task]}" >> "/tmp/wireguard.autodeploy"
             done && cat "/tmp/wireguard.autodeploy" > "/etc/wireguard/wg0.conf" && rm -rf "/tmp/wireguard.autodeploy" && if [ "${container_environment}" != "docker" ] && [ "${container_environment}" != "wsl2" ]; then
