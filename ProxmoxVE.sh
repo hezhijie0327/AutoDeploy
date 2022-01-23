@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 1.4.9
+# Current Version: 1.5.0
 
 ## How to get and use?
 # curl "https://source.zhijie.online/AutoDeploy/main/ProxmoxVE.sh" | sudo bash
@@ -252,6 +252,13 @@ function ConfigurePackages() {
             fi && echo "# options vfio_iommu_type1 allow_unsafe_interrupts=1" > "/etc/modprobe.d/iommu_unsafe_interrupts.conf"
         fi
     }
+    function ConfigureOpenSSH() {
+        OPENSSH_PASSWORD=""
+        which "ssh-keygen" > "/dev/null" 2>&1
+        if [ "$?" -eq "0" ]; then
+            rm -rf "/root/.ssh" && mkdir "/root/.ssh" && touch "/root/.ssh/authorized_keys" && ssh-keygen -t ecdsa -b 384 -f "/root/.ssh/id_ecdsa" -N "${OPENSSH_PASSWORD}" && ssh-keygen -t ed25519 -f "/root/.ssh/id_ed25519" -N "${OPENSSH_PASSWORD}" && ssh-keygen -t rsa -b 4096 -f "/root/.ssh/id_rsa" -N "${OPENSSH_PASSWORD}" && chmod 644 /root/.ssh/*
+        fi
+    }
     function ConfigurePostfix() {
         if [ -f "/etc/postfix/main.cf" ]; then
             if [ "$(cat '/etc/postfix/main.cf' | grep 'myhostname\=')" != "" ]; then
@@ -343,6 +350,7 @@ function ConfigurePackages() {
     ConfigureGit
     ConfigureGrub
     ConfigureIOMMU
+    ConfigureOpenSSH
     ConfigurePostfix
     ConfigurePythonPyPI
     ConfigureSshd
@@ -391,6 +399,11 @@ function ConfigureSystem() {
             rm -rf "/tmp/crontab.autodeploy" && for crontab_list_task in "${!crontab_list[@]}"; do
                 echo "${crontab_list[$crontab_list_task]}" >> "/tmp/crontab.autodeploy"
             done && crontab -u "${DEFAULT_USERNAME}" "/tmp/crontab.autodeploy" && crontab -lu "${DEFAULT_USERNAME}" && rm -rf "/tmp/crontab.autodeploy"
+        fi
+        OPENSSH_PASSWORD=""
+        which "ssh-keygen" > "/dev/null" 2>&1
+        if [ "$?" -eq "0" ]; then
+            rm -rf "/home/${DEFAULT_USERNAME}/.ssh" && mkdir "/home/${DEFAULT_USERNAME}/.ssh" && touch "/home/${DEFAULT_USERNAME}/.ssh/authorized_keys" && ssh-keygen -t ecdsa -b 384 -f "/home/${DEFAULT_USERNAME}/.ssh/id_ecdsa" -N "${OPENSSH_PASSWORD}" && ssh-keygen -t ed25519 -f "/home/${DEFAULT_USERNAME}/.ssh/id_ed25519" -N "${OPENSSH_PASSWORD}" && ssh-keygen -t rsa -b 4096 -f "/home/${DEFAULT_USERNAME}/.ssh/id_rsa" -N "${OPENSSH_PASSWORD}" && chmod 600 /home/${DEFAULT_USERNAME}/.ssh/*
         fi
         which "pveum" > "/dev/null" 2>&1
         if [ "$?" -eq "0" ]; then
