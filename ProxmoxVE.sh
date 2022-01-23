@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 1.5.2
+# Current Version: 1.5.3
 
 ## How to get and use?
 # curl "https://source.zhijie.online/AutoDeploy/main/ProxmoxVE.sh" | sudo bash
@@ -256,7 +256,7 @@ function ConfigurePackages() {
         OPENSSH_PASSWORD=""
         which "ssh-keygen" > "/dev/null" 2>&1
         if [ "$?" -eq "0" ]; then
-            rm -rf "/root/.ssh" && mkdir "/root/.ssh" && touch "/root/.ssh/authorized_keys" && touch "/root/.ssh/known_hosts" && ssh-keygen -t ecdsa -b 384 -f "/root/.ssh/id_ecdsa" -N "${OPENSSH_PASSWORD}" && ssh-keygen -t ed25519 -f "/root/.ssh/id_ed25519" -N "${OPENSSH_PASSWORD}" && ssh-keygen -t rsa -b 4096 -f "/root/.ssh/id_rsa" -N "${OPENSSH_PASSWORD}" && chmod 644 /root/.ssh/*
+            rm -rf "/root/.ssh" && mkdir "/root/.ssh" && touch "/root/.ssh/authorized_keys" && touch "/root/.ssh/known_hosts" && ssh-keygen -t ecdsa -b 384 -f "/root/.ssh/id_ecdsa" -C "root@${NEW_HOSTNAME}.${NEW_DOMAIN}" -N "${OPENSSH_PASSWORD}" && ssh-keygen -t ed25519 -f "/root/.ssh/id_ed25519" -C "root@${NEW_HOSTNAME}.${NEW_DOMAIN}" -N "${OPENSSH_PASSWORD}" && ssh-keygen -t rsa -b 4096 -f "/root/.ssh/id_rsa" -C "root@${NEW_HOSTNAME}.${NEW_DOMAIN}" -N "${OPENSSH_PASSWORD}" && chmod 644 /root/.ssh/*
         fi
     }
     function ConfigurePostfix() {
@@ -403,7 +403,7 @@ function ConfigureSystem() {
         OPENSSH_PASSWORD=""
         which "ssh-keygen" > "/dev/null" 2>&1
         if [ "$?" -eq "0" ]; then
-            rm -rf "/home/${DEFAULT_USERNAME}/.ssh" && mkdir "/home/${DEFAULT_USERNAME}/.ssh" && touch "/home/${DEFAULT_USERNAME}/.ssh/authorized_keys" && touch "/home/${DEFAULT_USERNAME}/.ssh/known_hosts" && ssh-keygen -t ecdsa -b 384 -f "/home/${DEFAULT_USERNAME}/.ssh/id_ecdsa" -N "${OPENSSH_PASSWORD}" && ssh-keygen -t ed25519 -f "/home/${DEFAULT_USERNAME}/.ssh/id_ed25519" -N "${OPENSSH_PASSWORD}" && ssh-keygen -t rsa -b 4096 -f "/home/${DEFAULT_USERNAME}/.ssh/id_rsa" -N "${OPENSSH_PASSWORD}" && chown -R $DEFAULT_USERNAME:$DEFAULT_USERNAME "/home/${DEFAULT_USERNAME}/.ssh" && chown -R $DEFAULT_USERNAME:$DEFAULT_USERNAME /home/${DEFAULT_USERNAME}/.ssh/* && chmod 600 /home/${DEFAULT_USERNAME}/.ssh/*
+            rm -rf "/home/${DEFAULT_USERNAME}/.ssh" && mkdir "/home/${DEFAULT_USERNAME}/.ssh" && touch "/home/${DEFAULT_USERNAME}/.ssh/authorized_keys" && touch "/home/${DEFAULT_USERNAME}/.ssh/known_hosts" && ssh-keygen -t ecdsa -b 384 -f "/home/${DEFAULT_USERNAME}/.ssh/id_ecdsa" -C "${DEFAULT_USERNAME}@${NEW_HOSTNAME}.${NEW_DOMAIN}" -N "${OPENSSH_PASSWORD}" && ssh-keygen -t ed25519 -f "/home/${DEFAULT_USERNAME}/.ssh/id_ed25519" -C "${DEFAULT_USERNAME}@${NEW_HOSTNAME}.${NEW_DOMAIN}" -N "${OPENSSH_PASSWORD}" && ssh-keygen -t rsa -b 4096 -f "/home/${DEFAULT_USERNAME}/.ssh/id_rsa" -C "${DEFAULT_USERNAME}@${NEW_HOSTNAME}.${NEW_DOMAIN}" -N "${OPENSSH_PASSWORD}" && chown -R $DEFAULT_USERNAME:$DEFAULT_USERNAME "/home/${DEFAULT_USERNAME}/.ssh" && chown -R $DEFAULT_USERNAME:$DEFAULT_USERNAME /home/${DEFAULT_USERNAME}/.ssh/* && chmod 600 /home/${DEFAULT_USERNAME}/.ssh/*
         fi
         which "pveum" > "/dev/null" 2>&1
         if [ "$?" -eq "0" ]; then
