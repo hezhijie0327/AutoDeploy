@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 2.7.6
+# Current Version: 2.7.7
 
 ## How to get and use?
 # curl "https://source.zhijie.online/AutoDeploy/main/Ubuntu.sh" | sudo bash
@@ -655,7 +655,9 @@ function ConfigureSystem() {
     }
     function ConfigureDefaultUser() {
         if [ "${container_environment}" != "docker" ]; then
-            DEFAULT_FULLNAME="Ubuntu User"
+            DEFAULT_FIRSTNAME="User"
+            DEFAULT_LASTNAME="Ubuntu"
+            DEFAULT_FULLNAME="${DEFAULT_LASTNAME} ${DEFAULT_FIRSTNAME}"
             DEFAULT_USERNAME="ubuntu"
             DEFAULT_PASSWORD="*Ubuntu123*"
             crontab_list=(
