@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 1.4.8
+# Current Version: 1.4.9
 
 ## How to get and use?
 # curl "https://source.zhijie.online/AutoDeploy/main/ProxmoxVE.sh" | sudo bash
@@ -360,7 +360,7 @@ function ConfigureSystem() {
     function ConfigureDefaultUser() {
         DEFAULT_FIRSTNAME="User"
         DEFAULT_LASTNAME="Proxmox"
-        DEFAULT_FULLNAME="Proxmox User"
+        DEFAULT_FULLNAME="${DEFAULT_LASTNAME} ${DEFAULT_FIRSTNAME}"
         DEFAULT_USERNAME="proxmox"
         DEFAULT_PASSWORD="*Proxmox123*"
         crontab_list=(
