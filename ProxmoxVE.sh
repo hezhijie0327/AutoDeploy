@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 1.4.7
+# Current Version: 1.4.8
 
 ## How to get and use?
 # curl "https://source.zhijie.online/AutoDeploy/main/ProxmoxVE.sh" | sudo bash
@@ -358,6 +358,8 @@ function ConfigureSystem() {
         fi
     }
     function ConfigureDefaultUser() {
+        DEFAULT_FIRSTNAME="User"
+        DEFAULT_LASTNAME="Proxmox"
         DEFAULT_FULLNAME="Proxmox User"
         DEFAULT_USERNAME="proxmox"
         DEFAULT_PASSWORD="*Proxmox123*"
@@ -397,8 +399,10 @@ function ConfigureSystem() {
             else
                 pveum group modify "LADM" -comment "Local Administrators"
             fi && pveum aclmod "/" -group "LADM" -role "Administrator" && if [ "$(pveum user list | grep ${DEFAULT_USERNAME}@pam)" == "" ]; then
-                pveum useradd "${DEFAULT_USERNAME}@pam"
-            fi && pveum usermod "${DEFAULT_USERNAME}@pam" -group "LADM" && pveum usermod "root@pam" -group "LADM"
+                pveum useradd "${DEFAULT_USERNAME}@pam" -comment "${DEFAULT_FULLNAME}" -firstname "${DEFAULT_FIRSTNAME}" -group "LADM" -lastname "${DEFAULT_LASTNAME}"
+            else
+                pveum usermod "${DEFAULT_USERNAME}@pam" -comment "${DEFAULT_FULLNAME}" -firstname "${DEFAULT_FIRSTNAME}" -group "LADM" -lastname "${DEFAULT_LASTNAME}"
+            fi && pveum usermod "root@pam" -comment "Proxmox Root" -firstname "Root" -group "LADM" -lastname "Proxmox"
         fi
     }
     function ConfigureHostfile() {
