@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 1.8.4
+# Current Version: 1.8.5
 
 ## How to get and use?
 # /bin/bash -c "$(curl -fsSL 'https://source.zhijie.online/AutoDeploy/main/macOS.sh')"
@@ -61,6 +61,13 @@ function ConfigurePackages() {
                     git config --global ${gitconfig_key_list[$gitconfig_list_task]} "${gitconfig_value_list[$gitconfig_list_task]}"
                 fi
             done
+        fi
+    }
+    function ConfigureOpenSSH () {
+        OPENSSH_PASSWORD=""
+        which "ssh-keygen" > "/dev/null" 2>&1
+        if [ "$?" -eq "0" ]; then
+            rm -rf "/Users/${CurrentUsername}/.ssh" && mkdir "/Users/${CurrentUsername}/.ssh" && touch "/Users/${CurrentUsername}/.ssh/authorized_keys" && ssh-keygen -t ecdsa -b 384 -f "/Users/${CurrentUsername}/.ssh/id_ecdsa" -N "${OPENSSH_PASSWORD}" && ssh-keygen -t ed25519 -f "/Users/${CurrentUsername}/.ssh/id_ed25519" -N "${OPENSSH_PASSWORD}" && ssh-keygen -t rsa -b 4096 -f "/Users/${CurrentUsername}/.ssh/id_rsa" -N "${OPENSSH_PASSWORD}" && chmod 600 /Users/${CurrentUsername}/.ssh/*
         fi
     }
     function ConfigurePythonPyPI() {
@@ -200,6 +207,7 @@ function ConfigurePackages() {
     }
     ConfigureCrontab
     ConfigureGit
+    ConfigureOpenSSH
     ConfigurePythonPyPI
     ConfigureWireGuard
     ConfigureZsh
