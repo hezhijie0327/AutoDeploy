@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 1.8.3
+# Current Version: 1.8.4
 
 ## How to get and use?
 # /bin/bash -c "$(curl -fsSL 'https://source.zhijie.online/AutoDeploy/main/macOS.sh')"
@@ -97,21 +97,23 @@ function ConfigurePackages() {
             fi
         fi
         if [ ! -d "/etc/wireguard" ]; then
-            sudo mkdir "/etc/wireguard" && sudo chown ${CurrentUsername}:staff "/etc/wireguard"
-        fi
-        wireguard_list=(
-            "[Interface]"
-            "Address = ${TUNNEL_CLIENT_V4}, ${TUNNEL_CLIENT_V6}"
-            "ListenPort = 51820"
-            "PrivateKey = $(wg genkey | tee '/etc/wireguard/private.key')"
-            "#[Peer]"
-            "#AllowedIPs = ${TUNNEL_CLIENT_V4}, ${TUNNEL_CLIENT_V6}"
-            "#Endpoint = 127.0.0.1:51820"
-            "#PersistentKeepalive = 5"
-            "#PublicKey = $(cat '/etc/wireguard/private.key' | wg pubkey | tee '/etc/wireguard/public.key')"
-        )
+            sudo mkdir "/etc/wireguard"
+        else
+            sudo rm -rf /etc/wireguard/*
+        fi && sudo chown ${CurrentUsername}:staff "/etc/wireguard"
         which "wg" > "/dev/null" 2>&1
         if [ "$?" -eq "0" ]; then
+            wireguard_list=(
+                "[Interface]"
+                "Address = ${TUNNEL_CLIENT_V4}, ${TUNNEL_CLIENT_V6}"
+                "ListenPort = 51820"
+                "PrivateKey = $(wg genkey | tee '/tmp/wireguard.autodeploy')"
+                "#[Peer]"
+                "#AllowedIPs = ${TUNNEL_CLIENT_V4}, ${TUNNEL_CLIENT_V6}"
+                "#Endpoint = 127.0.0.1:51820"
+                "#PersistentKeepalive = 5"
+                "#PublicKey = $(cat '/tmp/wireguard.autodeploy' | wg pubkey)"
+            )
             rm -rf "/tmp/wireguard.autodeploy" && for wireguard_list_task in "${!wireguard_list[@]}"; do
                 echo "${wireguard_list[$wireguard_list_task]}" >> "/tmp/wireguard.autodeploy"
             done && cat "/tmp/wireguard.autodeploy" > "/etc/wireguard/wg0.conf" && chmod 600 "/etc/wireguard/wg0.conf" && rm -rf "/tmp/wireguard.autodeploy" && sudo wg-quick up wg0 && sudo wg
