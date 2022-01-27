@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 1.8.9
+# Current Version: 1.9.0
 
 ## How to get and use?
 # /bin/bash -c "$(curl -fsSL 'https://source.zhijie.online/AutoDeploy/main/macOS.sh')"
@@ -14,11 +14,14 @@ function GetSystemInformation() {
     }
     function IsArmArchitecture() {
         if [ "$(uname -m)" == "arm64" ]; then
+            ARM_ARCHITECTURE="TRUE"
             softwareupdate --install-rosetta
         else
             if [ "$(uname -m)" != "x86_64" ]; then
                 echo "Unsupported architecture."
                 exit 1
+            else
+                ARM_ARCHITECTURE="FALSE"
             fi
         fi
     }
@@ -128,6 +131,10 @@ function ConfigurePackages() {
     }
     function ConfigureZsh() {
         function GenerateCommandPath() {
+            if [ "${ARM_ARCHITECTURE}" == "TRUE" ]; then
+                ARM_HOMEBREW_BIN="/opt/homebrew/bin"
+                ARM_HOMEBREW_SBIN="/opt/homebrew/sbin"
+            fi
             default_path_list=(
                 "/bin"
                 "/sbin"
@@ -135,31 +142,24 @@ function ConfigurePackages() {
                 "/usr/sbin"
                 "/usr/local/bin"
                 "/usr/local/sbin"
-                "/opt/homebrew/bin"
-                "/opt/homebrew/sbin"
+                "${ARM_HOMEBREW_BIN}"
+                "${ARM_HOMEBREW_SBIN}"
             )
-            for default_path_list_task in "${!default_path_list[@]}"; do
-                DEFAULT_PATH="${default_path_list[$default_path_list_task]}:${DEFAULT_PATH}"
-                DEFAULT_PATH=$(echo "${DEFAULT_PATH}" | sed "s/\:$//g")
+            DEFAULT_PATH="" && for default_path_list_task in "${!default_path_list[@]}"; do
+                if [ "${default_path_list[$default_path_list_task]}" != "" ]; then
+                    DEFAULT_PATH="${default_path_list[$default_path_list_task]}:${DEFAULT_PATH}"
+                    DEFAULT_PATH=$(echo "${DEFAULT_PATH}" | sed "s/\:$//g")
+                fi
             done
-            custom_path_list=(
-                "coreutils/libexec/gnubin"
-                "curl/bin"
-                "findutils/libexec/gnubin"
-                "gawk/libexec/gnubin"
-                "gnu-indent/libexec/gnubin"
-                "gnu-sed/libexec/gnubin"
-                "gnu-tar/libexec/gnubin"
-                "gnu-time/libexec/gnubin"
-                "gnu-units/libexec/gnubin"
-                "gnu-which/libexec/gnubin"
-                "grep/libexec/gnubin"
-                "libtool/libexec/gnubin"
-                "whois/bin"
-            )
-            export PATH="${DEFAULT_PATH}" && BREW_PATH="$(brew --prefix)/opt" && for custom_path_list_task in "${!custom_path_list[@]}"; do
-                CUSTOM_PATH="${BREW_PATH}/${custom_path_list[$custom_path_list_task]}:${CUSTOM_PATH}"
-                CUSTOM_PATH=$(echo "${CUSTOM_PATH}" | sed "s/\:$//g")
+            export PATH="${DEFAULT_PATH}" && BREW_PATH="$(brew --prefix)/opt" && custom_path_list=($(ls "${BREW_PATH}" | grep -v "@" | sort | awk "{ print $2 }")) && CUSTOM_PATH="" && for custom_path_list_task in "${!custom_path_list[@]}"; do
+                if [ -d "${BREW_PATH}/${custom_path_list[$custom_path_list_task]}/bin" ]; then
+                    CUSTOM_PATH="${BREW_PATH}/${custom_path_list[$custom_path_list_task]}/bin:${CUSTOM_PATH}"
+                    CUSTOM_PATH=$(echo "${CUSTOM_PATH}" | sed "s/\:$//g")
+                fi
+                if [ -d "${BREW_PATH}/${custom_path_list[$custom_path_list_task]}/share/man" ]; then
+                    CUSTOM_MANPATH="${BREW_PATH}/${custom_path_list[$custom_path_list_task]}/share/man:${CUSTOM_MANPATH}"
+                    CUSTOM_MANPATH=$(echo "${CUSTOM_MANPATH}" | sed "s/\:$//g")
+                fi
             done
         }
         function GenerateOMZProfile() {
@@ -168,6 +168,7 @@ function ConfigurePackages() {
                 "export GPG_TTY=\$\(tty\)"
                 "export HOMEBREW_BOTTLE_DOMAIN=\"https://mirrors.ustc.edu.cn/homebrew-bottles/bottles\""
                 "export HOMEBREW_GITHUB_API_TOKEN=\"your_token_here\""
+                "export MANPATH=\"${CUSTOM_MANPATH}\""
                 "export PATH=\"${CUSTOM_PATH}:${DEFAULT_PATH}\""
                 "export ZSH=\"\$HOME/.oh-my-zsh\""
                 "plugins=(zsh-autosuggestions zsh-completions zsh-history-substring-search zsh-syntax-highlighting)"
