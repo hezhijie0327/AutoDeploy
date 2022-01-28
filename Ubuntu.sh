@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 2.9.3
+# Current Version: 2.9.4
 
 ## How to get and use?
 # curl "https://source.zhijie.online/AutoDeploy/main/Ubuntu.sh" | sudo bash
@@ -907,20 +907,23 @@ function UpgradePackages() {
 # Cleanup Temp Files
 function CleanupTempFiles() {
     cleanup_list=(
-        "/etc/cockpit"
-        "/etc/fail2ban"
-        "/etc/netplan"
-        "/etc/systemd"
-        "/etc/tuned"
-        "/etc/ufw"
-        "/etc/wireguard"
+        "cockpit"
+        "fail2ban"
+        "netplan"
+        "systemd"
+        "tuned"
+        "ufw"
+        "wireguard"
     )
     if [ "${container_environment}" == "docker" ] || [ "${container_environment}" == "wsl2" ]; then
         for cleanup_list_task in "${!cleanup_list[@]}"; do
-            chattr -Ri ${cleanup_list[$cleanup_list_task]} > "/dev/null" 2>&1
-            rm -rf ${cleanup_list[$cleanup_list_task]}
+            FILE_LIST=($(find / -name ${cleanup_list[$cleanup_list_task]} | awk "{print $2}"))
+            for FILE_LIST_TASK in "${!FILE_LIST[@]}"; do
+                chattr -Ri ${FILE_LIST[$FILE_LIST_TASK]} > "/dev/null" 2>&1
+                rm -rf ${FILE_LIST[$FILE_LIST_TASK]}
+            done
         done
-    fi && apt clean && rm -rf /root/.*_history /tmp/*
+    fi && apt clean && rm -rf /etc/ufw/*.$(date '+%Y%m%d')_* /root/.*_history /tmp/*
 }
 
 ## Process
