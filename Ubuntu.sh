@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 2.8.3
+# Current Version: 2.8.4
 
 ## How to get and use?
 # curl "https://source.zhijie.online/AutoDeploy/main/Ubuntu.sh" | sudo bash
@@ -233,33 +233,31 @@ function SetReadonlyFlag() {
 # Configure Packages
 function ConfigurePackages() {
     function ConfigureChrony() {
-        if [ "${container_environment}" != "docker" ]; then
-            chrony_list=(
-                "allow"
-                "clientloglimit 65536"
-                "driftfile /var/lib/chrony/chrony.drift"
-                "dumpdir /run/chrony"
-                "keyfile /etc/chrony/chrony.keys"
-                "leapsectz right/UTC"
-                "logdir /var/log/chrony"
-                "makestep 1 3"
-                "ratelimit burst 8 interval 3 leak 2"
-                "rtcsync"
-                "server ntp.ntsc.ac.cn iburst prefer"
-                "server cn.ntp.org.cn iburst prefer"
-                "server time.apple.com iburst"
-                "server time.windows.com iburst"
-                "server time.izatcloud.net iburst"
-                "server pool.ntp.org iburst"
-                "server asia.pool.ntp.org iburst"
-                "server cn.pool.ntp.org iburst"
-            )
-            which "chronyc" > "/dev/null" 2>&1
-            if [ "$?" -eq "0" ]; then
-                rm -rf "/tmp/chrony.autodeploy" && for chrony_list_task in "${!chrony_list[@]}"; do
-                    echo "${chrony_list[$chrony_list_task]}" >> "/tmp/chrony.autodeploy"
-                done && cat "/tmp/chrony.autodeploy" > "/etc/chrony/chrony.conf" && rm -rf "/tmp/chrony.autodeploy" && OPRATIONS="restart" && SERVICE_NAME="chrony" && CallServiceController && sleep 5s && chronyc activity && chronyc tracking && chronyc clients
-            fi
+        chrony_list=(
+            "allow"
+            "clientloglimit 65536"
+            "driftfile /var/lib/chrony/chrony.drift"
+            "dumpdir /run/chrony"
+            "keyfile /etc/chrony/chrony.keys"
+            "leapsectz right/UTC"
+            "logdir /var/log/chrony"
+            "makestep 1 3"
+            "ratelimit burst 8 interval 3 leak 2"
+            "rtcsync"
+            "server ntp.ntsc.ac.cn iburst prefer"
+            "server cn.ntp.org.cn iburst prefer"
+            "server time.apple.com iburst"
+            "server time.windows.com iburst"
+            "server time.izatcloud.net iburst"
+            "server pool.ntp.org iburst"
+            "server asia.pool.ntp.org iburst"
+            "server cn.pool.ntp.org iburst"
+        )
+        which "chronyc" > "/dev/null" 2>&1
+        if [ "$?" -eq "0" ]; then
+            rm -rf "/tmp/chrony.autodeploy" && for chrony_list_task in "${!chrony_list[@]}"; do
+                echo "${chrony_list[$chrony_list_task]}" >> "/tmp/chrony.autodeploy"
+            done && cat "/tmp/chrony.autodeploy" > "/etc/chrony/chrony.conf" && rm -rf "/tmp/chrony.autodeploy" && OPRATIONS="restart" && SERVICE_NAME="chrony" && CallServiceController && sleep 5s && chronyc activity && chronyc tracking && chronyc clients
         fi
     }
     function ConfigureCockpit() {
@@ -775,16 +773,23 @@ function InstallCustomPackages() {
 }
 # Install Dependency Packages
 function InstallDependencyPackages() {
-    app_list=(
+    app_extended_list=(
+        "cockpit"
+        "cockpit-pcp"
+        "fail2ban"
+        "netplan.io"
+        "systemd"
+        "tuned"
+        "ufw"
+        "wireguard"
+    )
+    app_regular_list=(
         "apt-file"
         "apt-transport-https"
         "ca-certificates"
         "chrony"
-        "cockpit"
-        "cockpit-pcp"
         "curl"
         "dnsutils"
-        "fail2ban"
         "git"
         "git-flow"
         "git-lfs"
@@ -799,7 +804,6 @@ function InstallDependencyPackages() {
         "nano"
         "neofetch"
         "net-tools"
-        "netplan.io"
         "nfs-common"
         "nmap"
         "ntfs-3g"
@@ -813,16 +817,13 @@ function InstallDependencyPackages() {
         "rar"
         "realmd"
         "sudo"
-        "systemd"
         "tcpdump"
         "tshark"
-        "tuned"
         "udisks2"
         "udisks2-bcache"
         "udisks2-btrfs"
         "udisks2-lvm2"
         "udisks2-zram"
-        "ufw"
         "unrar"
         "unzip"
         "update-notifier-common"
@@ -830,15 +831,25 @@ function InstallDependencyPackages() {
         "virt-what"
         "wget"
         "whois"
-        "wireguard"
         "zip"
         "zsh"
     )
+    if [ "${container_environment}" != "docker" ] && [ "${container_environment}" != "wsl2" ]; then
+        app_list=(${app_regular_list[@]} ${app_extended_list[*]})
+    else
+        app_list=(${app_regular_list[*]})
+    fi
     apt update && for app_list_task in "${!app_list[@]}"; do
         apt-cache show ${app_list[$app_list_task]} && if [ "$?" -eq "0" ]; then
             apt install -qy ${app_list[$app_list_task]}
         fi
-    done && if [ "${hypervisor_environment}" == "kvm" ]; then
+    done && if [ "${container_environment}" == "docker" ] && [ "${container_environment}" == "wsl2" ]; then
+        for app_extended_list_task in "${!app_extended_list[@]}"; do
+            if [ "$(apt list --installed | grep ${app_extended_list[$app_extended_list_task]})" != "" ]; then
+                apt purge -yq ${app_extended_list[$app_extended_list_task]} && apt autoremove -yq
+            fi
+        done
+    fi && if [ "${hypervisor_environment}" == "kvm" ]; then
         apt-cache show qemu-guest-agent && if [ "$?" -eq "0" ]; then
             apt install -qy qemu-guest-agent
         fi
