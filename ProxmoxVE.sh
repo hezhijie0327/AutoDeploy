@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 1.5.5
+# Current Version: 1.5.6
 
 ## How to get and use?
 # curl "https://source.zhijie.online/AutoDeploy/main/ProxmoxVE.sh" | sudo bash
@@ -13,6 +13,11 @@ function GetSystemInformation() {
         which "virt-what" > "/dev/null" 2>&1
         if [ "$?" -eq "1" ]; then
             apt update && apt install virt-what -qy
+            which "virt-what" > "/dev/null" 2>&1
+            if [ "$?" -eq "1" ]; then
+                echo "virt-what has not been installed!"
+                exit 1
+            fi
         fi && hypervisor_environment=$(virt-what) && if [ "${hypervisor_environment}" == "" ]; then
             hypervisor_environment="none"
         fi
