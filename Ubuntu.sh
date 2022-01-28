@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 2.8.8
+# Current Version: 2.8.9
 
 ## How to get and use?
 # curl "https://source.zhijie.online/AutoDeploy/main/Ubuntu.sh" | sudo bash
@@ -904,6 +904,8 @@ function CleanupTempFiles() {
         "/etc/cockpit"
         "/etc/fail2ban"
         "/etc/netplan"
+        "/etc/systemd"
+        "/etc/tuned"
         "/etc/ufw"
         "/etc/wireguard"
     )
