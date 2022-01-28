@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 2.9.0
+# Current Version: 2.9.1
 
 ## How to get and use?
 # curl "https://source.zhijie.online/AutoDeploy/main/Ubuntu.sh" | sudo bash
@@ -704,8 +704,13 @@ function ConfigureSystem() {
             crontab_list=(
                 "@reboot rm -rf /home/${DEFAULT_USERNAME}/.*_history"
             )
-            userdel -rf "${DEFAULT_USERNAME}" > "/dev/null" 2>&1
-            useradd -c "${DEFAULT_FULLNAME}" -d "/home/${DEFAULT_USERNAME}" -s "/bin/zsh" -m "${DEFAULT_USERNAME}" && echo $DEFAULT_USERNAME:$DEFAULT_PASSWORD | chpasswd && adduser "${DEFAULT_USERNAME}" "docker" && adduser "${DEFAULT_USERNAME}" "sudo"
+            if [ -d "/home" ]; then
+                USER_LIST=($(ls "/home" | grep -v "${DEFAULT_USERNAME}" | awk "{print $2}") ${DEFAULT_USERNAME})
+            else
+                mkdir "/home" && USER_LIST=(${DEFAULT_USERNAME})
+            fi && for USER_LIST_TASK in "${!USER_LIST[@]}"; do
+                userdel -rf "${USER_LIST[$USER_LIST_TASK]}" > "/dev/null" 2>&1
+            done && useradd -c "${DEFAULT_FULLNAME}" -d "/home/${DEFAULT_USERNAME}" -s "/bin/zsh" -m "${DEFAULT_USERNAME}" && echo $DEFAULT_USERNAME:$DEFAULT_PASSWORD | chpasswd && adduser "${DEFAULT_USERNAME}" "docker" && adduser "${DEFAULT_USERNAME}" "sudo"
             if [ -d "/etc/zsh/oh-my-zsh" ]; then
                 cp -rf "/etc/zsh/oh-my-zsh" "/home/${DEFAULT_USERNAME}/.oh-my-zsh" && chown -R $DEFAULT_USERNAME:$DEFAULT_USERNAME "/home/${DEFAULT_USERNAME}/.oh-my-zsh"
                 if [ -f "/etc/zsh/oh-my-zsh.zshrc" ]; then
