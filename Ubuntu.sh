@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 2.8.5
+# Current Version: 2.8.6
 
 ## How to get and use?
 # curl "https://source.zhijie.online/AutoDeploy/main/Ubuntu.sh" | sudo bash
@@ -31,6 +31,15 @@ function CallServiceController(){
 }
 # Get System Information
 function GetSystemInformation() {
+    function CheckDNSConfiguration() {
+        if [ -f "/etc/resolv.conf" ]; then
+            CURRENT_DNS=($(cat "/etc/resolv.conf" | grep "nameserver" | sed "s/nameserver\ //g" | grep -v "223\.5\.5\.5\|223\.6\.6\.6\|2400\:3200\:\:1\|2400\:3200\:baba\:\:1" | head -3 | awk "{print $2}"))
+            CURRENT_DNS_LINE="" && for CURRENT_DNS_TASK in "${!CURRENT_DNS[@]}"; do
+                CURRENT_DNS_LINE="${CURRENT_DNS_LINE} ${CURRENT_DNS[$CURRENT_DNS_TASK]}"
+                CURRENT_DNS_LINE=$(echo "${CURRENT_DNS_LINE}" | sed "s/^\ //g")
+            done
+        fi
+    }
     function CheckMachineEnvironment() {
         CheckContainerEnvironment() {
             if [ -f "/.dockerenv" ]; then
@@ -55,6 +64,7 @@ function GetSystemInformation() {
                 }
                 function Fix_Resolv_Conf_Issue() {
                     resolv_conf_list=(
+                        ${CURRENT_DNS[@]}
                         "223.5.5.5"
                         "223.6.6.6"
                         "2400:3200::1"
@@ -171,6 +181,7 @@ function GetSystemInformation() {
             exit 1
         fi
     }
+    CheckDNSConfiguration
     CheckMachineEnvironment
     GenerateHostname
     GetLSBCodename
@@ -461,7 +472,7 @@ function ConfigurePackages() {
     function ConfigureResolved() {
         resolved_list=(
             "[Resolve]"
-            "DNS=223.5.5.5#dns.alidns.com 223.6.6.6#dns.alidns.com 2400:3200::1#dns.alidns.com 2400:3200:baba::1#dns.alidns.com"
+            "DNS=${CURRENT_DNS_LINE} 223.5.5.5#dns.alidns.com 223.6.6.6#dns.alidns.com 2400:3200::1#dns.alidns.com 2400:3200:baba::1#dns.alidns.com"
             "DNSOverTLS=opportunistic"
             "DNSSEC=allow-downgrade"
             "DNSStubListener=false"
@@ -482,6 +493,7 @@ function ConfigurePackages() {
                 fi
             else
                 resolv_conf_list=(
+                    ${CURRENT_DNS[@]}
                     "223.5.5.5"
                     "223.6.6.6"
                     "2400:3200::1"
@@ -498,6 +510,7 @@ function ConfigurePackages() {
             fi
         else
             resolv_conf_list=(
+                ${CURRENT_DNS[@]}
                 "223.5.5.5"
                 "223.6.6.6"
                 "2400:3200::1"
