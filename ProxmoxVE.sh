@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 1.5.6
+# Current Version: 1.5.7
 
 ## How to get and use?
 # curl "https://source.zhijie.online/AutoDeploy/main/ProxmoxVE.sh" | sudo bash
@@ -20,6 +20,12 @@ function GetSystemInformation() {
             fi
         fi && hypervisor_environment=$(virt-what) && if [ "${hypervisor_environment}" == "" ]; then
             hypervisor_environment="none"
+        elif [ "${hypervisor_environment}" == "kvm" ]; then
+            HYPERVISOR_AGENT=("qemu-guest-agent")
+        elif [ "${hypervisor_environment}" == "vmware" ]; then
+            HYPERVISOR_AGENT=("open-vm-tools")
+        elif [ "${hypervisor_environment}" == "virtualbox" ]; then
+            HYPERVISOR_AGENT=("virtualbox-guest-dkms")
         fi
     }
     function GenerateDomain() {
@@ -483,7 +489,7 @@ function InstallCustomPackages() {
 }
 # Install Dependency Packages
 function InstallDependencyPackages() {
-    app_list=(
+    app_regular_list=(
         "apt-file"
         "apt-transport-https"
         "ca-certificates"
@@ -528,23 +534,23 @@ function InstallDependencyPackages() {
         "zip"
         "zsh"
     )
+    hypervisor_agent_list=(
+        "qemu-guest-agent"
+        "open-vm-tools"
+        "virtualbox-guest-dkms"
+    )
+    app_list=(${app_regular_list[*]} ${HYPERVISOR_AGENT[*]})
     apt update && for app_list_task in "${!app_list[@]}"; do
         apt-cache show ${app_list[$app_list_task]} && if [ "$?" -eq "0" ]; then
             apt install -qy ${app_list[$app_list_task]}
         fi
-    done && if [ "${hypervisor_environment}" == "kvm" ]; then
-        apt-cache show qemu-guest-agent && if [ "$?" -eq "0" ]; then
-            apt install -qy qemu-guest-agent
+    done && for hypervisor_agent_list_task in "${!hypervisor_agent_list[@]}"; do
+        if [ "${hypervisor_agent_list[$hypervisor_agent_list_task]}" != "${HYPERVISOR_AGENT[*]}" ]; then
+            if [ "$(apt list --installed | grep ${hypervisor_agent_list[$hypervisor_agent_list_task]})" != "" ]; then
+                apt purge -yq ${hypervisor_agent_list[$hypervisor_agent_list_task]} && apt autoremove -yq
+            fi
         fi
-    elif [ "${hypervisor_environment}" == "vmware" ]; then
-        apt-cache show open-vm-tools && if [ "$?" -eq "0" ]; then
-            apt install -qy open-vm-tools
-        fi
-    elif [ "${hypervisor_environment}" == "virtualbox" ]; then
-        apt-cache show virtualbox-guest-dkms && if [ "$?" -eq "0" ]; then
-            apt install -qy virtualbox-guest-dkms
-        fi
-    fi
+    done
 }
 # Upgrade Packages
 function UpgradePackages() {
