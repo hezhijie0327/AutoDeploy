@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 2.9.1
+# Current Version: 2.9.2
 
 ## How to get and use?
 # curl "https://source.zhijie.online/AutoDeploy/main/Ubuntu.sh" | sudo bash
@@ -879,7 +879,7 @@ function InstallDependencyPackages() {
         apt-cache show ${app_list[$app_list_task]} && if [ "$?" -eq "0" ]; then
             apt install -qy ${app_list[$app_list_task]}
         fi
-    done && if [ "${container_environment}" == "docker" ] && [ "${container_environment}" == "wsl2" ]; then
+    done && if [ "${container_environment}" == "docker" ] || [ "${container_environment}" == "wsl2" ]; then
         for app_extended_list_task in "${!app_extended_list[@]}"; do
             if [ "$(apt list --installed | grep ${app_extended_list[$app_extended_list_task]})" != "" ]; then
                 apt purge -yq ${app_extended_list[$app_extended_list_task]} && apt autoremove -yq
@@ -914,10 +914,12 @@ function CleanupTempFiles() {
         "/etc/ufw"
         "/etc/wireguard"
     )
-    for cleanup_list_task in "${!cleanup_list[@]}"; do
-        chattr -Ri ${cleanup_list[$cleanup_list_task]} > "/dev/null" 2>&1
-        rm -rf ${cleanup_list[$cleanup_list_task]}
-    done && apt clean && rm -rf /root/.*_history /tmp/*
+    if [ "${container_environment}" == "docker" ] || [ "${container_environment}" == "wsl2" ]; then
+        for cleanup_list_task in "${!cleanup_list[@]}"; do
+            chattr -Ri ${cleanup_list[$cleanup_list_task]} > "/dev/null" 2>&1
+            rm -rf ${cleanup_list[$cleanup_list_task]}
+        done
+    fi && apt clean && rm -rf /root/.*_history /tmp/*
 }
 
 ## Process
