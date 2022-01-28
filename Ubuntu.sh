@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 2.8.4
+# Current Version: 2.8.5
 
 ## How to get and use?
 # curl "https://source.zhijie.online/AutoDeploy/main/Ubuntu.sh" | sudo bash
@@ -269,10 +269,12 @@ function ConfigurePackages() {
         )
         which "cockpit-bridge" > "/dev/null" 2>&1
         if [ "$?" -eq "0" ]; then
-            rm -rf "/tmp/cockpit.autodeploy" && for cockpit_list_task in "${!cockpit_list[@]}"; do
-                echo "${cockpit_list[$cockpit_list_task]}" >> "/tmp/cockpit.autodeploy"
-            done && cat "/tmp/cockpit.autodeploy" > "/etc/cockpit/cockpit.conf" && rm -rf "/tmp/cockpit.autodeploy" && if [ "${container_environment}" != "docker" ] && [ "${container_environment}" != "wsl2" ]; then
-                OPRATIONS="restart" && SERVICE_NAME="cockpit" && CallServiceController
+            if [ "${container_environment}" != "docker" ] && [ "${container_environment}" != "wsl2" ]; then
+                rm -rf "/tmp/cockpit.autodeploy" && for cockpit_list_task in "${!cockpit_list[@]}"; do
+                    echo "${cockpit_list[$cockpit_list_task]}" >> "/tmp/cockpit.autodeploy"
+                done && cat "/tmp/cockpit.autodeploy" > "/etc/cockpit/cockpit.conf" && rm -rf "/tmp/cockpit.autodeploy" && if [ "${container_environment}" != "docker" ] && [ "${container_environment}" != "wsl2" ]; then
+                    OPRATIONS="restart" && SERVICE_NAME="cockpit" && CallServiceController
+                fi
             fi
         fi
     }
@@ -332,21 +334,23 @@ function ConfigurePackages() {
         )
         which "fail2ban-client" > "/dev/null" 2>&1
         if [ "$?" -eq "0" ]; then
-            if [ -d "/etc/fail2ban/jail.d" ]; then
-                rm -rf /etc/fail2ban/jail.d/*
-            else
-                mkdir "/etc/fail2ban/jail.d"
-            fi
-            if [ -f "/etc/fail2ban/fail2ban.conf" ]; then
-                cat "/etc/fail2ban/fail2ban.conf" > "/etc/fail2ban/fail2ban.local"
-            fi
-            if [ -f "/etc/fail2ban/jail.conf" ]; then
-                cat "/etc/fail2ban/jail.conf" | sed "s/action\ \=\ iptables\-allports/action\ \=\ ufw/g;s/banaction\ \=\ iptables\-multiport/banaction\ \=\ ufw/g;s/banaction\ \=\ iptables\-multiport\-log/banaction\ \=\ ufw/g;s/banaction\ \=\ ufw\-log/banaction\ \=\ ufw/g;s/banaction\_allports\ \=\ iptables\-allports/banaction\_allports\ \=\ ufw/g" > "/etc/fail2ban/jail.local"
-            fi
-            rm -rf "/tmp/fail2ban.autodeploy" && for fail2ban_list_task in "${!fail2ban_list[@]}"; do
-                echo "${fail2ban_list[$fail2ban_list_task]}" >> "/tmp/fail2ban.autodeploy"
-            done && cat "/tmp/fail2ban.autodeploy" > "/etc/fail2ban/jail.d/fail2ban_default.conf" && rm -rf "/tmp/fail2ban.autodeploy" && if [ "${container_environment}" != "docker" ] && [ "${container_environment}" != "wsl2" ]; then
-                fail2ban-client reload && sleep 5s && fail2ban-client status
+            if [ "${container_environment}" != "docker" ] && [ "${container_environment}" != "wsl2" ]; then
+                if [ -d "/etc/fail2ban/jail.d" ]; then
+                    rm -rf /etc/fail2ban/jail.d/*
+                else
+                    mkdir "/etc/fail2ban/jail.d"
+                fi
+                if [ -f "/etc/fail2ban/fail2ban.conf" ]; then
+                    cat "/etc/fail2ban/fail2ban.conf" > "/etc/fail2ban/fail2ban.local"
+                fi
+                if [ -f "/etc/fail2ban/jail.conf" ]; then
+                    cat "/etc/fail2ban/jail.conf" | sed "s/action\ \=\ iptables\-allports/action\ \=\ ufw/g;s/banaction\ \=\ iptables\-multiport/banaction\ \=\ ufw/g;s/banaction\ \=\ iptables\-multiport\-log/banaction\ \=\ ufw/g;s/banaction\ \=\ ufw\-log/banaction\ \=\ ufw/g;s/banaction\_allports\ \=\ iptables\-allports/banaction\_allports\ \=\ ufw/g" > "/etc/fail2ban/jail.local"
+                fi
+                rm -rf "/tmp/fail2ban.autodeploy" && for fail2ban_list_task in "${!fail2ban_list[@]}"; do
+                    echo "${fail2ban_list[$fail2ban_list_task]}" >> "/tmp/fail2ban.autodeploy"
+                done && cat "/tmp/fail2ban.autodeploy" > "/etc/fail2ban/jail.d/fail2ban_default.conf" && rm -rf "/tmp/fail2ban.autodeploy" && if [ "${container_environment}" != "docker" ] && [ "${container_environment}" != "wsl2" ]; then
+                    fail2ban-client reload && sleep 5s && fail2ban-client status
+                fi
             fi
         fi
     }
@@ -404,20 +408,22 @@ function ConfigurePackages() {
         network_interface=($(cat "/proc/net/dev" | grep -v "docker0\|lo\|wg0" | grep "\:" | sed "s/[[:space:]]//g" | cut -d ":" -f 1 | sort | uniq))
         which "netplan" > "/dev/null" 2>&1
         if [ "$?" -eq "0" ]; then
-            if [ ! -d "/etc/netplan" ]; then
-                mkdir "/etc/netplan"
-            else
-                rm -rf /etc/netplan/*.yaml
-            fi
-            rm -rf "/tmp/netplan.autodeploy" && for netplan_list_task in "${!netplan_list[@]}"; do
-                echo "${netplan_list[$netplan_list_task]}" >> "/tmp/netplan.autodeploy"
-            done && for network_interface_task in "${!network_interface[@]}"; do
-                echo "    ${network_interface[$network_interface_task]}:" >> "/tmp/netplan.autodeploy" && for netplan_ethernets_list_task in "${!netplan_ethernets_list[@]}"; do
-                    echo "${netplan_ethernets_list[$netplan_ethernets_list_task]}" >> "/tmp/netplan.autodeploy"
-                done
-            done && cat "/tmp/netplan.autodeploy" > "/etc/netplan/netplan.yaml" && rm -rf "/tmp/netplan.autodeploy"
             if [ "${container_environment}" != "docker" ] && [ "${container_environment}" != "wsl2" ]; then
-                netplan apply
+                if [ ! -d "/etc/netplan" ]; then
+                    mkdir "/etc/netplan"
+                else
+                    rm -rf /etc/netplan/*.yaml
+                fi
+                rm -rf "/tmp/netplan.autodeploy" && for netplan_list_task in "${!netplan_list[@]}"; do
+                    echo "${netplan_list[$netplan_list_task]}" >> "/tmp/netplan.autodeploy"
+                done && for network_interface_task in "${!network_interface[@]}"; do
+                    echo "    ${network_interface[$network_interface_task]}:" >> "/tmp/netplan.autodeploy" && for netplan_ethernets_list_task in "${!netplan_ethernets_list[@]}"; do
+                        echo "${netplan_ethernets_list[$netplan_ethernets_list_task]}" >> "/tmp/netplan.autodeploy"
+                    done
+                done && cat "/tmp/netplan.autodeploy" > "/etc/netplan/netplan.yaml" && rm -rf "/tmp/netplan.autodeploy"
+                if [ "${container_environment}" != "docker" ] && [ "${container_environment}" != "wsl2" ]; then
+                    netplan apply
+                fi
             fi
         fi
     }
@@ -535,17 +541,21 @@ function ConfigurePackages() {
     function ConfigureTuned() {
         which "tuned-adm" > "/dev/null" 2>&1
         if [ "$?" -eq "0" ]; then
-            tuned-adm profile "$(tuned-adm recommend)" && tuned-adm active
+            if [ "${container_environment}" != "docker" ] && [ "${container_environment}" != "wsl2" ]; then
+                tuned-adm profile "$(tuned-adm recommend)" && tuned-adm active
+            fi
         fi
     }
     function ConfigureUfw() {
         which "ufw" > "/dev/null" 2>&1
         if [ "$?" -eq "0" ] && [ -f "/etc/default/ufw" ]; then
-            echo "$(cat '/etc/default/ufw' | sed 's/DEFAULT\_APPLICATION\_POLICY\=\"ACCEPT\"/DEFAULT\_APPLICATION\_POLICY\=\"REJECT\"/g;s/DEFAULT\_APPLICATION\_POLICY\=\"DROP\"/DEFAULT\_APPLICATION\_POLICY\=\"REJECT\"/g;s/DEFAULT\_APPLICATION\_POLICY\=\"SKIP\"/DEFAULT\_APPLICATION\_POLICY\=\"REJECT\"/g;s/DEFAULT\_FORWARD\_POLICY\=\"DROP\"/DEFAULT\_FORWARD\_POLICY\=\"ACCEPT\"/g;s/DEFAULT\_FORWARD\_POLICY\=\"REJECT\"/DEFAULT\_FORWARD\_POLICY\=\"ACCEPT\"/g;s/DEFAULT\_INPUT\_POLICY\=\"ACCEPT\"/DEFAULT\_INPUT\_POLICY\=\"REJECT\"/g;s/DEFAULT\_INPUT\_POLICY\=\"DROP\"/DEFAULT\_INPUT\_POLICY\=\"REJECT\"/g;s/DEFAULT\_OUTPUT\_POLICY\=\"DROP\"/DEFAULT\_OUTPUT\_POLICY\=\"ACCEPT\"/g;s/DEFAULT\_OUTPUT\_POLICY\=\"REJECT\"/DEFAULT\_OUTPUT\_POLICY\=\"ACCEPT\"/g;s/MANAGE\_BUILTINS\=yes/MANAGE\_BUILTINS\=no/g;s/IPV6\=no/IPV6\=yes/g')" > "/tmp/ufw.autodeploy" && cat "/tmp/ufw.autodeploy" > "/etc/default/ufw" && rm -rf "/tmp/ufw.autodeploy"
             if [ "${container_environment}" != "docker" ] && [ "${container_environment}" != "wsl2" ]; then
-                ufw reload && ufw allow 123/udp && ufw limit 22/tcp && ufw allow 323/udp && ufw allow 51820/udp && ufw limit 9022/tcp && ufw allow 9090/tcp && ufw enable && ufw status verbose
-            else
-                ufw disable > "/dev/null" 2>&1
+                echo "$(cat '/etc/default/ufw' | sed 's/DEFAULT\_APPLICATION\_POLICY\=\"ACCEPT\"/DEFAULT\_APPLICATION\_POLICY\=\"REJECT\"/g;s/DEFAULT\_APPLICATION\_POLICY\=\"DROP\"/DEFAULT\_APPLICATION\_POLICY\=\"REJECT\"/g;s/DEFAULT\_APPLICATION\_POLICY\=\"SKIP\"/DEFAULT\_APPLICATION\_POLICY\=\"REJECT\"/g;s/DEFAULT\_FORWARD\_POLICY\=\"DROP\"/DEFAULT\_FORWARD\_POLICY\=\"ACCEPT\"/g;s/DEFAULT\_FORWARD\_POLICY\=\"REJECT\"/DEFAULT\_FORWARD\_POLICY\=\"ACCEPT\"/g;s/DEFAULT\_INPUT\_POLICY\=\"ACCEPT\"/DEFAULT\_INPUT\_POLICY\=\"REJECT\"/g;s/DEFAULT\_INPUT\_POLICY\=\"DROP\"/DEFAULT\_INPUT\_POLICY\=\"REJECT\"/g;s/DEFAULT\_OUTPUT\_POLICY\=\"DROP\"/DEFAULT\_OUTPUT\_POLICY\=\"ACCEPT\"/g;s/DEFAULT\_OUTPUT\_POLICY\=\"REJECT\"/DEFAULT\_OUTPUT\_POLICY\=\"ACCEPT\"/g;s/MANAGE\_BUILTINS\=yes/MANAGE\_BUILTINS\=no/g;s/IPV6\=no/IPV6\=yes/g')" > "/tmp/ufw.autodeploy" && cat "/tmp/ufw.autodeploy" > "/etc/default/ufw" && rm -rf "/tmp/ufw.autodeploy"
+                if [ "${container_environment}" != "docker" ] && [ "${container_environment}" != "wsl2" ]; then
+                    ufw reload && ufw allow 123/udp && ufw limit 22/tcp && ufw allow 323/udp && ufw allow 51820/udp && ufw limit 9022/tcp && ufw allow 9090/tcp && ufw enable && ufw status verbose
+                else
+                    ufw disable > "/dev/null" 2>&1
+                fi
             fi
         fi
     }
@@ -573,28 +583,30 @@ function ConfigurePackages() {
         fi
         which "wg" > "/dev/null" 2>&1
         if [ "$?" -eq "0" ]; then
-            wireguard_list=(
-                "[Interface]"
-                "Address = ${TUNNEL_CLIENT_V4}, ${TUNNEL_CLIENT_V6}"
-                "ListenPort = 51820"
-                "PreDown = ufw route delete allow in on wg0 out on ${WAN_INTERFACE}; iptables -D FORWARD -i %i -j ACCEPT; iptables -t nat -D POSTROUTING -o ${WAN_INTERFACE} -j MASQUERADE; ip6tables -t nat -D POSTROUTING -o ${WAN_INTERFACE} -j MASQUERADE"
-                "PostUp = ufw route allow in on wg0 out on ${WAN_INTERFACE}; iptables -A FORWARD -i %i -j ACCEPT; iptables -t nat -A POSTROUTING -o ${WAN_INTERFACE} -j MASQUERADE; ip6tables -t nat -I POSTROUTING -o ${WAN_INTERFACE} -j MASQUERADE"
-                "PrivateKey = $(wg genkey | tee '/tmp/wireguard.autodeploy')"
-                "#[Peer]"
-                "#AllowedIPs = ${TUNNEL_CLIENT_V4}, ${TUNNEL_CLIENT_V6}"
-                "#Endpoint = 127.0.0.1:51820"
-                "#PersistentKeepalive = 5"
-                "#PublicKey = $(cat '/tmp/wireguard.autodeploy' | wg pubkey)"
-            )
-            rm -rf "/tmp/wireguard.autodeploy" && for wireguard_list_task in "${!wireguard_list[@]}"; do
-                echo "${wireguard_list[$wireguard_list_task]}" >> "/tmp/wireguard.autodeploy"
-            done && cat "/tmp/wireguard.autodeploy" > "/etc/wireguard/wg0.conf" && rm -rf "/tmp/wireguard.autodeploy" && if [ "${container_environment}" != "docker" ] && [ "${container_environment}" != "wsl2" ]; then
-                OPRATIONS="enable" && SERVICE_NAME="wg-quick@wg0" && CallServiceController && if [ -f "/lib/systemd/system/wg-quick@.service" ]; then
-                    if [ ! -f "/lib/systemd/system/wg-quick@.service.bak" ]; then
-                        cp "/lib/systemd/system/wg-quick@.service" "/lib/systemd/system/wg-quick@.service.bak"
-                    fi
-                    cat "/lib/systemd/system/wg-quick@.service.bak" | sed "s/RestartSec\=5\nRestart\=always//g;s/RemainAfterExit\=yes/RemainAfterExit\=yes\nRestartSec\=5\nRestart\=always/g;s/Type\=oneshot/\#Type\=oneshot/g" > "/tmp/wireguard.autodeploy" && cat "/tmp/wireguard.autodeploy" > "/lib/systemd/system/wg-quick@.service" && rm -rf "/tmp/wireguard.autodeploy" && OPRATIONS="daemon-reload" && CallServiceController
-                fi && OPRATIONS="start" && CallServiceController && wg
+            if [ "${container_environment}" != "docker" ] && [ "${container_environment}" != "wsl2" ]; then
+                wireguard_list=(
+                    "[Interface]"
+                    "Address = ${TUNNEL_CLIENT_V4}, ${TUNNEL_CLIENT_V6}"
+                    "ListenPort = 51820"
+                    "PreDown = ufw route delete allow in on wg0 out on ${WAN_INTERFACE}; iptables -D FORWARD -i %i -j ACCEPT; iptables -t nat -D POSTROUTING -o ${WAN_INTERFACE} -j MASQUERADE; ip6tables -t nat -D POSTROUTING -o ${WAN_INTERFACE} -j MASQUERADE"
+                    "PostUp = ufw route allow in on wg0 out on ${WAN_INTERFACE}; iptables -A FORWARD -i %i -j ACCEPT; iptables -t nat -A POSTROUTING -o ${WAN_INTERFACE} -j MASQUERADE; ip6tables -t nat -I POSTROUTING -o ${WAN_INTERFACE} -j MASQUERADE"
+                    "PrivateKey = $(wg genkey | tee '/tmp/wireguard.autodeploy')"
+                    "#[Peer]"
+                    "#AllowedIPs = ${TUNNEL_CLIENT_V4}, ${TUNNEL_CLIENT_V6}"
+                    "#Endpoint = 127.0.0.1:51820"
+                    "#PersistentKeepalive = 5"
+                    "#PublicKey = $(cat '/tmp/wireguard.autodeploy' | wg pubkey)"
+                )
+                rm -rf "/tmp/wireguard.autodeploy" && for wireguard_list_task in "${!wireguard_list[@]}"; do
+                    echo "${wireguard_list[$wireguard_list_task]}" >> "/tmp/wireguard.autodeploy"
+                done && cat "/tmp/wireguard.autodeploy" > "/etc/wireguard/wg0.conf" && rm -rf "/tmp/wireguard.autodeploy" && if [ "${container_environment}" != "docker" ] && [ "${container_environment}" != "wsl2" ]; then
+                    OPRATIONS="enable" && SERVICE_NAME="wg-quick@wg0" && CallServiceController && if [ -f "/lib/systemd/system/wg-quick@.service" ]; then
+                        if [ ! -f "/lib/systemd/system/wg-quick@.service.bak" ]; then
+                            cp "/lib/systemd/system/wg-quick@.service" "/lib/systemd/system/wg-quick@.service.bak"
+                        fi
+                        cat "/lib/systemd/system/wg-quick@.service.bak" | sed "s/RestartSec\=5\nRestart\=always//g;s/RemainAfterExit\=yes/RemainAfterExit\=yes\nRestartSec\=5\nRestart\=always/g;s/Type\=oneshot/\#Type\=oneshot/g" > "/tmp/wireguard.autodeploy" && cat "/tmp/wireguard.autodeploy" > "/lib/systemd/system/wg-quick@.service" && rm -rf "/tmp/wireguard.autodeploy" && OPRATIONS="daemon-reload" && CallServiceController
+                    fi && OPRATIONS="start" && CallServiceController && wg
+                fi
             fi
         fi
     }
@@ -869,7 +881,17 @@ function UpgradePackages() {
 }
 # Cleanup Temp Files
 function CleanupTempFiles() {
-    apt clean && rm -rf /root/.*_history /tmp/*
+    cleanup_list=(
+        "/etc/cockpit"
+        "/etc/fail2ban"
+        "/etc/netplan"
+        "/etc/ufw"
+        "/etc/wireguard"
+    )
+    for cleanup_list_task in "${!cleanup_list[@]}"; do
+        chattr -Ri ${cleanup_list[$cleanup_list_task]} > "/dev/null" 2>&1
+        rm -rf ${cleanup_list[$cleanup_list_task]}
+    done && apt clean && rm -rf /root/.*_history /tmp/*
 }
 
 ## Process
