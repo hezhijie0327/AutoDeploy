@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 2.9.5
+# Current Version: 2.9.6
 
 ## How to get and use?
 # curl "https://source.zhijie.online/AutoDeploy/main/Ubuntu.sh" | sudo bash
@@ -51,7 +51,7 @@ function GetSystemInformation() {
         fi
     }
     function CheckMachineEnvironment() {
-        CheckContainerEnvironment() {
+        function CheckContainerEnvironment() {
             if [ -f "/.dockerenv" ]; then
                 container_environment="docker"
             elif [ "$(cat '/proc/1/environ' | grep -a 'lxc')" != "" ]; then
@@ -123,7 +123,7 @@ function GetSystemInformation() {
                 container_environment="none"
             fi
         }
-        CheckHypervisorEnvironment() {
+        function CheckHypervisorEnvironment() {
             which "virt-what" > "/dev/null" 2>&1
             if [ "$?" -eq "1" ]; then
                 apt update && apt install virt-what -qy
