@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 2.8.6
+# Current Version: 2.8.7
 
 ## How to get and use?
 # curl "https://source.zhijie.online/AutoDeploy/main/Ubuntu.sh" | sudo bash
@@ -32,8 +32,18 @@ function CallServiceController(){
 # Get System Information
 function GetSystemInformation() {
     function CheckDNSConfiguration() {
+        CUSTOM_DNS=(
+            "223.5.5.5"
+            "223.6.6.6"
+            "2400:3200::1"
+            "2400:3200:baba::1"
+        )
+        CUSTOM_DNS_LINE="" && for CUSTOM_DNS_TASK in "${!CUSTOM_DNS[@]}"; do
+            CUSTOM_DNS_LINE="${CUSTOM_DNS_LINE} ${CUSTOM_DNS[$CUSTOM_DNS_TASK]}"
+            CUSTOM_DNS_LINE=$(echo "${CUSTOM_DNS_LINE}" | sed "s/^\ //g")
+        done && CURRENT_DNS_EXCLUDE=$(echo "${CUSTOM_DNS_LINE}" | sed "s/\ /\\\|/g")
         if [ -f "/etc/resolv.conf" ]; then
-            CURRENT_DNS=($(cat "/etc/resolv.conf" | grep "nameserver" | sed "s/nameserver\ //g" | grep -v "223\.5\.5\.5\|223\.6\.6\.6\|2400\:3200\:\:1\|2400\:3200\:baba\:\:1" | head -3 | awk "{print $2}"))
+            CURRENT_DNS=($(cat "/etc/resolv.conf" | grep "nameserver" | sed "s/nameserver\ //g" | grep -v "${CURRENT_DNS_EXCLUDE}" | head -3 | awk "{print $2}"))
             CURRENT_DNS_LINE="" && for CURRENT_DNS_TASK in "${!CURRENT_DNS[@]}"; do
                 CURRENT_DNS_LINE="${CURRENT_DNS_LINE} ${CURRENT_DNS[$CURRENT_DNS_TASK]}"
                 CURRENT_DNS_LINE=$(echo "${CURRENT_DNS_LINE}" | sed "s/^\ //g")
@@ -65,10 +75,7 @@ function GetSystemInformation() {
                 function Fix_Resolv_Conf_Issue() {
                     resolv_conf_list=(
                         ${CURRENT_DNS[@]}
-                        "223.5.5.5"
-                        "223.6.6.6"
-                        "2400:3200::1"
-                        "2400:3200:baba::1"
+                        ${CUSTOM_DNS[@]}
                     )
                     wsl_conf_list=(
                         "[network]"
@@ -472,7 +479,7 @@ function ConfigurePackages() {
     function ConfigureResolved() {
         resolved_list=(
             "[Resolve]"
-            "DNS=${CURRENT_DNS_LINE} 223.5.5.5#dns.alidns.com 223.6.6.6#dns.alidns.com 2400:3200::1#dns.alidns.com 2400:3200:baba::1#dns.alidns.com"
+            "DNS=${CURRENT_DNS_LINE} ${CUSTOM_DNS_LINE}"
             "DNSOverTLS=opportunistic"
             "DNSSEC=allow-downgrade"
             "DNSStubListener=false"
@@ -494,10 +501,7 @@ function ConfigurePackages() {
             else
                 resolv_conf_list=(
                     ${CURRENT_DNS[@]}
-                    "223.5.5.5"
-                    "223.6.6.6"
-                    "2400:3200::1"
-                    "2400:3200:baba::1"
+                    ${CUSTOM_DNS[@]}
                 )
                 rm -rf "/tmp/resolv.autodeploy" && for resolv_conf_list_task in "${!resolv_conf_list[@]}"; do
                     echo "nameserver ${resolv_conf_list[$resolv_conf_list_task]}" >> "/tmp/resolv.autodeploy"
@@ -511,10 +515,7 @@ function ConfigurePackages() {
         else
             resolv_conf_list=(
                 ${CURRENT_DNS[@]}
-                "223.5.5.5"
-                "223.6.6.6"
-                "2400:3200::1"
-                "2400:3200:baba::1"
+                ${CUSTOM_DNS[@]}
             )
             rm -rf "/tmp/resolv.autodeploy" && for resolv_conf_list_task in "${!resolv_conf_list[@]}"; do
                 echo "nameserver ${resolv_conf_list[$resolv_conf_list_task]}" >> "/tmp/resolv.autodeploy"
