@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 1.5.7
+# Current Version: 1.5.8
 
 ## How to get and use?
 # curl "https://source.zhijie.online/AutoDeploy/main/ProxmoxVE.sh" | sudo bash
@@ -159,7 +159,7 @@ function ConfigurePackages() {
     function ConfigureCrontab() {
         crontab_list=(
             "0 0 * * 7 sudo apt update && sudo apt dist-upgrade -qy && sudo apt -t ${LSBCodename}-backports dist-upgrade -qy && sudo apt upgrade -qy && sudo apt -t ${LSBCodename}-backports upgrade -qy && sudo apt autoremove -qy"
-            "@reboot sudo rm -rf /root/.*_history"
+            "@reboot sudo rm -rf /root/.*_history /root/.ssh/known_hosts*"
         )
         which "crontab" > "/dev/null" 2>&1
         if [ "$?" -eq "0" ]; then
@@ -383,7 +383,7 @@ function ConfigureSystem() {
         DEFAULT_USERNAME="proxmox"
         DEFAULT_PASSWORD="*Proxmox123*"
         crontab_list=(
-            "@reboot rm -rf /home/${DEFAULT_USERNAME}/.*_history"
+            "@reboot rm -rf /home/${DEFAULT_USERNAME}/.*_history /home/${DEFAULT_FIRSTNAME}/.ssh/known_hosts*"
         )
         userdel -rf "${DEFAULT_USERNAME}" > "/dev/null" 2>&1
         useradd -c "${DEFAULT_FULLNAME}" -d "/home/${DEFAULT_USERNAME}" -s "/bin/zsh" -m "${DEFAULT_USERNAME}" && echo $DEFAULT_USERNAME:$DEFAULT_PASSWORD | chpasswd && adduser "${DEFAULT_USERNAME}" "sudo"
