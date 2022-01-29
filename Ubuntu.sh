@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 2.9.9
+# Current Version: 3.0.0
 
 ## How to get and use?
 # curl "https://source.zhijie.online/AutoDeploy/main/Ubuntu.sh" | sudo bash
@@ -624,7 +624,7 @@ function ConfigurePackages() {
                     "#PublicKey = $(cat '/tmp/wireguard.autodeploy' | wg pubkey)"
                 )
                 rm -rf "/tmp/wireguard.autodeploy" && for wireguard_list_task in "${!wireguard_list[@]}"; do
-                    echo "${wireguard_list[$wireguard_list_task]}" >> "/tmp/wireguard.autodeploy"
+                    echo "${wireguard_list[$wireguard_list_task]}" | sed "s/, $//g" >> "/tmp/wireguard.autodeploy"
                 done && cat "/tmp/wireguard.autodeploy" > "/etc/wireguard/wg0.conf" && rm -rf "/tmp/wireguard.autodeploy" && if [ "${container_environment}" != "docker" ] && [ "${container_environment}" != "wsl2" ]; then
                     OPRATIONS="enable" && SERVICE_NAME="wg-quick@wg0" && CallServiceController && if [ -f "/lib/systemd/system/wg-quick@.service" ]; then
                         if [ ! -f "/lib/systemd/system/wg-quick@.service.bak" ]; then
