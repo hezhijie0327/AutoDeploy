@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 1.9.3
+# Current Version: 1.9.4
 
 ## How to get and use?
 # /bin/bash -c "$(curl -fsSL 'https://source.zhijie.online/AutoDeploy/main/macOS.sh')"
@@ -352,6 +352,7 @@ function InstallDependencyPackages() {
             "gnu-getopt"
             "gnu-go"
             "gnu-indent"
+            "gnu-prolog"
             "gnu-scientific-library"
             "gnu-sed"
             "gnu-shogi"
