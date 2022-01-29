@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 1.9.0
+# Current Version: 1.9.1
 
 ## How to get and use?
 # /bin/bash -c "$(curl -fsSL 'https://source.zhijie.online/AutoDeploy/main/macOS.sh')"
@@ -125,7 +125,7 @@ function ConfigurePackages() {
                 "#PublicKey = $(cat '/tmp/wireguard.autodeploy' | wg pubkey)"
             )
             rm -rf "/tmp/wireguard.autodeploy" && for wireguard_list_task in "${!wireguard_list[@]}"; do
-                echo "${wireguard_list[$wireguard_list_task]}" >> "/tmp/wireguard.autodeploy"
+                echo "${wireguard_list[$wireguard_list_task]}" | sed "s/, $//g" >> "/tmp/wireguard.autodeploy"
             done && cat "/tmp/wireguard.autodeploy" > "/etc/wireguard/wg0.conf" && chmod 600 "/etc/wireguard/wg0.conf" && rm -rf "/tmp/wireguard.autodeploy" && sudo wg-quick up wg0 && sudo wg
         fi
     }
