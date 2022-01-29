@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 2.9.7
+# Current Version: 2.9.8
 
 ## How to get and use?
 # curl "https://source.zhijie.online/AutoDeploy/main/Ubuntu.sh" | sudo bash
@@ -32,6 +32,7 @@ function CallServiceController(){
 # Get System Information
 function GetSystemInformation() {
     function CheckDNSConfiguration() {
+        DHCP_DNS=()
         CUSTOM_DNS=(
             "223.5.5.5"
             "223.6.6.6"
@@ -41,9 +42,9 @@ function GetSystemInformation() {
         CUSTOM_DNS_LINE="" && for CUSTOM_DNS_TASK in "${!CUSTOM_DNS[@]}"; do
             CUSTOM_DNS_LINE="${CUSTOM_DNS_LINE} ${CUSTOM_DNS[$CUSTOM_DNS_TASK]}"
             CUSTOM_DNS_LINE=$(echo "${CUSTOM_DNS_LINE}" | sed "s/^\ //g")
-        done && CURRENT_DNS_EXCLUDE="$(echo ${CUSTOM_DNS_LINE} | sed 's/\ /\\\|/g')\|127.0.0.53"
+        done && CURRENT_DNS_EXCLUDE="$(echo ${DHCP_DNS[*]} ${CUSTOM_DNS_LINE} | sed 's/\ /\\\|/g')\|127.0.0.53"
         if [ -f "/etc/resolv.conf" ]; then
-            CURRENT_DNS=($(cat "/etc/resolv.conf" | grep "nameserver" | sed "s/nameserver\ //g" | grep -v "${CURRENT_DNS_EXCLUDE}" | head -3 | awk "{print $2}"))
+            CURRENT_DNS=(${DHCP_DNS[*]} $(cat "/etc/resolv.conf" | grep "nameserver" | sed "s/nameserver\ //g" | grep -v "${CURRENT_DNS_EXCLUDE}" | head -3 | awk "{print $2}"))
             CURRENT_DNS_LINE="" && for CURRENT_DNS_TASK in "${!CURRENT_DNS[@]}"; do
                 CURRENT_DNS_LINE="${CURRENT_DNS_LINE} ${CURRENT_DNS[$CURRENT_DNS_TASK]}"
                 CURRENT_DNS_LINE=$(echo "${CURRENT_DNS_LINE}" | sed "s/^\ //g")
