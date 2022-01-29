@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 1.9.1
+# Current Version: 1.9.2
 
 ## How to get and use?
 # /bin/bash -c "$(curl -fsSL 'https://source.zhijie.online/AutoDeploy/main/macOS.sh')"
@@ -32,7 +32,7 @@ function GetSystemInformation() {
 function ConfigurePackages() {
     function ConfigureCrontab() {
         crontab_list=(
-            "@reboot rm -rf /Users/${CurrentUsername}/.*_history"
+            "@reboot rm -rf /Users/${CurrentUsername}/.*_history /Users/${CurrentUsername}/.ssh/known_hosts*"
         )
         which "crontab" > "/dev/null" 2>&1
         if [ "$?" -eq "0" ]; then
