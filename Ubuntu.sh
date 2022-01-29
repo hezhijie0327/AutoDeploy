@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 2.9.6
+# Current Version: 2.9.7
 
 ## How to get and use?
 # curl "https://source.zhijie.online/AutoDeploy/main/Ubuntu.sh" | sudo bash
@@ -41,7 +41,7 @@ function GetSystemInformation() {
         CUSTOM_DNS_LINE="" && for CUSTOM_DNS_TASK in "${!CUSTOM_DNS[@]}"; do
             CUSTOM_DNS_LINE="${CUSTOM_DNS_LINE} ${CUSTOM_DNS[$CUSTOM_DNS_TASK]}"
             CUSTOM_DNS_LINE=$(echo "${CUSTOM_DNS_LINE}" | sed "s/^\ //g")
-        done && CURRENT_DNS_EXCLUDE=$(echo "${CUSTOM_DNS_LINE}" | sed "s/\ /\\\|/g")
+        done && CURRENT_DNS_EXCLUDE="$(echo ${CUSTOM_DNS_LINE} | sed 's/\ /\\\|/g')\|127.0.0.53"
         if [ -f "/etc/resolv.conf" ]; then
             CURRENT_DNS=($(cat "/etc/resolv.conf" | grep "nameserver" | sed "s/nameserver\ //g" | grep -v "${CURRENT_DNS_EXCLUDE}" | head -3 | awk "{print $2}"))
             CURRENT_DNS_LINE="" && for CURRENT_DNS_TASK in "${!CURRENT_DNS[@]}"; do
