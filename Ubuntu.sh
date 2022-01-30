@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 3.0.2
+# Current Version: 3.0.3
 
 ## How to get and use?
 # curl "https://source.zhijie.online/AutoDeploy/main/Ubuntu.sh" | sudo bash
@@ -923,7 +923,7 @@ function CleanupTempFiles() {
     )
     if [ "${container_environment}" == "docker" ] || [ "${container_environment}" == "wsl2" ]; then
         for cleanup_list_task in "${!cleanup_list[@]}"; do
-            FILE_LIST=($(find "/" -path "/mnt" -prune -o -name "${cleanup_list[$cleanup_list_task]}" -print | awk "{print $2}"))
+            FILE_LIST=($(find "/" \( -path "/mnt" -o -path "/sys" \) -prune -o -name "${cleanup_list[$cleanup_list_task]}" -print | awk "{print $2}"))
             for FILE_LIST_TASK in "${!FILE_LIST[@]}"; do
                 chattr -Ri "${FILE_LIST[$FILE_LIST_TASK]}" > "/dev/null" 2>&1
                 rm -rf "${FILE_LIST[$FILE_LIST_TASK]}"
