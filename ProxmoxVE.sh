@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 1.5.8
+# Current Version: 1.5.9
 
 ## How to get and use?
 # curl "https://source.zhijie.online/AutoDeploy/main/ProxmoxVE.sh" | sudo bash
@@ -381,7 +381,7 @@ function ConfigureSystem() {
         DEFAULT_LASTNAME="Proxmox"
         DEFAULT_FULLNAME="${DEFAULT_LASTNAME} ${DEFAULT_FIRSTNAME}"
         DEFAULT_USERNAME="proxmox"
-        DEFAULT_PASSWORD="*Proxmox123*"
+        DEFAULT_PASSWORD='*Proxmox123*'
         crontab_list=(
             "@reboot rm -rf /home/${DEFAULT_USERNAME}/.*_history /home/${DEFAULT_FIRSTNAME}/.ssh/known_hosts*"
         )
@@ -465,10 +465,20 @@ function ConfigureSystem() {
             fi
         fi
     }
+    function ConfigureRootUser() {
+        LOCK_ROOT="TRUE"
+        ROOT_PASSWORD='R00t@123!'
+        if [ "${LOCK_ROOT}" == "TRUE" ]; then
+            passwd -l "root"
+        else
+            passwd -u "root"
+        fi && echo root:$ROOT_PASSWORD | chpasswd
+    }
     ConfigureDefaultShell
     ConfigureDefaultUser
     ConfigureHostfile
     ConfigureProxmoxVENode
+    ConfigureRootUser
 }
 # Install Custom Packages
 function InstallCustomPackages() {
