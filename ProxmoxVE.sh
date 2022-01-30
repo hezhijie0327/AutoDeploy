@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 1.5.9
+# Current Version: 1.6.0
 
 ## How to get and use?
 # curl "https://source.zhijie.online/AutoDeploy/main/ProxmoxVE.sh" | sudo bash
@@ -468,11 +468,11 @@ function ConfigureSystem() {
     function ConfigureRootUser() {
         LOCK_ROOT="TRUE"
         ROOT_PASSWORD='R00t@123!'
-        if [ "${LOCK_ROOT}" == "TRUE" ]; then
+        echo root:$ROOT_PASSWORD | chpasswd && if [ "${LOCK_ROOT}" == "TRUE" ]; then
             passwd -l "root"
         else
             passwd -u "root"
-        fi && echo root:$ROOT_PASSWORD | chpasswd
+        fi
     }
     ConfigureDefaultShell
     ConfigureDefaultUser
