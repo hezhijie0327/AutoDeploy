@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 3.0.4
+# Current Version: 3.0.5
 
 ## How to get and use?
 # curl "https://source.zhijie.online/AutoDeploy/main/Ubuntu.sh" | sudo bash
@@ -788,11 +788,11 @@ function ConfigureSystem() {
     function ConfigureRootUser() {
         LOCK_ROOT="TRUE"
         ROOT_PASSWORD='R00t@123!'
-        if [ "${LOCK_ROOT}" == "TRUE" ]; then
+        echo root:$ROOT_PASSWORD | chpasswd && if [ "${LOCK_ROOT}" == "TRUE" ]; then
             passwd -l "root"
         else
             passwd -u "root"
-        fi && echo root:$ROOT_PASSWORD | chpasswd
+        fi
     }
     function ConfigureTimeZone() {
         if [ -f "/etc/localtime" ]; then
