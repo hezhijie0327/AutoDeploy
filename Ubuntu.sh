@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 3.0.3
+# Current Version: 3.0.4
 
 ## How to get and use?
 # curl "https://source.zhijie.online/AutoDeploy/main/Ubuntu.sh" | sudo bash
@@ -79,8 +79,20 @@ function GetSystemInformation() {
                         ${CUSTOM_DNS[@]}
                     )
                     wsl_conf_list=(
+                        "[boot]"
+                        "command = bash \"/opt/startup.sh\""
+                        "[interop]"
+                        "appendWindowsPath = true"
+                        "enabled = true"
                         "[network]"
+                        "generateHosts = false"
                         "generateResolvConf = false"
+                    )
+                    wslconfig_list=(
+                        "# [wsl2]"
+                        "# memory = 1GB"
+                        "# processors = 4"
+                        "# swap = 2GB"
                     )
                     rm -rf "/tmp/resolv.autodeploy" && for resolv_conf_list_task in "${!resolv_conf_list[@]}"; do
                         echo "nameserver ${resolv_conf_list[$resolv_conf_list_task]}" >> "/tmp/resolv.autodeploy"
@@ -93,6 +105,9 @@ function GetSystemInformation() {
                     rm -rf "/tmp/wsl.autodeploy" && for wsl_conf_list_task in "${!wsl_conf_list[@]}"; do
                         echo "${wsl_conf_list[$wsl_conf_list_task]}" >> "/tmp/wsl.autodeploy"
                     done && if [ -f "/etc/wsl.conf" ]; then chattr -i "/etc/wsl.conf"; fi && rm -rf "/etc/wsl.conf" && cat "/tmp/wsl.autodeploy" > "/etc/wsl.conf" && rm -rf "/tmp/wsl.autodeploy" && chattr +i "/etc/wsl.conf"
+                    rm -rf "/tmp/wslconfig.autodeploy" && for wslconfig_list_task in "${!wslconfig_list[@]}"; do
+                        echo "${wslconfig_list[$wslconfig_list_task]}" >> "/tmp/wslconfig.autodeploy"
+                    done && cat "/tmp/wslconfig.autodeploy" > "/etc/.wslconfig" && rm -rf "/tmp/wslconfig.autodeploy"
                 }
                 function Fix_Sshd_Server_Issue() {
                     CURRENT_PATH=$(pwd)
@@ -707,7 +722,7 @@ function ConfigureSystem() {
             DEFAULT_LASTNAME="Ubuntu"
             DEFAULT_FULLNAME="${DEFAULT_LASTNAME} ${DEFAULT_FIRSTNAME}"
             DEFAULT_USERNAME="ubuntu"
-            DEFAULT_PASSWORD="*Ubuntu123*"
+            DEFAULT_PASSWORD='*Ubuntu123*'
             crontab_list=(
                 "@reboot rm -rf /home/${DEFAULT_USERNAME}/.*_history /home/${DEFAULT_USERNAME}/.ssh/known_hosts*"
             )
@@ -770,6 +785,15 @@ function ConfigureSystem() {
     function ConfigureLocales() {
         apt purge -qy locales && apt update && apt install -qy locales && locale-gen "en_US.UTF-8" && update-locale "en_US.UTF-8"
     }
+    function ConfigureRootUser() {
+        LOCK_ROOT="TRUE"
+        ROOT_PASSWORD='R00t@123!'
+        if [ "${LOCK_ROOT}" == "TRUE" ]; then
+            passwd -l "root"
+        else
+            passwd -u "root"
+        fi && echo root:$ROOT_PASSWORD | chpasswd
+    }
     function ConfigureTimeZone() {
         if [ -f "/etc/localtime" ]; then
             rm -rf "/etc/localtime"
@@ -779,6 +803,7 @@ function ConfigureSystem() {
     ConfigureDefaultUser
     ConfigureHostfile
     ConfigureLocales
+    ConfigureRootUser
     ConfigureTimeZone
 }
 # Install Custom Packages
