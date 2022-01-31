@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 1.9.7
+# Current Version: 1.9.8
 
 ## How to get and use?
 # /bin/bash -c "$(curl -fsSL 'https://source.zhijie.online/AutoDeploy/main/macOS.sh')"
@@ -181,8 +181,8 @@ function ConfigurePackages() {
                 "export GPG_TTY=\$\(tty\)"
                 "export HOMEBREW_BOTTLE_DOMAIN=\"https://mirrors.ustc.edu.cn/homebrew-bottles/bottles\""
                 "export HOMEBREW_GITHUB_API_TOKEN=\"your_token_here\""
-                "export MANPATH=\"${CUSTOM_MANPATH}\""
-                "export PATH=\"${CUSTOM_PATH}:${DEFAULT_PATH}\""
+                "export MANPATH=\"${CUSTOM_MANPATH}:\$MANPATH\""
+                "export PATH=\"${CUSTOM_PATH}:${DEFAULT_PATH}:\$PATH\""
                 "export ZSH=\"\$HOME/.oh-my-zsh\""
                 "plugins=(zsh-autosuggestions zsh-completions zsh-history-substring-search zsh-syntax-highlighting)"
                 "ZSH_CACHE_DIR=\"\$ZSH/cache\""
