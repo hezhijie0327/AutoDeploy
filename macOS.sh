@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 1.9.6
+# Current Version: 1.9.7
 
 ## How to get and use?
 # /bin/bash -c "$(curl -fsSL 'https://source.zhijie.online/AutoDeploy/main/macOS.sh')"
@@ -72,6 +72,7 @@ function ConfigurePackages() {
         if [ "$?" -eq "0" ]; then
             if [ -d "/etc/ssh" ]; then
                 sudo rm -rf /etc/ssh/ssh_host_* && sudo ssh-keygen -t dsa -b 1024 -f "/etc/ssh/ssh_host_dsa_key" -C "root@$(hostname)" -N "${OPENSSH_PASSWORD}" && sudo ssh-keygen -t ecdsa -b 384 -f "/etc/ssh/ssh_host_ecdsa_key" -C "root@$(hostname)" -N "${OPENSSH_PASSWORD}" && sudo ssh-keygen -t ed25519 -f "/etc/ssh/ssh_host_ed25519_key" -C "root@$(hostname)" -N "${OPENSSH_PASSWORD}" && sudo ssh-keygen -t rsa -b 4096 -f "/etc/ssh/ssh_host_rsa_key" -C "root@$(hostname)" -N "${OPENSSH_PASSWORD}" && sudo chmod 400 /etc/ssh/ssh_host_* && sudo chmod 644 /etc/ssh/ssh_host_*.pub
+                rm -rf /opt/homebrew/etc/ssh/ssh_host_* && ssh-keygen -t dsa -b 1024 -f "/opt/homebrew/etc/ssh/ssh_host_dsa_key" -C "${CurrentUsername}@$(hostname)" -N "${OPENSSH_PASSWORD}" && ssh-keygen -t ecdsa -b 384 -f "/opt/homebrew/etc/ssh/ssh_host_ecdsa_key" -C "${CurrentUsername}@$(hostname)" -N "${OPENSSH_PASSWORD}" && ssh-keygen -t ed25519 -f "/opt/homebrew/etc/ssh/ssh_host_ed25519_key" -C "${CurrentUsername}@$(hostname)" -N "${OPENSSH_PASSWORD}" && ssh-keygen -t rsa -b 4096 -f "/opt/homebrew/etc/ssh/ssh_host_rsa_key" -C "${CurrentUsername}@$(hostname)" -N "${OPENSSH_PASSWORD}" && chown ${CurrentUsername}:admin /opt/homebrew/etc/ssh/ssh_host_* && chmod 400 /opt/homebrew/etc/ssh/ssh_host_* && chmod 644 /opt/homebrew/etc/ssh/ssh_host_*.pub
             fi
             rm -rf "/Users/${CurrentUsername}/.ssh" && mkdir "/Users/${CurrentUsername}/.ssh" && touch "/Users/${CurrentUsername}/.ssh/authorized_keys" && touch "/Users/${CurrentUsername}/.ssh/known_hosts" && ssh-keygen -t dsa -b 1024 -f "/Users/${CurrentUsername}/.ssh/id_dsa" -C "${CurrentUsername}@$(hostname)" -N "${OPENSSH_PASSWORD}" && ssh-keygen -t ecdsa -b 384 -f "/Users/${CurrentUsername}/.ssh/id_ecdsa" -C "${CurrentUsername}@$(hostname)" -N "${OPENSSH_PASSWORD}" && ssh-keygen -t ed25519 -f "/Users/${CurrentUsername}/.ssh/id_ed25519" -C "${CurrentUsername}@$(hostname)" -N "${OPENSSH_PASSWORD}" && ssh-keygen -t rsa -b 4096 -f "/Users/${CurrentUsername}/.ssh/id_rsa" -C "${CurrentUsername}@$(hostname)" -N "${OPENSSH_PASSWORD}" && sudo chown ${CurrentUsername}:staff "/Users/${CurrentUsername}/.ssh" && sudo chown ${CurrentUsername}:staff /Users/${CurrentUsername}/.ssh/* && chmod 400 /Users/${CurrentUsername}/.ssh/id_* && chmod 600 /Users/${CurrentUsername}/.ssh/authorized_keys && chmod 600 /Users/${CurrentUsername}/.ssh/known_hosts && chmod 644 /Users/${CurrentUsername}/.ssh/id_*.pub && chmod 700 /Users/${CurrentUsername}/.ssh
         fi
@@ -90,6 +91,15 @@ function ConfigurePackages() {
         fi
         if [ "${WHICH_PIP}" != "null" ]; then
             ${WHICH_PIP} config set global.index-url "https://mirrors.ustc.edu.cn/pypi/web/simple"
+        fi
+    }
+    function ConfigureSshd() {
+        if [ ! -f "/opt/homebrew/etc/ssh/sshd_config.bak" ]; then
+            cp -rf "/opt/homebrew/etc/ssh/sshd_config" "/opt/homebrew/etc/ssh/sshd_config.bak" && chown ${CurrentUsername}:admin "/opt/homebrew/etc/ssh/sshd_config.bak" && chmod 644 "/opt/homebrew/etc/ssh/sshd_config.bak"
+        fi
+        if [ -f "/opt/homebrew/etc/ssh/sshd_config.bak" ]; then
+            cat "/opt/homebrew/etc/ssh/sshd_config.bak" | sed "s/\#PasswordAuthentication\ yes/PasswordAuthentication\ yes/g;s/\#PermitRootLogin\ prohibit\-password/PermitRootLogin\ yes/g;s/\#PubkeyAuthentication\ yes/PubkeyAuthentication\ yes/g" > "/tmp/sshd_config.autodeploy" && cat "/tmp/sshd_config.autodeploy" > "/opt/homebrew/etc/ssh/sshd_config" && chown ${CurrentUsername}:admin "/opt/homebrew/etc/ssh/sshd_config" && chmod 644 "/opt/homebrew/etc/ssh/sshd_config" && rm -rf "/tmp/sshd_config.autodeploy"
+            sudo rm -rf "/etc/ssh/sshd_config" && cat "/opt/homebrew/etc/ssh/sshd_config.bak" | sed "s/\#PasswordAuthentication\ yes/PasswordAuthentication\ yes/g;s/\#PermitRootLogin\ prohibit\-password/PermitRootLogin\ yes/g;s/\#PubkeyAuthentication\ yes/PubkeyAuthentication\ yes/g" > "/tmp/sshd_config.autodeploy" && sudo mv "/tmp/sshd_config.autodeploy" "/etc/ssh/sshd_config" && sudo chown root:wheel "/etc/ssh/sshd_config" && sudo chmod 644 "/etc/ssh/sshd_config" && sudo rm -rf "/tmp/sshd_config.autodeploy"
         fi
     }
     function ConfigureWireGuard() {
@@ -213,6 +223,7 @@ function ConfigurePackages() {
     ConfigureGit
     ConfigureOpenSSH
     ConfigurePythonPyPI
+    ConfigureSshd
     ConfigureWireGuard
     ConfigureZsh
 }
