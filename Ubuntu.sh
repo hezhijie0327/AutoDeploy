@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 3.0.8
+# Current Version: 3.0.9
 
 ## How to get and use?
 # curl "https://source.zhijie.online/AutoDeploy/main/Ubuntu.sh" | sudo bash
@@ -659,7 +659,7 @@ function ConfigurePackages() {
             "export DEBIAN_FRONTEND=\"noninteractive\""
             "export EDITOR=\"nano\""
             "export GPG_TTY=\$\(tty\)"
-            "export PATH=\"/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin\""
+            "export PATH=\"/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:\$PATH\""
             "export ZSH=\"\$HOME/.oh-my-zsh\""
             "plugins=(zsh-autosuggestions zsh-completions zsh-history-substring-search zsh-syntax-highlighting)"
             "ZSH_CACHE_DIR=\"\$ZSH/cache\""
