@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 1.9.4
+# Current Version: 1.9.5
 
 ## How to get and use?
 # /bin/bash -c "$(curl -fsSL 'https://source.zhijie.online/AutoDeploy/main/macOS.sh')"
@@ -70,7 +70,7 @@ function ConfigurePackages() {
         OPENSSH_PASSWORD=""
         which "ssh-keygen" > "/dev/null" 2>&1
         if [ "$?" -eq "0" ]; then
-            rm -rf "/Users/${CurrentUsername}/.ssh" && mkdir "/Users/${CurrentUsername}/.ssh" && touch "/Users/${CurrentUsername}/.ssh/authorized_keys" && touch "/Users/${CurrentUsername}/.ssh/known_hosts" && ssh-keygen -t ecdsa -b 384 -f "/Users/${CurrentUsername}/.ssh/id_ecdsa" -C "${CurrentUsername}@$(hostname)" -N "${OPENSSH_PASSWORD}" && ssh-keygen -t ed25519 -f "/Users/${CurrentUsername}/.ssh/id_ed25519" -C "${CurrentUsername}@$(hostname)" -N "${OPENSSH_PASSWORD}" && ssh-keygen -t rsa -b 4096 -f "/Users/${CurrentUsername}/.ssh/id_rsa" -C "${CurrentUsername}@$(hostname)" -N "${OPENSSH_PASSWORD}" && sudo chown ${CurrentUsername}:staff "/Users/${CurrentUsername}/.ssh" && sudo chown ${CurrentUsername}:staff /Users/${CurrentUsername}/.ssh/* && chmod 400 /Users/${CurrentUsername}/.ssh/id_* && chmod 600 /Users/${CurrentUsername}/.ssh/authorized_keys && chmod 600 /Users/${CurrentUsername}/.ssh/known_hosts && chmod 644 /Users/${CurrentUsername}/.ssh/id_*.pub && chmod 700 /Users/${CurrentUsername}/.ssh
+            rm -rf "/Users/${CurrentUsername}/.ssh" && mkdir "/Users/${CurrentUsername}/.ssh" && touch "/Users/${CurrentUsername}/.ssh/authorized_keys" && touch "/Users/${CurrentUsername}/.ssh/known_hosts" && ssh-keygen -t dsa -b 1024 -f "/Users/${CurrentUsername}/.ssh/id_dsa" -C "${CurrentUsername}@$(hostname)" -N "${OPENSSH_PASSWORD}" && ssh-keygen -t ecdsa -b 384 -f "/Users/${CurrentUsername}/.ssh/id_ecdsa" -C "${CurrentUsername}@$(hostname)" -N "${OPENSSH_PASSWORD}" && ssh-keygen -t ed25519 -f "/Users/${CurrentUsername}/.ssh/id_ed25519" -C "${CurrentUsername}@$(hostname)" -N "${OPENSSH_PASSWORD}" && ssh-keygen -t rsa -b 4096 -f "/Users/${CurrentUsername}/.ssh/id_rsa" -C "${CurrentUsername}@$(hostname)" -N "${OPENSSH_PASSWORD}" && sudo chown ${CurrentUsername}:staff "/Users/${CurrentUsername}/.ssh" && sudo chown ${CurrentUsername}:staff /Users/${CurrentUsername}/.ssh/* && chmod 400 /Users/${CurrentUsername}/.ssh/id_* && chmod 600 /Users/${CurrentUsername}/.ssh/authorized_keys && chmod 600 /Users/${CurrentUsername}/.ssh/known_hosts && chmod 644 /Users/${CurrentUsername}/.ssh/id_*.pub && chmod 700 /Users/${CurrentUsername}/.ssh
         fi
     }
     function ConfigurePythonPyPI() {
