@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 2.0.4
+# Current Version: 2.0.5
 
 ## How to get and use?
 # /bin/bash -c "$(curl -fsSL 'https://source.zhijie.online/AutoDeploy/main/macOS.sh')"
@@ -71,9 +71,11 @@ function ConfigurePackages() {
         fi
     }
     function ConfigureGPG() {
+        # Please use "gpg --list-keys --with-keygrip" to get your GPG_AUTH_KEY (A) & GPG_KEY_ID (C).
         GPG_AUTH_KEY=""
+        GPG_KEY_ID=""
         if [ "${GPG_AUTH_KEY}" != "" ] && [ -d "/Users/${CurrentUsername}/.gnupg" ]; then
-            echo "enable-ssh-support" > "/Users/${CurrentUsername}/.gnupg/gpg-agent.conf" && echo "${GPG_AUTH_KEY}" > "/Users/${CurrentUsername}/.gnupg/sshcontrol" && gpg -k && echo "Please use \"gpg --export-ssh-key <GPG_KEY_ID>\" to export your SSH key."
+            echo "enable-ssh-support" > "/Users/${CurrentUsername}/.gnupg/gpg-agent.conf" && echo "${GPG_AUTH_KEY}" > "/Users/${CurrentUsername}/.gnupg/sshcontrol" && gpg -k && echo "Please use \"gpg --export-ssh-key ${GPG_KEY_ID} > /Users/${CurrentUsername}/.ssh/authorized_keys\" to export your SSH key."
         fi
     }
     function ConfigureOpenSSH () {
