@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 1.9.9
+# Current Version: 2.0.0
 
 ## How to get and use?
 # /bin/bash -c "$(curl -fsSL 'https://source.zhijie.online/AutoDeploy/main/macOS.sh')"
@@ -43,13 +43,17 @@ function ConfigurePackages() {
     }
     function ConfigureGit() {
         gitconfig_key_list=(
+            "commit.gpgsign"
             "http.proxy"
             "https.proxy"
             "user.name"
             "user.email"
+            "user.signingkey"
             "url.https://github.com.cnpmjs.org/.insteadOf"
         )
         gitconfig_value_list=(
+            "false"
+            ""
             ""
             ""
             ""
@@ -180,7 +184,7 @@ function ConfigurePackages() {
         function GenerateOMZProfile() {
             omz_list=(
                 "export EDITOR=\"nano\""
-                "export GPG_TTY=\$\(tty\)"
+                "export GPG_TTY=\$(tty)"
                 "export HOMEBREW_BOTTLE_DOMAIN=\"https://mirrors.ustc.edu.cn/homebrew-bottles/bottles\""
                 "export HOMEBREW_GITHUB_API_TOKEN=\"your_token_here\""
                 "export MANPATH=\"${CUSTOM_MANPATH}:\$MANPATH\""
