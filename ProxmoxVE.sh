@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 1.6.4
+# Current Version: 1.6.5
 
 ## How to get and use?
 # curl "https://source.zhijie.online/AutoDeploy/main/ProxmoxVE.sh" | sudo bash
@@ -215,17 +215,21 @@ function ConfigurePackages() {
     }
     function ConfigureGit() {
         gitconfig_key_list=(
+            "commit.gpgsign"
             "http.proxy"
             "https.proxy"
             "user.name"
             "user.email"
+            "user.signingkey"
             "url.https://github.com.cnpmjs.org/.insteadOf"
         )
         gitconfig_value_list=(
+            "${GIT_COMMIT_GPGSIGN:-false}"
             "${GIT_HTTP_PROXY}"
             "${GIT_HTTPS_PROXY}"
             "${GIT_USER_NAME}"
             "${GIT_USER_EMAIL}"
+            "${GIT_USER_SIGNINGKEY}"
             "https://github.com/"
         )
         which "git" > "/dev/null" 2>&1
@@ -327,7 +331,7 @@ function ConfigurePackages() {
         omz_list=(
             "export DEBIAN_FRONTEND=\"noninteractive\""
             "export EDITOR=\"nano\""
-            "export GPG_TTY=\$\(tty\)"
+            "export GPG_TTY=\$(tty)"
             "export PATH=\"/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:\$PATH\""
             "export ZSH=\"\$HOME/.oh-my-zsh\""
             "plugins=(zsh-autosuggestions zsh-completions zsh-history-substring-search zsh-syntax-highlighting)"
@@ -400,7 +404,7 @@ function ConfigureSystem() {
             fi
         fi
         if [ -f "/root/.gitconfig" ]; then
-            mv "/root/.gitconfig" "/root/.gitconfig.bak" && GIT_HTTP_PROXY="" && GIT_HTTPS_PROXY="" && GIT_USER_NAME="" && GIT_USER_EMAIL="" && ConfigureGit && mv "/root/.gitconfig" "/home/${DEFAULT_USERNAME}/.gitconfig" && chown -R $DEFAULT_USERNAME:$DEFAULT_USERNAME "/home/${DEFAULT_USERNAME}/.gitconfig" && mv "/root/.gitconfig.bak" "/root/.gitconfig"
+            mv "/root/.gitconfig" "/root/.gitconfig.bak" && GIT_COMMIT_GPGSIGN="" && GIT_HTTP_PROXY="" && GIT_HTTPS_PROXY="" && GIT_USER_NAME="" && GIT_USER_EMAIL="" && GIT_USER_SIGNINGKEY="" && ConfigureGit && mv "/root/.gitconfig" "/home/${DEFAULT_USERNAME}/.gitconfig" && chown -R $DEFAULT_USERNAME:$DEFAULT_USERNAME "/home/${DEFAULT_USERNAME}/.gitconfig" && mv "/root/.gitconfig.bak" "/root/.gitconfig"
         fi
         if [ -f "/root/.config/pip/pip.conf" ]; then
             if [ ! -d "/home/${DEFAULT_USERNAME}/.config" ]; then
