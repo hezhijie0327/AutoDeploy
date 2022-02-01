@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 2.0.1
+# Current Version: 2.0.2
 
 ## How to get and use?
 # /bin/bash -c "$(curl -fsSL 'https://source.zhijie.online/AutoDeploy/main/macOS.sh')"
@@ -101,7 +101,7 @@ function ConfigurePackages() {
         function ConfigureGPGAgent() {
             GPG_KEY=""
             if [ "${GPG_KEY}" != "" ] && [ -d "/Users/${CurrentUsername}/.gnupg" ]; then
-                echo "enable-ssh-support" > "/Users/${CurrentUsername}/.gnupg/gpg-agent.conf" && echo "${GPG_KEY}" > "/Users/${CurrentUsername}/.gnupg/sshcontrol"
+                echo "enable-ssh-support" > "/Users/${CurrentUsername}/.gnupg/gpg-agent.conf" && echo "${GPG_KEY}" > "/Users/${CurrentUsername}/.gnupg/sshcontrol" && echo "Please use \"gpg --export-ssh-key <GPG_KEY>\" to export your SSH key."
             fi
         }
         if [ ! -f "/opt/homebrew/etc/ssh/sshd_config.bak" ]; then
