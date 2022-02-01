@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 2.0.0
+# Current Version: 2.0.1
 
 ## How to get and use?
 # /bin/bash -c "$(curl -fsSL 'https://source.zhijie.online/AutoDeploy/main/macOS.sh')"
@@ -98,6 +98,12 @@ function ConfigurePackages() {
         fi
     }
     function ConfigureSshd() {
+        function ConfigureGPGAgent() {
+            GPG_KEY=""
+            if [ "${GPG_KEY}" != "" ] && [ -d "/Users/${CurrentUsername}/.gnupg" ]; then
+                echo "enable-ssh-support" > "/Users/${CurrentUsername}/.gnupg/gpg-agent.conf" && echo "${GPG_KEY}" > "/Users/${CurrentUsername}/.gnupg/sshcontrol"
+            fi
+        }
         if [ ! -f "/opt/homebrew/etc/ssh/sshd_config.bak" ]; then
             cp -rf "/opt/homebrew/etc/ssh/sshd_config" "/opt/homebrew/etc/ssh/sshd_config.bak" && chown ${CurrentUsername}:admin "/opt/homebrew/etc/ssh/sshd_config.bak" && chmod 644 "/opt/homebrew/etc/ssh/sshd_config.bak"
         fi
@@ -105,6 +111,7 @@ function ConfigurePackages() {
             cat "/opt/homebrew/etc/ssh/sshd_config.bak" | sed "s/\#PasswordAuthentication\ yes/PasswordAuthentication\ yes/g;s/\#PermitRootLogin\ prohibit\-password/PermitRootLogin\ yes/g;s/\#PubkeyAuthentication\ yes/PubkeyAuthentication\ yes/g" > "/tmp/sshd_config.autodeploy" && cat "/tmp/sshd_config.autodeploy" > "/opt/homebrew/etc/ssh/sshd_config" && chown ${CurrentUsername}:admin "/opt/homebrew/etc/ssh/sshd_config" && chmod 644 "/opt/homebrew/etc/ssh/sshd_config" && rm -rf "/tmp/sshd_config.autodeploy"
             sudo rm -rf "/etc/ssh/sshd_config" && cat "/opt/homebrew/etc/ssh/sshd_config.bak" | sed "s/\#PasswordAuthentication\ yes/PasswordAuthentication\ yes/g;s/\#PermitRootLogin\ prohibit\-password/PermitRootLogin\ yes/g;s/\#PubkeyAuthentication\ yes/PubkeyAuthentication\ yes/g" > "/tmp/sshd_config.autodeploy" && sudo mv "/tmp/sshd_config.autodeploy" "/etc/ssh/sshd_config" && sudo chown root:wheel "/etc/ssh/sshd_config" && sudo chmod 644 "/etc/ssh/sshd_config" && sudo rm -rf "/tmp/sshd_config.autodeploy"
         fi
+        ConfigureGPGAgent
     }
     function ConfigureWireGuard() {
         TUNNEL_CLIENT_V4="192.168.$(shuf -i '224-255' -n 1).$(shuf -i '1-254' -n 1)/32"
@@ -189,6 +196,7 @@ function ConfigurePackages() {
                 "export HOMEBREW_GITHUB_API_TOKEN=\"your_token_here\""
                 "export MANPATH=\"${CUSTOM_MANPATH}:\$MANPATH\""
                 "export PATH=\"${CUSTOM_PATH}:${DEFAULT_PATH}:\$PATH\""
+                "# export SSH_AUTH_SOCK=\"\$(gpgconf --list-dirs agent-ssh-socket)\" && gpgconf --launch gpg-agent && gpg-connect-agent updatestartuptty /bye > \"/dev/null\""
                 "export ZSH=\"\$HOME/.oh-my-zsh\""
                 "plugins=(zsh-autosuggestions zsh-completions zsh-history-substring-search zsh-syntax-highlighting)"
                 "ZSH_CACHE_DIR=\"\$ZSH/cache\""
