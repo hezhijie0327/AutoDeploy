@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 3.1.1
+# Current Version: 3.1.2
 
 ## How to get and use?
 # curl "https://source.zhijie.online/AutoDeploy/main/Ubuntu.sh" | sudo bash
@@ -664,6 +664,7 @@ function ConfigurePackages() {
             "export EDITOR=\"nano\""
             "export GPG_TTY=\$(tty)"
             "export PATH=\"/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:\$PATH\""
+            "# export SSH_AUTH_SOCK=\"\$(gpgconf --list-dirs agent-ssh-socket)\" && gpgconf --launch gpg-agent && gpg-connect-agent updatestartuptty /bye > \"/dev/null\""
             "export ZSH=\"\$HOME/.oh-my-zsh\""
             "plugins=(zsh-autosuggestions zsh-completions zsh-history-substring-search zsh-syntax-highlighting)"
             "ZSH_CACHE_DIR=\"\$ZSH/cache\""
@@ -741,6 +742,10 @@ function ConfigureSystem() {
                 userdel -rf "${USER_LIST[$USER_LIST_TASK]}" > "/dev/null" 2>&1
             done
             useradd -c "${DEFAULT_FULLNAME}" -d "/home/${DEFAULT_USERNAME}" -s "/bin/zsh" -m "${DEFAULT_USERNAME}" && echo $DEFAULT_USERNAME:$DEFAULT_PASSWORD | chpasswd && adduser "${DEFAULT_USERNAME}" "docker" && adduser "${DEFAULT_USERNAME}" "sudo"
+            GPG_AUTH_KEY=""
+            if [ "${GPG_AUTH_KEY}" != "" ] && [ -d "/home/${DEFAULT_USERNAME}/.gnupg" ]; then
+                echo "enable-ssh-support" > "/home/${DEFAULT_USERNAME}/.gnupg/gpg-agent.conf" && echo "${GPG_AUTH_KEY}" > "/home/${DEFAULT_USERNAME}/.gnupg/sshcontrol" && gpg -k && echo "Please use \"gpg --export-ssh-key <GPG_KEY_ID>\" to export your SSH key."
+            fi
             if [ -d "/etc/zsh/oh-my-zsh" ]; then
                 cp -rf "/etc/zsh/oh-my-zsh" "/home/${DEFAULT_USERNAME}/.oh-my-zsh" && chown -R $DEFAULT_USERNAME:$DEFAULT_USERNAME "/home/${DEFAULT_USERNAME}/.oh-my-zsh"
                 if [ -f "/etc/zsh/oh-my-zsh.zshrc" ]; then
