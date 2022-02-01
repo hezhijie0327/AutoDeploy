@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 3.1.0
+# Current Version: 3.1.1
 
 ## How to get and use?
 # curl "https://source.zhijie.online/AutoDeploy/main/Ubuntu.sh" | sudo bash
@@ -302,7 +302,7 @@ function ConfigurePackages() {
         if [ "$?" -eq "0" ]; then
             rm -rf "/tmp/chrony.autodeploy" && for chrony_list_task in "${!chrony_list[@]}"; do
                 echo "${chrony_list[$chrony_list_task]}" >> "/tmp/chrony.autodeploy"
-            done && cat "/tmp/chrony.autodeploy" > "/etc/chrony/chrony.conf" && rm -rf "/tmp/chrony.autodeploy" && OPRATIONS="restart" && SERVICE_NAME="chrony" && CallServiceController && sleep 5s && chronyc activity && chronyc tracking && chronyc clients
+            done && cat "/tmp/chrony.autodeploy" > "/etc/chrony/chrony.conf" && rm -rf "/tmp/chrony.autodeploy" && OPRATIONS="restart" && SERVICE_NAME="chrony" && CallServiceController && sleep 5s && chronyc activity && chronyc tracking && chronyc clients && hwclock -w
         fi
     }
     function ConfigureCockpit() {
