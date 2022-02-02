@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 2.0.7
+# Current Version: 2.0.8
 
 ## How to get and use?
 # /bin/bash -c "$(curl -fsSL 'https://source.zhijie.online/AutoDeploy/main/macOS.sh')"
@@ -416,6 +416,7 @@ function InstallDependencyPackages() {
             "whois"
             "wireguard-tools"
             "wireshark"
+            "ykman"
             "youtube-dl"
             "zip"
             "zsh"
