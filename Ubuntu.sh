@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 3.1.3
+# Current Version: 3.1.4
 
 ## How to get and use?
 # curl "https://source.zhijie.online/AutoDeploy/main/Ubuntu.sh" | sudo bash
@@ -422,6 +422,10 @@ function ConfigurePackages() {
         if [ "$?" -eq "0" ]; then
             for gitconfig_list_task in "${!gitconfig_key_list[@]}"; do
                 git config --global --unset ${gitconfig_key_list[$gitconfig_list_task]}
+                if [ "${container_environment}" == "wsl2" ]; then
+                    GIT_COMMIT_GPGSIGN="false"
+                    GIT_USER_SIGNINGKEY=""
+                fi
                 if [ "${gitconfig_value_list[$gitconfig_list_task]}" != "" ]; then
                     git config --global ${gitconfig_key_list[$gitconfig_list_task]} "${gitconfig_value_list[$gitconfig_list_task]}"
                 fi
@@ -745,8 +749,12 @@ function ConfigureSystem() {
             # Please use "gpg --list-keys --with-keygrip" to get your GPG_AUTH_KEY (A) & GPG_KEY_ID (C).
             GPG_AUTH_KEY=""
             GPG_KEY_ID=""
-            if [ "${GPG_AUTH_KEY}" != "" ] && [ -d "/home/${DEFAULT_USERNAME}/.gnupg" ]; then
-                echo "enable-ssh-support" > "/home/${DEFAULT_USERNAME}/.gnupg/gpg-agent.conf" && echo "${GPG_AUTH_KEY}" > "/home/${DEFAULT_USERNAME}/.gnupg/sshcontrol" && gpg -k && echo "Please use \"gpg --export-ssh-key ${GPG_KEY_ID} > /home/${DEFAULT_USERNAME}/.ssh/authorized_keys\" to export your SSH key."
+            if [ "${container_environment}" != "wsl2" ]; then
+                if [ "${GPG_AUTH_KEY}" != "" ] && [ -d "/home/${DEFAULT_USERNAME}/.gnupg" ]; then
+                    echo "enable-ssh-support" > "/home/${DEFAULT_USERNAME}/.gnupg/gpg-agent.conf" && echo "${GPG_AUTH_KEY}" > "/home/${DEFAULT_USERNAME}/.gnupg/sshcontrol" && gpg -k && echo "Please use \"gpg --export-ssh-key ${GPG_KEY_ID} > /home/${DEFAULT_USERNAME}/.ssh/authorized_keys\" to export your SSH key."
+                fi
+            else
+                rm -rf "/home/${DEFAULT_USERNAME}/.gnupg/gpg-agent.conf" "/home/${DEFAULT_USERNAME}/.gnupg/sshcontrol"
             fi
             if [ -d "/etc/zsh/oh-my-zsh" ]; then
                 cp -rf "/etc/zsh/oh-my-zsh" "/home/${DEFAULT_USERNAME}/.oh-my-zsh" && chown -R $DEFAULT_USERNAME:$DEFAULT_USERNAME "/home/${DEFAULT_USERNAME}/.oh-my-zsh"
