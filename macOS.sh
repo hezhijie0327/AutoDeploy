@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 2.0.9
+# Current Version: 2.1.0
 
 ## How to get and use?
 # /bin/bash -c "$(curl -fsSL 'https://source.zhijie.online/AutoDeploy/main/macOS.sh')"
@@ -75,7 +75,18 @@ function ConfigurePackages() {
         GPG_AUTH_KEY=""
         GPG_KEY_ID=""
         if [ "${GPG_AUTH_KEY}" != "" ] && [ -d "/Users/${CurrentUsername}/.gnupg" ]; then
-            echo "enable-ssh-support" > "/Users/${CurrentUsername}/.gnupg/gpg-agent.conf" && echo "${GPG_AUTH_KEY}" > "/Users/${CurrentUsername}/.gnupg/sshcontrol" && gpg -k && echo "Please use \"gpg --export-ssh-key ${GPG_KEY_ID} > /Users/${CurrentUsername}/.ssh/authorized_keys\" to export your SSH key."
+            if [ "${ARM_ARCHITECTURE}" == "TRUE" ]; then
+                PINENTRY_PROGRAM_PATH="/opt/homebrew/bin"
+            else
+                PINENTRY_PROGRAM_PATH="/usr/local/bin"
+            fi
+            gpg_agent_list=(
+                "enable-ssh-support"
+                "pinentry-program ${PINENTRY_PROGRAM_PATH}/pinentry-mac"
+            )
+            rm -rf "/Users/${CurrentUsername}/.gnupg/gpg-agent.conf" && for gpg_agent_list_task in "${!gpg_agent_list[@]}"; do
+                echo "${gpg_agent_list[$gpg_agent_list_task]}" >> "/Users/${CurrentUsername}/.gnupg/gpg-agent.conf"
+            done && echo "${GPG_AUTH_KEY}" > "/Users/${CurrentUsername}/.gnupg/sshcontrol" && gpg -k && echo "Please use \"gpg --export-ssh-key ${GPG_KEY_ID} > /Users/${CurrentUsername}/.ssh/authorized_keys\" to export your SSH key."
         fi
     }
     function ConfigureOpenSSH () {
