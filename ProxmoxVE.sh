@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 1.7.1
+# Current Version: 1.7.2
 
 ## How to get and use?
 # curl "https://source.zhijie.online/AutoDeploy/main/ProxmoxVE.sh" | sudo bash
@@ -333,7 +333,7 @@ function ConfigurePackages() {
             "export EDITOR=\"nano\""
             "export GPG_TTY=\$(tty)"
             "export PATH=\"/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:\$PATH\""
-            "# export SSH_AUTH_SOCK=\"\$(gpgconf --list-dirs agent-ssh-socket)\" && gpgconf --launch gpg-agent && gpg-connect-agent updatestartuptty /bye > \"/dev/null\""
+            "# export SSH_AUTH_SOCK=\"\$(gpgconf --list-dirs agent-ssh-socket)\" && gpgconf --kill gpg-agent > \"/dev/null\" && gpgconf --launch gpg-agent && gpg-connect-agent updatestartuptty /bye > \"/dev/null\""
             "export ZSH=\"\$HOME/.oh-my-zsh\""
             "plugins=(zsh-autosuggestions zsh-completions zsh-history-substring-search zsh-syntax-highlighting)"
             "ZSH_CACHE_DIR=\"\$ZSH/cache\""
