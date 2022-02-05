@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 2.0.8
+# Current Version: 2.0.9
 
 ## How to get and use?
 # /bin/bash -c "$(curl -fsSL 'https://source.zhijie.online/AutoDeploy/main/macOS.sh')"
@@ -406,6 +406,8 @@ function InstallDependencyPackages() {
             "nmap"
             "openssh"
             "p7zip"
+            "pinentry"
+            "pinentry-mac"
             "python3"
             "qrencode"
             "rar"
