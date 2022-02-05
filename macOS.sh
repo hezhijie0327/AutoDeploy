@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 2.1.0
+# Current Version: 2.1.1
 
 ## How to get and use?
 # /bin/bash -c "$(curl -fsSL 'https://source.zhijie.online/AutoDeploy/main/macOS.sh')"
@@ -208,7 +208,7 @@ function ConfigurePackages() {
                 "export HOMEBREW_GITHUB_API_TOKEN=\"your_token_here\""
                 "export MANPATH=\"${CUSTOM_MANPATH}:\$MANPATH\""
                 "export PATH=\"${CUSTOM_PATH}:${DEFAULT_PATH}:\$PATH\""
-                "# export SSH_AUTH_SOCK=\"\$(gpgconf --list-dirs agent-ssh-socket)\" && gpgconf --launch gpg-agent && gpg-connect-agent updatestartuptty /bye > \"/dev/null\""
+                "# export SSH_AUTH_SOCK=\"\$(gpgconf --list-dirs agent-ssh-socket)\" && gpgconf --kill gpg-agent > \"/dev/null\" && gpgconf --launch gpg-agent && gpg-connect-agent updatestartuptty /bye > \"/dev/null\""
                 "export ZSH=\"\$HOME/.oh-my-zsh\""
                 "plugins=(zsh-autosuggestions zsh-completions zsh-history-substring-search zsh-syntax-highlighting)"
                 "ZSH_CACHE_DIR=\"\$ZSH/cache\""
