@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 2.1.1
+# Current Version: 2.1.2
 
 ## How to get and use?
 # /bin/bash -c "$(curl -fsSL 'https://source.zhijie.online/AutoDeploy/main/macOS.sh')"
@@ -82,7 +82,7 @@ function ConfigurePackages() {
             fi
             gpg_agent_list=(
                 "enable-ssh-support"
-                "pinentry-program ${PINENTRY_PROGRAM_PATH}/pinentry-mac"
+                "# pinentry-program ${PINENTRY_PROGRAM_PATH}/pinentry-mac"
             )
             rm -rf "/Users/${CurrentUsername}/.gnupg/gpg-agent.conf" && for gpg_agent_list_task in "${!gpg_agent_list[@]}"; do
                 echo "${gpg_agent_list[$gpg_agent_list_task]}" >> "/Users/${CurrentUsername}/.gnupg/gpg-agent.conf"
