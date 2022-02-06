@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 1.7.2
+# Current Version: 1.7.3
 
 ## How to get and use?
 # curl "https://source.zhijie.online/AutoDeploy/main/ProxmoxVE.sh" | sudo bash
@@ -288,6 +288,77 @@ function ConfigurePackages() {
             fi
         fi
     }
+    function ConfigurePVEFirewall() {
+        cluster_fw_list=(
+            "[OPTIONS]"
+            "ebtables: 1"
+            "enable: 1"
+            "log_ratelimit: burst=5,enable=1,rate=1/second"
+            "policy_in: REJECT"
+            "policy_out: ACCEPT"
+        )
+        host_fw_list=(
+            "[OPTIONS]"
+            "enable: 1"
+            "log_level_in: err"
+            "log_level_out: err"
+            "log_nf_conntrack: 1"
+            "ndp: 1"
+            "nf_conntrack_allow_invalid: 0"
+            "nf_conntrack_max: 262144"
+            "nf_conntrack_tcp_timeout_established: 432000"
+            "nf_conntrack_tcp_timeout_syn_recv: 60"
+            "nosmurfs: 1"
+            "protection_synflood: 1"
+            "protection_synflood_burst: 1000"
+            "protection_synflood_rate: 200"
+            "smurf_log_level: err"
+            "tcp_flags_log_level: err"
+            "tcpflags: 1"
+            "[RULES]"
+            "IN ACCEPT -p icmp -log err"
+            "IN ACCEPT -p udp -dport 111 -log err"
+            "IN ACCEPT -p udp -dport 123 -log err"
+            "IN ACCEPT -p tcp -dport 22 -log err"
+            "IN ACCEPT -p tcp -dport 3128 -log err"
+            "IN ACCEPT -p udp -dport 323 -log err"
+            "IN ACCEPT -p udp -dport 5404:5405 -log err"
+            "IN ACCEPT -p tcp -dport 5900:5999 -log err"
+            "IN ACCEPT -p tcp -dport 60000:60050 -log err"
+            "IN ACCEPT -p tcp -dport 8006 -log err"
+        )
+        vm_container_fw_list=(
+            "[OPTIONS]"
+            "dhcp: 1"
+            "enable: 0"
+            "ipfilter: 1"
+            "log_level_in: err"
+            "log_level_out: err"
+            "macfilter: 1"
+            "ndp: 1"
+            "policy_in: ACCEPT"
+            "policy_out: REJECT"
+            "radv: 1"
+        )
+        vm_container_list=(
+            $(ls "/etc/pve/lxc" | grep "\.conf" | sed "s/\.conf//g" | awk '{print $1}')
+            $(ls "/etc/pve/qemu-server" | grep "\.conf" | sed "s/\.conf//g" | awk '{print $1}')
+            "template"
+        )
+        rm -rf "/tmp/pve_firewall.autodeploy" && for cluster_fw_list_task in "${!cluster_fw_list[@]}"; do
+            echo "${cluster_fw_list[$cluster_fw_list_task]}" >> "/tmp/pve_firewall.autodeploy"
+        done && cat "/tmp/pve_firewall.autodeploy" > "/etc/pve/firewall/cluster.fw" && rm -rf "/tmp/pve_firewall.autodeploy"
+        rm -rf "/tmp/pve_firewall.autodeploy" && for host_fw_list_task in "${!host_fw_list[@]}"; do
+            echo "${host_fw_list[$host_fw_list_task]}" >> "/tmp/pve_firewall.autodeploy"
+        done && cat "/tmp/pve_firewall.autodeploy" > "/etc/pve/nodes/${NEW_HOSTNAME}/host.fw" && rm -rf "/tmp/pve_firewall.autodeploy"
+        rm -rf "/tmp/pve_firewall.autodeploy" && for vm_container_fw_list_task in "${!vm_container_fw_list[@]}"; do
+            echo "${vm_container_fw_list[$vm_container_fw_list_task]}" >> "/tmp/pve_firewall.autodeploy"
+        done && if [ "${#vm_container_list[@]}" -ne 0 ]; then
+            for vm_container_list_task in "${!vm_container_list[@]}"; do
+                cat "/tmp/pve_firewall.autodeploy" > "/etc/pve/firewall/${vm_container_list[vm_container_list_task]}.fw"
+            done
+        fi && rm -rf "/tmp/pve_firewall.autodeploy"
+    }
     function ConfigurePythonPyPI() {
         which "pip3" > "/dev/null" 2>&1
         if [ "$?" -eq "0" ]; then
@@ -374,6 +445,7 @@ function ConfigurePackages() {
     ConfigureIOMMU
     ConfigureOpenSSH
     ConfigurePostfix
+    ConfigurePVEFirewall
     ConfigurePythonPyPI
     ConfigureSshd
     ConfigureSysctl
