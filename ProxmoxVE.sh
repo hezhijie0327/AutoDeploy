@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 1.7.5
+# Current Version: 1.7.6
 
 ## How to get and use?
 # curl "https://source.zhijie.online/AutoDeploy/main/ProxmoxVE.sh" | sudo bash
@@ -296,6 +296,12 @@ function ConfigurePackages() {
             fi
         fi
     }
+    function ConfigurePVECeph() {
+        ceph_mon_list=($(ls "/etc/systemd/system/ceph-mon.target.wants" | grep "ceph-mon\@"))
+        for ceph_mon_list_task in "${!ceph_mon_list[@]}"; do
+            systemctl stop ${ceph_mon_list[$ceph_mon_list_task]} && systemctl disable ${ceph_mon_list[$ceph_mon_list_task]}
+        done && rm -rf "/etc/ceph" "/etc/pve/ceph.conf" "/var/lib/ceph" && mkdir "/etc/ceph" "/var/lib/ceph" "/var/lib/ceph/mgr" "/var/lib/ceph/mon"
+    }
     function ConfigurePVECluster() {
         systemctl stop pve-cluster && systemctl stop corosync && pmxcfs -l && rm -rf "/etc/pve/corosync.conf" && rm -rf /etc/corosync/* && rm -rf /var/lib/corosync/* && killall pmxcfs && systemctl start pve-cluster
     }
@@ -456,6 +462,7 @@ function ConfigurePackages() {
     ConfigureIOMMU
     ConfigureOpenSSH
     ConfigurePostfix
+    ConfigurePVECeph
     ConfigurePVECluster
     ConfigurePVEFirewall
     ConfigurePythonPyPI
