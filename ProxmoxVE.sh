@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 1.7.6
+# Current Version: 1.7.7
 
 ## How to get and use?
 # curl "https://source.zhijie.online/AutoDeploy/main/ProxmoxVE.sh" | sudo bash
@@ -303,7 +303,7 @@ function ConfigurePackages() {
         done && rm -rf "/etc/ceph" "/etc/pve/ceph.conf" "/var/lib/ceph" && mkdir "/etc/ceph" "/var/lib/ceph" "/var/lib/ceph/mgr" "/var/lib/ceph/mon"
     }
     function ConfigurePVECluster() {
-        systemctl stop pve-cluster && systemctl stop corosync && pmxcfs -l && rm -rf "/etc/pve/corosync.conf" && rm -rf /etc/corosync/* && rm -rf /var/lib/corosync/* && killall pmxcfs && systemctl start pve-cluster
+        systemctl stop pve-cluster && systemctl stop corosync && pmxcfs -l && rm -rf "/etc/pve/corosync.conf" && rm -rf /etc/corosync/* /var/log/corosync/* /var/lib/corosync/* && killall pmxcfs && systemctl start pve-cluster
     }
     function ConfigurePVEFirewall() {
         cluster_fw_list=(
