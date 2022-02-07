@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 1.7.4
+# Current Version: 1.7.5
 
 ## How to get and use?
 # curl "https://source.zhijie.online/AutoDeploy/main/ProxmoxVE.sh" | sudo bash
@@ -140,19 +140,27 @@ function ConfigurePackages() {
             "makestep 1 3"
             "ratelimit burst 8 interval 3 leak 2"
             "rtcsync"
-            "server ntp.ntsc.ac.cn iburst prefer"
-            "server cn.ntp.org.cn iburst prefer"
-            "server time.apple.com iburst"
-            "server time.windows.com iburst"
-            "server time.izatcloud.net iburst"
-            "server pool.ntp.org iburst"
-            "server asia.pool.ntp.org iburst"
-            "server cn.pool.ntp.org iburst"
+        )
+        chrony_ntp_list=(
+            "ntp.ntsc.ac.cn"
+            "cn.ntp.org.cn"
+            "time.apple.com"
+            "time.windows.com"
+            "time.izatcloud.net"
+            "pool.ntp.org"
+            "asia.pool.ntp.org"
+            "cn.pool.ntp.org"
         )
         which "chronyc" > "/dev/null" 2>&1
         if [ "$?" -eq "0" ]; then
             rm -rf "/tmp/chrony.autodeploy" && for chrony_list_task in "${!chrony_list[@]}"; do
                 echo "${chrony_list[$chrony_list_task]}" >> "/tmp/chrony.autodeploy"
+            done && for chrony_ntp_list_task in "${!chrony_ntp_list[@]}"; do
+                if [ "${chrony_ntp_list[$chrony_ntp_list_task]}" == "ntp.ntsc.ac.cn" ] || [ "${chrony_ntp_list[$chrony_ntp_list_task]}" == "cn.ntp.org.cn" ]; then
+                    echo "server ${chrony_ntp_list[$chrony_ntp_list_task]} iburst prefer" >> "/tmp/chrony.autodeploy"
+                else
+                    echo "server ${chrony_ntp_list[$chrony_ntp_list_task]} iburst" >> "/tmp/chrony.autodeploy"
+                fi
             done && cat "/tmp/chrony.autodeploy" > "/etc/chrony/chrony.conf" && rm -rf "/tmp/chrony.autodeploy" && systemctl restart chrony.service && sleep 5s && chronyc activity && chronyc tracking && chronyc clients && hwclock -w
         fi
     }
