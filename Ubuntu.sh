@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 3.1.9
+# Current Version: 3.2.0
 
 ## How to get and use?
 # curl "https://source.zhijie.online/AutoDeploy/main/Ubuntu.sh" | sudo bash
@@ -215,11 +215,15 @@ function GetSystemInformation() {
             exit 1
         fi
     }
+    function SetGHProxyDomain() {
+        export GHPROXY_URL="ghproxy.com"
+    }
     CheckDNSConfiguration
     CheckMachineEnvironment
     GenerateHostname
     GetLSBCodename
     GetOSArchitecture
+    SetGHProxyDomain
 }
 # Set Repository Mirror
 function SetRepositoryMirror() {
@@ -415,7 +419,7 @@ function ConfigurePackages() {
             "user.name"
             "user.email"
             "user.signingkey"
-            "url.https://github.com.cnpmjs.org/.insteadOf"
+            "url.https://https://${GHPROXY_URL}/https://github.com/.insteadOf"
         )
         gitconfig_value_list=(
             "${GIT_COMMIT_GPGSIGN:-false}"
@@ -863,9 +867,9 @@ function InstallCustomPackages() {
             "zsh-history-substring-search"
             "zsh-syntax-highlighting"
         )
-        rm -rf "/etc/zsh/oh-my-zsh" && git clone --depth=1 "https://github.com.cnpmjs.org/ohmyzsh/ohmyzsh.git" "/etc/zsh/oh-my-zsh" && if [ -d "/etc/zsh/oh-my-zsh/custom/plugins" ]; then
+        rm -rf "/etc/zsh/oh-my-zsh" && git clone --depth=1 "https://https://${GHPROXY_URL}/https://github.com/ohmyzsh/ohmyzsh.git" "/etc/zsh/oh-my-zsh" && if [ -d "/etc/zsh/oh-my-zsh/custom/plugins" ]; then
             for plugin_list_task in "${!plugin_list[@]}"; do
-                rm -rf "/etc/zsh/oh-my-zsh/custom/plugins/${plugin_list[$plugin_list_task]}" && git clone --depth=1 "https://github.com.cnpmjs.org/zsh-users/${plugin_list[$plugin_list_task]}.git" "/etc/zsh/oh-my-zsh/custom/plugins/${plugin_list[$plugin_list_task]}"
+                rm -rf "/etc/zsh/oh-my-zsh/custom/plugins/${plugin_list[$plugin_list_task]}" && git clone --depth=1 "https://https://${GHPROXY_URL}/https://github.com/zsh-users/${plugin_list[$plugin_list_task]}.git" "/etc/zsh/oh-my-zsh/custom/plugins/${plugin_list[$plugin_list_task]}"
             done
         fi
     }
