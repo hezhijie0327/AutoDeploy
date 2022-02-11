@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 2.1.2
+# Current Version: 2.1.3
 
 ## How to get and use?
 # /bin/bash -c "$(curl -fsSL 'https://source.zhijie.online/AutoDeploy/main/macOS.sh')"
@@ -25,8 +25,12 @@ function GetSystemInformation() {
             fi
         fi
     }
+    function SetGHProxyDomain() {
+        export GHPROXY_URL="ghproxy.com"
+    }
     GetCurrentUsername
     IsArmArchitecture
+    SetGHProxyDomain
 }
 # Configure Packages
 function ConfigurePackages() {
@@ -49,7 +53,7 @@ function ConfigurePackages() {
             "user.name"
             "user.email"
             "user.signingkey"
-            "url.https://github.com.cnpmjs.org/.insteadOf"
+            "url.https://${GHPROXY_URL}/https://github.com/.insteadOf"
         )
         gitconfig_value_list=(
             "false"
@@ -205,6 +209,7 @@ function ConfigurePackages() {
                 "export EDITOR=\"nano\""
                 "export GPG_TTY=\$(tty)"
                 "export HOMEBREW_BOTTLE_DOMAIN=\"https://mirrors.ustc.edu.cn/homebrew-bottles/bottles\""
+                "export HOMEBREW_CORE_GIT_REMOTE=\"https://${GHPROXY_URL}/https://github.com/homebrew/homebrew-core.git\""
                 "export HOMEBREW_GITHUB_API_TOKEN=\"your_token_here\""
                 "export MANPATH=\"${CUSTOM_MANPATH}:\$MANPATH\""
                 "export PATH=\"${CUSTOM_PATH}:${DEFAULT_PATH}:\$PATH\""
@@ -342,9 +347,9 @@ function InstallCustomPackages() {
             "zsh-history-substring-search"
             "zsh-syntax-highlighting"
         )
-        rm -rf "/Users/${CurrentUsername}/.oh-my-zsh" && git clone --depth=1 "https://github.com.cnpmjs.org/ohmyzsh/ohmyzsh.git" "/Users/${CurrentUsername}/.oh-my-zsh" && if [ -d "/Users/${CurrentUsername}/.oh-my-zsh/custom/plugins" ]; then
+        rm -rf "/Users/${CurrentUsername}/.oh-my-zsh" && git clone --depth=1 "https://${GHPROXY_URL}/https://github.com/ohmyzsh/ohmyzsh.git" "/Users/${CurrentUsername}/.oh-my-zsh" && if [ -d "/Users/${CurrentUsername}/.oh-my-zsh/custom/plugins" ]; then
             for plugin_list_task in "${!plugin_list[@]}"; do
-                rm -rf "/Users/${CurrentUsername}/.oh-my-zsh/custom/plugins/${plugin_list[$plugin_list_task]}" && git clone --depth=1 "https://github.com.cnpmjs.org/zsh-users/${plugin_list[$plugin_list_task]}.git" "/Users/${CurrentUsername}/.oh-my-zsh/custom/plugins/${plugin_list[$plugin_list_task]}"
+                rm -rf "/Users/${CurrentUsername}/.oh-my-zsh/custom/plugins/${plugin_list[$plugin_list_task]}" && git clone --depth=1 "https://${GHPROXY_URL}/https://github.com/zsh-users/${plugin_list[$plugin_list_task]}.git" "/Users/${CurrentUsername}/.oh-my-zsh/custom/plugins/${plugin_list[$plugin_list_task]}"
             done
         fi
     }
@@ -372,7 +377,7 @@ function InstallDependencyPackages() {
     export PATH="/opt/homebrew/sbin:/opt/homebrew/bin:${PATH}"
     which "brew" > "/dev/null" 2>&1
     if [ "$?" -eq "1" ]; then
-        /bin/bash -c "$(curl -fsSL 'https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh' | sed 's/https\:\/\/github\.com/https\:\/\/github\.com\.cnpmjs\.org/g')"
+        /bin/bash -c $(curl -fsSL "https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh" | sed "s/https\:\/\/github\.com/https\:\/\/${GHPROXY_URL}\/https\:\/\/github\.com/g")
     fi && export HOMEBREW_BOTTLE_DOMAIN="https://mirrors.ustc.edu.cn/homebrew-bottles/bottles"
     if [ -d "$(brew --repo)/Library/Taps/homebrew" ]; then
         app_list=(
@@ -435,7 +440,7 @@ function InstallDependencyPackages() {
             "zsh"
         )
         for tap_list_task in "${!tap_list[@]}"; do
-            rm -rf "$(brew --repo)/Library/Taps/homebrew/${tap_list[$tap_list_task]}" && git clone "https://github.com.cnpmjs.org/Homebrew/${tap_list[$tap_list_task]}.git" "$(brew --repo)/Library/Taps/homebrew/${tap_list[$tap_list_task]}"
+            rm -rf "$(brew --repo)/Library/Taps/homebrew/${tap_list[$tap_list_task]}" && git clone "https://${GHPROXY_URL}/https://github.com/Homebrew/${tap_list[$tap_list_task]}.git" "$(brew --repo)/Library/Taps/homebrew/${tap_list[$tap_list_task]}"
         done && brew update && for app_list_task in "${!app_list[@]}"; do
             brew info --formula ${app_list[$app_list_task]} && if [ "$?" -eq "0" ]; then
                 brew install --formula ${app_list[$app_list_task]}
