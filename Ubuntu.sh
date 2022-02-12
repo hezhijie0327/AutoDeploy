@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 3.2.5
+# Current Version: 3.2.6
 
 ## How to get and use?
 # curl "https://source.zhijie.online/AutoDeploy/main/Ubuntu.sh" | sudo bash
@@ -534,6 +534,19 @@ function ConfigurePackages() {
             "DNSSEC=allow-downgrade"
             "DNSStubListener=false"
         )
+        which "resolvconf" > "/dev/null" 2>&1
+        if [ "$?" -eq "0" ]; then
+            rm -rf "/etc/resolvconf/resolv.conf.d/base" && for CURRENT_DNS_TASK in "${!CURRENT_DNS[@]}"; do
+                echo "${CURRENT_DNS[$CURRENT_DNS_TASK]}" >> "/etc/resolvconf/resolv.conf.d/base"
+            done && for CUSTOM_DNS_TASK in "${!CUSTOM_DNS[@]}"; do
+                echo "${CUSTOM_DNS[$CUSTOM_DNS_TASK]}" >> "/etc/resolvconf/resolv.conf.d/base"
+            done
+            OPRATIONS="enable" && SERVICE_NAME="resolvconf" && CallServiceController && OPRATIONS="restart" && CallServiceController
+            if [ -f "/etc/resolv.conf" ]; then
+                chattr -i "/etc/resolv.conf" > "/dev/null" 2>&1
+                rm -rf "/etc/resolv.conf" && ln -s "/run/systemd/resolve/resolv.conf" "/etc/resolv.conf"
+            fi
+        fi
         which "resolvectl" > "/dev/null" 2>&1
         if [ "$?" -eq "0" ]; then
             if [ "${container_environment}" != "docker" ] && [ "${container_environment}" != "wsl2" ]; then
@@ -657,8 +670,8 @@ function ConfigurePackages() {
                     "ListenPort = 51820"
                     "PostDown = iptables -D FORWARD -i %i -j ACCEPT; iptables -t nat -D POSTROUTING -o ${WAN_INTERFACE} -j MASQUERADE; ip6tables -D FORWARD -i %i -j ACCEPT; ip6tables -t nat -D POSTROUTING -o ${WAN_INTERFACE} -j MASQUERADE"
                     "PostUp = iptables -A FORWARD -i %i -j ACCEPT; iptables -t nat -A POSTROUTING -o ${WAN_INTERFACE} -j MASQUERADE; ip6tables -A FORWARD -i %i -j ACCEPT; ip6tables -t nat -I POSTROUTING -o ${WAN_INTERFACE} -j MASQUERADE"
-                    "PreDown = ufw route delete allow in on wg0 out on ${WAN_INTERFACE}"
-                    "PreUp = ufw route allow in on wg0 out on ${WAN_INTERFACE}"
+                    "PreDown = rm -rf /etc/resolv.conf; ln -s /run/systemd/resolve/resolv.conf /etc/resolv.conf; ufw route delete allow in on wg0 out on ${WAN_INTERFACE}"
+                    "PreUp = rm -rf /etc/resolv.conf; ln -s /run/resolvconf/resolv.conf /etc/resolv.conf; ufw route allow in on wg0 out on ${WAN_INTERFACE}"
                     "PrivateKey = $(wg genkey | tee '/tmp/wireguard.autodeploy')"
                     "# [Peer]"
                     "# AllowedIPs = ${TUNNEL_CLIENT_V4}, ${TUNNEL_CLIENT_V6}"
