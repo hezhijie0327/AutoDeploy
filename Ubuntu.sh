@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 3.3.1
+# Current Version: 3.3.2
 
 ## How to get and use?
 # curl "https://source.zhijie.online/AutoDeploy/main/Ubuntu.sh" | sudo bash
@@ -39,7 +39,6 @@ function GetSystemInformation() {
             "2400:3200:baba::1"
         )
         DHCP_DNS=()
-        NEW_DOMAIN="localdomain"
         CUSTOM_DNS_LINE="" && for CUSTOM_DNS_TASK in "${!CUSTOM_DNS[@]}"; do
             CUSTOM_DNS_LINE="${CUSTOM_DNS_LINE} ${CUSTOM_DNS[$CUSTOM_DNS_TASK]}"
             CUSTOM_DNS_LINE=$(echo "${CUSTOM_DNS_LINE}" | sed "s/^\ //g")
@@ -49,6 +48,19 @@ function GetSystemInformation() {
             CURRENT_DNS_LINE="" && for CURRENT_DNS_TASK in "${!CURRENT_DNS[@]}"; do
                 CURRENT_DNS_LINE="${CURRENT_DNS_LINE} ${CURRENT_DNS[$CURRENT_DNS_TASK]}"
                 CURRENT_DNS_LINE=$(echo "${CURRENT_DNS_LINE}" | sed "s/^\ //g")
+            done
+        fi
+    }
+    function CheckDomainConfiguration() {
+        CUSTOM_DOMAIN=("localdomain")
+        CURRENT_DOMAIN_EXCLUDE="$(echo ${CUSTOM_DOMAIN[*]} | sed 's/\ /\\\|/g')" && CURRENT_DOMAIN_LINE="" && if [ -f "/etc/resolv.conf" ]; then
+            CURRENT_DOMAIN=(${CUSTOM_DOMAIN[*]} $(cat "/etc/resolv.conf" | grep "search\ " | sed "s/search\ //g;s/\ /\n/g" | grep -v "${CURRENT_DOMAIN_EXCLUDE}" | sort | uniq | awk "{print $2}"))
+            for CURRENT_DOMAIN_TASK in "${!CURRENT_DOMAIN[@]}"; do
+                CURRENT_DOMAIN_LINE="${CURRENT_DOMAIN_LINE} ${CURRENT_DOMAIN[$CURRENT_DOMAIN_TASK]}"
+                NEW_DOMAIN=$(echo "${CURRENT_DOMAIN_LINE}" | sed "s/^\ //g")
+                if [ "${NEW_DOMAIN}" == "" ]; then
+                    NEW_DOMAIN="${CUSTOM_DOMAIN[*]}"
+                fi
             done
         fi
     }
@@ -220,6 +232,7 @@ function GetSystemInformation() {
         export GHPROXY_URL="ghproxy.com"
     }
     CheckDNSConfiguration
+    CheckDomainConfiguration
     CheckMachineEnvironment
     GenerateHostname
     GetLSBCodename
