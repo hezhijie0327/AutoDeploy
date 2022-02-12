@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 2.1.4
+# Current Version: 2.1.5
 
 ## How to get and use?
 # /bin/bash -c "$(curl -fsSL 'https://source.zhijie.online/AutoDeploy/main/macOS.sh')"
@@ -158,11 +158,12 @@ function ConfigurePackages() {
                 "Address = ${TUNNEL_CLIENT_V4}, ${TUNNEL_CLIENT_V6}"
                 "ListenPort = 51820"
                 "PrivateKey = $(wg genkey | tee '/tmp/wireguard.autodeploy')"
-                "#[Peer]"
-                "#AllowedIPs = ${TUNNEL_CLIENT_V4}, ${TUNNEL_CLIENT_V6}"
-                "#Endpoint = 127.0.0.1:51820"
-                "#PersistentKeepalive = 5"
-                "#PublicKey = $(cat '/tmp/wireguard.autodeploy' | wg pubkey)"
+                "# [Peer]"
+                "# AllowedIPs = ${TUNNEL_CLIENT_V4}, ${TUNNEL_CLIENT_V6}"
+                "# Endpoint = 127.0.0.1:51820"
+                "# PersistentKeepalive = 5"
+                "# PresharedKey = $(wg genpsk)"
+                "# PublicKey = $(cat '/tmp/wireguard.autodeploy' | wg pubkey)"
             )
             rm -rf "/tmp/wireguard.autodeploy" && for wireguard_list_task in "${!wireguard_list[@]}"; do
                 echo "${wireguard_list[$wireguard_list_task]}" | sed "s/, $//g" >> "/tmp/wireguard.autodeploy"
