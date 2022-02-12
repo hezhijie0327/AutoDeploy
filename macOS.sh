@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 2.1.8
+# Current Version: 2.1.9
 
 ## How to get and use?
 # /bin/bash -c "$(curl -fsSL 'https://source.zhijie.online/AutoDeploy/main/macOS.sh')"
@@ -351,7 +351,7 @@ function InstallCustomPackages() {
         )
         plugin_upgrade_list=(
             '#!/bin/bash'
-            'plugin_list=($(ls "$ZSH/custom/plugins" | grep -v "^example$" | awk "{print $1}"))'
+            'plugin_list=($(ls "$HOME/.oh-my-zsh/custom/plugins" | grep -v "^example$" | awk "{print $1}"))'
             'for plugin_list_task in "${!plugin_list[@]}"; do'
             "    rm -rf \"\$HOME/.oh-my-zsh/custom/plugins/\${plugin_list[\$plugin_list_task]}\" && git clone --depth=1 \"https://${GHPROXY_URL}/https://github.com/zsh-users/\${plugin_list[\$plugin_list_task]}.git\" \"\$HOME/.oh-my-zsh/custom/plugins/\${plugin_list[\$plugin_list_task]}\""
             'done'
