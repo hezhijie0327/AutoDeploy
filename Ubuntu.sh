@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 3.2.1
+# Current Version: 3.2.2
 
 ## How to get and use?
 # curl "https://source.zhijie.online/AutoDeploy/main/Ubuntu.sh" | sudo bash
@@ -654,14 +654,15 @@ function ConfigurePackages() {
                     "[Interface]"
                     "Address = ${TUNNEL_CLIENT_V4}, ${TUNNEL_CLIENT_V6}"
                     "ListenPort = 51820"
-                    "PreDown = ufw route delete allow in on wg0 out on ${WAN_INTERFACE}; iptables -D FORWARD -i %i -j ACCEPT; iptables -t nat -D POSTROUTING -o ${WAN_INTERFACE} -j MASQUERADE; ip6tables -t nat -D POSTROUTING -o ${WAN_INTERFACE} -j MASQUERADE"
                     "PostUp = ufw route allow in on wg0 out on ${WAN_INTERFACE}; iptables -A FORWARD -i %i -j ACCEPT; iptables -t nat -A POSTROUTING -o ${WAN_INTERFACE} -j MASQUERADE; ip6tables -t nat -I POSTROUTING -o ${WAN_INTERFACE} -j MASQUERADE"
+                    "PreDown = ufw route delete allow in on wg0 out on ${WAN_INTERFACE}; iptables -D FORWARD -i %i -j ACCEPT; iptables -t nat -D POSTROUTING -o ${WAN_INTERFACE} -j MASQUERADE; ip6tables -t nat -D POSTROUTING -o ${WAN_INTERFACE} -j MASQUERADE"
                     "PrivateKey = $(wg genkey | tee '/tmp/wireguard.autodeploy')"
-                    "#[Peer]"
-                    "#AllowedIPs = ${TUNNEL_CLIENT_V4}, ${TUNNEL_CLIENT_V6}"
-                    "#Endpoint = 127.0.0.1:51820"
-                    "#PersistentKeepalive = 5"
-                    "#PublicKey = $(cat '/tmp/wireguard.autodeploy' | wg pubkey)"
+                    "# [Peer]"
+                    "# AllowedIPs = ${TUNNEL_CLIENT_V4}, ${TUNNEL_CLIENT_V6}"
+                    "# Endpoint = 127.0.0.1:51820"
+                    "# PersistentKeepalive = 5"
+                    "# PresharedKey = $(wg genpsk)"
+                    "# PublicKey = $(cat '/tmp/wireguard.autodeploy' | wg pubkey)"
                 )
                 rm -rf "/tmp/wireguard.autodeploy" && for wireguard_list_task in "${!wireguard_list[@]}"; do
                     echo "${wireguard_list[$wireguard_list_task]}" | sed "s/, $//g" >> "/tmp/wireguard.autodeploy"
