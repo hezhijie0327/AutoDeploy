@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 3.2.7
+# Current Version: 3.2.8
 
 ## How to get and use?
 # curl "https://source.zhijie.online/AutoDeploy/main/Ubuntu.sh" | sudo bash
@@ -26,7 +26,7 @@ function CallServiceController(){
             systemctl ${OPRATIONS} ${SERVICE_NAME}.service
         fi
     else
-        serivce ${SERVICE_NAME} ${OPRATIONS}
+        service ${SERVICE_NAME} ${OPRATIONS}
     fi
 }
 # Get System Information
@@ -534,6 +534,16 @@ function ConfigurePackages() {
             "DNSSEC=allow-downgrade"
             "DNSStubListener=false"
         )
+        which "resolvconf" > "/dev/null" 2>&1
+        if [ "$?" -eq "0" ]; then
+            if [ -f "/etc/resolvconf/resolv.conf.d/tail" ]; then
+                rm -rf "/tmp/resolvconf.autodeploy" && for CURRENT_DNS_TASK in "${!CURRENT_DNS[@]}"; do
+                    echo "nameserver ${CURRENT_DNS[$CURRENT_DNS_TASK]}" >> "/tmp/resolvconf.autodeploy"
+                done && for CUSTOM_DNS_TASK in "${!CUSTOM_DNS[@]}"; do
+                    echo "nameserver ${CUSTOM_DNS[$CUSTOM_DNS_TASK]}" >> "/tmp/resolvconf.autodeploy"
+                done && cat "/tmp/resolvconf.autodeploy" > "/etc/resolvconf/resolv.conf.d/tail" && rm -rf "/tmp/resolvconf.autodeploy"
+            fi && resolvconf -u
+        fi
         which "resolvectl" > "/dev/null" 2>&1
         if [ "$?" -eq "0" ]; then
             if [ "${container_environment}" != "docker" ] && [ "${container_environment}" != "wsl2" ]; then
