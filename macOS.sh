@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 2.1.5
+# Current Version: 2.1.6
 
 ## How to get and use?
 # /bin/bash -c "$(curl -fsSL 'https://source.zhijie.online/AutoDeploy/main/macOS.sh')"
@@ -156,6 +156,7 @@ function ConfigurePackages() {
             wireguard_list=(
                 "[Interface]"
                 "Address = ${TUNNEL_CLIENT_V4}, ${TUNNEL_CLIENT_V6}"
+                "# DNS = 127.0.0.1"
                 "ListenPort = 51820"
                 "PrivateKey = $(wg genkey | tee '/tmp/wireguard.autodeploy')"
                 "# [Peer]"
