@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 3.3.0
+# Current Version: 3.3.1
 
 ## How to get and use?
 # curl "https://source.zhijie.online/AutoDeploy/main/Ubuntu.sh" | sudo bash
@@ -556,7 +556,7 @@ function ConfigurePackages() {
                     rm -rf /etc/systemd/resolved.conf.d/*.conf
                 fi
                 rm -rf "/tmp/resolved.autodeploy" && for resolved_list_task in "${!resolved_list[@]}"; do
-                    echo "${resolved_list[$resolved_list_task]}" | sed "s/DNS\=\ //g" >> "/tmp/resolved.autodeploy"
+                    echo "${resolved_list[$resolved_list_task]}" | sed "s/DNS\=\ /DNS\=/g" >> "/tmp/resolved.autodeploy"
                 done && cat "/tmp/resolved.autodeploy" > "/etc/systemd/resolved.conf.d/resolved.conf" && OPRATIONS="restart" && SERVICE_NAME="systemd-resolved" && CallServiceController && rm -rf "/tmp/resolved.autodeploy" && if [ -f "/etc/resolv.conf" ]; then
                     chattr -i "/etc/resolv.conf" > "/dev/null" 2>&1
                     rm -rf "/etc/resolv.conf" && ln -s "/run/systemd/resolve/resolv.conf" "/etc/resolv.conf"
