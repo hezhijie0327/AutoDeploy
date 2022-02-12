@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 3.2.8
+# Current Version: 3.2.9
 
 ## How to get and use?
 # curl "https://source.zhijie.online/AutoDeploy/main/Ubuntu.sh" | sudo bash
@@ -32,19 +32,20 @@ function CallServiceController(){
 # Get System Information
 function GetSystemInformation() {
     function CheckDNSConfiguration() {
-        DHCP_DNS=()
         CUSTOM_DNS=(
             "223.5.5.5"
             "223.6.6.6"
             "2400:3200::1"
             "2400:3200:baba::1"
         )
+        DHCP_DNS=()
+        NEW_DOMAIN="localdomain"
         CUSTOM_DNS_LINE="" && for CUSTOM_DNS_TASK in "${!CUSTOM_DNS[@]}"; do
             CUSTOM_DNS_LINE="${CUSTOM_DNS_LINE} ${CUSTOM_DNS[$CUSTOM_DNS_TASK]}"
             CUSTOM_DNS_LINE=$(echo "${CUSTOM_DNS_LINE}" | sed "s/^\ //g")
         done && CURRENT_DNS_EXCLUDE="$(echo ${DHCP_DNS[*]} ${CUSTOM_DNS_LINE} | sed 's/\ /\\\|/g')\|127.0.0.53"
         if [ -f "/etc/resolv.conf" ]; then
-            CURRENT_DNS=(${DHCP_DNS[*]} $(cat "/etc/resolv.conf" | grep "nameserver" | sed "s/nameserver\ //g" | grep -v "${CURRENT_DNS_EXCLUDE}" | awk "{print $2}"))
+            CURRENT_DNS=(${DHCP_DNS[*]} $(cat "/etc/resolv.conf" | grep "nameserver\ " | sed "s/nameserver\ //g" | grep -v "${CURRENT_DNS_EXCLUDE}" | awk "{print $2}"))
             CURRENT_DNS_LINE="" && for CURRENT_DNS_TASK in "${!CURRENT_DNS[@]}"; do
                 CURRENT_DNS_LINE="${CURRENT_DNS_LINE} ${CURRENT_DNS[$CURRENT_DNS_TASK]}"
                 CURRENT_DNS_LINE=$(echo "${CURRENT_DNS_LINE}" | sed "s/^\ //g")
@@ -96,7 +97,7 @@ function GetSystemInformation() {
                     )
                     rm -rf "/tmp/resolv.autodeploy" && for resolv_conf_list_task in "${!resolv_conf_list[@]}"; do
                         echo "nameserver ${resolv_conf_list[$resolv_conf_list_task]}" >> "/tmp/resolv.autodeploy"
-                    done && if [ -f "/etc/resolv.conf" ]; then
+                    done && echo "search ${NEW_DOMAIN}" >> "/tmp/resolv.autodeploy" && if [ -f "/etc/resolv.conf" ]; then
                         chattr -i "/etc/resolv.conf" > "/dev/null" 2>&1
                         if [ "$?" -eq "1" ]; then
                             rm -rf "/etc/resolv.conf"
@@ -533,6 +534,7 @@ function ConfigurePackages() {
             "DNSOverTLS=opportunistic"
             "DNSSEC=allow-downgrade"
             "DNSStubListener=false"
+            "Domains=${NEW_DOMAIN}"
         )
         which "resolvconf" > "/dev/null" 2>&1
         if [ "$?" -eq "0" ]; then
@@ -541,7 +543,7 @@ function ConfigurePackages() {
                     echo "nameserver ${CURRENT_DNS[$CURRENT_DNS_TASK]}" >> "/tmp/resolvconf.autodeploy"
                 done && for CUSTOM_DNS_TASK in "${!CUSTOM_DNS[@]}"; do
                     echo "nameserver ${CUSTOM_DNS[$CUSTOM_DNS_TASK]}" >> "/tmp/resolvconf.autodeploy"
-                done && cat "/tmp/resolvconf.autodeploy" > "/etc/resolvconf/resolv.conf.d/tail" && rm -rf "/tmp/resolvconf.autodeploy"
+                done && echo "search ${NEW_DOMAIN}" >> "/tmp/resolvconf.autodeploy" && cat "/tmp/resolvconf.autodeploy" > "/etc/resolvconf/resolv.conf.d/tail" && rm -rf "/tmp/resolvconf.autodeploy"
             fi && resolvconf -u
         fi
         which "resolvectl" > "/dev/null" 2>&1
@@ -565,7 +567,7 @@ function ConfigurePackages() {
                 )
                 rm -rf "/tmp/resolv.autodeploy" && for resolv_conf_list_task in "${!resolv_conf_list[@]}"; do
                     echo "nameserver ${resolv_conf_list[$resolv_conf_list_task]}" >> "/tmp/resolv.autodeploy"
-                done && if [ -f "/etc/resolv.conf" ]; then
+                done && echo "search ${NEW_DOMAIN}" >> "/tmp/resolv.autodeploy" && if [ -f "/etc/resolv.conf" ]; then
                     chattr -i "/etc/resolv.conf" > "/dev/null" 2>&1
                     if [ "$?" -eq "1" ]; then
                         rm -rf "/etc/resolv.conf"
@@ -579,7 +581,7 @@ function ConfigurePackages() {
             )
             rm -rf "/tmp/resolv.autodeploy" && for resolv_conf_list_task in "${!resolv_conf_list[@]}"; do
                 echo "nameserver ${resolv_conf_list[$resolv_conf_list_task]}" >> "/tmp/resolv.autodeploy"
-            done && if [ -f "/etc/resolv.conf" ]; then
+            done && echo "search ${NEW_DOMAIN}" >> "/tmp/resolv.autodeploy" && if [ -f "/etc/resolv.conf" ]; then
                 chattr -i "/etc/resolv.conf" > "/dev/null" 2>&1
                 if [ "$?" -eq "1" ]; then
                     rm -rf "/etc/resolv.conf"
