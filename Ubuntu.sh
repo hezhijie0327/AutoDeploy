@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 3.3.5
+# Current Version: 3.3.6
 
 ## How to get and use?
 # curl "https://source.zhijie.online/AutoDeploy/main/Ubuntu.sh" | sudo bash
@@ -184,14 +184,18 @@ function GetSystemInformation() {
         Version_NON_LTS="21.10"
         which "lsb_release" > "/dev/null" 2>&1
         if [ "$?" -eq "0" ]; then
+            CURRENT_LSBCodename=$(lsb_release -cs)
+            CURRENT_Version=$(lsb_release -rs)
             if [ "$(lsb_release -ds | grep 'LTS')" == "" ]; then
                 LSBCodename="${LSBCodename_NON_LTS}"
             else
                 LSBCodename="${LSBCodename_LTS}"
             fi
         else
-            if [ -f '/etc/issue' ]; then
-                if [ "$(cat '/etc/issue' | grep 'LTS')" == "" ]; then
+            if [ -f '/etc/os-release' ]; then
+                CURRENT_LSBCodename=$(cat "/etc/os-release" | grep "UBUNTU\_CODENAME\=" | sed "s/UBUNTU\_CODENAME\=//g")
+                CURRENT_Version=$(cat "/etc/os-release" | grep "VERSION_ID\=" | sed "s/VERSION_ID\=//g" | tr -d "\"")
+                if [ "$(cat '/etc/os-release' | grep "VERSION\=" | grep 'LTS')" == "" ]; then
                     LSBCodename="${LSBCodename_NON_LTS}"
                 else
                     LSBCodename="${LSBCodename_LTS}"
@@ -203,6 +207,9 @@ function GetSystemInformation() {
             LSBCodename_LATEST="${LSBCodename_LTS}"
         else
             LSBCodename_LATEST="${LSBCodename_NON_LTS}"
+        fi
+        if [ "$(awk -v NUM1=$CURRENT_Version -v NUM2=$Version_LTS 'BEGIN{print (NUM1 > NUM2) ? 1 : 0}')" -eq "1" ] && [ "$(awk -v NUM1=$CURRENT_Version -v NUM2=$Version_NON_LTS 'BEGIN{print (NUM1 > NUM2) ? 1 : 0}')" -eq "1" ]; then
+            LSBCodename="${CURRENT_LSBCodename}"
         fi
         if [ "${LSBCodename}" == "" ]; then
             LSBCodename="${LSBCodename_LATEST}"
