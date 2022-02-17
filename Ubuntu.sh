@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 3.3.6
+# Current Version: 3.3.7
 
 ## How to get and use?
 # curl "https://source.zhijie.online/AutoDeploy/main/Ubuntu.sh" | sudo bash
@@ -616,7 +616,7 @@ function ConfigurePackages() {
                 SSHD_CONFIG_ADDITIONAL="${SSHD_CONFIG_ADDITIONAL}s/\#Port\ 22/Port 9022/g;"
             fi && if [ "${container_environment}" != "wsl2" ]; then
                 SSHD_CONFIG_ADDITIONAL="${SSHD_CONFIG_ADDITIONAL}s/\#PubkeyAuthentication\ yes/PubkeyAuthentication\ yes/g;"
-            fi && cat "/usr/share/openssh/sshd_config" | sed "s/\#PasswordAuthentication\ yes/PasswordAuthentication\ yes/g;s/\#PermitRootLogin\ prohibit\-password/PermitRootLogin\ yes/g;${SSHD_CONFIG_ADDITIONAL_A};${SSHD_CONFIG_ADDITIONAL_B}" > "/tmp/sshd_config.autodeploy" && cat "/tmp/sshd_config.autodeploy" > "/etc/ssh/sshd_config" && rm -rf "/tmp/sshd_config.autodeploy"
+            fi && cat "/usr/share/openssh/sshd_config" | sed "s/\#PasswordAuthentication\ yes/PasswordAuthentication\ yes/g;s/\#PermitRootLogin\ prohibit\-password/PermitRootLogin\ yes/g;${SSHD_CONFIG_ADDITIONAL}" > "/tmp/sshd_config.autodeploy" && cat "/tmp/sshd_config.autodeploy" > "/etc/ssh/sshd_config" && rm -rf "/tmp/sshd_config.autodeploy"
         fi
     }
     function ConfigureSysctl() {
