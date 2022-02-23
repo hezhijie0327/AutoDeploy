@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 3.3.7
+# Current Version: 3.3.8
 
 ## How to get and use?
 # curl "https://source.zhijie.online/AutoDeploy/main/Ubuntu.sh" | sudo bash
@@ -796,7 +796,9 @@ function ConfigureSystem() {
             fi && for USER_LIST_TASK in "${!USER_LIST[@]}"; do
                 userdel -rf "${USER_LIST[$USER_LIST_TASK]}" > "/dev/null" 2>&1
             done
-            useradd -c "${DEFAULT_FULLNAME}" -d "/home/${DEFAULT_USERNAME}" -s "/bin/zsh" -m "${DEFAULT_USERNAME}" && echo $DEFAULT_USERNAME:$DEFAULT_PASSWORD | chpasswd && adduser "${DEFAULT_USERNAME}" "docker" && adduser "${DEFAULT_USERNAME}" "sudo"
+            useradd -c "${DEFAULT_FULLNAME}" -d "/home/${DEFAULT_USERNAME}" -s "/bin/zsh" -m "${DEFAULT_USERNAME}" && echo $DEFAULT_USERNAME:$DEFAULT_PASSWORD | chpasswd && if [ "${container_environment}" != "docker" ] && [ "${container_environment}" != "wsl2" ]; then
+                adduser "${DEFAULT_USERNAME}" "docker"
+            fi && adduser "${DEFAULT_USERNAME}" "sudo"
             # Please use "gpg --list-keys --with-keygrip" to get your GPG_AUTH_KEY (A) & GPG_KEY_ID (C).
             GPG_AUTH_KEY=""
             GPG_KEY_ID=""
