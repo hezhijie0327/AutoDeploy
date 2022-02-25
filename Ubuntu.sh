@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 3.4.1
+# Current Version: 3.4.2
 
 ## How to get and use?
 # curl "https://source.zhijie.online/AutoDeploy/main/Ubuntu.sh" | sudo bash
@@ -317,6 +317,7 @@ function ConfigurePackages() {
             "ratelimit burst 8 interval 3 leak 2"
             "rtcsync"
         )
+        DHCP_NTP=()
         chrony_ntp_list=(
             "ntp.ntsc.ac.cn"
             "cn.ntp.org.cn"
@@ -326,6 +327,7 @@ function ConfigurePackages() {
             "pool.ntp.org"
             "asia.pool.ntp.org"
             "cn.pool.ntp.org"
+            "${DHCP_NTP[*]}"
         )
         which "chronyc" > "/dev/null" 2>&1
         if [ "$?" -eq "0" ]; then
