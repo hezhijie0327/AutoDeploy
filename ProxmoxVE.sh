@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 1.8.2
+# Current Version: 1.8.3
 
 ## How to get and use?
 # curl "https://source.zhijie.online/AutoDeploy/main/ProxmoxVE.sh" | sudo bash
@@ -155,14 +155,14 @@ function ConfigurePackages() {
             "pool.ntp.org"
             "asia.pool.ntp.org"
             "cn.pool.ntp.org"
-            "${DHCP_NTP[*]}"
+            "${DHCP_NTP[@]}"
         )
         which "chronyc" > "/dev/null" 2>&1
         if [ "$?" -eq "0" ]; then
             rm -rf "/tmp/chrony.autodeploy" && for chrony_list_task in "${!chrony_list[@]}"; do
                 echo "${chrony_list[$chrony_list_task]}" >> "/tmp/chrony.autodeploy"
             done && for chrony_ntp_list_task in "${!chrony_ntp_list[@]}"; do
-                if [ "${chrony_ntp_list[$chrony_ntp_list_task]}" == "ntp.ntsc.ac.cn" ] || [ "${chrony_ntp_list[$chrony_ntp_list_task]}" == "cn.ntp.org.cn" ]; then
+                if [ "${chrony_ntp_list[$chrony_ntp_list_task]}" == "ntp.ntsc.ac.cn" ] || [ "${chrony_ntp_list[$chrony_ntp_list_task]}" == "cn.ntp.org.cn" ] || [ "$(echo ${DHCP_NTP[@]} | grep ${chrony_ntp_list[$chrony_ntp_list_task]})" != "" ]; then
                     echo "server ${chrony_ntp_list[$chrony_ntp_list_task]} iburst prefer" >> "/tmp/chrony.autodeploy"
                 else
                     echo "server ${chrony_ntp_list[$chrony_ntp_list_task]} iburst" >> "/tmp/chrony.autodeploy"
