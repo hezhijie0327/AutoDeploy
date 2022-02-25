@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 3.4.0
+# Current Version: 3.4.1
 
 ## How to get and use?
 # curl "https://source.zhijie.online/AutoDeploy/main/Ubuntu.sh" | sudo bash
@@ -679,10 +679,10 @@ function ConfigurePackages() {
                     "Address = ${TUNNEL_CLIENT_V4}, ${TUNNEL_CLIENT_V6}"
                     "DNS = ${CURRENT_DNS_WG[@]}, ${CUSTOM_DNS_WG[@]}"
                     "ListenPort = 51820"
-                    "PostDown = iptables -t nat -D POSTROUTING -o ${WAN_INTERFACE} -j MASQUERADE; ip6tables -t nat -D POSTROUTING -o ${WAN_INTERFACE} -j MASQUERADE"
-                    "PostUp = iptables -t nat -A POSTROUTING -o ${WAN_INTERFACE} -j MASQUERADE; ip6tables -t nat -A POSTROUTING -o ${WAN_INTERFACE} -j MASQUERADE"
-                    "PreDown = rm -rf /etc/resolv.conf; ln -s /run/systemd/resolve/resolv.conf /etc/resolv.conf; ufw route delete allow in on wg0 out on ${WAN_INTERFACE}"
-                    "PreUp = rm -rf /etc/resolv.conf; ln -s /run/resolvconf/resolv.conf /etc/resolv.conf; ufw route allow in on wg0 out on ${WAN_INTERFACE}"
+                    "PostDown = rm -rf /etc/resolv.conf; ln -s /run/systemd/resolve/resolv.conf /etc/resolv.conf; ufw route delete allow in on wg0 out on ${WAN_INTERFACE}"
+                    "PostUp = rm -rf /etc/resolv.conf; ln -s /run/resolvconf/resolv.conf /etc/resolv.conf; ufw route allow in on wg0 out on ${WAN_INTERFACE}"
+                    "PreDown = iptables -t nat -D POSTROUTING -o ${WAN_INTERFACE} -j MASQUERADE; ip6tables -t nat -D POSTROUTING -o ${WAN_INTERFACE} -j MASQUERADE"
+                    "PreUp = iptables -t nat -A POSTROUTING -o ${WAN_INTERFACE} -j MASQUERADE; ip6tables -t nat -A POSTROUTING -o ${WAN_INTERFACE} -j MASQUERADE"
                     "PrivateKey = $(wg genkey | tee '/tmp/wireguard.autodeploy')"
                     "# [Peer]"
                     "# AllowedIPs = ${TUNNEL_CLIENT_V4}, ${TUNNEL_CLIENT_V6}"
