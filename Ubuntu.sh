@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 3.3.8
+# Current Version: 3.3.9
 
 ## How to get and use?
 # curl "https://source.zhijie.online/AutoDeploy/main/Ubuntu.sh" | sudo bash
@@ -42,12 +42,14 @@ function GetSystemInformation() {
         CUSTOM_DNS_LINE="" && for CUSTOM_DNS_TASK in "${!CUSTOM_DNS[@]}"; do
             CUSTOM_DNS_LINE="${CUSTOM_DNS_LINE} ${CUSTOM_DNS[$CUSTOM_DNS_TASK]}"
             CUSTOM_DNS_LINE=$(echo "${CUSTOM_DNS_LINE}" | sed "s/^\ //g")
+            CUSTOM_DNS_WG=$(echo "${CUSTOM_DNS_LINE}" | sed "s/\ /\,\ /g")
         done && CURRENT_DNS_EXCLUDE="$(echo ${DHCP_DNS[*]} ${CUSTOM_DNS_LINE} | sed 's/\ /\\\|/g')\|127.0.0.53"
         if [ -f "/etc/resolv.conf" ]; then
             CURRENT_DNS=(${DHCP_DNS[*]} $(cat "/etc/resolv.conf" | grep "nameserver\ " | sed "s/nameserver\ //g" | grep -v "${CURRENT_DNS_EXCLUDE}" | awk "{print $2}"))
             CURRENT_DNS_LINE="" && for CURRENT_DNS_TASK in "${!CURRENT_DNS[@]}"; do
                 CURRENT_DNS_LINE="${CURRENT_DNS_LINE} ${CURRENT_DNS[$CURRENT_DNS_TASK]}"
                 CURRENT_DNS_LINE=$(echo "${CURRENT_DNS_LINE}" | sed "s/^\ //g")
+                CURRENT_DNS_WG=$(echo "${CURRENT_DNS_LINE}" | sed "s/\ /\,\ /g")
             done
         fi
     }
@@ -557,16 +559,6 @@ function ConfigurePackages() {
             "DNSStubListener=false"
             "Domains=${NEW_DOMAIN}"
         )
-        which "resolvconf" > "/dev/null" 2>&1
-        if [ "$?" -eq "0" ]; then
-            if [ -f "/etc/resolvconf/resolv.conf.d/tail" ]; then
-                rm -rf "/tmp/resolvconf.autodeploy" && for CURRENT_DNS_TASK in "${!CURRENT_DNS[@]}"; do
-                    echo "nameserver ${CURRENT_DNS[$CURRENT_DNS_TASK]}" >> "/tmp/resolvconf.autodeploy"
-                done && for CUSTOM_DNS_TASK in "${!CUSTOM_DNS[@]}"; do
-                    echo "nameserver ${CUSTOM_DNS[$CUSTOM_DNS_TASK]}" >> "/tmp/resolvconf.autodeploy"
-                done && echo "search ${NEW_DOMAIN}" >> "/tmp/resolvconf.autodeploy" && cat "/tmp/resolvconf.autodeploy" > "/etc/resolvconf/resolv.conf.d/tail" && rm -rf "/tmp/resolvconf.autodeploy"
-            fi && resolvconf -u
-        fi
         which "resolvectl" > "/dev/null" 2>&1
         if [ "$?" -eq "0" ]; then
             if [ "${container_environment}" != "docker" ] && [ "${container_environment}" != "wsl2" ]; then
@@ -686,7 +678,7 @@ function ConfigurePackages() {
                 wireguard_list=(
                     "[Interface]"
                     "Address = ${TUNNEL_CLIENT_V4}, ${TUNNEL_CLIENT_V6}"
-                    "# DNS = 127.0.0.1, ::1"
+                    "DNS = ${CURRENT_DNS_WG[@]}, ${CUSTOM_DNS_WG[@]}"
                     "ListenPort = 51820"
                     "PostDown = iptables -t nat -D POSTROUTING -o ${WAN_INTERFACE} -j MASQUERADE; ip6tables -t nat -D POSTROUTING -o ${WAN_INTERFACE} -j MASQUERADE"
                     "PostUp = iptables -t nat -A POSTROUTING -o ${WAN_INTERFACE} -j MASQUERADE; ip6tables -t nat -A POSTROUTING -o ${WAN_INTERFACE} -j MASQUERADE"
@@ -701,7 +693,7 @@ function ConfigurePackages() {
                     "# PublicKey = $(cat '/tmp/wireguard.autodeploy' | wg pubkey)"
                 )
                 rm -rf "/tmp/wireguard.autodeploy" && for wireguard_list_task in "${!wireguard_list[@]}"; do
-                    echo "${wireguard_list[$wireguard_list_task]}" | sed "s/, $//g" >> "/tmp/wireguard.autodeploy"
+                    echo "${wireguard_list[$wireguard_list_task]}" | sed "s/\,\ $//g;s/^\,\ //g" >> "/tmp/wireguard.autodeploy"
                 done && cat "/tmp/wireguard.autodeploy" > "/etc/wireguard/wg0.conf" && rm -rf "/tmp/wireguard.autodeploy" && if [ "${container_environment}" != "docker" ] && [ "${container_environment}" != "wsl2" ]; then
                     OPRATIONS="enable" && SERVICE_NAME="wg-quick@wg0" && CallServiceController && if [ -f "/lib/systemd/system/wg-quick@.service" ]; then
                         if [ ! -f "/lib/systemd/system/wg-quick@.service.bak" ]; then
