@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 3.4.6
+# Current Version: 3.4.7
 
 ## How to get and use?
 # curl "https://source.zhijie.online/AutoDeploy/main/Ubuntu.sh" | sudo bash
@@ -797,9 +797,14 @@ function ConfigureSystem() {
             GPG_KEY_ID=""
             if [ "${container_environment}" != "wsl2" ]; then
                 if [ "${GPG_AUTH_KEY}" != "" ] && [ -d "/home/${DEFAULT_USERNAME}/.gnupg" ]; then
+                    if [ "$(apt list --installed | grep 'ubuntu-desktop')" != "" ]; then
+                        PINENTRY_PROGRAM_NAME="pinentry-gnome3"
+                    else
+                        PINENTRY_PROGRAM_NAME="pinentry-curses"
+                    fi
                     gpg_agent_list=(
                         "enable-ssh-support"
-                        "# pinentry-program /usr/bin/pinentry-gnome3"
+                        "pinentry-program /usr/bin/${PINENTRY_PROGRAM_NAME}"
                     )
                     rm -rf "/home/${DEFAULT_USERNAME}/.gnupg/gpg-agent.conf" && for gpg_agent_list_task in "${!gpg_agent_list[@]}"; do
                         echo "${gpg_agent_list[$gpg_agent_list_task]}" >> "/home/${DEFAULT_USERNAME}/.gnupg/gpg-agent.conf"
