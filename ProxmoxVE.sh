@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 1.8.3
+# Current Version: 1.8.4
 
 ## How to get and use?
 # curl "https://source.zhijie.online/AutoDeploy/main/ProxmoxVE.sh" | sudo bash
@@ -499,7 +499,13 @@ function ConfigureSystem() {
         GPG_AUTH_KEY=""
         GPG_KEY_ID=""
         if [ "${GPG_AUTH_KEY}" != "" ] && [ -d "/home/${DEFAULT_USERNAME}/.gnupg" ]; then
-            echo "enable-ssh-support" > "/home/${DEFAULT_USERNAME}/.gnupg/gpg-agent.conf" && echo "${GPG_AUTH_KEY}" > "/home/${DEFAULT_USERNAME}/.gnupg/sshcontrol" && gpg -k && echo "Please use \"gpg --export-ssh-key ${GPG_KEY_ID} > /home/${DEFAULT_USERNAME}/.ssh/authorized_keys\" to export your SSH key."
+            gpg_agent_list=(
+                "enable-ssh-support"
+                "# pinentry-program /usr/bin/pinentry-curses"
+            )
+            rm -rf "/home/${DEFAULT_USERNAME}/.gnupg/gpg-agent.conf" && for gpg_agent_list_task in "${!gpg_agent_list[@]}"; do
+                echo "${gpg_agent_list[$gpg_agent_list_task]}" >> "/home/${DEFAULT_USERNAME}/.gnupg/gpg-agent.conf"
+            done && echo "${GPG_AUTH_KEY}" > "/home/${DEFAULT_USERNAME}/.gnupg/sshcontrol" && gpg -k && echo "Please use \"gpg --export-ssh-key ${GPG_KEY_ID} > /home/${DEFAULT_USERNAME}/.ssh/authorized_keys\" to export your SSH key."
         fi
         if [ -d "/etc/zsh/oh-my-zsh" ]; then
             cp -rf "/etc/zsh/oh-my-zsh" "/home/${DEFAULT_USERNAME}/.oh-my-zsh" && chown -R $DEFAULT_USERNAME:$DEFAULT_USERNAME "/home/${DEFAULT_USERNAME}/.oh-my-zsh"
