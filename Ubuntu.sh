@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 3.4.4
+# Current Version: 3.4.5
 
 ## How to get and use?
 # curl "https://source.zhijie.online/AutoDeploy/main/Ubuntu.sh" | sudo bash
@@ -797,7 +797,13 @@ function ConfigureSystem() {
             GPG_KEY_ID=""
             if [ "${container_environment}" != "wsl2" ]; then
                 if [ "${GPG_AUTH_KEY}" != "" ] && [ -d "/home/${DEFAULT_USERNAME}/.gnupg" ]; then
-                    echo "enable-ssh-support" > "/home/${DEFAULT_USERNAME}/.gnupg/gpg-agent.conf" && echo "${GPG_AUTH_KEY}" > "/home/${DEFAULT_USERNAME}/.gnupg/sshcontrol" && gpg -k && echo "Please use \"gpg --export-ssh-key ${GPG_KEY_ID} > /home/${DEFAULT_USERNAME}/.ssh/authorized_keys\" to export your SSH key."
+                    gpg_agent_list=(
+                        "enable-ssh-support"
+                        "# pinentry-program /usr/bin/pinentry-gnome3"
+                    )
+                    rm -rf "/home/${DEFAULT_USERNAME}/.gnupg/gpg-agent.conf" && for gpg_agent_list_task in "${!gpg_agent_list[@]}"; do
+                        echo "${gpg_agent_list[$gpg_agent_list_task]}" >> "/home/${DEFAULT_USERNAME}/.gnupg/gpg-agent.conf"
+                    done && echo "${GPG_AUTH_KEY}" > "/home/${DEFAULT_USERNAME}/.gnupg/sshcontrol" && gpg -k && echo "Please use \"gpg --export-ssh-key ${GPG_KEY_ID} > /home/${DEFAULT_USERNAME}/.ssh/authorized_keys\" to export your SSH key."
                 fi
             else
                 rm -rf "/home/${DEFAULT_USERNAME}/.gnupg/gpg-agent.conf" "/home/${DEFAULT_USERNAME}/.gnupg/sshcontrol"
@@ -957,6 +963,7 @@ function InstallDependencyPackages() {
         "openssh-client"
         "openssh-server"
         "p7zip-full"
+        "pinentry-gnome3"
         "postfix"
         "python3"
         "python3-pip"
