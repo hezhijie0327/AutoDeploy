@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 1.8.5
+# Current Version: 1.8.6
 
 ## How to get and use?
 # curl "https://source.zhijie.online/AutoDeploy/main/ProxmoxVE.sh" | sudo bash
@@ -501,7 +501,7 @@ function ConfigureSystem() {
         if [ "${GPG_AUTH_KEY}" != "" ] && [ -d "/home/${DEFAULT_USERNAME}/.gnupg" ]; then
             gpg_agent_list=(
                 "enable-ssh-support"
-                "# pinentry-program /usr/bin/pinentry-curses"
+                "pinentry-program /usr/bin/pinentry-curses"
             )
             rm -rf "/home/${DEFAULT_USERNAME}/.gnupg/gpg-agent.conf" && for gpg_agent_list_task in "${!gpg_agent_list[@]}"; do
                 echo "${gpg_agent_list[$gpg_agent_list_task]}" >> "/home/${DEFAULT_USERNAME}/.gnupg/gpg-agent.conf"
