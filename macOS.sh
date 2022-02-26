@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 2.2.0
+# Current Version: 2.2.1
 
 ## How to get and use?
 # /bin/bash -c "$(curl -fsSL 'https://source.zhijie.online/AutoDeploy/main/macOS.sh')"
@@ -75,22 +75,29 @@ function ConfigurePackages() {
         fi
     }
     function ConfigureGPG() {
-        # Please use "gpg --list-keys --with-keygrip" to get your GPG_AUTH_KEY (A) & GPG_KEY_ID (C).
-        GPG_AUTH_KEY=""
-        GPG_KEY_ID=""
-        if [ "${GPG_AUTH_KEY}" != "" ] && [ -d "/Users/${CurrentUsername}/.gnupg" ]; then
-            if [ "${ARM_ARCHITECTURE}" == "TRUE" ]; then
-                PINENTRY_PROGRAM_PATH="/opt/homebrew/bin"
-            else
-                PINENTRY_PROGRAM_PATH="/usr/local/bin"
+        GPG_PUBKEY=""
+        if [ "${GPG_PUBKEY}" == "" ]; then
+            GPG_PUBKEY="DD982DAAB9C71C78F9563E5207EB56787030D792"
+        fi
+        which "gpg" > "/dev/null" 2>&1
+        if [ "$?" -eq "0" ]; then
+            rm -rf "/Users/${CurrentUsername}/.gnupg" && gpg --keyserver hkps://keys.openpgp.org --recv ${GPG_PUBKEY} && echo "${GPG_PUBKEY}" | awk 'BEGIN { FS = "\n" }; { print $1":6:" }' | gpg --import-ownertrust && GPG_PUBKEY_ID_A=$(gpg --list-keys --keyid-format LONG | grep "pub\|sub" | awk '{print $2, $4}' | grep "\[A\]" | awk '{print $1}' | awk -F '/' '{print $2}') && GPG_PUBKEY_ID_C=$(gpg --list-keys --keyid-format LONG | grep "pub\|sub" | awk '{print $2, $4}' | grep "\[C\]" | awk '{print $1}' | awk -F '/' '{print $2}')
+            if [ "${GPG_PUBKEY_ID_A}" != "" ]; then
+                if [ "${ARM_ARCHITECTURE}" == "TRUE" ]; then
+                    PINENTRY_PROGRAM_PATH="/opt/homebrew/bin"
+                else
+                    PINENTRY_PROGRAM_PATH="/usr/local/bin"
+                fi
+                gpg_agent_list=(
+                    "enable-ssh-support"
+                    "pinentry-program ${PINENTRY_PROGRAM_PATH}/pinentry-mac"
+                )
+                rm -rf "/Users/${CurrentUsername}/.gnupg/gpg-agent.conf" && for gpg_agent_list_task in "${!gpg_agent_list[@]}"; do
+                    echo "${gpg_agent_list[$gpg_agent_list_task]}" >> "/Users/${CurrentUsername}/.gnupg/gpg-agent.conf"
+                done && echo "${GPG_PUBKEY_ID_A}" > "/Users/${CurrentUsername}/.gnupg/sshcontrol" && if [ ! -d "/Users/${CurrentUsername}/.ssh" ]; then
+                    mkdir "/Users/${CurrentUsername}/.ssh"
+                fi && gpg --export-ssh-key ${GPG_PUBKEY_ID_C} > "/Users/${CurrentUsername}/.ssh/authorized_keys"
             fi
-            gpg_agent_list=(
-                "enable-ssh-support"
-                "pinentry-program ${PINENTRY_PROGRAM_PATH}/pinentry-mac"
-            )
-            rm -rf "/Users/${CurrentUsername}/.gnupg/gpg-agent.conf" && for gpg_agent_list_task in "${!gpg_agent_list[@]}"; do
-                echo "${gpg_agent_list[$gpg_agent_list_task]}" >> "/Users/${CurrentUsername}/.gnupg/gpg-agent.conf"
-            done && echo "${GPG_AUTH_KEY}" > "/Users/${CurrentUsername}/.gnupg/sshcontrol" && gpg -k && echo "Please use \"gpg --export-ssh-key ${GPG_KEY_ID} > /Users/${CurrentUsername}/.ssh/authorized_keys\" to export your SSH key."
         fi
     }
     function ConfigureOpenSSH () {
