@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 1.8.4
+# Current Version: 1.8.5
 
 ## How to get and use?
 # curl "https://source.zhijie.online/AutoDeploy/main/ProxmoxVE.sh" | sudo bash
@@ -655,6 +655,7 @@ function InstallDependencyPackages() {
         "openssh-client"
         "openssh-server"
         "p7zip-full"
+        "pinentry-curses"
         "postfix"
         "python3"
         "python3-pip"
