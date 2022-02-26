@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 3.4.9
+# Current Version: 3.5.0
 
 ## How to get and use?
 # curl "https://source.zhijie.online/AutoDeploy/main/Ubuntu.sh" | sudo bash
@@ -816,8 +816,7 @@ function ConfigureSystem() {
                     fi
                 fi
             fi
-            if [ "${container_environment}" != "wsl2" ]; then
-            else
+            if [ "${container_environment}" == "wsl2" ]; then
                 rm -rf "/home/${DEFAULT_USERNAME}/.gnupg/gpg-agent.conf" "/home/${DEFAULT_USERNAME}/.gnupg/sshcontrol"
             fi
             if [ -d "/etc/zsh/oh-my-zsh" ]; then
