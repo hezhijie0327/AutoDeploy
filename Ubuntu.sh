@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 3.4.5
+# Current Version: 3.4.6
 
 ## How to get and use?
 # curl "https://source.zhijie.online/AutoDeploy/main/Ubuntu.sh" | sudo bash
@@ -963,6 +963,7 @@ function InstallDependencyPackages() {
         "openssh-client"
         "openssh-server"
         "p7zip-full"
+        "pinentry-curses"
         "pinentry-gnome3"
         "postfix"
         "python3"
