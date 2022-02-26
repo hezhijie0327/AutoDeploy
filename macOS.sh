@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 2.2.1
+# Current Version: 2.2.2
 
 ## How to get and use?
 # /bin/bash -c "$(curl -fsSL 'https://source.zhijie.online/AutoDeploy/main/macOS.sh')"
@@ -94,9 +94,7 @@ function ConfigurePackages() {
                 )
                 rm -rf "/Users/${CurrentUsername}/.gnupg/gpg-agent.conf" && for gpg_agent_list_task in "${!gpg_agent_list[@]}"; do
                     echo "${gpg_agent_list[$gpg_agent_list_task]}" >> "/Users/${CurrentUsername}/.gnupg/gpg-agent.conf"
-                done && echo "${GPG_PUBKEY_ID_A}" > "/Users/${CurrentUsername}/.gnupg/sshcontrol" && if [ ! -d "/Users/${CurrentUsername}/.ssh" ]; then
-                    mkdir "/Users/${CurrentUsername}/.ssh"
-                fi && gpg --export-ssh-key ${GPG_PUBKEY_ID_C} > "/Users/${CurrentUsername}/.ssh/authorized_keys"
+                done && echo "${GPG_PUBKEY_ID_A}" > "/Users/${CurrentUsername}/.gnupg/sshcontrol"
             fi
         fi
     }
@@ -108,7 +106,16 @@ function ConfigurePackages() {
                 sudo rm -rf /etc/ssh/ssh_host_* && sudo ssh-keygen -t dsa -b 1024 -f "/etc/ssh/ssh_host_dsa_key" -C "root@$(hostname)" -N "${OPENSSH_PASSWORD}" && sudo ssh-keygen -t ecdsa -b 384 -f "/etc/ssh/ssh_host_ecdsa_key" -C "root@$(hostname)" -N "${OPENSSH_PASSWORD}" && sudo ssh-keygen -t ed25519 -f "/etc/ssh/ssh_host_ed25519_key" -C "root@$(hostname)" -N "${OPENSSH_PASSWORD}" && sudo ssh-keygen -t rsa -b 4096 -f "/etc/ssh/ssh_host_rsa_key" -C "root@$(hostname)" -N "${OPENSSH_PASSWORD}" && sudo chmod 400 /etc/ssh/ssh_host_* && sudo chmod 644 /etc/ssh/ssh_host_*.pub
                 rm -rf /opt/homebrew/etc/ssh/ssh_host_* && ssh-keygen -t dsa -b 1024 -f "/opt/homebrew/etc/ssh/ssh_host_dsa_key" -C "${CurrentUsername}@$(hostname)" -N "${OPENSSH_PASSWORD}" && ssh-keygen -t ecdsa -b 384 -f "/opt/homebrew/etc/ssh/ssh_host_ecdsa_key" -C "${CurrentUsername}@$(hostname)" -N "${OPENSSH_PASSWORD}" && ssh-keygen -t ed25519 -f "/opt/homebrew/etc/ssh/ssh_host_ed25519_key" -C "${CurrentUsername}@$(hostname)" -N "${OPENSSH_PASSWORD}" && ssh-keygen -t rsa -b 4096 -f "/opt/homebrew/etc/ssh/ssh_host_rsa_key" -C "${CurrentUsername}@$(hostname)" -N "${OPENSSH_PASSWORD}" && chown ${CurrentUsername}:admin /opt/homebrew/etc/ssh/ssh_host_* && chmod 400 /opt/homebrew/etc/ssh/ssh_host_* && chmod 644 /opt/homebrew/etc/ssh/ssh_host_*.pub
             fi
-            rm -rf "/Users/${CurrentUsername}/.ssh" && mkdir "/Users/${CurrentUsername}/.ssh" && touch "/Users/${CurrentUsername}/.ssh/authorized_keys" && touch "/Users/${CurrentUsername}/.ssh/known_hosts" && ssh-keygen -t dsa -b 1024 -f "/Users/${CurrentUsername}/.ssh/id_dsa" -C "${CurrentUsername}@$(hostname)" -N "${OPENSSH_PASSWORD}" && ssh-keygen -t ecdsa -b 384 -f "/Users/${CurrentUsername}/.ssh/id_ecdsa" -C "${CurrentUsername}@$(hostname)" -N "${OPENSSH_PASSWORD}" && ssh-keygen -t ed25519 -f "/Users/${CurrentUsername}/.ssh/id_ed25519" -C "${CurrentUsername}@$(hostname)" -N "${OPENSSH_PASSWORD}" && ssh-keygen -t rsa -b 4096 -f "/Users/${CurrentUsername}/.ssh/id_rsa" -C "${CurrentUsername}@$(hostname)" -N "${OPENSSH_PASSWORD}" && sudo chown -R ${CurrentUsername}:staff "/Users/${CurrentUsername}/.ssh" && sudo chown -R ${CurrentUsername}:staff /Users/${CurrentUsername}/.ssh/* && chmod 400 /Users/${CurrentUsername}/.ssh/id_* && chmod 600 "/Users/${CurrentUsername}/.ssh/authorized_keys" && chmod 644 "/Users/${CurrentUsername}/.ssh/known_hosts" && chmod 644 /Users/${CurrentUsername}/.ssh/id_*.pub && chmod 700 "/Users/${CurrentUsername}/.ssh"
+            rm -rf "/Users/${CurrentUsername}/.ssh" && mkdir "/Users/${CurrentUsername}/.ssh" && if [ "${GPG_PUBKEY_ID_C}" != "" ]; then
+                which "gpg" > "/dev/null" 2>&1
+                if [ "$?" -eq "0" ]; then
+                    gpg --export-ssh-key ${GPG_PUBKEY_ID_C} > "/Users/${CurrentUsername}/.ssh/authorized_keys"
+                else
+                    touch "/Users/${CurrentUsername}/.ssh/authorized_keys"
+                fi
+            else
+                touch "/Users/${CurrentUsername}/.ssh/authorized_keys"
+            fi && touch "/Users/${CurrentUsername}/.ssh/known_hosts" && ssh-keygen -t dsa -b 1024 -f "/Users/${CurrentUsername}/.ssh/id_dsa" -C "${CurrentUsername}@$(hostname)" -N "${OPENSSH_PASSWORD}" && ssh-keygen -t ecdsa -b 384 -f "/Users/${CurrentUsername}/.ssh/id_ecdsa" -C "${CurrentUsername}@$(hostname)" -N "${OPENSSH_PASSWORD}" && ssh-keygen -t ed25519 -f "/Users/${CurrentUsername}/.ssh/id_ed25519" -C "${CurrentUsername}@$(hostname)" -N "${OPENSSH_PASSWORD}" && ssh-keygen -t rsa -b 4096 -f "/Users/${CurrentUsername}/.ssh/id_rsa" -C "${CurrentUsername}@$(hostname)" -N "${OPENSSH_PASSWORD}" && sudo chown -R ${CurrentUsername}:staff "/Users/${CurrentUsername}/.ssh" && sudo chown -R ${CurrentUsername}:staff /Users/${CurrentUsername}/.ssh/* && chmod 400 /Users/${CurrentUsername}/.ssh/id_* && chmod 600 "/Users/${CurrentUsername}/.ssh/authorized_keys" && chmod 644 "/Users/${CurrentUsername}/.ssh/known_hosts" && chmod 644 /Users/${CurrentUsername}/.ssh/id_*.pub && chmod 700 "/Users/${CurrentUsername}/.ssh"
         fi
     }
     function ConfigurePythonPyPI() {
