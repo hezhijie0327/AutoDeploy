@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 1.8.7
+# Current Version: 1.8.8
 
 ## How to get and use?
 # curl "https://source.zhijie.online/AutoDeploy/main/ProxmoxVE.sh" | sudo bash
@@ -230,6 +230,7 @@ function ConfigurePackages() {
     function ConfigureGit() {
         gitconfig_key_list=(
             "commit.gpgsign"
+            "gpg.program"
             "http.proxy"
             "https.proxy"
             "user.name"
@@ -239,6 +240,7 @@ function ConfigurePackages() {
         )
         gitconfig_value_list=(
             "${GIT_COMMIT_GPGSIGN:-false}"
+            "${GIT_GPG_PROGRAM:-gpg}"
             "${GIT_HTTP_PROXY}"
             "${GIT_HTTPS_PROXY}"
             "${GIT_USER_NAME}"
@@ -521,7 +523,7 @@ function ConfigureSystem() {
             fi
         fi
         if [ -f "/root/.gitconfig" ]; then
-            mv "/root/.gitconfig" "/root/.gitconfig.bak" && GIT_COMMIT_GPGSIGN="" && GIT_HTTP_PROXY="" && GIT_HTTPS_PROXY="" && GIT_USER_NAME="" && GIT_USER_EMAIL="" && GIT_USER_SIGNINGKEY="" && ConfigureGit && mv "/root/.gitconfig" "/home/${DEFAULT_USERNAME}/.gitconfig" && chown -R $DEFAULT_USERNAME:$DEFAULT_USERNAME "/home/${DEFAULT_USERNAME}/.gitconfig" && mv "/root/.gitconfig.bak" "/root/.gitconfig"
+            mv "/root/.gitconfig" "/root/.gitconfig.bak" && GIT_COMMIT_GPGSIGN="" && GIT_GPG_PROGRAM="" && GIT_HTTP_PROXY="" && GIT_HTTPS_PROXY="" && GIT_USER_NAME="" && GIT_USER_EMAIL="" && GIT_USER_SIGNINGKEY="" && ConfigureGit && mv "/root/.gitconfig" "/home/${DEFAULT_USERNAME}/.gitconfig" && chown -R $DEFAULT_USERNAME:$DEFAULT_USERNAME "/home/${DEFAULT_USERNAME}/.gitconfig" && mv "/root/.gitconfig.bak" "/root/.gitconfig"
         fi
         if [ -f "/root/.config/pip/pip.conf" ]; then
             if [ ! -d "/home/${DEFAULT_USERNAME}/.config" ]; then
