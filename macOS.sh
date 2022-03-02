@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 2.2.2
+# Current Version: 2.2.3
 
 ## How to get and use?
 # /bin/bash -c "$(curl -fsSL 'https://source.zhijie.online/AutoDeploy/main/macOS.sh')"
@@ -48,6 +48,7 @@ function ConfigurePackages() {
     function ConfigureGit() {
         gitconfig_key_list=(
             "commit.gpgsign"
+            "gpg.program"
             "http.proxy"
             "https.proxy"
             "user.name"
@@ -57,6 +58,7 @@ function ConfigurePackages() {
         )
         gitconfig_value_list=(
             "false"
+            "gpg"
             ""
             ""
             ""
