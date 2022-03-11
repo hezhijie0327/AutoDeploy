@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 2.2.3
+# Current Version: 2.2.4
 
 ## How to get and use?
 # /bin/bash -c "$(curl -fsSL 'https://source.zhijie.online/AutoDeploy/main/macOS.sh')"
@@ -404,7 +404,7 @@ function InstallDependencyPackages() {
     export PATH="/opt/homebrew/sbin:/opt/homebrew/bin:${PATH}"
     which "brew" > "/dev/null" 2>&1
     if [ "$?" -eq "1" ]; then
-        /bin/bash -c $(curl -fsSL "https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh" | sed "s/https\:\/\/github\.com/https\:\/\/${GHPROXY_URL}\/https\:\/\/github\.com/g")
+        /bin/bash -c $(curl -fsSL "https://${GHPROXY_URL}/https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh" | sed "s/https\:\/\/github\.com/https\:\/\/${GHPROXY_URL}\/https\:\/\/github\.com/g")
     fi && export HOMEBREW_BOTTLE_DOMAIN="https://mirrors.ustc.edu.cn/homebrew-bottles/bottles"
     if [ -d "$(brew --repo)/Library/Taps/homebrew" ]; then
         app_list=(
