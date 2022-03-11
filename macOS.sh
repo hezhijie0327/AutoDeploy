@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 2.2.4
+# Current Version: 2.2.5
 
 ## How to get and use?
 # /bin/bash -c "$(curl -fsSL 'https://source.zhijie.online/AutoDeploy/main/macOS.sh')"
@@ -395,7 +395,6 @@ function InstallDependencyPackages() {
         "homebrew-cask-fonts"
         "homebrew-cask-versions"
         "homebrew-command-not-found"
-        "homebrew-core"
         "homebrew-formula-analytics"
         "homebrew-portable-ruby"
         "homebrew-services"
