@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 3.5.4
+# Current Version: 3.5.5
 
 ## How to get and use?
 # curl "https://source.zhijie.online/AutoDeploy/main/Ubuntu.sh" | sudo bash
@@ -470,6 +470,38 @@ function ConfigurePackages() {
                 fi
             done
         fi
+        if [ -f "/root/.gitconfig" ] && [ "${GIT_USER_CONFIG}" != "TRUE" ]; then
+            mv "/root/.gitconfig" "/root/.gitconfig.bak" && GIT_COMMIT_GPGSIGN="" && GIT_GPG_PROGRAM="" && GIT_HTTP_PROXY="" && GIT_HTTPS_PROXY="" && GIT_USER_NAME="" && GIT_USER_EMAIL="" && GIT_USER_SIGNINGKEY="" && GIT_USER_CONFIG="TRUE" && ConfigureGit && mv "/root/.gitconfig" "/home/${DEFAULT_USERNAME}/.gitconfig" && chown -R $DEFAULT_USERNAME:$DEFAULT_USERNAME "/home/${DEFAULT_USERNAME}/.gitconfig" && mv "/root/.gitconfig.bak" "/root/.gitconfig"
+        fi
+    }
+    function ConfigureGPG() {
+        GPG_PUBKEY=""
+        if [ "${GPG_PUBKEY}" == "" ]; then
+            GPG_PUBKEY="DD982DAAB9C71C78F9563E5207EB56787030D792"
+        fi
+        which "gpg" > "/dev/null" 2>&1
+        if [ "$?" -eq "0" ]; then
+            rm -rf "/home/${DEFAULT_USERNAME}/.gnupg" "/root/.gnupg" && gpg --keyserver hkps://keys.openpgp.org --recv ${GPG_PUBKEY} && echo "${GPG_PUBKEY}" | awk 'BEGIN { FS = "\n" }; { print $1":6:" }' | gpg --import-ownertrust && GPG_PUBKEY_ID_A=$(gpg --list-keys --keyid-format LONG | grep "pub\|sub" | awk '{print $2, $4}' | grep "\[A\]" | awk '{print $1}' | awk -F '/' '{print $2}') && GPG_PUBKEY_ID_C=$(gpg --list-keys --keyid-format LONG | grep "pub\|sub" | awk '{print $2, $4}' | grep "\[C\]" | awk '{print $1}' | awk -F '/' '{print $2}')
+            if [ "${GPG_PUBKEY_ID_A}" != "" ]; then
+                if [ "$(apt list --installed | grep 'ubuntu-desktop')" != "" ]; then
+                    PINENTRY_PROGRAM_NAME="pinentry-gnome3"
+                else
+                    PINENTRY_PROGRAM_NAME="pinentry-curses"
+                fi
+                gpg_agent_list=(
+                    "enable-ssh-support"
+                    "pinentry-program /usr/bin/${PINENTRY_PROGRAM_NAME}"
+                )
+                rm -rf "/root/.gnupg/gpg-agent.conf" && for gpg_agent_list_task in "${!gpg_agent_list[@]}"; do
+                    echo "${gpg_agent_list[$gpg_agent_list_task]}" >> "/root/.gnupg/gpg-agent.conf"
+                done && echo "${GPG_PUBKEY_ID_A}" > "/root/.gnupg/sshcontrol" && if [ -d "/root/.gnupg" ]; then
+                    mv "/root/.gnupg" "/home/${DEFAULT_USERNAME}/.gnupg" && chown -R $DEFAULT_USERNAME:$DEFAULT_USERNAME "/home/${DEFAULT_USERNAME}/.gnupg"
+                fi
+            fi
+        fi
+        if [ "${container_environment}" == "wsl2" ]; then
+            rm -rf "/home/${DEFAULT_USERNAME}/.gnupg/gpg-agent.conf" "/home/${DEFAULT_USERNAME}/.gnupg/sshcontrol"
+        fi
     }
     function ConfigureGrub() {
         which "update-grub" > "/dev/null" 2>&1
@@ -530,6 +562,16 @@ function ConfigurePackages() {
                 rm -rf /home/linuxbrew/.linuxbrew/etc/ssh/ssh_host_* && ssh-keygen -t dsa -b 1024 -f "/home/linuxbrew/.linuxbrew/etc/ssh/ssh_host_dsa_key" -C "${DEFAULT_USERNAME}@${NEW_HOSTNAME}" -N "${OPENSSH_PASSWORD}" && ssh-keygen -t ecdsa -b 384 -f "/home/linuxbrew/.linuxbrew/etc/ssh/ssh_host_ecdsa_key" -C "${DEFAULT_USERNAME}@${NEW_HOSTNAME}" -N "${OPENSSH_PASSWORD}" && ssh-keygen -t ed25519 -f "/home/linuxbrew/.linuxbrew/etc/ssh/ssh_host_ed25519_key" -C "${DEFAULT_USERNAME}@${NEW_HOSTNAME}" -N "${OPENSSH_PASSWORD}" && ssh-keygen -t rsa -b 4096 -f "/home/linuxbrew/.linuxbrew/etc/ssh/ssh_host_rsa_key" -C "${DEFAULT_USERNAME}@${NEW_HOSTNAME}" -N "${OPENSSH_PASSWORD}" && chmod 400 /home/linuxbrew/.linuxbrew/etc/ssh/ssh_host_* && chmod 644 /home/linuxbrew/.linuxbrew/etc/ssh/ssh_host_*.pub
             fi
             rm -rf "/root/.ssh" && mkdir "/root/.ssh" && touch "/root/.ssh/authorized_keys" && touch "/root/.ssh/known_hosts" && ssh-keygen -t dsa -b 1024 -f "/root/.ssh/id_dsa" -C "root@${NEW_HOSTNAME}" -N "${OPENSSH_PASSWORD}" && ssh-keygen -t ecdsa -b 384 -f "/root/.ssh/id_ecdsa" -C "root@${NEW_HOSTNAME}" -N "${OPENSSH_PASSWORD}" && ssh-keygen -t ed25519 -f "/root/.ssh/id_ed25519" -C "root@${NEW_HOSTNAME}" -N "${OPENSSH_PASSWORD}" && ssh-keygen -t rsa -b 4096 -f "/root/.ssh/id_rsa" -C "root@${NEW_HOSTNAME}" -N "${OPENSSH_PASSWORD}" && chmod 400 /root/.ssh/id_* && chmod 600 "/root/.ssh/authorized_keys" && chmod 644 "/root/.ssh/known_hosts" && chmod 644 /root/.ssh/id_*.pub && chmod 700 "/root/.ssh"
+            rm -rf "/home/${DEFAULT_USERNAME}/.ssh" && mkdir "/home/${DEFAULT_USERNAME}/.ssh" && if [ "${GPG_PUBKEY_ID_C}" != "" ]; then
+                which "gpg" > "/dev/null" 2>&1
+                if [ "$?" -eq "0" ]; then
+                    gpg --export-ssh-key ${GPG_PUBKEY_ID_C} > "/home/${DEFAULT_USERNAME}/.ssh/authorized_keys"
+                else
+                    touch "/home/${DEFAULT_USERNAME}/.ssh/authorized_keys"
+                fi
+            else
+                touch "/home/${DEFAULT_USERNAME}/.ssh/authorized_keys"
+            fi && touch "/home/${DEFAULT_USERNAME}/.ssh/known_hosts" && ssh-keygen -t dsa -b 1024 -f "/home/${DEFAULT_USERNAME}/.ssh/id_dsa" -C "${DEFAULT_USERNAME}@${NEW_HOSTNAME}" -N "${OPENSSH_PASSWORD}" && ssh-keygen -t ecdsa -b 384 -f "/home/${DEFAULT_USERNAME}/.ssh/id_ecdsa" -C "${DEFAULT_USERNAME}@${NEW_HOSTNAME}" -N "${OPENSSH_PASSWORD}" && ssh-keygen -t ed25519 -f "/home/${DEFAULT_USERNAME}/.ssh/id_ed25519" -C "${DEFAULT_USERNAME}@${NEW_HOSTNAME}" -N "${OPENSSH_PASSWORD}" && ssh-keygen -t rsa -b 4096 -f "/home/${DEFAULT_USERNAME}/.ssh/id_rsa" -C "${DEFAULT_USERNAME}@${NEW_HOSTNAME}" -N "${OPENSSH_PASSWORD}" && chown -R $DEFAULT_USERNAME:$DEFAULT_USERNAME "/home/${DEFAULT_USERNAME}/.ssh" && chown -R $DEFAULT_USERNAME:$DEFAULT_USERNAME /home/${DEFAULT_USERNAME}/.ssh/* && chmod 400 /home/${DEFAULT_USERNAME}/.ssh/id_* && chmod 600 "/home/${DEFAULT_USERNAME}/.ssh/authorized_keys" && chmod 644 "/home/${DEFAULT_USERNAME}/.ssh/known_hosts" && chmod 644 /home/${DEFAULT_USERNAME}/.ssh/id_*.pub && chmod 700 "/home/${DEFAULT_USERNAME}/.ssh"
         fi
     }
     function ConfigurePostfix() {
@@ -554,6 +596,15 @@ function ConfigurePackages() {
         fi
         if [ "${WHICH_PIP}" != "null" ]; then
             ${WHICH_PIP} config set global.index-url "https://mirrors.ustc.edu.cn/pypi/web/simple"
+        fi
+        if [ -f "/root/.config/pip/pip.conf" ]; then
+            if [ ! -d "/home/${DEFAULT_USERNAME}/.config" ]; then
+                mkdir "/home/${DEFAULT_USERNAME}/.config"
+            fi
+            if [ ! -d "/home/${DEFAULT_USERNAME}/.config/pip" ]; then
+                mkdir "/home/${DEFAULT_USERNAME}/.config/pip"
+            fi
+            rm -rf "/home/${DEFAULT_USERNAME}/.config/pip/pip.conf" && cp -rf "/root/.config/pip/pip.conf" "/home/${DEFAULT_USERNAME}/.config/pip/pip.conf" && chown -R $DEFAULT_USERNAME:$DEFAULT_USERNAME "/home/${DEFAULT_USERNAME}/.config" && chown -R $DEFAULT_USERNAME:$DEFAULT_USERNAME "/home/${DEFAULT_USERNAME}/.config/pip" && chown -R $DEFAULT_USERNAME:$DEFAULT_USERNAME "/home/${DEFAULT_USERNAME}/.config/pip/pip.conf"
         fi
     }
     function ConfigureResolved() {
@@ -787,6 +838,12 @@ function ConfigurePackages() {
                     echo "${omz_list[$omz_list_task]}" >> "/tmp/omz.autodeploy"
                 done && cat "/tmp/omz.autodeploy" > "/etc/zsh/oh-my-zsh.zshrc" && rm -rf "/tmp/omz.autodeploy" && rm -rf "/root/.oh-my-zsh" "/root/.zshrc" && ln -s "/etc/zsh/oh-my-zsh" "/root/.oh-my-zsh" && ln -s "/etc/zsh/oh-my-zsh.zshrc" "/root/.zshrc"
             fi
+            if [ -d "/etc/zsh/oh-my-zsh" ]; then
+                cp -rf "/etc/zsh/oh-my-zsh" "/home/${DEFAULT_USERNAME}/.oh-my-zsh" && chown -R $DEFAULT_USERNAME:$DEFAULT_USERNAME "/home/${DEFAULT_USERNAME}/.oh-my-zsh"
+                if [ -f "/etc/zsh/oh-my-zsh.zshrc" ]; then
+                    cp -rf "/etc/zsh/oh-my-zsh.zshrc" "/home/${DEFAULT_USERNAME}/.zshrc" && chown -R $DEFAULT_USERNAME:$DEFAULT_USERNAME "/home/${DEFAULT_USERNAME}/.zshrc"
+                fi
+            fi
         }
         GenerateCommandPath
         GenerateOMZProfile
@@ -796,7 +853,7 @@ function ConfigurePackages() {
     ConfigureCrontab
     ConfigureDockerEngine
     ConfigureFail2Ban
-    ConfigureGit
+    ConfigureGPG && ConfigureGit
     ConfigureGrub
     ConfigureLandscape
     ConfigureNetplan
@@ -838,72 +895,12 @@ function ConfigureSystem() {
             useradd -c "${DEFAULT_FULLNAME}" -d "/home/${DEFAULT_USERNAME}" -s "/bin/zsh" -m "${DEFAULT_USERNAME}" && echo $DEFAULT_USERNAME:$DEFAULT_PASSWORD | chpasswd && if [ "${container_environment}" != "docker" ] && [ "${container_environment}" != "wsl2" ]; then
                 adduser "${DEFAULT_USERNAME}" "docker"
             fi && adduser "${DEFAULT_USERNAME}" "sudo"
-            GPG_PUBKEY=""
-            if [ "${GPG_PUBKEY}" == "" ]; then
-                GPG_PUBKEY="DD982DAAB9C71C78F9563E5207EB56787030D792"
-            fi
-            which "gpg" > "/dev/null" 2>&1
-            if [ "$?" -eq "0" ]; then
-                rm -rf "/home/${DEFAULT_USERNAME}/.gnupg" "/root/.gnupg" && gpg --keyserver hkps://keys.openpgp.org --recv ${GPG_PUBKEY} && echo "${GPG_PUBKEY}" | awk 'BEGIN { FS = "\n" }; { print $1":6:" }' | gpg --import-ownertrust && GPG_PUBKEY_ID_A=$(gpg --list-keys --keyid-format LONG | grep "pub\|sub" | awk '{print $2, $4}' | grep "\[A\]" | awk '{print $1}' | awk -F '/' '{print $2}') && GPG_PUBKEY_ID_C=$(gpg --list-keys --keyid-format LONG | grep "pub\|sub" | awk '{print $2, $4}' | grep "\[C\]" | awk '{print $1}' | awk -F '/' '{print $2}')
-                if [ "${GPG_PUBKEY_ID_A}" != "" ]; then
-                    if [ "$(apt list --installed | grep 'ubuntu-desktop')" != "" ]; then
-                        PINENTRY_PROGRAM_NAME="pinentry-gnome3"
-                    else
-                        PINENTRY_PROGRAM_NAME="pinentry-curses"
-                    fi
-                    gpg_agent_list=(
-                        "enable-ssh-support"
-                        "pinentry-program /usr/bin/${PINENTRY_PROGRAM_NAME}"
-                    )
-                    rm -rf "/root/.gnupg/gpg-agent.conf" && for gpg_agent_list_task in "${!gpg_agent_list[@]}"; do
-                        echo "${gpg_agent_list[$gpg_agent_list_task]}" >> "/root/.gnupg/gpg-agent.conf"
-                    done && echo "${GPG_PUBKEY_ID_A}" > "/root/.gnupg/sshcontrol" && if [ -d "/root/.gnupg" ]; then
-                        mv "/root/.gnupg" "/home/${DEFAULT_USERNAME}/.gnupg" && chown -R $DEFAULT_USERNAME:$DEFAULT_USERNAME "/home/${DEFAULT_USERNAME}/.gnupg"
-                    fi
-                fi
-            fi
-            if [ "${container_environment}" == "wsl2" ]; then
-                rm -rf "/home/${DEFAULT_USERNAME}/.gnupg/gpg-agent.conf" "/home/${DEFAULT_USERNAME}/.gnupg/sshcontrol"
-            fi
-            if [ -d "/etc/zsh/oh-my-zsh" ]; then
-                cp -rf "/etc/zsh/oh-my-zsh" "/home/${DEFAULT_USERNAME}/.oh-my-zsh" && chown -R $DEFAULT_USERNAME:$DEFAULT_USERNAME "/home/${DEFAULT_USERNAME}/.oh-my-zsh"
-                if [ -f "/etc/zsh/oh-my-zsh.zshrc" ]; then
-                    cp -rf "/etc/zsh/oh-my-zsh.zshrc" "/home/${DEFAULT_USERNAME}/.zshrc" && chown -R $DEFAULT_USERNAME:$DEFAULT_USERNAME "/home/${DEFAULT_USERNAME}/.zshrc"
-                fi
-            fi
-            if [ -f "/root/.gitconfig" ]; then
-                mv "/root/.gitconfig" "/root/.gitconfig.bak" && GIT_COMMIT_GPGSIGN="" && GIT_GPG_PROGRAM="" && GIT_HTTP_PROXY="" && GIT_HTTPS_PROXY="" && GIT_USER_NAME="" && GIT_USER_EMAIL="" && GIT_USER_SIGNINGKEY="" && ConfigureGit && mv "/root/.gitconfig" "/home/${DEFAULT_USERNAME}/.gitconfig" && chown -R $DEFAULT_USERNAME:$DEFAULT_USERNAME "/home/${DEFAULT_USERNAME}/.gitconfig" && mv "/root/.gitconfig.bak" "/root/.gitconfig"
-            fi
-            if [ -f "/root/.config/pip/pip.conf" ]; then
-                if [ ! -d "/home/${DEFAULT_USERNAME}/.config" ]; then
-                    mkdir "/home/${DEFAULT_USERNAME}/.config"
-                fi
-                if [ ! -d "/home/${DEFAULT_USERNAME}/.config/pip" ]; then
-                    mkdir "/home/${DEFAULT_USERNAME}/.config/pip"
-                fi
-                rm -rf "/home/${DEFAULT_USERNAME}/.config/pip/pip.conf" && cp -rf "/root/.config/pip/pip.conf" "/home/${DEFAULT_USERNAME}/.config/pip/pip.conf" && chown -R $DEFAULT_USERNAME:$DEFAULT_USERNAME "/home/${DEFAULT_USERNAME}/.config" && chown -R $DEFAULT_USERNAME:$DEFAULT_USERNAME "/home/${DEFAULT_USERNAME}/.config/pip" && chown -R $DEFAULT_USERNAME:$DEFAULT_USERNAME "/home/${DEFAULT_USERNAME}/.config/pip/pip.conf"
-            fi
             which "crontab" > "/dev/null" 2>&1
             if [ "$?" -eq "0" ]; then
                 rm -rf "/tmp/crontab.autodeploy" && for crontab_list_task in "${!crontab_list[@]}"; do
                     echo "${crontab_list[$crontab_list_task]}" >> "/tmp/crontab.autodeploy"
                 done && crontab -u "${DEFAULT_USERNAME}" "/tmp/crontab.autodeploy" && crontab -lu "${DEFAULT_USERNAME}" && rm -rf "/tmp/crontab.autodeploy"
             fi
-            OPENSSH_PASSWORD=""
-            which "ssh-keygen" > "/dev/null" 2>&1
-            if [ "$?" -eq "0" ]; then
-                rm -rf "/home/${DEFAULT_USERNAME}/.ssh" && mkdir "/home/${DEFAULT_USERNAME}/.ssh" && if [ "${GPG_PUBKEY_ID_C}" != "" ]; then
-                    which "gpg" > "/dev/null" 2>&1
-                    if [ "$?" -eq "0" ]; then
-                        gpg --export-ssh-key ${GPG_PUBKEY_ID_C} > "/home/${DEFAULT_USERNAME}/.ssh/authorized_keys"
-                    else
-                        touch "/home/${DEFAULT_USERNAME}/.ssh/authorized_keys"
-                    fi
-                else
-                    touch "/home/${DEFAULT_USERNAME}/.ssh/authorized_keys"
-                fi && touch "/home/${DEFAULT_USERNAME}/.ssh/known_hosts" && ssh-keygen -t dsa -b 1024 -f "/home/${DEFAULT_USERNAME}/.ssh/id_dsa" -C "${DEFAULT_USERNAME}@${NEW_HOSTNAME}" -N "${OPENSSH_PASSWORD}" && ssh-keygen -t ecdsa -b 384 -f "/home/${DEFAULT_USERNAME}/.ssh/id_ecdsa" -C "${DEFAULT_USERNAME}@${NEW_HOSTNAME}" -N "${OPENSSH_PASSWORD}" && ssh-keygen -t ed25519 -f "/home/${DEFAULT_USERNAME}/.ssh/id_ed25519" -C "${DEFAULT_USERNAME}@${NEW_HOSTNAME}" -N "${OPENSSH_PASSWORD}" && ssh-keygen -t rsa -b 4096 -f "/home/${DEFAULT_USERNAME}/.ssh/id_rsa" -C "${DEFAULT_USERNAME}@${NEW_HOSTNAME}" -N "${OPENSSH_PASSWORD}" && chown -R $DEFAULT_USERNAME:$DEFAULT_USERNAME "/home/${DEFAULT_USERNAME}/.ssh" && chown -R $DEFAULT_USERNAME:$DEFAULT_USERNAME /home/${DEFAULT_USERNAME}/.ssh/* && chmod 400 /home/${DEFAULT_USERNAME}/.ssh/id_* && chmod 600 "/home/${DEFAULT_USERNAME}/.ssh/authorized_keys" && chmod 644 "/home/${DEFAULT_USERNAME}/.ssh/known_hosts" && chmod 644 /home/${DEFAULT_USERNAME}/.ssh/id_*.pub && chmod 700 "/home/${DEFAULT_USERNAME}/.ssh"
-            fi
-            InstallHomebrew
         fi
     }
     function ConfigureHostfile() {
@@ -941,7 +938,7 @@ function ConfigureSystem() {
         fi && ln -s "/usr/share/zoneinfo/Asia/Shanghai" "/etc/localtime"
     }
     ConfigureDefaultShell
-    ConfigureDefaultUser
+    ConfigureDefaultUser && InstallHomebrew
     ConfigureHostfile
     ConfigureLocales
     ConfigureRootUser
