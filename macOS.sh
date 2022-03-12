@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 2.3.0
+# Current Version: 2.3.1
 
 ## How to get and use?
 # /bin/bash -c "$(curl -fsSL 'https://source.zhijie.online/AutoDeploy/main/macOS.sh')"
@@ -403,7 +403,7 @@ function InstallDependencyPackages() {
         "homebrew-services"
         "homebrew-test-bot"
     )
-    export PATH="/opt/homebrew/sbin:/opt/homebrew/bin:${PATH}"
+    export PATH="/opt/homebrew/sbin:/opt/homebrew/bin:${PATH}" && rm -rf "/opt/homebrew" "/usr/local/Homebrew"
     which "brew" > "/dev/null" 2>&1
     if [ "$?" -eq "1" ]; then
         /bin/bash -c $(curl -fsSL "https://${GHPROXY_URL}/https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh" | sed "s/https\:\/\/github\.com/https\:\/\/${GHPROXY_URL}\/https\:\/\/github\.com/g")
