@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 3.5.2
+# Current Version: 3.5.3
 
 ## How to get and use?
 # curl "https://source.zhijie.online/AutoDeploy/main/Ubuntu.sh" | sudo bash
@@ -978,8 +978,9 @@ function InstallCustomPackages() {
         export PATH="/home/linuxbrew/.linuxbrew/sbin:/home/linuxbrew/.linuxbrew/bin:${PATH}"
         which "brew" > "/dev/null" 2>&1
         if [ "$?" -eq "1" ]; then
+            export HOMEBREW_BOTTLE_DOMAIN="https://mirrors.ustc.edu.cn/homebrew-bottles/bottles"
             curl -fsSL "https://${GHPROXY_URL}/https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh" | sed "s/https\:\/\/github\.com/https\:\/\/${GHPROXY_URL}\/https\:\/\/github\.com/g" > "/tmp/linuxbrew_install.sh" && su - ${DEFAULT_USERNAME} -s /bin/bash "/tmp/linuxbrew_install.sh" && rm -rf "/tmp/linuxbrew_install.sh"
-        fi && export HOMEBREW_BOTTLE_DOMAIN="https://mirrors.ustc.edu.cn/homebrew-bottles/bottles"
+        fi
         if [ -d "$(brew --repo)/Library/Taps/homebrew" ]; then
             app_list=(
                 "bash"
