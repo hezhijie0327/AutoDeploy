@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 2.2.6
+# Current Version: 2.2.7
 
 ## How to get and use?
 # /bin/bash -c "$(curl -fsSL 'https://source.zhijie.online/AutoDeploy/main/macOS.sh')"
@@ -498,9 +498,9 @@ InstallDependencyPackages
 UpgradePackages
 # Call InstallCustomPackages
 InstallCustomPackages
-# Call ConfigurePackages
-ConfigurePackages
 # Call ConfigureSystem
 ConfigureSystem
+# Call ConfigurePackages
+ConfigurePackages
 # Call CleanupTempFiles
 CleanupTempFiles
