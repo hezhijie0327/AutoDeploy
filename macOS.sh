@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 2.2.8
+# Current Version: 2.2.9
 
 ## How to get and use?
 # /bin/bash -c "$(curl -fsSL 'https://source.zhijie.online/AutoDeploy/main/macOS.sh')"
@@ -229,6 +229,7 @@ function ConfigurePackages() {
                 "export EDITOR=\"nano\""
                 "export GPG_TTY=\$(tty)"
                 "export HOMEBREW_BOTTLE_DOMAIN=\"https://mirrors.ustc.edu.cn/homebrew-bottles/bottles\""
+                "export HOMEBREW_BREW_GIT_REMOTE=\"https://${GHPROXY_URL}/https://github.com/homebrew/brew.git\""
                 "export HOMEBREW_CORE_GIT_REMOTE=\"https://${GHPROXY_URL}/https://github.com/homebrew/homebrew-core.git\""
                 "export HOMEBREW_GITHUB_API_TOKEN=\"your_token_here\""
                 "export MANPATH=\"${CUSTOM_MANPATH}:\$MANPATH\""
@@ -405,7 +406,6 @@ function InstallDependencyPackages() {
     export PATH="/opt/homebrew/sbin:/opt/homebrew/bin:${PATH}"
     which "brew" > "/dev/null" 2>&1
     if [ "$?" -eq "1" ]; then
-        export HOMEBREW_BOTTLE_DOMAIN="https://mirrors.ustc.edu.cn/homebrew-bottles/bottles"
         /bin/bash -c $(curl -fsSL "https://${GHPROXY_URL}/https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh" | sed "s/https\:\/\/github\.com/https\:\/\/${GHPROXY_URL}\/https\:\/\/github\.com/g")
     fi
     if [ -d "$(brew --repo)/Library/Taps/homebrew" ]; then
@@ -470,7 +470,7 @@ function InstallDependencyPackages() {
         )
         for tap_list_task in "${!tap_list[@]}"; do
             rm -rf "$(brew --repo)/Library/Taps/homebrew/${tap_list[$tap_list_task]}" && git clone "https://${GHPROXY_URL}/https://github.com/Homebrew/${tap_list[$tap_list_task]}.git" "$(brew --repo)/Library/Taps/homebrew/${tap_list[$tap_list_task]}"
-        done && brew update && for app_list_task in "${!app_list[@]}"; do
+        done && export HOMEBREW_BOTTLE_DOMAIN="https://mirrors.ustc.edu.cn/homebrew-bottles/bottles" && brew update && for app_list_task in "${!app_list[@]}"; do
             brew info --formula ${app_list[$app_list_task]} && if [ "$?" -eq "0" ]; then
                 brew install --formula ${app_list[$app_list_task]}
             else
