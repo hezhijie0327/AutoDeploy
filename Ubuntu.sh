@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 3.5.3
+# Current Version: 3.5.4
 
 ## How to get and use?
 # curl "https://source.zhijie.online/AutoDeploy/main/Ubuntu.sh" | sudo bash
@@ -749,6 +749,7 @@ function ConfigurePackages() {
                 "export EDITOR=\"nano\""
                 "export GPG_TTY=\$(tty)"
                 "export HOMEBREW_BOTTLE_DOMAIN=\"https://mirrors.ustc.edu.cn/homebrew-bottles/bottles\""
+                "export HOMEBREW_BREW_GIT_REMOTE=\"https://${GHPROXY_URL}/https://github.com/homebrew/brew.git\""
                 "export HOMEBREW_CORE_GIT_REMOTE=\"https://${GHPROXY_URL}/https://github.com/homebrew/homebrew-core.git\""
                 "export HOMEBREW_GITHUB_API_TOKEN=\"${HOMEBREW_GITHUB_API_TOKEN}\""
                 "export MANPATH=\"${CUSTOM_MANPATH}:\$MANPATH\""
@@ -978,8 +979,7 @@ function InstallCustomPackages() {
         export PATH="/home/linuxbrew/.linuxbrew/sbin:/home/linuxbrew/.linuxbrew/bin:${PATH}"
         which "brew" > "/dev/null" 2>&1
         if [ "$?" -eq "1" ]; then
-            export HOMEBREW_BOTTLE_DOMAIN="https://mirrors.ustc.edu.cn/homebrew-bottles/bottles"
-            curl -fsSL "https://${GHPROXY_URL}/https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh" | sed "s/https\:\/\/github\.com/https\:\/\/${GHPROXY_URL}\/https\:\/\/github\.com/g" > "/tmp/linuxbrew_install.sh" && su - ${DEFAULT_USERNAME} -s /bin/bash "/tmp/linuxbrew_install.sh" && rm -rf "/tmp/linuxbrew_install.sh"
+            curl -fsSL "https://${GHPROXY_URL}/https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh" | sed "s/https\:\/\/github\.com/https\:\/\/${GHPROXY_URL}\/https\:\/\/github\.com/g" > "/tmp/linuxbrew_install.sh" && sed -i "1 a export HOMEBREW_BOTTLE_DOMAIN=\"https://mirrors.ustc.edu.cn/homebrew-bottles/bottles\"" "/tmp/linuxbrew_install.sh" && su - ${DEFAULT_USERNAME} -s /bin/bash "/tmp/linuxbrew_install.sh" && rm -rf "/tmp/linuxbrew_install.sh"
         fi
         if [ -d "$(brew --repo)/Library/Taps/homebrew" ]; then
             app_list=(
@@ -1037,9 +1037,13 @@ function InstallCustomPackages() {
             for tap_list_task in "${!tap_list[@]}"; do
                 rm -rf "$(brew --repo)/Library/Taps/homebrew/${tap_list[$tap_list_task]}" && su - ${DEFAULT_USERNAME} -s /usr/bin/git clone "https://${GHPROXY_URL}/https://github.com/Homebrew/${tap_list[$tap_list_task]}.git" "$(brew --repo)/Library/Taps/homebrew/${tap_list[$tap_list_task]}"
             done && su - ${DEFAULT_USERNAME} -s /home/linuxbrew/.linuxbrew/bin/brew update && for app_list_task in "${!app_list[@]}"; do
-                su - ${DEFAULT_USERNAME} -s /home/linuxbrew/.linuxbrew/bin/brew info ${app_list[$app_list_task]} && if [ "$?" -eq "0" ]; then
-                    su - ${DEFAULT_USERNAME} -s /home/linuxbrew/.linuxbrew/bin/brew install ${app_list[$app_list_task]}
-                fi
+                rm -rf "/tmp/linuxbrew.autodeploy" && su - ${DEFAULT_USERNAME} -s /home/linuxbrew/.linuxbrew/bin/brew info ${app_list[$app_list_task]} && if [ "$?" -eq "0" ]; then
+                    echo '#!/bin/bash' > /tmp/linuxbrew.autodeploy
+                    echo "export HOMEBREW_BOTTLE_DOMAIN=\"https://mirrors.ustc.edu.cn/homebrew-bottles/bottles\"" >> /tmp/linuxbrew.autodeploy
+                    echo "export PATH=\"/home/linuxbrew/.linuxbrew/sbin:/home/linuxbrew/.linuxbrew/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin\"" >> /tmp/linuxbrew.autodeploy
+                    echo "brew install ${app_list[$app_list_task]}" >> /tmp/linuxbrew.autodeploy
+                    chown -R $DEFAULT_USERNAME:$DEFAULT_USERNAME "/tmp/linuxbrew.autodeploy" && su - ${DEFAULT_USERNAME} -s /bin/bash -c "bash /tmp/linuxbrew.autodeploy"
+                fi && rm -rf "/tmp/linuxbrew.autodeploy"
             done
         fi
     }
