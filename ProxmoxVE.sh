@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 1.8.8
+# Current Version: 1.8.9
 
 ## How to get and use?
 # curl "https://source.zhijie.online/AutoDeploy/main/ProxmoxVE.sh" | sudo bash
@@ -257,6 +257,30 @@ function ConfigurePackages() {
                 fi
             done
         fi
+        if [ -f "/root/.gitconfig" ] && [ "${GIT_USER_CONFIG}" != "TRUE" ]; then
+            mv "/root/.gitconfig" "/root/.gitconfig.bak" && GIT_COMMIT_GPGSIGN="" && GIT_GPG_PROGRAM="" && GIT_HTTP_PROXY="" && GIT_HTTPS_PROXY="" && GIT_USER_NAME="" && GIT_USER_EMAIL="" && GIT_USER_SIGNINGKEY="" && GIT_USER_CONFIG="TRUE" && ConfigureGit && mv "/root/.gitconfig" "/home/${DEFAULT_USERNAME}/.gitconfig" && chown -R $DEFAULT_USERNAME:$DEFAULT_USERNAME "/home/${DEFAULT_USERNAME}/.gitconfig" && mv "/root/.gitconfig.bak" "/root/.gitconfig"
+        fi
+    }
+    function ConfigureGPG() {
+        GPG_PUBKEY=""
+        if [ "${GPG_PUBKEY}" == "" ]; then
+            GPG_PUBKEY="DD982DAAB9C71C78F9563E5207EB56787030D792"
+        fi
+        which "gpg" > "/dev/null" 2>&1
+        if [ "$?" -eq "0" ]; then
+            rm -rf "/home/${DEFAULT_USERNAME}/.gnupg" "/root/.gnupg" && gpg --keyserver hkps://keys.openpgp.org --recv ${GPG_PUBKEY} && gpg --keyserver hkps://keyserver.ubuntu.com --recv ${GPG_PUBKEY} && echo "${GPG_PUBKEY}" | awk 'BEGIN { FS = "\n" }; { print $1":6:" }' | gpg --import-ownertrust && GPG_PUBKEY_ID_A=$(gpg --list-keys --keyid-format LONG | grep "pub\|sub" | awk '{print $2, $4}' | grep "\[A\]" | awk '{print $1}' | awk -F '/' '{print $2}') && GPG_PUBKEY_ID_C=$(gpg --list-keys --keyid-format LONG | grep "pub\|sub" | awk '{print $2, $4}' | grep "\[C\]" | awk '{print $1}' | awk -F '/' '{print $2}')
+            if [ "${GPG_PUBKEY_ID_A}" != "" ]; then
+                gpg_agent_list=(
+                    "enable-ssh-support"
+                    "pinentry-program /usr/bin/pinentry-curses"
+                )
+                rm -rf "/root/.gnupg/gpg-agent.conf" && for gpg_agent_list_task in "${!gpg_agent_list[@]}"; do
+                    echo "${gpg_agent_list[$gpg_agent_list_task]}" >> "/root/.gnupg/gpg-agent.conf"
+                done && echo "${GPG_PUBKEY_ID_A}" > "/root/.gnupg/sshcontrol" && if [ -d "/root/.gnupg" ]; then
+                    mv "/root/.gnupg" "/home/${DEFAULT_USERNAME}/.gnupg" && chown -R $DEFAULT_USERNAME:$DEFAULT_USERNAME "/home/${DEFAULT_USERNAME}/.gnupg"
+                fi
+            fi
+        fi
     }
     function ConfigureGrub() {
         which "update-grub" > "/dev/null" 2>&1
@@ -290,10 +314,23 @@ function ConfigurePackages() {
             if [ -d "/etc/ssh" ]; then
                 rm -rf /etc/ssh/ssh_host_* && ssh-keygen -t dsa -b 1024 -f "/etc/ssh/ssh_host_dsa_key" -C "root@${NEW_HOSTNAME}" -N "${OPENSSH_PASSWORD}" && ssh-keygen -t ecdsa -b 384 -f "/etc/ssh/ssh_host_ecdsa_key" -C "root@${NEW_HOSTNAME}" -N "${OPENSSH_PASSWORD}" && ssh-keygen -t ed25519 -f "/etc/ssh/ssh_host_ed25519_key" -C "root@${NEW_HOSTNAME}" -N "${OPENSSH_PASSWORD}" && ssh-keygen -t rsa -b 4096 -f "/etc/ssh/ssh_host_rsa_key" -C "root@${NEW_HOSTNAME}" -N "${OPENSSH_PASSWORD}" && chmod 400 /etc/ssh/ssh_host_* && chmod 644 /etc/ssh/ssh_host_*.pub
             fi
+            if [ -d "/home/linuxbrew/.linuxbrew/etc/ssh" ]; then
+                rm -rf /home/linuxbrew/.linuxbrew/etc/ssh/ssh_host_* && ssh-keygen -t dsa -b 1024 -f "/home/linuxbrew/.linuxbrew/etc/ssh/ssh_host_dsa_key" -C "${DEFAULT_USERNAME}@${NEW_HOSTNAME}" -N "${OPENSSH_PASSWORD}" && ssh-keygen -t ecdsa -b 384 -f "/home/linuxbrew/.linuxbrew/etc/ssh/ssh_host_ecdsa_key" -C "${DEFAULT_USERNAME}@${NEW_HOSTNAME}" -N "${OPENSSH_PASSWORD}" && ssh-keygen -t ed25519 -f "/home/linuxbrew/.linuxbrew/etc/ssh/ssh_host_ed25519_key" -C "${DEFAULT_USERNAME}@${NEW_HOSTNAME}" -N "${OPENSSH_PASSWORD}" && ssh-keygen -t rsa -b 4096 -f "/home/linuxbrew/.linuxbrew/etc/ssh/ssh_host_rsa_key" -C "${DEFAULT_USERNAME}@${NEW_HOSTNAME}" -N "${OPENSSH_PASSWORD}" && chmod 400 /home/linuxbrew/.linuxbrew/etc/ssh/ssh_host_* && chmod 644 /home/linuxbrew/.linuxbrew/etc/ssh/ssh_host_*.pub
+            fi
             if [ -d "/etc/pve/priv" ]; then
                 rm -rf "/etc/pve/priv/authorized_keys" "/etc/pve/priv/known_hosts" && touch "/etc/pve/priv/authorized_keys" && touch "/etc/pve/priv/known_hosts" && chmod 600 "/etc/pve/priv/authorized_keys" && chmod 600 "/etc/pve/priv/known_hosts"
             fi
             rm -rf "/root/.ssh" && mkdir "/root/.ssh" && touch "/root/.ssh/authorized_keys" && touch "/root/.ssh/known_hosts" && ssh-keygen -t dsa -b 1024 -f "/root/.ssh/id_dsa" -C "root@${NEW_HOSTNAME}" -N "${OPENSSH_PASSWORD}" && ssh-keygen -t ecdsa -b 384 -f "/root/.ssh/id_ecdsa" -C "root@${NEW_HOSTNAME}" -N "${OPENSSH_PASSWORD}" && ssh-keygen -t ed25519 -f "/root/.ssh/id_ed25519" -C "root@${NEW_HOSTNAME}" -N "${OPENSSH_PASSWORD}" && ssh-keygen -t rsa -b 4096 -f "/root/.ssh/id_rsa" -C "root@${NEW_HOSTNAME}" -N "${OPENSSH_PASSWORD}" && chmod 400 /root/.ssh/id_* && chmod 600 "/root/.ssh/authorized_keys" && chmod 644 "/root/.ssh/known_hosts" && chmod 644 /root/.ssh/id_*.pub && chmod 700 "/root/.ssh"
+            rm -rf "/home/${DEFAULT_USERNAME}/.ssh" && mkdir "/home/${DEFAULT_USERNAME}/.ssh" && if [ "${GPG_PUBKEY_ID_C}" != "" ]; then
+                which "gpg" > "/dev/null" 2>&1
+                if [ "$?" -eq "0" ]; then
+                    gpg --export-ssh-key ${GPG_PUBKEY_ID_C} > "/home/${DEFAULT_USERNAME}/.ssh/authorized_keys"
+                else
+                    touch "/home/${DEFAULT_USERNAME}/.ssh/authorized_keys"
+                fi
+            else
+                touch "/home/${DEFAULT_USERNAME}/.ssh/authorized_keys"
+            fi && touch "/home/${DEFAULT_USERNAME}/.ssh/known_hosts" && ssh-keygen -t dsa -b 1024 -f "/home/${DEFAULT_USERNAME}/.ssh/id_dsa" -C "${DEFAULT_USERNAME}@${NEW_HOSTNAME}" -N "${OPENSSH_PASSWORD}" && ssh-keygen -t ecdsa -b 384 -f "/home/${DEFAULT_USERNAME}/.ssh/id_ecdsa" -C "${DEFAULT_USERNAME}@${NEW_HOSTNAME}" -N "${OPENSSH_PASSWORD}" && ssh-keygen -t ed25519 -f "/home/${DEFAULT_USERNAME}/.ssh/id_ed25519" -C "${DEFAULT_USERNAME}@${NEW_HOSTNAME}" -N "${OPENSSH_PASSWORD}" && ssh-keygen -t rsa -b 4096 -f "/home/${DEFAULT_USERNAME}/.ssh/id_rsa" -C "${DEFAULT_USERNAME}@${NEW_HOSTNAME}" -N "${OPENSSH_PASSWORD}" && chown -R $DEFAULT_USERNAME:$DEFAULT_USERNAME "/home/${DEFAULT_USERNAME}/.ssh" && chown -R $DEFAULT_USERNAME:$DEFAULT_USERNAME /home/${DEFAULT_USERNAME}/.ssh/* && chmod 400 /home/${DEFAULT_USERNAME}/.ssh/id_* && chmod 600 "/home/${DEFAULT_USERNAME}/.ssh/authorized_keys" && chmod 644 "/home/${DEFAULT_USERNAME}/.ssh/known_hosts" && chmod 644 /home/${DEFAULT_USERNAME}/.ssh/id_*.pub && chmod 700 "/home/${DEFAULT_USERNAME}/.ssh"
         fi
     }
     function ConfigurePostfix() {
@@ -399,6 +436,15 @@ function ConfigurePackages() {
         if [ "${WHICH_PIP}" != "null" ]; then
             ${WHICH_PIP} config set global.index-url "https://mirrors.ustc.edu.cn/pypi/web/simple"
         fi
+        if [ -f "/root/.config/pip/pip.conf" ]; then
+            if [ ! -d "/home/${DEFAULT_USERNAME}/.config" ]; then
+                mkdir "/home/${DEFAULT_USERNAME}/.config"
+            fi
+            if [ ! -d "/home/${DEFAULT_USERNAME}/.config/pip" ]; then
+                mkdir "/home/${DEFAULT_USERNAME}/.config/pip"
+            fi
+            rm -rf "/home/${DEFAULT_USERNAME}/.config/pip/pip.conf" && cp -rf "/root/.config/pip/pip.conf" "/home/${DEFAULT_USERNAME}/.config/pip/pip.conf" && chown -R $DEFAULT_USERNAME:$DEFAULT_USERNAME "/home/${DEFAULT_USERNAME}/.config" && chown -R $DEFAULT_USERNAME:$DEFAULT_USERNAME "/home/${DEFAULT_USERNAME}/.config/pip" && chown -R $DEFAULT_USERNAME:$DEFAULT_USERNAME "/home/${DEFAULT_USERNAME}/.config/pip/pip.conf"
+        fi
     }
     function ConfigureSysctl() {
         sysctl_list=(
@@ -424,48 +470,95 @@ function ConfigurePackages() {
         fi
     }
     function ConfigureZsh() {
-        omz_list=(
-            "export DEBIAN_FRONTEND=\"noninteractive\""
-            "export EDITOR=\"nano\""
-            "export GPG_TTY=\$(tty)"
-            "export PATH=\"/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:\$PATH\""
-            "# export SSH_AUTH_SOCK=\"\$(gpgconf --list-dirs agent-ssh-socket)\" && gpgconf --launch gpg-agent && gpg-connect-agent updatestartuptty /bye > \"/dev/null\" 2>&1"
-            "export ZSH=\"\$HOME/.oh-my-zsh\""
-            "plugins=(zsh-autosuggestions zsh-completions zsh-history-substring-search zsh-syntax-highlighting)"
-            "ZSH_CACHE_DIR=\"\$ZSH/cache\""
-            "ZSH_CUSTOM=\"\$ZSH/custom\""
-            "ZSH_THEME=\"ys\""
-            "DISABLE_AUTO_UPDATE=\"false\""
-            "DISABLE_UPDATE_PROMPT=\"false\""
-            "UPDATE_ZSH_DAYS=\"7\""
-            "ZSH_COMPDUMP=\"\$ZSH_CACHE_DIR/.zcompdump\""
-            "ZSH_DISABLE_COMPFIX=\"false\""
-            "CASE_SENSITIVE=\"true\""
-            "COMPLETION_WAITING_DOTS=\"true\""
-            "DISABLE_AUTO_TITLE=\"false\""
-            "DISABLE_LS_COLORS=\"false\""
-            "DISABLE_MAGIC_FUNCTIONS=\"false\""
-            "DISABLE_UNTRACKED_FILES_DIRTY=\"false\""
-            "ENABLE_CORRECTION=\"true\""
-            "HIST_STAMPS=\"yyyy-mm-dd\""
-            "HYPHEN_INSENSITIVE=\"false\""
-            "ZSH_THEME_RANDOM_QUIET=\"true\""
-            "ZSH_AUTOSUGGEST_HIGHLIGHT_STYLE=\"bg=250,fg=238,bold,underline\""
-            "ZSH_AUTOSUGGEST_STRATEGY=(match_prev_cmd history completion)"
-            "ZSH_AUTOSUGGEST_USE_ASYNC=\"true\""
-            "source \"\$ZSH/oh-my-zsh.sh\""
-        )
-        which "zsh" > "/dev/null" 2>&1
-        if [ "$?" -eq "0" ] && [ -d "/etc/zsh/oh-my-zsh" ]; then
-            rm -rf "/tmp/omz.autodeploy" && for omz_list_task in "${!omz_list[@]}"; do
-                echo "${omz_list[$omz_list_task]}" >> "/tmp/omz.autodeploy"
-            done && cat "/tmp/omz.autodeploy" > "/etc/zsh/oh-my-zsh.zshrc" && rm -rf "/tmp/omz.autodeploy" && ln -s "/etc/zsh/oh-my-zsh" "/root/.oh-my-zsh" && ln -s "/etc/zsh/oh-my-zsh.zshrc" "/root/.zshrc"
-        fi
+        function GenerateCommandPath() {
+            default_path_list=(
+                "/bin"
+                "/sbin"
+                "/usr/bin"
+                "/usr/sbin"
+                "/usr/local/bin"
+                "/usr/local/sbin"
+                "/home/linuxbrew/.linuxbrew/bin"
+                "/home/linuxbrew/.linuxbrew/sbin"
+            )
+            DEFAULT_PATH="" && for default_path_list_task in "${!default_path_list[@]}"; do
+                if [ "${default_path_list[$default_path_list_task]}" != "" ]; then
+                    DEFAULT_PATH="${default_path_list[$default_path_list_task]}:${DEFAULT_PATH}"
+                    DEFAULT_PATH=$(echo "${DEFAULT_PATH}" | sed "s/\:$//g")
+                fi
+            done
+            export PATH="${DEFAULT_PATH}" && BREW_PATH="$(brew --prefix)/opt" && custom_path_list=($(ls "${BREW_PATH}" | grep -v "@" | sort | awk "{ print $2 }")) && CUSTOM_PATH="" && for custom_path_list_task in "${!custom_path_list[@]}"; do
+                if [ -d "${BREW_PATH}/${custom_path_list[$custom_path_list_task]}/libexec/gnubin" ]; then
+                    CUSTOM_PATH="${BREW_PATH}/${custom_path_list[$custom_path_list_task]}/libexec/gnubin:${CUSTOM_PATH}"
+                elif [ -d "${BREW_PATH}/${custom_path_list[$custom_path_list_task]}/bin" ]; then
+                    CUSTOM_PATH="${BREW_PATH}/${custom_path_list[$custom_path_list_task]}/bin:${CUSTOM_PATH}"
+                fi && CUSTOM_PATH=$(echo "${CUSTOM_PATH}" | sed "s/\:$//g")
+                if [ -d "${BREW_PATH}/${custom_path_list[$custom_path_list_task]}/libexec/gnuman" ]; then
+                    CUSTOM_MANPATH="${BREW_PATH}/${custom_path_list[$custom_path_list_task]}/libexec/gnuman:${CUSTOM_MANPATH}"
+                elif [ -d "${BREW_PATH}/${custom_path_list[$custom_path_list_task]}/share/man" ]; then
+                    CUSTOM_MANPATH="${BREW_PATH}/${custom_path_list[$custom_path_list_task]}/share/man:${CUSTOM_MANPATH}"
+                fi && CUSTOM_MANPATH=$(echo "${CUSTOM_MANPATH}" | sed "s/\:$//g")
+            done
+        }
+        function GenerateOMZProfile() {
+            HOMEBREW_GITHUB_API_TOKEN=""
+            omz_list=(
+                "export DEBIAN_FRONTEND=\"noninteractive\""
+                "export EDITOR=\"nano\""
+                "export GPG_TTY=\$(tty)"
+                "export HOMEBREW_BOTTLE_DOMAIN=\"https://mirrors.ustc.edu.cn/homebrew-bottles/bottles\""
+                "export HOMEBREW_BREW_GIT_REMOTE=\"https://${GHPROXY_URL}/https://github.com/homebrew/brew.git\""
+                "export HOMEBREW_CORE_GIT_REMOTE=\"https://${GHPROXY_URL}/https://github.com/homebrew/homebrew-core.git\""
+                "export HOMEBREW_GITHUB_API_TOKEN=\"${HOMEBREW_GITHUB_API_TOKEN}\""
+                "export MANPATH=\"${CUSTOM_MANPATH}:\$MANPATH\""
+                "export PATH=\"${CUSTOM_PATH}:${DEFAULT_PATH}:\$PATH\""
+                "# export SSH_AUTH_SOCK=\"\$(gpgconf --list-dirs agent-ssh-socket)\" && gpgconf --launch gpg-agent && gpg-connect-agent updatestartuptty /bye > \"/dev/null\" 2>&1"
+                "export ZSH=\"\$HOME/.oh-my-zsh\""
+                "plugins=(zsh-autosuggestions zsh-completions zsh-history-substring-search zsh-syntax-highlighting)"
+                "ZSH_CACHE_DIR=\"\$ZSH/cache\""
+                "ZSH_CUSTOM=\"\$ZSH/custom\""
+                "ZSH_THEME=\"ys\""
+                "DISABLE_AUTO_UPDATE=\"false\""
+                "DISABLE_UPDATE_PROMPT=\"false\""
+                "UPDATE_ZSH_DAYS=\"7\""
+                "ZSH_COMPDUMP=\"\$ZSH_CACHE_DIR/.zcompdump\""
+                "ZSH_DISABLE_COMPFIX=\"false\""
+                "CASE_SENSITIVE=\"true\""
+                "COMPLETION_WAITING_DOTS=\"true\""
+                "DISABLE_AUTO_TITLE=\"false\""
+                "DISABLE_LS_COLORS=\"false\""
+                "DISABLE_MAGIC_FUNCTIONS=\"false\""
+                "DISABLE_UNTRACKED_FILES_DIRTY=\"false\""
+                "ENABLE_CORRECTION=\"true\""
+                "HIST_STAMPS=\"yyyy-mm-dd\""
+                "HYPHEN_INSENSITIVE=\"false\""
+                "ZSH_THEME_RANDOM_QUIET=\"true\""
+                "ZSH_AUTOSUGGEST_HIGHLIGHT_STYLE=\"bg=250,fg=238,bold,underline\""
+                "ZSH_AUTOSUGGEST_STRATEGY=(match_prev_cmd history completion)"
+                "ZSH_AUTOSUGGEST_USE_ASYNC=\"true\""
+                "source \"\$(brew --repository)/Library/Taps/homebrew/homebrew-command-not-found/handler.sh\""
+                "source \"\$ZSH/oh-my-zsh.sh\""
+            )
+            which "zsh" > "/dev/null" 2>&1
+            if [ "$?" -eq "0" ] && [ -d "/etc/zsh/oh-my-zsh" ]; then
+                rm -rf "/tmp/omz.autodeploy" && for omz_list_task in "${!omz_list[@]}"; do
+                    echo "${omz_list[$omz_list_task]}" >> "/tmp/omz.autodeploy"
+                done && cat "/tmp/omz.autodeploy" > "/etc/zsh/oh-my-zsh.zshrc" && rm -rf "/tmp/omz.autodeploy" && ln -s "/etc/zsh/oh-my-zsh" "/root/.oh-my-zsh" && ln -s "/etc/zsh/oh-my-zsh.zshrc" "/root/.zshrc"
+            fi
+            if [ -d "/etc/zsh/oh-my-zsh" ]; then
+                cp -rf "/etc/zsh/oh-my-zsh" "/home/${DEFAULT_USERNAME}/.oh-my-zsh" && chown -R $DEFAULT_USERNAME:$DEFAULT_USERNAME "/home/${DEFAULT_USERNAME}/.oh-my-zsh"
+                if [ -f "/etc/zsh/oh-my-zsh.zshrc" ]; then
+                    cp -rf "/etc/zsh/oh-my-zsh.zshrc" "/home/${DEFAULT_USERNAME}/.zshrc" && chown -R $DEFAULT_USERNAME:$DEFAULT_USERNAME "/home/${DEFAULT_USERNAME}/.zshrc"
+                fi
+            fi
+        }
+        GenerateCommandPath
+        GenerateOMZProfile
     }
     ConfigureChrony
     ConfigureCrontab
     ConfigureFail2Ban
-    ConfigureGit
+    ConfigureGPG && ConfigureGit
     ConfigureGrub
     ConfigureIOMMU
     ConfigureOpenSSH
@@ -497,62 +590,11 @@ function ConfigureSystem() {
         )
         userdel -rf "${DEFAULT_USERNAME}" > "/dev/null" 2>&1
         useradd -c "${DEFAULT_FULLNAME}" -d "/home/${DEFAULT_USERNAME}" -s "/bin/zsh" -m "${DEFAULT_USERNAME}" && echo $DEFAULT_USERNAME:$DEFAULT_PASSWORD | chpasswd && adduser "${DEFAULT_USERNAME}" "sudo"
-        GPG_PUBKEY=""
-        if [ "${GPG_PUBKEY}" == "" ]; then
-            GPG_PUBKEY="DD982DAAB9C71C78F9563E5207EB56787030D792"
-        fi
-        which "gpg" > "/dev/null" 2>&1
-        if [ "$?" -eq "0" ]; then
-            rm -rf "/home/${DEFAULT_USERNAME}/.gnupg" "/root/.gnupg" && gpg --keyserver hkps://keys.openpgp.org --recv ${GPG_PUBKEY} && echo "${GPG_PUBKEY}" | awk 'BEGIN { FS = "\n" }; { print $1":6:" }' | gpg --import-ownertrust && GPG_PUBKEY_ID_A=$(gpg --list-keys --keyid-format LONG | grep "pub\|sub" | awk '{print $2, $4}' | grep "\[A\]" | awk '{print $1}' | awk -F '/' '{print $2}') && GPG_PUBKEY_ID_C=$(gpg --list-keys --keyid-format LONG | grep "pub\|sub" | awk '{print $2, $4}' | grep "\[C\]" | awk '{print $1}' | awk -F '/' '{print $2}')
-            if [ "${GPG_PUBKEY_ID_A}" != "" ]; then
-                gpg_agent_list=(
-                    "enable-ssh-support"
-                    "pinentry-program /usr/bin/pinentry-curses"
-                )
-                rm -rf "/root/.gnupg/gpg-agent.conf" && for gpg_agent_list_task in "${!gpg_agent_list[@]}"; do
-                    echo "${gpg_agent_list[$gpg_agent_list_task]}" >> "/root/.gnupg/gpg-agent.conf"
-                done && echo "${GPG_PUBKEY_ID_A}" > "/root/.gnupg/sshcontrol" && if [ -d "/root/.gnupg" ]; then
-                    mv "/root/.gnupg" "/home/${DEFAULT_USERNAME}/.gnupg" && chown -R $DEFAULT_USERNAME:$DEFAULT_USERNAME "/home/${DEFAULT_USERNAME}/.gnupg"
-                fi
-            fi
-        fi
-        if [ -d "/etc/zsh/oh-my-zsh" ]; then
-            cp -rf "/etc/zsh/oh-my-zsh" "/home/${DEFAULT_USERNAME}/.oh-my-zsh" && chown -R $DEFAULT_USERNAME:$DEFAULT_USERNAME "/home/${DEFAULT_USERNAME}/.oh-my-zsh"
-            if [ -f "/etc/zsh/oh-my-zsh.zshrc" ]; then
-                cp -rf "/etc/zsh/oh-my-zsh.zshrc" "/home/${DEFAULT_USERNAME}/.zshrc" && chown -R $DEFAULT_USERNAME:$DEFAULT_USERNAME "/home/${DEFAULT_USERNAME}/.zshrc"
-            fi
-        fi
-        if [ -f "/root/.gitconfig" ]; then
-            mv "/root/.gitconfig" "/root/.gitconfig.bak" && GIT_COMMIT_GPGSIGN="" && GIT_GPG_PROGRAM="" && GIT_HTTP_PROXY="" && GIT_HTTPS_PROXY="" && GIT_USER_NAME="" && GIT_USER_EMAIL="" && GIT_USER_SIGNINGKEY="" && ConfigureGit && mv "/root/.gitconfig" "/home/${DEFAULT_USERNAME}/.gitconfig" && chown -R $DEFAULT_USERNAME:$DEFAULT_USERNAME "/home/${DEFAULT_USERNAME}/.gitconfig" && mv "/root/.gitconfig.bak" "/root/.gitconfig"
-        fi
-        if [ -f "/root/.config/pip/pip.conf" ]; then
-            if [ ! -d "/home/${DEFAULT_USERNAME}/.config" ]; then
-                mkdir "/home/${DEFAULT_USERNAME}/.config"
-            fi
-            if [ ! -d "/home/${DEFAULT_USERNAME}/.config/pip" ]; then
-                mkdir "/home/${DEFAULT_USERNAME}/.config/pip"
-            fi
-            rm -rf "/home/${DEFAULT_USERNAME}/.config/pip/pip.conf" && cp -rf "/root/.config/pip/pip.conf" "/home/${DEFAULT_USERNAME}/.config/pip/pip.conf" && chown -R $DEFAULT_USERNAME:$DEFAULT_USERNAME "/home/${DEFAULT_USERNAME}/.config" && chown -R $DEFAULT_USERNAME:$DEFAULT_USERNAME "/home/${DEFAULT_USERNAME}/.config/pip" && chown -R $DEFAULT_USERNAME:$DEFAULT_USERNAME "/home/${DEFAULT_USERNAME}/.config/pip/pip.conf"
-        fi
         which "crontab" > "/dev/null" 2>&1
         if [ "$?" -eq "0" ]; then
             rm -rf "/tmp/crontab.autodeploy" && for crontab_list_task in "${!crontab_list[@]}"; do
                 echo "${crontab_list[$crontab_list_task]}" >> "/tmp/crontab.autodeploy"
             done && crontab -u "${DEFAULT_USERNAME}" "/tmp/crontab.autodeploy" && crontab -lu "${DEFAULT_USERNAME}" && rm -rf "/tmp/crontab.autodeploy"
-        fi
-        OPENSSH_PASSWORD=""
-        which "ssh-keygen" > "/dev/null" 2>&1
-        if [ "$?" -eq "0" ]; then
-            rm -rf "/home/${DEFAULT_USERNAME}/.ssh" && mkdir "/home/${DEFAULT_USERNAME}/.ssh" && if [ "${GPG_PUBKEY_ID_C}" != "" ]; then
-                which "gpg" > "/dev/null" 2>&1
-                if [ "$?" -eq "0" ]; then
-                    gpg --export-ssh-key ${GPG_PUBKEY_ID_C} > "/home/${DEFAULT_USERNAME}/.ssh/authorized_keys"
-                else
-                    touch "/home/${DEFAULT_USERNAME}/.ssh/authorized_keys"
-                fi
-            else
-                touch "/home/${DEFAULT_USERNAME}/.ssh/authorized_keys"
-            fi && touch "/home/${DEFAULT_USERNAME}/.ssh/known_hosts" && ssh-keygen -t dsa -b 1024 -f "/home/${DEFAULT_USERNAME}/.ssh/id_dsa" -C "${DEFAULT_USERNAME}@${NEW_HOSTNAME}" -N "${OPENSSH_PASSWORD}" && ssh-keygen -t ecdsa -b 384 -f "/home/${DEFAULT_USERNAME}/.ssh/id_ecdsa" -C "${DEFAULT_USERNAME}@${NEW_HOSTNAME}" -N "${OPENSSH_PASSWORD}" && ssh-keygen -t ed25519 -f "/home/${DEFAULT_USERNAME}/.ssh/id_ed25519" -C "${DEFAULT_USERNAME}@${NEW_HOSTNAME}" -N "${OPENSSH_PASSWORD}" && ssh-keygen -t rsa -b 4096 -f "/home/${DEFAULT_USERNAME}/.ssh/id_rsa" -C "${DEFAULT_USERNAME}@${NEW_HOSTNAME}" -N "${OPENSSH_PASSWORD}" && chown -R $DEFAULT_USERNAME:$DEFAULT_USERNAME "/home/${DEFAULT_USERNAME}/.ssh" && chown -R $DEFAULT_USERNAME:$DEFAULT_USERNAME /home/${DEFAULT_USERNAME}/.ssh/* && chmod 400 /home/${DEFAULT_USERNAME}/.ssh/id_* && chmod 600 "/home/${DEFAULT_USERNAME}/.ssh/authorized_keys" && chmod 644 "/home/${DEFAULT_USERNAME}/.ssh/known_hosts" && chmod 644 /home/${DEFAULT_USERNAME}/.ssh/id_*.pub && chmod 700 "/home/${DEFAULT_USERNAME}/.ssh"
         fi
         which "pveum" > "/dev/null" 2>&1
         if [ "$?" -eq "0" ]; then
@@ -613,13 +655,111 @@ function ConfigureSystem() {
         fi
     }
     ConfigureDefaultShell
-    ConfigureDefaultUser
+    ConfigureDefaultUser && InstallHomebrew
     ConfigureHostfile
     ConfigureProxmoxVENode
     ConfigureRootUser
 }
 # Install Custom Packages
 function InstallCustomPackages() {
+    function InstallHomebrew() {
+        tap_list=(
+            "homebrew-aliases"
+            "homebrew-autoupdate"
+            "homebrew-bundle"
+            "homebrew-command-not-found"
+            "homebrew-formula-analytics"
+            "homebrew-portable-ruby"
+            "homebrew-services"
+            "homebrew-test-bot"
+        )
+        export PATH="/home/linuxbrew/.linuxbrew/sbin:/home/linuxbrew/.linuxbrew/bin:${PATH}"
+        which "brew" > "/dev/null" 2>&1
+        if [ "$?" -eq "1" ]; then
+            curl -fsSL "https://${GHPROXY_URL}/https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh" | sed "s/https\:\/\/github\.com/https\:\/\/${GHPROXY_URL}\/https\:\/\/github\.com/g" > "/tmp/linuxbrew_install.sh" && sed -i "1 a export HOMEBREW_BOTTLE_DOMAIN=\"https://mirrors.ustc.edu.cn/homebrew-bottles/bottles\"" "/tmp/linuxbrew_install.sh" && su - ${DEFAULT_USERNAME} -s /bin/bash "/tmp/linuxbrew_install.sh" && rm -rf "/tmp/linuxbrew_install.sh"
+        else
+            core_tap_list=(
+                "brew"
+                "homebrew-core"
+                ${tap_list[@]}
+            )
+            BREW_LIBRARY_PATH="/home/linuxbrew/.linuxbrew/Homebrew/Library" && for core_tap_list in "${core_tap_list[@]}"; do
+                if [ "${core_tap_list[$core_tap_list_task]}" == "brew" ]; then
+                    git -C "${BREW_LIBRARY_PATH}/Homebrew" remote set-url origin https://${GHPROXY_URL}/https://github.com/Homebrew/${core_tap_list[$core_tap_list_task]}.git
+                else
+                    git -C "${BREW_LIBRARY_PATH}/Taps/homebrew/${core_tap_list[$core_tap_list_task]}" remote set-url origin https://${GHPROXY_URL}/https://github.com/Homebrew/${core_tap_list[$core_tap_list_task]}.git
+                fi
+            done
+        fi
+        if [ -d "$(brew --repo)/Library/Taps/homebrew" ]; then
+            app_list=(
+                "bash"
+                "coreutils"
+                "curl"
+                "findutils"
+                "gawk"
+                "git"
+                "git-flow"
+                "git-lfs"
+                "gnu-apl"
+                "gnu-barcode"
+                "gnu-chess"
+                "gnu-cobol"
+                "gnu-complexity"
+                "gnu-getopt"
+                "gnu-go"
+                "gnu-indent"
+                "gnu-prolog"
+                "gnu-scientific-library"
+                "gnu-sed"
+                "gnu-shogi"
+                "gnu-tar"
+                "gnu-time"
+                "gnu-typist"
+                "gnu-units"
+                "gnu-which"
+                "gnupg"
+                "gnutls"
+                "grep"
+                "iperf3"
+                "jq"
+                "knot"
+                "mailutils"
+                "mtr"
+                "nano"
+                "neofetch"
+                "nmap"
+                "openssh"
+                "p7zip"
+                "pinentry"
+                "python3"
+                "qrencode"
+                "tcpdump"
+                "unzip"
+                "vim"
+                "wget"
+                "whois"
+                "wireshark"
+                "zip"
+                "zsh"
+            )
+            for tap_list_task in "${!tap_list[@]}"; do
+                rm -rf "$(brew --repo)/Library/Taps/homebrew/${tap_list[$tap_list_task]}" && su - ${DEFAULT_USERNAME} -s /usr/bin/git clone "https://${GHPROXY_URL}/https://github.com/Homebrew/${tap_list[$tap_list_task]}.git" "$(brew --repo)/Library/Taps/homebrew/${tap_list[$tap_list_task]}"
+            done && su - ${DEFAULT_USERNAME} -s /home/linuxbrew/.linuxbrew/bin/brew update && for app_list_task in "${!app_list[@]}"; do
+                rm -rf "/tmp/linuxbrew.autodeploy" && su - ${DEFAULT_USERNAME} -s /home/linuxbrew/.linuxbrew/bin/brew info ${app_list[$app_list_task]} && if [ "$?" -eq "0" ]; then
+                    linuxbrew_list=(
+                        '#!/bin/bash'
+                        "export HOMEBREW_BOTTLE_DOMAIN=\"https://mirrors.ustc.edu.cn/homebrew-bottles/bottles\""
+                        "export PATH=\"/home/linuxbrew/.linuxbrew/sbin:/home/linuxbrew/.linuxbrew/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin\""
+                        "brew install ${app_list[$app_list_task]}"
+                    )
+                    for linuxbrew_list_task in "${!linuxbrew_list[@]}"; do
+                        echo "${linuxbrew_list[$linuxbrew_list_task]}" >> "/tmp/linuxbrew.autodeploy"
+                    done && chown -R $DEFAULT_USERNAME:$DEFAULT_USERNAME "/tmp/linuxbrew.autodeploy" && su - ${DEFAULT_USERNAME} -s /bin/bash -c "bash /tmp/linuxbrew.autodeploy"
+                fi && rm -rf "/tmp/linuxbrew.autodeploy"
+            done
+        fi
+    }
     function InstallOhMyZsh() {
         plugin_list=(
             "zsh-autosuggestions"
@@ -736,10 +876,10 @@ transport_protocol="https" && SetRepositoryMirror
 UpgradePackages
 # Call InstallCustomPackages
 InstallCustomPackages
-# Call ConfigurePackages
-ConfigurePackages
 # Call ConfigureSystem
 ConfigureSystem
+# Call ConfigurePackages
+ConfigurePackages
 # Set read_only="TRUE"; Call SetReadonlyFlag
 read_only="TRUE" && SetReadonlyFlag
 # Call CleanupTempFiles
