@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 3.5.8
+# Current Version: 3.5.9
 
 ## How to get and use?
 # curl "https://source.zhijie.online/AutoDeploy/main/Ubuntu.sh" | sudo bash
@@ -968,23 +968,10 @@ function InstallCustomPackages() {
             "homebrew-services"
             "homebrew-test-bot"
         )
-        export PATH="/home/linuxbrew/.linuxbrew/sbin:/home/linuxbrew/.linuxbrew/bin:${PATH}"
+        export PATH="/home/linuxbrew/.linuxbrew/sbin:/home/linuxbrew/.linuxbrew/bin:${PATH}" && rm -rf "/home/linuxbrew"
         which "brew" > "/dev/null" 2>&1
         if [ "$?" -eq "1" ]; then
             curl -fsSL "https://${GHPROXY_URL}/https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh" | sed "s/https\:\/\/github\.com/https\:\/\/${GHPROXY_URL}\/https\:\/\/github\.com/g" > "/tmp/linuxbrew_install.sh" && sed -i "1 a export HOMEBREW_BOTTLE_DOMAIN=\"https://mirrors.ustc.edu.cn/homebrew-bottles/bottles\"" "/tmp/linuxbrew_install.sh" && su - ${DEFAULT_USERNAME} -s /bin/bash "/tmp/linuxbrew_install.sh" && rm -rf "/tmp/linuxbrew_install.sh"
-        else
-            core_tap_list=(
-                "brew"
-                "homebrew-core"
-                ${tap_list[@]}
-            )
-            BREW_LIBRARY_PATH="/home/linuxbrew/.linuxbrew/Homebrew/Library" && for core_tap_list in "${core_tap_list[@]}"; do
-                if [ "${core_tap_list[$core_tap_list_task]}" == "brew" ]; then
-                    git -C "${BREW_LIBRARY_PATH}/Homebrew" remote set-url origin https://${GHPROXY_URL}/https://github.com/Homebrew/${core_tap_list[$core_tap_list_task]}.git
-                else
-                    git -C "${BREW_LIBRARY_PATH}/Taps/homebrew/${core_tap_list[$core_tap_list_task]}" remote set-url origin https://${GHPROXY_URL}/https://github.com/Homebrew/${core_tap_list[$core_tap_list_task]}.git
-                fi
-            done
         fi
         if [ -d "$(brew --repo)/Library/Taps/homebrew" ]; then
             app_list=(
