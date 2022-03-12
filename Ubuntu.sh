@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 3.5.5
+# Current Version: 3.5.6
 
 ## How to get and use?
 # curl "https://source.zhijie.online/AutoDeploy/main/Ubuntu.sh" | sudo bash
@@ -977,6 +977,19 @@ function InstallCustomPackages() {
         which "brew" > "/dev/null" 2>&1
         if [ "$?" -eq "1" ]; then
             curl -fsSL "https://${GHPROXY_URL}/https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh" | sed "s/https\:\/\/github\.com/https\:\/\/${GHPROXY_URL}\/https\:\/\/github\.com/g" > "/tmp/linuxbrew_install.sh" && sed -i "1 a export HOMEBREW_BOTTLE_DOMAIN=\"https://mirrors.ustc.edu.cn/homebrew-bottles/bottles\"" "/tmp/linuxbrew_install.sh" && su - ${DEFAULT_USERNAME} -s /bin/bash "/tmp/linuxbrew_install.sh" && rm -rf "/tmp/linuxbrew_install.sh"
+        else
+            core_tap_list=(
+                "brew"
+                "homebrew-core"
+                ${tap_list[@]}
+            )
+            BREW_LIBRARY_PATH="/home/linuxbrew/.linuxbrew/Homebrew/Library" && for core_tap_list in "${core_tap_list[@]}"; do
+                if [ "${core_tap_list[$core_tap_list_task]}" == "brew" ]; then
+                    git -C "${BREW_LIBRARY_PATH}/Homebrew" remote set-url origin https://${GHPROXY_URL}/https://github.com/Homebrew/${core_tap_list[$core_tap_list_task]}.git
+                else
+                    git -C "${BREW_LIBRARY_PATH}/Taps/homebrew/${core_tap_list[$core_tap_list_task]}" remote set-url origin https://${GHPROXY_URL}/https://github.com/Homebrew/${core_tap_list[$core_tap_list_task]}.git
+                fi
+            done
         fi
         if [ -d "$(brew --repo)/Library/Taps/homebrew" ]; then
             app_list=(
@@ -1035,11 +1048,15 @@ function InstallCustomPackages() {
                 rm -rf "$(brew --repo)/Library/Taps/homebrew/${tap_list[$tap_list_task]}" && su - ${DEFAULT_USERNAME} -s /usr/bin/git clone "https://${GHPROXY_URL}/https://github.com/Homebrew/${tap_list[$tap_list_task]}.git" "$(brew --repo)/Library/Taps/homebrew/${tap_list[$tap_list_task]}"
             done && su - ${DEFAULT_USERNAME} -s /home/linuxbrew/.linuxbrew/bin/brew update && for app_list_task in "${!app_list[@]}"; do
                 rm -rf "/tmp/linuxbrew.autodeploy" && su - ${DEFAULT_USERNAME} -s /home/linuxbrew/.linuxbrew/bin/brew info ${app_list[$app_list_task]} && if [ "$?" -eq "0" ]; then
-                    echo '#!/bin/bash' > /tmp/linuxbrew.autodeploy
-                    echo "export HOMEBREW_BOTTLE_DOMAIN=\"https://mirrors.ustc.edu.cn/homebrew-bottles/bottles\"" >> /tmp/linuxbrew.autodeploy
-                    echo "export PATH=\"/home/linuxbrew/.linuxbrew/sbin:/home/linuxbrew/.linuxbrew/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin\"" >> /tmp/linuxbrew.autodeploy
-                    echo "brew install ${app_list[$app_list_task]}" >> /tmp/linuxbrew.autodeploy
-                    chown -R $DEFAULT_USERNAME:$DEFAULT_USERNAME "/tmp/linuxbrew.autodeploy" && su - ${DEFAULT_USERNAME} -s /bin/bash -c "bash /tmp/linuxbrew.autodeploy"
+                    linuxbrew_list=(
+                        '#!/bin/bash'
+                        "export HOMEBREW_BOTTLE_DOMAIN=\"https://mirrors.ustc.edu.cn/homebrew-bottles/bottles\""
+                        "export PATH=\"/home/linuxbrew/.linuxbrew/sbin:/home/linuxbrew/.linuxbrew/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin\""
+                        "brew install ${app_list[$app_list_task]}"
+                    )
+                    for linuxbrew_list_task in "${!linuxbrew_list[@]}"; do
+                        echo "${linuxbrew_list[$linuxbrew_list_task]}" >> "/tmp/linuxbrew.autodeploy"
+                    done && chown -R $DEFAULT_USERNAME:$DEFAULT_USERNAME "/tmp/linuxbrew.autodeploy" && su - ${DEFAULT_USERNAME} -s /bin/bash -c "bash /tmp/linuxbrew.autodeploy"
                 fi && rm -rf "/tmp/linuxbrew.autodeploy"
             done
         fi
@@ -1180,7 +1197,7 @@ function CleanupTempFiles() {
     )
     if [ "${container_environment}" == "docker" ] || [ "${container_environment}" == "wsl2" ]; then
         for cleanup_list_task in "${!cleanup_list[@]}"; do
-            FILE_LIST=($(find "/" \( -path "/dev" -o -path "/mnt" -o -path "/proc" -o -path "/sys" \) -prune -o -name "${cleanup_list[$cleanup_list_task]}" -print | awk "{print $2}"))
+            FILE_LIST=($(find "/" \( -path "/dev" -o -path "/home" -o -path "/mnt" -o -path "/proc" -o -path "/root" -o -path "/sys" \) -prune -o -name "${cleanup_list[$cleanup_list_task]}" -print | awk "{print $2}"))
             for FILE_LIST_TASK in "${!FILE_LIST[@]}"; do
                 chattr -Ri "${FILE_LIST[$FILE_LIST_TASK]}" > "/dev/null" 2>&1
                 rm -rf "${FILE_LIST[$FILE_LIST_TASK]}"
