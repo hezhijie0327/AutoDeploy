@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 2.2.5
+# Current Version: 2.2.6
 
 ## How to get and use?
 # /bin/bash -c "$(curl -fsSL 'https://source.zhijie.online/AutoDeploy/main/macOS.sh')"
@@ -106,6 +106,8 @@ function ConfigurePackages() {
         if [ "$?" -eq "0" ]; then
             if [ -d "/etc/ssh" ]; then
                 sudo rm -rf /etc/ssh/ssh_host_* && sudo ssh-keygen -t dsa -b 1024 -f "/etc/ssh/ssh_host_dsa_key" -C "root@$(hostname)" -N "${OPENSSH_PASSWORD}" && sudo ssh-keygen -t ecdsa -b 384 -f "/etc/ssh/ssh_host_ecdsa_key" -C "root@$(hostname)" -N "${OPENSSH_PASSWORD}" && sudo ssh-keygen -t ed25519 -f "/etc/ssh/ssh_host_ed25519_key" -C "root@$(hostname)" -N "${OPENSSH_PASSWORD}" && sudo ssh-keygen -t rsa -b 4096 -f "/etc/ssh/ssh_host_rsa_key" -C "root@$(hostname)" -N "${OPENSSH_PASSWORD}" && sudo chmod 400 /etc/ssh/ssh_host_* && sudo chmod 644 /etc/ssh/ssh_host_*.pub
+            fi
+            if [ -d "/opt/homebrew/etc/ssh" ]; then
                 rm -rf /opt/homebrew/etc/ssh/ssh_host_* && ssh-keygen -t dsa -b 1024 -f "/opt/homebrew/etc/ssh/ssh_host_dsa_key" -C "${CurrentUsername}@$(hostname)" -N "${OPENSSH_PASSWORD}" && ssh-keygen -t ecdsa -b 384 -f "/opt/homebrew/etc/ssh/ssh_host_ecdsa_key" -C "${CurrentUsername}@$(hostname)" -N "${OPENSSH_PASSWORD}" && ssh-keygen -t ed25519 -f "/opt/homebrew/etc/ssh/ssh_host_ed25519_key" -C "${CurrentUsername}@$(hostname)" -N "${OPENSSH_PASSWORD}" && ssh-keygen -t rsa -b 4096 -f "/opt/homebrew/etc/ssh/ssh_host_rsa_key" -C "${CurrentUsername}@$(hostname)" -N "${OPENSSH_PASSWORD}" && chown ${CurrentUsername}:admin /opt/homebrew/etc/ssh/ssh_host_* && chmod 400 /opt/homebrew/etc/ssh/ssh_host_* && chmod 644 /opt/homebrew/etc/ssh/ssh_host_*.pub
             fi
             rm -rf "/Users/${CurrentUsername}/.ssh" && mkdir "/Users/${CurrentUsername}/.ssh" && if [ "${GPG_PUBKEY_ID_C}" != "" ]; then
