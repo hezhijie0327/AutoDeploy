@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 3.6.0
+# Current Version: 3.6.1
 
 ## How to get and use?
 # curl "https://source.zhijie.online/AutoDeploy/main/Ubuntu.sh" | sudo bash
@@ -53,19 +53,6 @@ function GetSystemInformation() {
             done
         fi
     }
-    function CheckDomainConfiguration() {
-        CUSTOM_DOMAIN=("localdomain")
-        CURRENT_DOMAIN_EXCLUDE="$(echo ${CUSTOM_DOMAIN[*]} | sed 's/\ /\\\|/g')" && CURRENT_DOMAIN_LINE="" && if [ -f "/etc/resolv.conf" ]; then
-            CURRENT_DOMAIN=(${CUSTOM_DOMAIN[*]} $(cat "/etc/resolv.conf" | grep "search\ " | sed "s/search\ //g;s/\ /\n/g" | grep -v "${CURRENT_DOMAIN_EXCLUDE}" | sort | uniq | awk "{print $2}"))
-            for CURRENT_DOMAIN_TASK in "${!CURRENT_DOMAIN[@]}"; do
-                CURRENT_DOMAIN_LINE="${CURRENT_DOMAIN_LINE} ${CURRENT_DOMAIN[$CURRENT_DOMAIN_TASK]}"
-                NEW_DOMAIN=$(echo "${CURRENT_DOMAIN_LINE}" | sed "s/^\ //g")
-                if [ "${NEW_DOMAIN}" == "" ]; then
-                    NEW_DOMAIN="${CUSTOM_DOMAIN[*]}"
-                fi
-            done
-        fi
-    }
     function CheckMachineEnvironment() {
         function CheckContainerEnvironment() {
             if [ -f "/.dockerenv" ]; then
@@ -111,7 +98,7 @@ function GetSystemInformation() {
                     )
                     rm -rf "/tmp/resolv.autodeploy" && for resolv_conf_list_task in "${!resolv_conf_list[@]}"; do
                         echo "nameserver ${resolv_conf_list[$resolv_conf_list_task]}" >> "/tmp/resolv.autodeploy"
-                    done && echo "search ${NEW_DOMAIN}" >> "/tmp/resolv.autodeploy" && if [ -f "/etc/resolv.conf" ]; then
+                    done && echo "search ${NEW_DOMAIN[*]}" >> "/tmp/resolv.autodeploy" && if [ -f "/etc/resolv.conf" ]; then
                         chattr -i "/etc/resolv.conf" > "/dev/null" 2>&1
                         if [ "$?" -eq "1" ]; then
                             rm -rf "/etc/resolv.conf"
@@ -175,6 +162,9 @@ function GetSystemInformation() {
         }
         CheckContainerEnvironment
         CheckHypervisorEnvironment
+    }
+    function GenerateDomain() {
+        NEW_DOMAIN=("localdomain")
     }
     function GenerateHostname() {
         NEW_HOSTNAME="Ubuntu-$(date '+%Y%m%d%H%M%S')"
@@ -241,8 +231,7 @@ function GetSystemInformation() {
         export GHPROXY_URL="ghproxy.com"
     }
     CheckDNSConfiguration
-    CheckDomainConfiguration
-    CheckMachineEnvironment
+    GenerateDomain && CheckMachineEnvironment
     GenerateHostname
     GetLSBCodename
     GetOSArchitecture
@@ -609,7 +598,7 @@ function ConfigurePackages() {
             "DNSOverTLS=opportunistic"
             "DNSSEC=allow-downgrade"
             "DNSStubListener=false"
-            "Domains=${NEW_DOMAIN}"
+            "Domains=${NEW_DOMAIN[*]}"
         )
         which "resolvectl" > "/dev/null" 2>&1
         if [ "$?" -eq "0" ]; then
@@ -632,7 +621,7 @@ function ConfigurePackages() {
                 )
                 rm -rf "/tmp/resolv.autodeploy" && for resolv_conf_list_task in "${!resolv_conf_list[@]}"; do
                     echo "nameserver ${resolv_conf_list[$resolv_conf_list_task]}" >> "/tmp/resolv.autodeploy"
-                done && echo "search ${NEW_DOMAIN}" >> "/tmp/resolv.autodeploy" && if [ -f "/etc/resolv.conf" ]; then
+                done && echo "search ${NEW_DOMAIN[*]}" >> "/tmp/resolv.autodeploy" && if [ -f "/etc/resolv.conf" ]; then
                     chattr -i "/etc/resolv.conf" > "/dev/null" 2>&1
                     if [ "$?" -eq "1" ]; then
                         rm -rf "/etc/resolv.conf"
@@ -646,7 +635,7 @@ function ConfigurePackages() {
             )
             rm -rf "/tmp/resolv.autodeploy" && for resolv_conf_list_task in "${!resolv_conf_list[@]}"; do
                 echo "nameserver ${resolv_conf_list[$resolv_conf_list_task]}" >> "/tmp/resolv.autodeploy"
-            done && echo "search ${NEW_DOMAIN}" >> "/tmp/resolv.autodeploy" && if [ -f "/etc/resolv.conf" ]; then
+            done && echo "search ${NEW_DOMAIN[*]}" >> "/tmp/resolv.autodeploy" && if [ -f "/etc/resolv.conf" ]; then
                 chattr -i "/etc/resolv.conf" > "/dev/null" 2>&1
                 if [ "$?" -eq "1" ]; then
                     rm -rf "/etc/resolv.conf"
