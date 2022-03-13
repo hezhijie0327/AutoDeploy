@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 1.9.2
+# Current Version: 1.9.3
 
 ## How to get and use?
 # curl "https://source.zhijie.online/AutoDeploy/main/ProxmoxVE.sh" | sudo bash
@@ -29,7 +29,7 @@ function GetSystemInformation() {
         fi
     }
     function GenerateDomain() {
-        NEW_DOMAIN="localdomain"
+        NEW_DOMAIN=("localdomain")
     }
     function GenerateHostname() {
         NEW_HOSTNAME="ProxmoxVE-$(date '+%Y%m%d%H%M%S')"
@@ -605,8 +605,12 @@ function ConfigureSystem() {
         fi
     }
     function ConfigureHostfile() {
+        NEW_FULL_DOMAIN="" && for NEW_DOMAIN_TASK in "${!NEW_DOMAIN[@]}"; do
+            NEW_FULL_DOMAIN="${NEW_FULL_DOMAIN} ${NEW_HOSTNAME}.${NEW_DOMAIN[$NEW_DOMAIN_TASK]}"
+            NEW_FULL_DOMAIN=$(echo "${NEW_FULL_DOMAIN}" | sed "s/^\ //g;s/^${NEW_HOSTNAME}.$//g")
+        done
         host_list=(
-            "${CURRENT_MANAGEMENT_IP} ${NEW_HOSTNAME}.${NEW_DOMAIN} ${NEW_HOSTNAME}"
+            "${CURRENT_MANAGEMENT_IP} ${NEW_FULL_DOMAIN} ${NEW_HOSTNAME}"
             "127.0.0.1 localhost"
             "255.255.255.255 broadcasthost"
             "::1 ip6-localhost ip6-loopback localhost"
