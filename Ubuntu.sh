@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 3.6.1
+# Current Version: 3.6.2
 
 ## How to get and use?
 # curl "https://source.zhijie.online/AutoDeploy/main/Ubuntu.sh" | sudo bash
@@ -1010,7 +1010,6 @@ function InstallCustomPackages() {
                 "vim"
                 "wget"
                 "whois"
-                "wireguard-tools"
                 "wireshark"
                 "zip"
                 "zsh"
