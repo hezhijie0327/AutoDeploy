@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 2.3.2
+# Current Version: 2.3.3
 
 ## How to get and use?
 # /bin/bash -c "$(curl -fsSL 'https://source.zhijie.online/AutoDeploy/main/macOS.sh')"
@@ -328,7 +328,6 @@ function InstallCustomPackages() {
     function InstallAppFromMAS() {
         app_list=(
             "1136220934" # Infuse
-            "1189898970" # WeCom
             "1365531024" # 1Blocker
             "409222199" # Cyberduck
             "419330170" # Moom
@@ -341,13 +340,11 @@ function InstallCustomPackages() {
             "462058435" # Microsoft Excel
             "462062816" # Microsoft PowerPoint
             "497799835" # Xcode
-            "595615424" # QQ Music
             "634148309" # Logic Pro
             "634159523" # MainStage
             "823766827" # OneDrive
             "824183456" # Affinity Photo
             "836500024" # Wechat
-            "899247664" # TestFlight
             "993841014" # CopyLess 2
         )
         which "mas" > "/dev/null" 2>&1
