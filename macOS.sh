@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 2.3.3
+# Current Version: 2.3.4
 
 ## How to get and use?
 # /bin/bash -c "$(curl -fsSL 'https://source.zhijie.online/AutoDeploy/main/macOS.sh')"
@@ -466,7 +466,11 @@ function InstallDependencyPackages() {
             "zsh"
         )
         for tap_list_task in "${!tap_list[@]}"; do
-            rm -rf "$(brew --repo)/Library/Taps/homebrew/${tap_list[$tap_list_task]}" && git clone "https://${GHPROXY_URL}/https://github.com/Homebrew/${tap_list[$tap_list_task]}.git" "$(brew --repo)/Library/Taps/homebrew/${tap_list[$tap_list_task]}"
+            export HOMEBREW_BREW_GIT_REMOTE="https://${GHPROXY_URL}/https://github.com/homebrew/brew.git" && export HOMEBREW_CORE_GIT_REMOTE="https://${GHPROXY_URL}/https://github.com/homebrew/homebrew-core.git" && if [ -d "$(brew --repo)/Library/Taps/homebrew/${tap_list[$tap_list_task]}" ]; then
+                brew tap --custom-remote --force-auto-update "${tap_list[$tap_list_task]/-/\/}" "https://${GHPROXY_URL}/https://github.com/homebrew/${tap_list[$tap_list_task]}.git"
+            else
+                git clone "https://${GHPROXY_URL}/https://github.com/Homebrew/${tap_list[$tap_list_task]}.git" "$(brew --repo)/Library/Taps/homebrew/${tap_list[$tap_list_task]}"
+            fi
         done && export HOMEBREW_BOTTLE_DOMAIN="https://mirrors.ustc.edu.cn/homebrew-bottles/bottles" && brew update && for app_list_task in "${!app_list[@]}"; do
             brew info --formula ${app_list[$app_list_task]} && if [ "$?" -eq "0" ]; then
                 brew install --formula ${app_list[$app_list_task]}
