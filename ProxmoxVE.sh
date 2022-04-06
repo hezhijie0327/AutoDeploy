@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 1.9.3
+# Current Version: 1.9.4
 
 ## How to get and use?
 # curl "https://source.zhijie.online/AutoDeploy/main/ProxmoxVE.sh" | sudo bash
@@ -730,7 +730,11 @@ function InstallCustomPackages() {
                 "zsh"
             )
             for tap_list_task in "${!tap_list[@]}"; do
-                rm -rf "$(brew --repo)/Library/Taps/homebrew/${tap_list[$tap_list_task]}" && su - ${DEFAULT_USERNAME} -s /usr/bin/git clone "https://${GHPROXY_URL}/https://github.com/Homebrew/${tap_list[$tap_list_task]}.git" "$(brew --repo)/Library/Taps/homebrew/${tap_list[$tap_list_task]}"
+                export HOMEBREW_BREW_GIT_REMOTE="https://${GHPROXY_URL}/https://github.com/homebrew/brew.git" && export HOMEBREW_CORE_GIT_REMOTE="https://${GHPROXY_URL}/https://github.com/homebrew/homebrew-core.git" && if [ -d "$(/home/linuxbrew/.linuxbrew/bin/brew --repo)/Library/Taps/homebrew/${tap_list[$tap_list_task]}" ]; then
+                    su - ${DEFAULT_USERNAME} -s /home/linuxbrew/.linuxbrew/bin/brew tap --custom-remote --force-auto-update "${tap_list[$tap_list_task]/-/\/}" "https://${GHPROXY_URL}/https://github.com/homebrew/${tap_list[$tap_list_task]}.git"
+                else
+                    su - ${DEFAULT_USERNAME} -s /usr/bin/git clone "https://${GHPROXY_URL}/https://github.com/Homebrew/${tap_list[$tap_list_task]}.git" "$(/home/linuxbrew/.linuxbrew/bin/brew --repo)/Library/Taps/homebrew/${tap_list[$tap_list_task]}"
+                fi
             done && su - ${DEFAULT_USERNAME} -s /home/linuxbrew/.linuxbrew/bin/brew update && for app_list_task in "${!app_list[@]}"; do
                 rm -rf "/tmp/linuxbrew.autodeploy" && su - ${DEFAULT_USERNAME} -s /home/linuxbrew/.linuxbrew/bin/brew info ${app_list[$app_list_task]} && if [ "$?" -eq "0" ]; then
                     linuxbrew_list=(
