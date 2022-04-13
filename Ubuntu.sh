@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 3.6.3
+# Current Version: 3.6.4
 
 ## How to get and use?
 # curl "https://source.zhijie.online/AutoDeploy/main/Ubuntu.sh" | sudo bash
@@ -547,9 +547,6 @@ function ConfigurePackages() {
             if [ -d "/etc/ssh" ]; then
                 rm -rf /etc/ssh/ssh_host_* && ssh-keygen -t dsa -b 1024 -f "/etc/ssh/ssh_host_dsa_key" -C "root@${NEW_HOSTNAME}" -N "${OPENSSH_PASSWORD}" && ssh-keygen -t ecdsa -b 384 -f "/etc/ssh/ssh_host_ecdsa_key" -C "root@${NEW_HOSTNAME}" -N "${OPENSSH_PASSWORD}" && ssh-keygen -t ed25519 -f "/etc/ssh/ssh_host_ed25519_key" -C "root@${NEW_HOSTNAME}" -N "${OPENSSH_PASSWORD}" && ssh-keygen -t rsa -b 4096 -f "/etc/ssh/ssh_host_rsa_key" -C "root@${NEW_HOSTNAME}" -N "${OPENSSH_PASSWORD}" && chmod 400 /etc/ssh/ssh_host_* && chmod 644 /etc/ssh/ssh_host_*.pub
             fi
-            if [ -d "/home/linuxbrew/.linuxbrew/etc/ssh" ]; then
-                rm -rf /home/linuxbrew/.linuxbrew/etc/ssh/ssh_host_* && ssh-keygen -t dsa -b 1024 -f "/home/linuxbrew/.linuxbrew/etc/ssh/ssh_host_dsa_key" -C "${DEFAULT_USERNAME}@${NEW_HOSTNAME}" -N "${OPENSSH_PASSWORD}" && ssh-keygen -t ecdsa -b 384 -f "/home/linuxbrew/.linuxbrew/etc/ssh/ssh_host_ecdsa_key" -C "${DEFAULT_USERNAME}@${NEW_HOSTNAME}" -N "${OPENSSH_PASSWORD}" && ssh-keygen -t ed25519 -f "/home/linuxbrew/.linuxbrew/etc/ssh/ssh_host_ed25519_key" -C "${DEFAULT_USERNAME}@${NEW_HOSTNAME}" -N "${OPENSSH_PASSWORD}" && ssh-keygen -t rsa -b 4096 -f "/home/linuxbrew/.linuxbrew/etc/ssh/ssh_host_rsa_key" -C "${DEFAULT_USERNAME}@${NEW_HOSTNAME}" -N "${OPENSSH_PASSWORD}" && chmod 400 /home/linuxbrew/.linuxbrew/etc/ssh/ssh_host_* && chmod 644 /home/linuxbrew/.linuxbrew/etc/ssh/ssh_host_*.pub
-            fi
             rm -rf "/root/.ssh" && mkdir "/root/.ssh" && touch "/root/.ssh/authorized_keys" && touch "/root/.ssh/known_hosts" && ssh-keygen -t dsa -b 1024 -f "/root/.ssh/id_dsa" -C "root@${NEW_HOSTNAME}" -N "${OPENSSH_PASSWORD}" && ssh-keygen -t ecdsa -b 384 -f "/root/.ssh/id_ecdsa" -C "root@${NEW_HOSTNAME}" -N "${OPENSSH_PASSWORD}" && ssh-keygen -t ed25519 -f "/root/.ssh/id_ed25519" -C "root@${NEW_HOSTNAME}" -N "${OPENSSH_PASSWORD}" && ssh-keygen -t rsa -b 4096 -f "/root/.ssh/id_rsa" -C "root@${NEW_HOSTNAME}" -N "${OPENSSH_PASSWORD}" && chmod 400 /root/.ssh/id_* && chmod 600 "/root/.ssh/authorized_keys" && chmod 644 "/root/.ssh/known_hosts" && chmod 644 /root/.ssh/id_*.pub && chmod 700 "/root/.ssh"
             rm -rf "/home/${DEFAULT_USERNAME}/.ssh" && mkdir "/home/${DEFAULT_USERNAME}/.ssh" && if [ -f "/home/${DEFAULT_USERNAME}/.gnupg/authorized_keys" ]; then
                 mv "/home/${DEFAULT_USERNAME}/.gnupg/authorized_keys" "/home/${DEFAULT_USERNAME}/.ssh/authorized_keys"
@@ -755,8 +752,6 @@ function ConfigurePackages() {
                 "/usr/sbin"
                 "/usr/local/bin"
                 "/usr/local/sbin"
-                "/home/linuxbrew/.linuxbrew/bin"
-                "/home/linuxbrew/.linuxbrew/sbin"
             )
             DEFAULT_PATH="" && for default_path_list_task in "${!default_path_list[@]}"; do
                 if [ "${default_path_list[$default_path_list_task]}" != "" ]; then
@@ -764,31 +759,13 @@ function ConfigurePackages() {
                     DEFAULT_PATH=$(echo "${DEFAULT_PATH}" | sed "s/\:$//g")
                 fi
             done
-            export PATH="${DEFAULT_PATH}" && BREW_PATH="$(brew --prefix)/opt" && custom_path_list=($(ls "${BREW_PATH}" | grep -v "@" | sort | awk "{ print $2 }")) && CUSTOM_PATH="" && for custom_path_list_task in "${!custom_path_list[@]}"; do
-                if [ -d "${BREW_PATH}/${custom_path_list[$custom_path_list_task]}/libexec/gnubin" ]; then
-                    CUSTOM_PATH="${BREW_PATH}/${custom_path_list[$custom_path_list_task]}/libexec/gnubin:${CUSTOM_PATH}"
-                elif [ -d "${BREW_PATH}/${custom_path_list[$custom_path_list_task]}/bin" ]; then
-                    CUSTOM_PATH="${BREW_PATH}/${custom_path_list[$custom_path_list_task]}/bin:${CUSTOM_PATH}"
-                fi && CUSTOM_PATH=$(echo "${CUSTOM_PATH}" | sed "s/\:$//g")
-                if [ -d "${BREW_PATH}/${custom_path_list[$custom_path_list_task]}/libexec/gnuman" ]; then
-                    CUSTOM_MANPATH="${BREW_PATH}/${custom_path_list[$custom_path_list_task]}/libexec/gnuman:${CUSTOM_MANPATH}"
-                elif [ -d "${BREW_PATH}/${custom_path_list[$custom_path_list_task]}/share/man" ]; then
-                    CUSTOM_MANPATH="${BREW_PATH}/${custom_path_list[$custom_path_list_task]}/share/man:${CUSTOM_MANPATH}"
-                fi && CUSTOM_MANPATH=$(echo "${CUSTOM_MANPATH}" | sed "s/\:$//g")
-            done
         }
         function GenerateOMZProfile() {
-            HOMEBREW_GITHUB_API_TOKEN=""
             omz_list=(
                 "export DEBIAN_FRONTEND=\"noninteractive\""
                 "export EDITOR=\"nano\""
                 "export GPG_TTY=\$(tty)"
-                "export HOMEBREW_BOTTLE_DOMAIN=\"https://mirrors.ustc.edu.cn/homebrew-bottles/bottles\""
-                "export HOMEBREW_BREW_GIT_REMOTE=\"https://${GHPROXY_URL}/https://github.com/homebrew/brew.git\""
-                "export HOMEBREW_CORE_GIT_REMOTE=\"https://${GHPROXY_URL}/https://github.com/homebrew/homebrew-core.git\""
-                "export HOMEBREW_GITHUB_API_TOKEN=\"${HOMEBREW_GITHUB_API_TOKEN}\""
-                "export MANPATH=\"${CUSTOM_MANPATH}:\$MANPATH\""
-                "export PATH=\"${CUSTOM_PATH}:${DEFAULT_PATH}:\$PATH\""
+                "export PATH=\"${DEFAULT_PATH}:\$PATH\""
                 "# export SSH_AUTH_SOCK=\"\$(gpgconf --list-dirs agent-ssh-socket)\" && gpgconf --launch gpg-agent && gpg-connect-agent updatestartuptty /bye > \"/dev/null\" 2>&1"
                 "export ZSH=\"\$HOME/.oh-my-zsh\""
                 "plugins=(zsh-autosuggestions zsh-completions zsh-history-substring-search zsh-syntax-highlighting)"
@@ -813,7 +790,6 @@ function ConfigurePackages() {
                 "ZSH_AUTOSUGGEST_HIGHLIGHT_STYLE=\"bg=250,fg=238,bold,underline\""
                 "ZSH_AUTOSUGGEST_STRATEGY=(match_prev_cmd history completion)"
                 "ZSH_AUTOSUGGEST_USE_ASYNC=\"true\""
-                "source \"\$(brew --repository)/Library/Taps/homebrew/homebrew-command-not-found/handler.sh\""
                 "source \"\$ZSH/oh-my-zsh.sh\""
             )
             which "zsh" > "/dev/null" 2>&1
@@ -922,7 +898,7 @@ function ConfigureSystem() {
         fi && ln -s "/usr/share/zoneinfo/Asia/Shanghai" "/etc/localtime"
     }
     ConfigureDefaultShell
-    ConfigureDefaultUser && InstallHomebrew
+    ConfigureDefaultUser
     ConfigureHostfile
     ConfigureLocales
     ConfigureRootUser
@@ -943,95 +919,6 @@ function InstallCustomPackages() {
                 apt-cache show ${app_list[$app_list_task]} && if [ "$?" -eq "0" ]; then
                     apt install -qy ${app_list[$app_list_task]}
                 fi
-            done
-        fi
-    }
-    function InstallHomebrew() {
-        tap_list=(
-            "homebrew-aliases"
-            "homebrew-autoupdate"
-            "homebrew-bundle"
-            "homebrew-command-not-found"
-            "homebrew-formula-analytics"
-            "homebrew-portable-ruby"
-            "homebrew-services"
-            "homebrew-test-bot"
-        )
-        export PATH="/home/linuxbrew/.linuxbrew/sbin:/home/linuxbrew/.linuxbrew/bin:${PATH}" && rm -rf "/home/linuxbrew"
-        which "brew" > "/dev/null" 2>&1
-        if [ "$?" -eq "1" ]; then
-            curl -fsSL "https://${GHPROXY_URL}/https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh" | sed "s/https\:\/\/github\.com/https\:\/\/${GHPROXY_URL}\/https\:\/\/github\.com/g" | sed "1 a export HOMEBREW_BOTTLE_DOMAIN=\"https://mirrors.ustc.edu.cn/homebrew-bottles/bottles\"" > "/tmp/linuxbrew_install.sh" && su - ${DEFAULT_USERNAME} -s /bin/bash "/tmp/linuxbrew_install.sh" && rm -rf "/tmp/linuxbrew_install.sh"
-        fi
-        if [ -d "$(brew --repo)/Library/Taps/homebrew" ]; then
-            app_list=(
-                "bash"
-                "coreutils"
-                "curl"
-                "findutils"
-                "gawk"
-                "git"
-                "git-flow"
-                "git-lfs"
-                "gnu-apl"
-                "gnu-barcode"
-                "gnu-chess"
-                "gnu-cobol"
-                "gnu-complexity"
-                "gnu-getopt"
-                "gnu-go"
-                "gnu-indent"
-                "gnu-prolog"
-                "gnu-scientific-library"
-                "gnu-sed"
-                "gnu-shogi"
-                "gnu-tar"
-                "gnu-time"
-                "gnu-typist"
-                "gnu-units"
-                "gnu-which"
-                "gnupg"
-                "gnutls"
-                "grep"
-                "iperf3"
-                "jq"
-                "knot"
-                "mailutils"
-                "mtr"
-                "nano"
-                "neofetch"
-                "nmap"
-                "openssh"
-                "p7zip"
-                "pinentry"
-                "python3"
-                "qrencode"
-                "tcpdump"
-                "unzip"
-                "vim"
-                "wget"
-                "whois"
-                "wireshark"
-                "zip"
-                "zsh"
-            )
-            for tap_list_task in "${!tap_list[@]}"; do
-                export HOMEBREW_BREW_GIT_REMOTE="https://${GHPROXY_URL}/https://github.com/homebrew/brew.git" && export HOMEBREW_CORE_GIT_REMOTE="https://${GHPROXY_URL}/https://github.com/homebrew/homebrew-core.git" && if [ -d "$(/home/linuxbrew/.linuxbrew/bin/brew --repo)/Library/Taps/homebrew/${tap_list[$tap_list_task]}" ]; then
-                    su - ${DEFAULT_USERNAME} -s /home/linuxbrew/.linuxbrew/bin/brew tap --custom-remote --force-auto-update "${tap_list[$tap_list_task]/-/\/}" "https://${GHPROXY_URL}/https://github.com/homebrew/${tap_list[$tap_list_task]}.git"
-                else
-                    su - ${DEFAULT_USERNAME} -s /usr/bin/git clone "https://${GHPROXY_URL}/https://github.com/Homebrew/${tap_list[$tap_list_task]}.git" "$(/home/linuxbrew/.linuxbrew/bin/brew --repo)/Library/Taps/homebrew/${tap_list[$tap_list_task]}"
-                fi
-            done && su - ${DEFAULT_USERNAME} -s /home/linuxbrew/.linuxbrew/bin/brew update && for app_list_task in "${!app_list[@]}"; do
-                rm -rf "/tmp/linuxbrew.autodeploy" && su - ${DEFAULT_USERNAME} -s /home/linuxbrew/.linuxbrew/bin/brew info ${app_list[$app_list_task]} && if [ "$?" -eq "0" ]; then
-                    linuxbrew_list=(
-                        '#!/bin/bash'
-                        "export HOMEBREW_BOTTLE_DOMAIN=\"https://mirrors.ustc.edu.cn/homebrew-bottles/bottles\""
-                        "export PATH=\"/home/linuxbrew/.linuxbrew/sbin:/home/linuxbrew/.linuxbrew/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin\""
-                        "brew install ${app_list[$app_list_task]}"
-                    )
-                    for linuxbrew_list_task in "${!linuxbrew_list[@]}"; do
-                        echo "${linuxbrew_list[$linuxbrew_list_task]}" >> "/tmp/linuxbrew.autodeploy"
-                    done && chown -R $DEFAULT_USERNAME:$DEFAULT_USERNAME "/tmp/linuxbrew.autodeploy" && su - ${DEFAULT_USERNAME} -s /bin/bash -c "bash /tmp/linuxbrew.autodeploy"
-                fi && rm -rf "/tmp/linuxbrew.autodeploy"
             done
         fi
     }
