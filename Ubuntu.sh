@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 3.6.5
+# Current Version: 3.6.6
 
 ## How to get and use?
 # curl "https://source.zhijie.online/AutoDeploy/main/Ubuntu.sh" | sudo bash
@@ -351,7 +351,7 @@ function ConfigurePackages() {
     }
     function ConfigureCrontab() {
         crontab_list=(
-            "0 0 * * 7 sudo apt update && sudo apt dist-upgrade -qy && sudo apt -t ${LSBCodename}-backports dist-upgrade -qy && sudo apt upgrade -qy && sudo apt -t ${LSBCodename}-backports upgrade -qy && sudo apt autoremove -qy"
+            "0 0 * * 7 sudo apt update && sudo apt full-upgrade -qy && sudo apt -t ${LSBCodename}-backports full-upgrade -qy && sudo apt autoremove -qy"
             "@reboot sudo rm -rf /root/.*_history /root/.ssh/known_hosts*"
         )
         which "crontab" > "/dev/null" 2>&1
@@ -1043,7 +1043,7 @@ function InstallDependencyPackages() {
 }
 # Upgrade Packages
 function UpgradePackages() {
-    apt update && apt dist-upgrade -qy && apt -t ${LSBCodename}-backports dist-upgrade -qy && apt upgrade -qy && apt -t ${LSBCodename}-backports upgrade -qy && apt autoremove -qy
+    apt update && apt full-upgrade -qy && apt -t ${LSBCodename}-backports full-upgrade -qy && apt autoremove -qy
 }
 # Cleanup Temp Files
 function CleanupTempFiles() {
