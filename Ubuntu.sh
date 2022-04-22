@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 3.6.4
+# Current Version: 3.6.5
 
 ## How to get and use?
 # curl "https://source.zhijie.online/AutoDeploy/main/Ubuntu.sh" | sudo bash
@@ -170,9 +170,9 @@ function GetSystemInformation() {
         NEW_HOSTNAME="Ubuntu-$(date '+%Y%m%d%H%M%S')"
     }
     function GetLSBCodename() {
-        LSBCodename_LTS="focal"
+        LSBCodename_LTS="jammy"
         LSBCodename_NON_LTS="impish"
-        Version_LTS="20.04"
+        Version_LTS="22.04"
         Version_NON_LTS="21.10"
         which "lsb_release" > "/dev/null" 2>&1
         if [ "$?" -eq "0" ]; then
