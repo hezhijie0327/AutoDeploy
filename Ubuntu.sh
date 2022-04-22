@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 3.6.6
+# Current Version: 3.6.7
 
 ## How to get and use?
 # curl "https://source.zhijie.online/AutoDeploy/main/Ubuntu.sh" | sudo bash
@@ -1030,13 +1030,13 @@ function InstallDependencyPackages() {
     done && if [ "${container_environment}" == "docker" ] || [ "${container_environment}" == "wsl2" ]; then
         for app_extended_list_task in "${!app_extended_list[@]}"; do
             if [ "$(apt list --installed | grep ${app_extended_list[$app_extended_list_task]})" != "" ]; then
-                apt purge -yq ${app_extended_list[$app_extended_list_task]} && apt autoremove -yq
+                apt purge -qy ${app_extended_list[$app_extended_list_task]} && apt autoremove -qy
             fi
         done
     fi && for hypervisor_agent_list_task in "${!hypervisor_agent_list[@]}"; do
         if [ "${hypervisor_agent_list[$hypervisor_agent_list_task]}" != "${HYPERVISOR_AGENT[*]}" ]; then
             if [ "$(apt list --installed | grep ${hypervisor_agent_list[$hypervisor_agent_list_task]})" != "" ]; then
-                apt purge -yq ${hypervisor_agent_list[$hypervisor_agent_list_task]} && apt autoremove -yq
+                apt purge -qy ${hypervisor_agent_list[$hypervisor_agent_list_task]} && apt autoremove -qy
             fi
         fi
     done
