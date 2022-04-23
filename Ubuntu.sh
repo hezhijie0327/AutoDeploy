@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 3.6.8
+# Current Version: 3.6.9
 
 ## How to get and use?
 # curl "https://source.zhijie.online/AutoDeploy/main/Ubuntu.sh" | sudo bash
@@ -377,7 +377,7 @@ function ConfigurePackages() {
             if [ "${container_environment}" != "docker" ] && [ "${container_environment}" != "wsl2" ]; then
                 if [ ! -d "/docker" ]; then
                     mkdir "/docker"
-                fi && chown -R ${DEFAULT_USERNAME}:docker "/docker" && chmod -R 755 "/docker"
+                fi && chown -R ${DEFAULT_USERNAME}:docker "/docker" && chmod -R 775 "/docker"
                 if [ ! -d "/etc/docker" ]; then
                     mkdir "/etc/docker"
                 fi
