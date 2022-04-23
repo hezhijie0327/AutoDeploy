@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 2.3.4
+# Current Version: 2.3.5
 
 ## How to get and use?
 # /bin/bash -c "$(curl -fsSL 'https://source.zhijie.online/AutoDeploy/main/macOS.sh')"
@@ -225,13 +225,15 @@ function ConfigurePackages() {
             done
         }
         function GenerateOMZProfile() {
+            HOMEBREW_GITHUB_API_TOKEN=""
             omz_list=(
                 "export EDITOR=\"nano\""
                 "export GPG_TTY=\$(tty)"
                 "export HOMEBREW_BOTTLE_DOMAIN=\"https://mirrors.ustc.edu.cn/homebrew-bottles/bottles\""
                 "export HOMEBREW_BREW_GIT_REMOTE=\"https://${GHPROXY_URL}/https://github.com/homebrew/brew.git\""
                 "export HOMEBREW_CORE_GIT_REMOTE=\"https://${GHPROXY_URL}/https://github.com/homebrew/homebrew-core.git\""
-                "export HOMEBREW_GITHUB_API_TOKEN=\"your_token_here\""
+                "export HOMEBREW_GITHUB_API_TOKEN=\"${HOMEBREW_GITHUB_API_TOKEN}\""
+                "export HOMEBREW_NO_AUTO_UPDATE=\"1\""
                 "export MANPATH=\"${CUSTOM_MANPATH}:\$MANPATH\""
                 "export PATH=\"${CUSTOM_PATH}:${DEFAULT_PATH}:\$PATH\""
                 "# export SSH_AUTH_SOCK=\"\$(gpgconf --list-dirs agent-ssh-socket)\" && gpgconf --launch gpg-agent && gpg-connect-agent updatestartuptty /bye > \"/dev/null\" 2>&1"
