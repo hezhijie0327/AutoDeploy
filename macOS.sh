@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 2.3.5
+# Current Version: 2.3.6
 
 ## How to get and use?
 # /bin/bash -c "$(curl -fsSL 'https://source.zhijie.online/AutoDeploy/main/macOS.sh')"
@@ -312,6 +312,7 @@ function InstallCustomPackages() {
             "downie" # Downie 4
             "firefox" # Firefox
             "iina" # IINA
+            "obs" # OBS
             "parallels" # Parallels Desktop
             "permute" # Permute 3
             "pixelsnap" # PixelSnap 2
