@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 2.3.6
+# Current Version: 2.3.7
 
 ## How to get and use?
 # /bin/bash -c "$(curl -fsSL 'https://source.zhijie.online/AutoDeploy/main/macOS.sh')"
@@ -306,6 +306,9 @@ function InstallCustomPackages() {
     function InstallAppFromCask() {
         app_list=(
             "betterzip" # BetterZip
+            "blackhole-16ch" # BlackHole 16ch
+            "blackhole-2ch" # BlackHole 2ch
+            "blackhole-64ch" # BlackHole 64ch
             "cleanmymac" # CleanMyMac X
             "cleanshot" # CleanShot X
             "docker" # Docker
