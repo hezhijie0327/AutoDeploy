@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 2.3.7
+# Current Version: 2.3.8
 
 ## How to get and use?
 # /bin/bash -c "$(curl -fsSL 'https://source.zhijie.online/AutoDeploy/main/macOS.sh')"
@@ -305,7 +305,6 @@ function ConfigureSystem() {
 function InstallCustomPackages() {
     function InstallAppFromCask() {
         app_list=(
-            "betterzip" # BetterZip
             "blackhole-16ch" # BlackHole 16ch
             "blackhole-2ch" # BlackHole 2ch
             "blackhole-64ch" # BlackHole 64ch
@@ -315,6 +314,7 @@ function InstallCustomPackages() {
             "downie" # Downie 4
             "firefox" # Firefox
             "iina" # IINA
+            "kekaexternalhelper" # Keka External Helper
             "obs" # OBS
             "parallels" # Parallels Desktop
             "permute" # Permute 3
@@ -336,15 +336,16 @@ function InstallCustomPackages() {
             "1136220934" # Infuse
             "1365531024" # 1Blocker
             "409222199" # Cyberduck
-            "419330170" # Moom
             "424389933" # Final Cut Pro
             "424390742" # Compressor
             "430798174" # HazeOver
             "434290957" # Motion
+            "441258766" # Magnet
             "451108668" # QQ
             "462054704" # Microsoft Word
             "462058435" # Microsoft Excel
             "462062816" # Microsoft PowerPoint
+            "470158793" # Keka
             "497799835" # Xcode
             "634148309" # Logic Pro
             "634159523" # MainStage
