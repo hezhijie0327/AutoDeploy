@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 3.7.1
+# Current Version: 3.7.2
 
 ## How to get and use?
 # curl "https://source.zhijie.online/AutoDeploy/main/Ubuntu.sh" | sudo bash
@@ -172,39 +172,46 @@ function GetSystemInformation() {
     function GetLSBCodename() {
         LSBCodename_LTS="jammy"
         LSBCodename_NON_LTS="impish"
-        Version_LTS="22.04"
-        Version_NON_LTS="21.10"
+        LSBVersion_LTS="22.04"
+        LSBVersion_NON_LTS="21.10"
         which "lsb_release" > "/dev/null" 2>&1
         if [ "$?" -eq "0" ]; then
-            CURRENT_LSBCodename=$(lsb_release -cs)
-            CURRENT_Version=$(lsb_release -rs)
+            LSBCodename_CURRENT=$(lsb_release -cs)
+            LSBVersion_CURRENT=$(lsb_release -rs)
             if [ "$(lsb_release -ds | grep 'LTS')" == "" ]; then
-                LSBCodename="${LSBCodename_NON_LTS}"
+                WHETHER_LTS_NON_TLS="FALSE"
             else
-                LSBCodename="${LSBCodename_LTS}"
+                WHETHER_LTS_NON_TLS="TRUE"
             fi
         else
             if [ -f '/etc/os-release' ]; then
-                CURRENT_LSBCodename=$(cat "/etc/os-release" | grep "UBUNTU\_CODENAME\=" | sed "s/UBUNTU\_CODENAME\=//g")
-                CURRENT_Version=$(cat "/etc/os-release" | grep "VERSION_ID\=" | sed "s/VERSION_ID\=//g" | tr -d "\"")
+                LSBCodename_CURRENT=$(cat "/etc/os-release" | grep "UBUNTU\_CODENAME\=" | sed "s/UBUNTU\_CODENAME\=//g")
+                LSBVersion_CURRENT=$(cat "/etc/os-release" | grep "VERSION_ID\=" | sed "s/VERSION_ID\=//g" | tr -d "\"")
                 if [ "$(cat '/etc/os-release' | grep "VERSION\=" | grep 'LTS')" == "" ]; then
-                    LSBCodename="${LSBCodename_NON_LTS}"
+                    WHETHER_LTS_NON_TLS="FALSE"
                 else
-                    LSBCodename="${LSBCodename_LTS}"
+                    WHETHER_LTS_NON_TLS="TRUE"
                 fi
             fi
         fi
-        if [ "$(awk -v NUM1=$Version_LTS -v NUM2=$Version_NON_LTS 'BEGIN{print (NUM1 > NUM2) ? 1 : 0}')" -eq "1" ]; then
-            LSBCodename="${LSBCodename_LTS}"
-            LSBCodename_LATEST="${LSBCodename_LTS}"
+        if [ "$(awk -v NUM1=$LSBVersion_CURRENT -v NUM2=$LSBVersion_LTS 'BEGIN{print (NUM1 > NUM2) ? 1 : 0}')" -eq "1" ] && [ "$(awk -v NUM1=$LSBVersion_CURRENT -v NUM2=$LSBVersion_NON_LTS 'BEGIN{print (NUM1 > NUM2) ? 1 : 0}')" -eq "1" ]; then
+            LSBCodename="${LSBCodename_CURRENT}"
+            LSBVersion="${LSBVersion_CURRENT}"
         else
-            LSBCodename_LATEST="${LSBCodename_NON_LTS}"
+            if [ "${WHETHER_LTS_NON_TLS}" == "TRUE" ]; then
+                LSBCodename="${LSBCodename_LTS}"
+                LSBVersion="${LSBVersion_LTS}"
+            else
+                LSBCodename="${LSBCodename_NON_LTS}"
+                LSBVersion="${LSBVersion_NON_LTS}"
+            fi
         fi
-        if [ "$(awk -v NUM1=$CURRENT_Version -v NUM2=$Version_LTS 'BEGIN{print (NUM1 > NUM2) ? 1 : 0}')" -eq "1" ] && [ "$(awk -v NUM1=$CURRENT_Version -v NUM2=$Version_NON_LTS 'BEGIN{print (NUM1 > NUM2) ? 1 : 0}')" -eq "1" ]; then
-            LSBCodename="${CURRENT_LSBCodename}"
-        fi
-        if [ "${LSBCodename}" == "" ]; then
-            LSBCodename="${LSBCodename_LATEST}"
+        if [ "$(awk -v NUM1=$LSBVersion -v NUM2=$LSBVersion_LTS 'BEGIN{print (NUM1 >= NUM2) ? 1 : 0}')" -eq "1" ] && [ "$(awk -v NUM1=$LSBVersion -v NUM2=$LSBVersion_NON_LTS 'BEGIN{print (NUM1 >= NUM2) ? 1 : 0}')" -eq "1" ]; then
+            BACKPORTS_COMMAND=""
+            SUDO_BACKPORTS_COMMAND=""
+        else
+            BACKPORTS_COMMAND="apt -t ${LSBCodename}-backports full-upgrade -qy"
+            SUDO_BACKPORTS_COMMAND="&& sudo ${BACKPORTS_COMMAND} "
         fi
     }
     function GetOSArchitecture() {
@@ -351,7 +358,7 @@ function ConfigurePackages() {
     }
     function ConfigureCrontab() {
         crontab_list=(
-            "0 0 * * 7 sudo apt update && sudo apt full-upgrade -qy && sudo apt -t ${LSBCodename}-backports full-upgrade -qy && sudo apt autoremove -qy"
+            "0 0 * * 7 sudo apt update && sudo apt full-upgrade -qy ${SUDO_BACKPORTS_COMMAND}&& sudo apt autoremove -qy"
             "@reboot sudo rm -rf /root/.*_history /root/.ssh/known_hosts*"
         )
         which "crontab" > "/dev/null" 2>&1
@@ -1043,7 +1050,7 @@ function InstallDependencyPackages() {
 }
 # Upgrade Packages
 function UpgradePackages() {
-    apt update && apt full-upgrade -qy && apt -t ${LSBCodename}-backports full-upgrade -qy && apt autoremove -qy
+    apt update && apt full-upgrade -qy && $(echo "${BACKPORTS_COMMAND}") && apt autoremove -qy
 }
 # Cleanup Temp Files
 function CleanupTempFiles() {
