@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 2.3.8
+# Current Version: 2.3.9
 
 ## How to get and use?
 # /bin/bash -c "$(curl -fsSL 'https://source.zhijie.online/AutoDeploy/main/macOS.sh')"
@@ -491,7 +491,7 @@ function InstallDependencyPackages() {
 }
 # Upgrade Packages
 function UpgradePackages() {
-    brew update && brew upgrade --cask --greedy && brew upgrade --formula && mas upgrade && softwareupdate -ai
+    brew update && brew upgrade --greedy && mas upgrade && softwareupdate -ai
 }
 # Cleanup Temp Files
 function CleanupTempFiles() {
