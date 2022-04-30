@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 2.3.9
+# Current Version: 2.4.0
 
 ## How to get and use?
 # /bin/bash -c "$(curl -fsSL 'https://source.zhijie.online/AutoDeploy/main/macOS.sh')"
@@ -310,6 +310,7 @@ function InstallCustomPackages() {
             "blackhole-64ch" # BlackHole 64ch
             "cleanmymac" # CleanMyMac X
             "cleanshot" # CleanShot X
+            "cursorsense" # CursorSense
             "docker" # Docker
             "downie" # Downie 4
             "firefox" # Firefox
