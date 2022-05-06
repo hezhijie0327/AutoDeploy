@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 1.9.6
+# Current Version: 1.9.7
 
 ## How to get and use?
 # curl "https://source.zhijie.online/AutoDeploy/main/ProxmoxVE.sh" | sudo bash
@@ -51,7 +51,7 @@ function GetSystemInformation() {
         OLD_HOSTNAME=$(cat "/etc/hostname")
     }
     function GetLSBCodename() {
-        LSBCodename=$(cat "/etc/os-release" | grep "CODENAME" | cut -f 2 -d "=")
+        LSBCodename="bullseye"
     }
     function GetManagementIPAddress() {
         CURRENT_MANAGEMENT_IP=$(ip address show vmbr0 | grep "inet" | awk '{print $2}' | sort | head -n 1 | sed "s/\/.*//")
