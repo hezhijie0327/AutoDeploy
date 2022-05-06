@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 1.9.7
+# Current Version: 1.9.8
 
 ## How to get and use?
 # curl "https://source.zhijie.online/AutoDeploy/main/ProxmoxVE.sh" | sudo bash
@@ -10,6 +10,9 @@
 # Get System Information
 function GetSystemInformation() {
     function CheckHypervisorEnvironment() {
+        if [ -f "/etc/apt/sources.list.d/pve-enterprise.list" ]; then
+            rm -rf "/etc/apt/sources.list.d/pve-enterprise.list"
+        fi
         which "virt-what" > "/dev/null" 2>&1
         if [ "$?" -eq "1" ]; then
             apt update && apt install virt-what -qy
