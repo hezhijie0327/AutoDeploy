@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 1.9.8
+# Current Version: 1.9.9
 
 ## How to get and use?
 # curl "https://source.zhijie.online/AutoDeploy/main/ProxmoxVE.sh" | sudo bash
@@ -736,7 +736,7 @@ function UpgradePackages() {
 }
 # Cleanup Temp Files
 function CleanupTempFiles() {
-    apt clean && rm -rf /root/.*_history /tmp/*
+    apt clean && rm -rf "/etc/apt/sources.list.d/pve-enterprise.list" /root/.*_history /tmp/*
 }
 
 ## Process
