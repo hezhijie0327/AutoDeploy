@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 3.7.2
+# Current Version: 3.7.3
 
 ## How to get and use?
 # curl "https://source.zhijie.online/AutoDeploy/main/Ubuntu.sh" | sudo bash
@@ -723,10 +723,10 @@ function ConfigurePackages() {
                 wireguard_list=(
                     "[Interface]"
                     "Address = ${TUNNEL_CLIENT_V4}, ${TUNNEL_CLIENT_V6}"
-                    "DNS = ${CURRENT_DNS_WG[@]}, ${CUSTOM_DNS_WG[@]}"
+                    "# DNS = 127.0.0.1, ::1"
                     "ListenPort = 51820"
-                    "PostDown = rm -rf /etc/resolv.conf; ln -s /run/systemd/resolve/resolv.conf /etc/resolv.conf; ufw route delete allow in on wg0 out on ${WAN_INTERFACE}"
-                    "PostUp = rm -rf /etc/resolv.conf; ln -s /run/resolvconf/resolv.conf /etc/resolv.conf; ufw route allow in on wg0 out on ${WAN_INTERFACE}"
+                    "PostDown = ufw route delete allow in on wg0 out on ${WAN_INTERFACE}"
+                    "PostUp = ufw route allow in on wg0 out on ${WAN_INTERFACE}"
                     "PreDown = iptables -t nat -D POSTROUTING -o ${WAN_INTERFACE} -j MASQUERADE; ip6tables -t nat -D POSTROUTING -o ${WAN_INTERFACE} -j MASQUERADE"
                     "PreUp = iptables -t nat -A POSTROUTING -o ${WAN_INTERFACE} -j MASQUERADE; ip6tables -t nat -A POSTROUTING -o ${WAN_INTERFACE} -j MASQUERADE"
                     "PrivateKey = $(wg genkey | tee '/tmp/wireguard.autodeploy')"
