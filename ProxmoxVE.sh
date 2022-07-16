@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 2.0.0
+# Current Version: 2.0.1
 
 ## How to get and use?
 # curl "https://source.zhijie.online/AutoDeploy/main/ProxmoxVE.sh" | sudo bash
@@ -106,8 +106,10 @@ function SetRepositoryMirror() {
 function SetReadonlyFlag() {
     file_list=(
         "/etc/apt/sources.list"
+        "/etc/apt/sources.list.d/docker.list"
         "/etc/apt/sources.list.d/proxmox.list"
         "/etc/chrony/chrony.conf"
+        "/etc/docker/daemon.json"
         "/etc/fail2ban/fail2ban.local"
         "/etc/fail2ban/filter.d/proxmox.conf"
         "/etc/fail2ban/jail.local"
@@ -183,6 +185,30 @@ function ConfigurePackages() {
             rm -rf "/tmp/crontab.autodeploy" && for crontab_list_task in "${!crontab_list[@]}"; do
                 echo "${crontab_list[$crontab_list_task]}" >> "/tmp/crontab.autodeploy"
             done && crontab -u "root" "/tmp/crontab.autodeploy" && crontab -lu "root" && rm -rf "/tmp/crontab.autodeploy"
+        fi
+    }
+    function ConfigureDockerEngine() {
+        docker_list=(
+            "{"
+            "  \"experimental\": true,"
+            "  \"fixed-cidr-v6\": \"2001:db8:1::/64\","
+            "  \"ipv6\": true,"
+            "  \"registry-mirrors\": ["
+            "    \"https://docker.mirrors.ustc.edu.cn\""
+            "  ]"
+            "}"
+        )
+        which "docker" > "/dev/null" 2>&1
+        if [ "$?" -eq "0" ]; then
+            if [ ! -d "/docker" ]; then
+                mkdir "/docker"
+            fi && chown -R ${DEFAULT_USERNAME}:docker "/docker" && chmod -R 775 "/docker"
+            if [ ! -d "/etc/docker" ]; then
+                mkdir "/etc/docker"
+            fi
+            rm -rf "/tmp/docker.autodeploy" && for docker_list_task in "${!docker_list[@]}"; do
+                echo "${docker_list[$docker_list_task]}" >> "/tmp/docker.autodeploy"
+            done && cat "/tmp/docker.autodeploy" > "/etc/docker/daemon.json" && systemctl restart docker.service && rm -rf "/tmp/docker.autodeploy"
         fi
     }
     function ConfigureFail2Ban() {
@@ -337,10 +363,12 @@ function ConfigurePackages() {
         fi
     }
     function ConfigurePVECeph() {
-        ceph_mon_list=($(ls "/etc/systemd/system/ceph-mon.target.wants" | grep "ceph-mon\@"))
-        for ceph_mon_list_task in "${!ceph_mon_list[@]}"; do
-            systemctl stop ${ceph_mon_list[$ceph_mon_list_task]} && systemctl disable ${ceph_mon_list[$ceph_mon_list_task]}
-        done && rm -rf "/etc/ceph" "/etc/pve/ceph.conf" "/var/lib/ceph" && mkdir "/etc/ceph" "/var/lib/ceph" "/var/lib/ceph/mgr" "/var/lib/ceph/mon"
+        if [ -f "/etc/systemd/system/ceph-mon.target.wants" ]; then
+            ceph_mon_list=($(ls "/etc/systemd/system/ceph-mon.target.wants" | grep "ceph-mon\@"))
+            for ceph_mon_list_task in "${!ceph_mon_list[@]}"; do
+                systemctl stop ${ceph_mon_list[$ceph_mon_list_task]} && systemctl disable ${ceph_mon_list[$ceph_mon_list_task]}
+            done && rm -rf "/etc/ceph" "/etc/pve/ceph.conf" "/var/lib/ceph" && mkdir "/etc/ceph" "/var/lib/ceph" "/var/lib/ceph/mgr" "/var/lib/ceph/mon"
+        fi
     }
     function ConfigurePVECluster() {
         systemctl stop pve-cluster && systemctl stop corosync && pmxcfs -l && rm -rf "/etc/pve/corosync.conf" && rm -rf /etc/corosync/* /var/log/corosync/* /var/lib/corosync/* && killall pmxcfs && systemctl start pve-cluster
@@ -402,6 +430,12 @@ function ConfigurePackages() {
             $(ls "/etc/pve/qemu-server" | grep "\.conf" | sed "s/\.conf//g" | awk '{print $1}')
             "template"
         )
+        if [ -d "/etc/pve/firewall" ]; then
+            mkdir "/etc/pve/firewall" && chown -R root:www-data "/etc/pve/firewall"
+        fi
+        if [ -d "/etc/pve/nodes" ]; then
+            mkdir "/etc/pve/nodes" && chown -R root:www-data "/etc/pve/nodes"
+        fi
         rm -rf "/tmp/pve_firewall.autodeploy" && for cluster_fw_list_task in "${!cluster_fw_list[@]}"; do
             echo "${cluster_fw_list[$cluster_fw_list_task]}" >> "/tmp/pve_firewall.autodeploy"
         done && cat "/tmp/pve_firewall.autodeploy" > "/etc/pve/firewall/cluster.fw" && rm -rf "/tmp/pve_firewall.autodeploy"
@@ -560,10 +594,10 @@ function ConfigureSystem() {
         DEFAULT_USERNAME="proxmox"
         DEFAULT_PASSWORD='*Proxmox123*'
         crontab_list=(
-            "@reboot rm -rf /home/${DEFAULT_USERNAME}/.*_history /home/${DEFAULT_FIRSTNAME}/.ssh/known_hosts*"
+            "@reboot rm -rf /home/${DEFAULT_USERNAME}/.*_history /home/${DEFAULT_USERNAME}/.ssh/known_hosts*"
         )
         userdel -rf "${DEFAULT_USERNAME}" > "/dev/null" 2>&1
-        useradd -c "${DEFAULT_FULLNAME}" -d "/home/${DEFAULT_USERNAME}" -s "/bin/zsh" -m "${DEFAULT_USERNAME}" && echo $DEFAULT_USERNAME:$DEFAULT_PASSWORD | chpasswd && adduser "${DEFAULT_USERNAME}" "sudo"
+        useradd -c "${DEFAULT_FULLNAME}" -d "/home/${DEFAULT_USERNAME}" -s "/bin/zsh" -m "${DEFAULT_USERNAME}" && echo $DEFAULT_USERNAME:$DEFAULT_PASSWORD | chpasswd && adduser "${DEFAULT_USERNAME}" "docker" && adduser "${DEFAULT_USERNAME}" "sudo"
         which "crontab" > "/dev/null" 2>&1
         if [ "$?" -eq "0" ]; then
             rm -rf "/tmp/crontab.autodeploy" && for crontab_list_task in "${!crontab_list[@]}"; do
@@ -640,6 +674,21 @@ function ConfigureSystem() {
 }
 # Install Custom Packages
 function InstallCustomPackages() {
+    function InstallDockerEngine() {
+        app_list=(
+            "containerd.io"
+            "docker-ce"
+            "docker-ce-cli"
+            "docker-compose-plugin"
+        )
+        rm -rf "/etc/apt/keyrings/docker.gpg" && curl -fsSL "https://mirrors.ustc.edu.cn/docker-ce/linux/debian/gpg" | gpg --dearmor -o "/etc/apt/keyrings/docker.gpg"
+        echo "deb [arch=amd64 signed-by=/etc/apt/keyrings/docker.gpg] https://mirrors.ustc.edu.cn/docker-ce/linux/debian ${LSBCodename} stable" > "/etc/apt/sources.list.d/docker.list"
+        apt update && apt purge -qy containerd docker docker-engine docker.io runc && for app_list_task in "${!app_list[@]}"; do
+            apt-cache show ${app_list[$app_list_task]} && if [ "$?" -eq "0" ]; then
+                apt install -qy ${app_list[$app_list_task]}
+            fi
+        done
+    }
     function InstallOhMyZsh() {
         plugin_list=(
             "zsh-autosuggestions"
