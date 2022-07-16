@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 3.7.3
+# Current Version: 3.7.4
 
 ## How to get and use?
 # curl "https://source.zhijie.online/AutoDeploy/main/Ubuntu.sh" | sudo bash
@@ -918,6 +918,7 @@ function InstallCustomPackages() {
             "containerd.io"
             "docker-ce"
             "docker-ce-cli"
+            "docker-compose-plugin"
         )
         if [ "${container_environment}" != "docker" ] && [ "${container_environment}" != "wsl2" ]; then
             rm -rf "/usr/share/keyrings/docker-archive-keyring.gpg" && curl -fsSL "https://mirrors.ustc.edu.cn/docker-ce/linux/ubuntu/gpg" | gpg --dearmor -o "/usr/share/keyrings/docker-archive-keyring.gpg"
