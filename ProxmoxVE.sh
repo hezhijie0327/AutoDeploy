@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 2.0.1
+# Current Version: 2.0.2
 
 ## How to get and use?
 # curl "https://source.zhijie.online/AutoDeploy/main/ProxmoxVE.sh" | sudo bash
@@ -430,10 +430,10 @@ function ConfigurePackages() {
             $(ls "/etc/pve/qemu-server" | grep "\.conf" | sed "s/\.conf//g" | awk '{print $1}')
             "template"
         )
-        if [ -d "/etc/pve/firewall" ]; then
+        if [ ! -d "/etc/pve/firewall" ]; then
             mkdir "/etc/pve/firewall" && chown -R root:www-data "/etc/pve/firewall"
         fi
-        if [ -d "/etc/pve/nodes" ]; then
+        if [ ! -d "/etc/pve/nodes" ]; then
             mkdir "/etc/pve/nodes" && chown -R root:www-data "/etc/pve/nodes"
         fi
         rm -rf "/tmp/pve_firewall.autodeploy" && for cluster_fw_list_task in "${!cluster_fw_list[@]}"; do
@@ -565,6 +565,7 @@ function ConfigurePackages() {
     }
     ConfigureChrony
     ConfigureCrontab
+    ConfigureDockerEngine
     ConfigureFail2Ban
     ConfigureGPG && ConfigureGit
     ConfigureGrub
@@ -681,6 +682,9 @@ function InstallCustomPackages() {
             "docker-ce-cli"
             "docker-compose-plugin"
         )
+        if [ ! -d "/etc/apt/keyrings" ]; then
+            mkdir "/etc/apt/keyrings"
+        fi
         rm -rf "/etc/apt/keyrings/docker.gpg" && curl -fsSL "https://mirrors.ustc.edu.cn/docker-ce/linux/debian/gpg" | gpg --dearmor -o "/etc/apt/keyrings/docker.gpg"
         echo "deb [arch=amd64 signed-by=/etc/apt/keyrings/docker.gpg] https://mirrors.ustc.edu.cn/docker-ce/linux/debian ${LSBCodename} stable" > "/etc/apt/sources.list.d/docker.list"
         apt update && apt purge -qy containerd docker docker-engine docker.io runc && for app_list_task in "${!app_list[@]}"; do
@@ -711,6 +715,7 @@ function InstallCustomPackages() {
             echo "${plugin_upgrade_list[$plugin_upgrade_list_task]}" >> "/etc/zsh/oh-my-zsh/oh-my-zsh-plugin.sh"
         done
     }
+    InstallDockerEngine
     InstallOhMyZsh
 }
 # Install Dependency Packages
