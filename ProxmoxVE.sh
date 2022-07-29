@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 2.0.2
+# Current Version: 2.0.3
 
 ## How to get and use?
 # curl "https://source.zhijie.online/AutoDeploy/main/ProxmoxVE.sh" | sudo bash
@@ -42,9 +42,11 @@ function GetSystemInformation() {
         if [ "${CPU_VENDOR_ID}" == "AuthenticAMD" ]; then
             CPU_VENDOR_ID="AMD"
             ENABLE_IOMMU=" amd_iommu=on iommu=pt pcie_acs_override=downstream"
+            echo "options kvm-amd nested=Y" > "/etc/modprobe.d/kvm-amd.conf"
         elif [ "${CPU_VENDOR_ID}" == "GenuineIntel" ]; then
             CPU_VENDOR_ID="Intel"
             ENABLE_IOMMU=" intel_iommu=on iommu=pt pcie_acs_override=downstream"
+            echo "options kvm-intel nested=Y" > "/etc/modprobe.d/kvm-intel.conf"
         else
             CPU_VENDOR_ID="Unknown"
             ENABLE_IOMMU=""
