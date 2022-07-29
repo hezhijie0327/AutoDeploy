@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 2.0.3
+# Current Version: 2.0.4
 
 ## How to get and use?
 # curl "https://source.zhijie.online/AutoDeploy/main/ProxmoxVE.sh" | sudo bash
@@ -42,14 +42,17 @@ function GetSystemInformation() {
         if [ "${CPU_VENDOR_ID}" == "AuthenticAMD" ]; then
             CPU_VENDOR_ID="AMD"
             ENABLE_IOMMU=" amd_iommu=on iommu=pt pcie_acs_override=downstream"
+            MICROCODE=("amd-microcode")
             echo "options kvm-amd nested=Y" > "/etc/modprobe.d/kvm-amd.conf"
         elif [ "${CPU_VENDOR_ID}" == "GenuineIntel" ]; then
             CPU_VENDOR_ID="Intel"
             ENABLE_IOMMU=" intel_iommu=on iommu=pt pcie_acs_override=downstream"
+            MICROCODE=("intel-microcode")
             echo "options kvm-intel nested=Y" > "/etc/modprobe.d/kvm-intel.conf"
         else
             CPU_VENDOR_ID="Unknown"
             ENABLE_IOMMU=""
+            MICROCODE=()
         fi
     }
     function GetHostname() {
@@ -773,7 +776,7 @@ function InstallDependencyPackages() {
         "open-vm-tools"
         "virtualbox-guest-dkms"
     )
-    app_list=(${app_regular_list[*]} ${HYPERVISOR_AGENT[*]})
+    app_list=(${app_regular_list[*]} ${HYPERVISOR_AGENT[*]} ${MICROCODE[*]})
     apt update && for app_list_task in "${!app_list[@]}"; do
         apt-cache show ${app_list[$app_list_task]} && if [ "$?" -eq "0" ]; then
             apt install -qy ${app_list[$app_list_task]}
