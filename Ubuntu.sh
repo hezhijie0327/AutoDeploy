@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 3.7.4
+# Current Version: 3.7.5
 
 ## How to get and use?
 # curl "https://source.zhijie.online/AutoDeploy/main/Ubuntu.sh" | sudo bash
@@ -169,6 +169,16 @@ function GetSystemInformation() {
     function GenerateHostname() {
         NEW_HOSTNAME="Ubuntu-$(date '+%Y%m%d%H%M%S')"
     }
+    function GetCPUVendorID() {
+        CPU_VENDOR_ID=$(cat '/proc/cpuinfo' | grep 'vendor_id' | uniq | awk -F ':' '{print $2}' | awk -F ' ' '{print $1}')
+        if [ "${CPU_VENDOR_ID}" == "AuthenticAMD" ]; then
+            MICROCODE=("amd-microcode")
+        elif [ "${CPU_VENDOR_ID}" == "GenuineIntel" ]; then
+            MICROCODE=("intel-microcode")
+        else
+            MICROCODE=()
+        fi
+    }
     function GetLSBCodename() {
         LSBCodename_LTS="jammy"
         LSBCodename_NON_LTS="impish"
@@ -240,6 +250,7 @@ function GetSystemInformation() {
     CheckDNSConfiguration
     GenerateDomain && CheckMachineEnvironment
     GenerateHostname
+    GetCPUVendorID
     GetLSBCodename
     GetOSArchitecture
     SetGHProxyDomain
@@ -1029,7 +1040,7 @@ function InstallDependencyPackages() {
     if [ "${container_environment}" != "docker" ] && [ "${container_environment}" != "wsl2" ]; then
         app_list=(${app_regular_list[@]} ${app_extended_list[*]} ${HYPERVISOR_AGENT[*]})
     else
-        app_list=(${app_regular_list[*]} ${HYPERVISOR_AGENT[*]})
+        app_list=(${app_regular_list[*]} ${HYPERVISOR_AGENT[*]} ${MICROCODE[*]})
     fi
     apt update && for app_list_task in "${!app_list[@]}"; do
         apt-cache show ${app_list[$app_list_task]} && if [ "$?" -eq "0" ]; then
