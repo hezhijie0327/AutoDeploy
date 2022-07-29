@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 3.7.5
+# Current Version: 3.7.6
 
 ## How to get and use?
 # curl "https://source.zhijie.online/AutoDeploy/main/Ubuntu.sh" | sudo bash
@@ -172,7 +172,7 @@ function GetSystemInformation() {
     function GetCPUVendorID() {
         CPU_VENDOR_ID=$(cat '/proc/cpuinfo' | grep 'vendor_id' | uniq | awk -F ':' '{print $2}' | awk -F ' ' '{print $1}')
         if [ "${CPU_VENDOR_ID}" == "AuthenticAMD" ]; then
-            MICROCODE=("amd-microcode")
+            MICROCODE=("amd64-microcode")
         elif [ "${CPU_VENDOR_ID}" == "GenuineIntel" ]; then
             MICROCODE=("intel-microcode")
         else
