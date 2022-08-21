@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 2.0.5
+# Current Version: 2.0.6
 
 ## How to get and use?
 # curl "https://source.zhijie.online/AutoDeploy/main/ProxmoxVE.sh" | sudo bash
@@ -158,13 +158,15 @@ function ConfigurePackages() {
         DHCP_NTP=()
         chrony_ntp_list=(
             "ntp.ntsc.ac.cn"
-            "cn.ntp.org.cn"
+            "ntp1.nim.ac.cn"
+            "ntp2.nim.ac.cn"
+            "ntp.aliyun.com"
+            "ntp.tencent.com"
             "time.apple.com"
             "time.windows.com"
-            "time.izatcloud.net"
+            "time.cloudflare.com"
+            "time.nist.gov"
             "pool.ntp.org"
-            "asia.pool.ntp.org"
-            "cn.pool.ntp.org"
             "${DHCP_NTP[@]}"
         )
         which "chronyc" > "/dev/null" 2>&1
@@ -172,7 +174,7 @@ function ConfigurePackages() {
             rm -rf "/tmp/chrony.autodeploy" && for chrony_list_task in "${!chrony_list[@]}"; do
                 echo "${chrony_list[$chrony_list_task]}" >> "/tmp/chrony.autodeploy"
             done && for chrony_ntp_list_task in "${!chrony_ntp_list[@]}"; do
-                if [ "${chrony_ntp_list[$chrony_ntp_list_task]}" == "ntp.ntsc.ac.cn" ] || [ "${chrony_ntp_list[$chrony_ntp_list_task]}" == "cn.ntp.org.cn" ] || [ "$(echo ${DHCP_NTP[@]} | grep ${chrony_ntp_list[$chrony_ntp_list_task]})" != "" ]; then
+                if [ "${chrony_ntp_list[$chrony_ntp_list_task]}" == "ntp.ntsc.ac.cn" ] || [ "${chrony_ntp_list[$chrony_ntp_list_task]}" == "ntp1.nim.ac.cn" ] || [ "${chrony_ntp_list[$chrony_ntp_list_task]}" == "ntp1.nim.ac.cn" ] || [ "$(echo ${DHCP_NTP[@]} | grep ${chrony_ntp_list[$chrony_ntp_list_task]})" != "" ]; then
                     echo "server ${chrony_ntp_list[$chrony_ntp_list_task]} iburst prefer" >> "/tmp/chrony.autodeploy"
                 else
                     echo "server ${chrony_ntp_list[$chrony_ntp_list_task]} iburst" >> "/tmp/chrony.autodeploy"
