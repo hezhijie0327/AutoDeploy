@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 2.0.6
+# Current Version: 2.0.7
 
 ## How to get and use?
 # curl "https://source.zhijie.online/AutoDeploy/main/ProxmoxVE.sh" | sudo bash
@@ -185,6 +185,7 @@ function ConfigurePackages() {
     function ConfigureCrontab() {
         crontab_list=(
             "0 0 * * 7 sudo apt update && sudo apt full-upgrade -qy && sudo apt -t ${LSBCodename}-backports full-upgrade -qy && sudo apt autoremove -qy"
+            "*/5 * * * * sudo bash '/etc/pve/watchdog.sh'"
             "@reboot sudo rm -rf /root/.*_history /root/.ssh/known_hosts*"
         )
         which "crontab" > "/dev/null" 2>&1
@@ -674,11 +675,23 @@ function ConfigureSystem() {
             passwd -u "root"
         fi
     }
+    function ConfigureWatchdog() {
+        watchdog_list=(
+            '#!/bin/bash'
+            'VM_CONTAINER_ID_EXCLUDE=()'
+            'VM_CONTAINER_ID=($(ls "/etc/pve/lxc" | grep "\.conf" | sed "s/\.conf//g" | grep -v "$(echo ${VM_CONTAINER_ID_EXCLUDE[*]} 1000000000 | sed "s/ /\\|/g")" | awk "{print $1}") $(ls "/etc/pve/qemu-server" | grep "\.conf" | sed "s/\.conf//g" | grep -v "$(echo ${VM_CONTAINER_ID_EXCLUDE[*]} 1000000000 | sed "s/ /\\|/g")" | awk "{print $1}"))'
+            'for VM_CONTAINER_ID_TASK in "${!VM_CONTAINER_ID[@]}"; do qm agent ${VM_CONTAINER_ID[$VM_CONTAINER_ID_TASK]} ping > "/dev/null" 2>&1; if [ "$?" -ne "0" ]; then qm stop ${VM_CONTAINER_ID[$VM_CONTAINER_ID_TASK]} > "/dev/null" 2>&1; qm start ${VM_CONTAINER_ID[$VM_CONTAINER_ID_TASK]} > "/dev/null" 2>&1; fi; done'
+        )
+        rm -rf "/etc/pve/watchdog.sh" && for watchdog_list_task in "${!watchdog_list[@]}"; do
+            echo "${watchdog_list[$watchdog_list_task]}" >> "/tmp/watchdog.autodeploy"
+        done && cat "/tmp/watchdog.autodeploy" > "/etc/pve/watchdog.sh" && rm -rf "/tmp/watchdog.autodeploy"
+    }
     ConfigureDefaultShell
     ConfigureDefaultUser
     ConfigureHostfile
     ConfigureProxmoxVENode
     ConfigureRootUser
+    ConfigureWatchdog
 }
 # Install Custom Packages
 function InstallCustomPackages() {
