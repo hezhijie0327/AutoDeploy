@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 2.1.0
+# Current Version: 2.1.1
 
 ## How to get and use?
 # curl "https://source.zhijie.online/AutoDeploy/main/ProxmoxVE.sh" | sudo bash
@@ -677,12 +677,9 @@ function ConfigureSystem() {
     function ConfigureWatchdog() {
         watchdog_list=(
             '#!/bin/bash'
-            'CTID_EXCLUDE=()'
-            'VMID_EXCLUDE=()'
-            'CTID=($(ls "/etc/pve/lxc" | grep "\.conf" | sed "s/\.conf//g" | grep -v "$(echo ${CTID_EXCLUDE[*]} 1000000000 | sed "s/ /\\|/g")" | awk "{print $1}"))'
-            'VMID=($(ls "/etc/pve/qemu-server" | grep "\.conf" | sed "s/\.conf//g" | grep -v "$(echo ${VMID_EXCLUDE[*]} 1000000000 | sed "s/ /\\|/g")" | awk "{print $1}"))'
-            'for CTID_TASK in "${!CTID[@]}"; do if [ $(pct status ${CTID[$CTID_TASK]} | grep "status" | cut -d " " -f 2) != "running" ]; then pct stop ${CTID[$CTID_TASK]} > "/dev/null" 2>&1; pct start ${CTID[$CTID_TASK]} > "/dev/null" 2>&1; fi; done'
-            'for VMID_TASK in "${!VMID[@]}"; do if [ $(cat "/etc/pve/qemu-server/${VMID[$VMID_TASK]}.conf" | grep "agent\:" | cut -d " " -f 2) -eq "0" ]; then if [ $(qm status ${VMID[$VMID_TASK]} | grep "status" | cut -d " " -f 2) != "running" ]; then qm stop ${VMID[$VMID_TASK]} > "/dev/null" 2>&1; qm start ${VMID[$VMID_TASK]} > "/dev/null" 2>&1; fi; else qm agent ${VMID[$VMID_TASK]} ping > "/dev/null" 2>&1; if [ "$?" -ne "0" ]; then qm stop ${VMID[$VMID_TASK]} > "/dev/null" 2>&1; qm start ${VMID[$VMID_TASK]} > "/dev/null" 2>&1; fi; fi; done'
+            'CT_VMID_EXCLUDE=()'
+            'CT_VMID=($(ls "/etc/pve/lxc" | grep "\.conf" | sed "s/\.conf//g" | grep -v "$(echo ${CT_VMID_EXCLUDE[*]} 1000000000 | sed "s/ /\\|/g")" | awk "{print $1}") $(ls "/etc/pve/qemu-server" | grep "\.conf" | sed "s/\.conf//g" | grep -v "$(echo ${CT_VMID_EXCLUDE[*]} 1000000000 | sed "s/ /\\|/g")" | awk "{print $1}"))'
+            'for CT_VMID_TASK in "${!CT_VMID[@]}"; do if [ -f "/etc/pve/qemu-server/${CT_VMID[$CT_VMID_TASK]}.conf" ]; then if [ $(cat "/etc/pve/qemu-server/${CT_VMID[$CT_VMID_TASK]}.conf" | grep "agent\:" | cut -d " " -f 2) -eq "0" ]; then if [ $(qm status ${CT_VMID[$CT_VMID_TASK]} | grep "status" | cut -d " " -f 2) != "running" ]; then qm stop ${CT_VMID[$CT_VMID_TASK]} > "/dev/null" 2>&1; qm start ${CT_VMID[$CT_VMID_TASK]} > "/dev/null" 2>&1; fi; else qm agent ${CT_VMID[$CT_VMID_TASK]} ping > "/dev/null" 2>&1; if [ "$?" -ne "0" ]; then qm stop ${CT_VMID[$CT_VMID_TASK]} > "/dev/null" 2>&1; qm start ${CT_VMID[$CT_VMID_TASK]} > "/dev/null" 2>&1; fi; fi; else for CT_VMID_TASK in "${!CT_VMID[@]}"; do if [ $(pct status ${CT_VMID[$CT_VMID_TASK]} | grep "status" | cut -d " " -f 2) != "running" ]; then pct stop ${CT_VMID[$CT_VMID_TASK]} > "/dev/null" 2>&1; pct start ${CT_VMID[$CT_VMID_TASK]} > "/dev/null" 2>&1; fi; done; fi; done'
         )
         rm -rf "/etc/pve/watchdog.sh" && for watchdog_list_task in "${!watchdog_list[@]}"; do
             echo "${watchdog_list[$watchdog_list_task]}" >> "/tmp/watchdog.autodeploy"
