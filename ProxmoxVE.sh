@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 2.1.1
+# Current Version: 2.1.2
 
 ## How to get and use?
 # curl "https://source.zhijie.online/AutoDeploy/main/ProxmoxVE.sh" | sudo bash
@@ -434,6 +434,7 @@ function ConfigurePackages() {
             "radv: 1"
         )
         vm_container_list=(
+            $(ls "/etc/pve/lxc" | grep "\.conf" | sed "s/\.conf//g" | awk '{print $1}')
             $(ls "/etc/pve/qemu-server" | grep "\.conf" | sed "s/\.conf//g" | awk '{print $1}')
             "template"
         )
