@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 2.0.8
+# Current Version: 2.0.9
 
 ## How to get and use?
 # curl "https://source.zhijie.online/AutoDeploy/main/ProxmoxVE.sh" | sudo bash
@@ -434,7 +434,6 @@ function ConfigurePackages() {
             "radv: 1"
         )
         vm_container_list=(
-            $(ls "/etc/pve/lxc" | grep "\.conf" | sed "s/\.conf//g" | awk '{print $1}')
             $(ls "/etc/pve/qemu-server" | grep "\.conf" | sed "s/\.conf//g" | awk '{print $1}')
             "template"
         )
@@ -678,9 +677,9 @@ function ConfigureSystem() {
     function ConfigureWatchdog() {
         watchdog_list=(
             '#!/bin/bash'
-            'VM_CONTAINER_ID_EXCLUDE=()'
-            'VM_CONTAINER_ID=($(ls "/etc/pve/lxc" | grep "\.conf" | sed "s/\.conf//g" | grep -v "$(echo ${VM_CONTAINER_ID_EXCLUDE[*]} 1000000000 | sed "s/ /\\|/g")" | awk "{print $1}") $(ls "/etc/pve/qemu-server" | grep "\.conf" | sed "s/\.conf//g" | grep -v "$(echo ${VM_CONTAINER_ID_EXCLUDE[*]} 1000000000 | sed "s/ /\\|/g")" | awk "{print $1}"))'
-            'for VM_CONTAINER_ID_TASK in "${!VM_CONTAINER_ID[@]}"; do qm agent ${VM_CONTAINER_ID[$VM_CONTAINER_ID_TASK]} ping > "/dev/null" 2>&1; if [ "$?" -ne "0" ]; then qm stop ${VM_CONTAINER_ID[$VM_CONTAINER_ID_TASK]} > "/dev/null" 2>&1; qm start ${VM_CONTAINER_ID[$VM_CONTAINER_ID_TASK]} > "/dev/null" 2>&1; fi; done'
+            'VMID_EXCLUDE=()'
+            'VMID=($(ls "/etc/pve/qemu-server" | grep "\.conf" | sed "s/\.conf//g" | grep -v "$(echo ${VMID_EXCLUDE[*]} 1000000000 | sed "s/ /\\|/g")" | awk "{print $1}"))'
+            'for VMID_TASK in "${!VMID[@]}"; do if [ $(cat "/etc/pve/qemu-server/${VMID[$VMID_TASK]}.conf" | grep "agent\:" | cut -d " " -f 2) -eq "0" ]; then if [ $(qm status ${VMID[$VMID_TASK]} | grep "status" | cut -d " " -f 2) != "running" ]; then qm stop ${VMID[$VMID_TASK]} > "/dev/null" 2>&1; qm start ${VMID[$VMID_TASK]} > "/dev/null" 2>&1; fi; else qm agent ${VMID[$VMID_TASK]} ping > "/dev/null" 2>&1; if [ "$?" -ne "0" ]; then qm stop ${VMID[$VMID_TASK]} > "/dev/null" 2>&1; qm start ${VMID[$VMID_TASK]} > "/dev/null" 2>&1; fi; fi; done'
         )
         rm -rf "/etc/pve/watchdog.sh" && for watchdog_list_task in "${!watchdog_list[@]}"; do
             echo "${watchdog_list[$watchdog_list_task]}" >> "/tmp/watchdog.autodeploy"
