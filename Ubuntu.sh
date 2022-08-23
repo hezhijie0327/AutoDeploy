@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 3.7.7
+# Current Version: 3.7.8
 
 ## How to get and use?
 # curl "https://source.zhijie.online/AutoDeploy/main/Ubuntu.sh" | sudo bash
@@ -988,6 +988,7 @@ function InstallDependencyPackages() {
         "chrony"
         "curl"
         "dnsutils"
+        "ethtool"
         "git"
         "git-flow"
         "git-lfs"
