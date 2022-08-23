@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 2.1.4
+# Current Version: 2.1.5
 
 ## How to get and use?
 # curl "https://source.zhijie.online/AutoDeploy/main/ProxmoxVE.sh" | sudo bash
@@ -184,7 +184,7 @@ function ConfigurePackages() {
     }
     function ConfigureCrontab() {
         crontab_list=(
-            "*/15 * * * * sudo bash '/etc/pve/watchdog.sh'"
+            "*/10 * * * * sudo bash '/etc/pve/watchdog.sh'"
             "0 0 * * 7 sudo apt update && sudo apt full-upgrade -qy && sudo apt -t ${LSBCodename}-backports full-upgrade -qy && sudo apt autoremove -qy"
             "@reboot sudo rm -rf /root/.*_history /root/.ssh/known_hosts*"
         )
@@ -748,6 +748,7 @@ function InstallDependencyPackages() {
         "chrony"
         "curl"
         "dnsutils"
+        "ethtool"
         "fail2ban"
         "git"
         "git-flow"
