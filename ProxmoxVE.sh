@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 2.1.6
+# Current Version: 2.1.7
 
 ## How to get and use?
 # curl "https://source.zhijie.online/AutoDeploy/main/ProxmoxVE.sh" | sudo bash
@@ -194,6 +194,20 @@ function ConfigurePackages() {
             rm -rf "/tmp/crontab.autodeploy" && for crontab_list_task in "${!crontab_list[@]}"; do
                 echo "${crontab_list[$crontab_list_task]}" >> "/tmp/crontab.autodeploy"
             done && crontab -u "root" "/tmp/crontab.autodeploy" && crontab -lu "root" && rm -rf "/tmp/crontab.autodeploy"
+        fi
+    }
+    function ConfigureCrowdSec() {
+        crowdsec_hub_list=(
+            "crowdsecurity/iptables"
+            "crowdsecurity/linux-lpe"
+            "crowdsecurity/linux"
+            "fulljackz/proxmox"
+        )
+        which "cscli" > "/dev/null" 2>&1
+        if [ "$?" -eq "0" ]; then
+            for crowdsec_hub_list_task in "${!crowdsec_hub_list[@]}"; do
+                cscli collections install ${crowdsec_hub_list[$crowdsec_hub_list_task]}
+            done
         fi
     }
     function ConfigureDockerEngine() {
@@ -574,6 +588,7 @@ function ConfigurePackages() {
     }
     ConfigureChrony
     ConfigureCrontab
+    ConfigureCrowdSec
     ConfigureDockerEngine
     ConfigureFail2Ban
     ConfigureGPG && ConfigureGit
@@ -753,7 +768,7 @@ function InstallCustomPackages() {
             echo "${plugin_upgrade_list[$plugin_upgrade_list_task]}" >> "/etc/zsh/oh-my-zsh/oh-my-zsh-plugin.sh"
         done
     }
-    #InstallCrowdSec
+    InstallCrowdSec
     InstallDockerEngine
     InstallOhMyZsh
 }
