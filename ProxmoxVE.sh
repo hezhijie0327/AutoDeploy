@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 2.2.0
+# Current Version: 2.2.1
 
 ## How to get and use?
 # curl "https://source.zhijie.online/AutoDeploy/main/ProxmoxVE.sh" | sudo bash
@@ -201,7 +201,6 @@ function ConfigurePackages() {
             "crowdsecurity/iptables"
             "crowdsecurity/linux-lpe"
             "crowdsecurity/linux"
-            "fulljackz/proxmox"
         )
         which "cscli" > "/dev/null" 2>&1
         if [ "$?" -eq "0" ]; then
