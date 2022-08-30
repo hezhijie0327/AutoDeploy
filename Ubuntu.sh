@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 3.7.8
+# Current Version: 3.7.9
 
 ## How to get and use?
 # curl "https://source.zhijie.online/AutoDeploy/main/Ubuntu.sh" | sudo bash
@@ -280,6 +280,7 @@ function SetRepositoryMirror() {
 function SetReadonlyFlag() {
     file_list=(
         "/etc/apt/sources.list"
+        "/etc/apt/sources.list.d/crowdsec.list"
         "/etc/apt/sources.list.d/docker.list"
         "/etc/chrony/chrony.conf"
         "/etc/cockpit/cockpit.conf"
@@ -926,6 +927,22 @@ function ConfigureSystem() {
 }
 # Install Custom Packages
 function InstallCustomPackages() {
+    function InstallCrowdSec() {
+        app_list=(
+            "crowdsec-firewall-bouncer-nftables"
+            "crowdsec"
+        )
+        if [ "${container_environment}" != "docker" ] && [ "${container_environment}" != "wsl2" ]; then
+            rm -rf "/usr/share/keyrings/crowdsec-archive-keyring.gpg" && curl -fsSL "https://packagecloud.io/crowdsec/crowdsec/gpgkey" | gpg --dearmor -o "/usr/share/keyrings/crowdsec-archive-keyring.gpg"
+            echo "deb [signed-by=/usr/share/keyrings/crowdsec-archive-keyring.gpg] https://packagecloud.io/crowdsec/crowdsec/ubuntu ${LSBCodename} main" > "/etc/apt/sources.list.d/crowdsec.list"
+            echo "deb-src [signed-by=/usr/share/keyrings/crowdsec-archive-keyring.gpg] https://packagecloud.io/crowdsec/crowdsec/ubuntu ${LSBCodename} main" >> "/etc/apt/sources.list.d/crowdsec.list"
+            apt update && for app_list_task in "${!app_list[@]}"; do
+                apt-cache show ${app_list[$app_list_task]} && if [ "$?" -eq "0" ]; then
+                    apt install -qy ${app_list[$app_list_task]}
+                fi
+            done
+        fi
+    }
     function InstallDockerEngine() {
         app_list=(
             "containerd.io"
@@ -965,6 +982,7 @@ function InstallCustomPackages() {
             echo "${plugin_upgrade_list[$plugin_upgrade_list_task]}" >> "/etc/zsh/oh-my-zsh/oh-my-zsh-plugin.sh"
         done
     }
+    #InstallCrowdSec
     InstallDockerEngine
     InstallOhMyZsh
 }
