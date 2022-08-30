@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 3.8.1
+# Current Version: 3.8.2
 
 ## How to get and use?
 # curl "https://source.zhijie.online/AutoDeploy/main/Ubuntu.sh" | sudo bash
@@ -393,7 +393,7 @@ function ConfigurePackages() {
             for crowdsec_hub_list_task in "${!crowdsec_hub_list[@]}"; do
                 cscli collections install ${crowdsec_hub_list[$crowdsec_hub_list_task]}
             done
-        fi && OPRATIONS="restart" && SERVICE_NAME="crowdsec" && CallServiceController
+        fi && OPRATIONS="restart" && SERVICE_NAME="crowdsec" && CallServiceController && cscli hub list
     }
     function ConfigureDockerEngine() {
         docker_list=(
