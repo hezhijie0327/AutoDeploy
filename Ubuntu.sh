@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 3.8.2
+# Current Version: 3.8.3
 
 ## How to get and use?
 # curl "https://source.zhijie.online/AutoDeploy/main/Ubuntu.sh" | sudo bash
@@ -943,13 +943,20 @@ function ConfigureSystem() {
 function InstallCustomPackages() {
     function InstallCrowdSec() {
         app_list=(
-            "crowdsec-firewall-bouncer-nftables"
             "crowdsec"
+            "crowdsec-firewall-bouncer-nftables"
         )
         if [ "${container_environment}" != "docker" ] && [ "${container_environment}" != "wsl2" ]; then
             rm -rf "/usr/share/keyrings/crowdsec-archive-keyring.gpg" && curl -fsSL "https://packagecloud.io/crowdsec/crowdsec/gpgkey" | gpg --dearmor -o "/usr/share/keyrings/crowdsec-archive-keyring.gpg"
             echo "deb [signed-by=/usr/share/keyrings/crowdsec-archive-keyring.gpg] https://packagecloud.io/crowdsec/crowdsec/ubuntu ${LSBCodename} main" > "/etc/apt/sources.list.d/crowdsec.list"
             echo "deb-src [signed-by=/usr/share/keyrings/crowdsec-archive-keyring.gpg] https://packagecloud.io/crowdsec/crowdsec/ubuntu ${LSBCodename} main" >> "/etc/apt/sources.list.d/crowdsec.list"
+            which "cscli" > "/dev/null" 2>&1
+            if [ "$?" -eq "0" ]; then
+                bouncers_list=($(cscli bouncers list | grep 'FirewallBouncer' | cut -d ' ' -f 2))
+                for bouncers_list_task in "${!bouncers_list[@]}"; do
+                    cscli bouncers delete ${bouncers_list[$bouncers_list_task]}
+                done
+            fi
             apt update && for app_list_task in "${!app_list[@]}"; do
                 apt-cache show ${app_list[$app_list_task]} && if [ "$?" -eq "0" ]; then
                     apt install -qy ${app_list[$app_list_task]}
