@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 2.2.1
+# Current Version: 2.2.2
 
 ## How to get and use?
 # curl "https://source.zhijie.online/AutoDeploy/main/ProxmoxVE.sh" | sudo bash
@@ -712,8 +712,8 @@ function ConfigureSystem() {
 function InstallCustomPackages() {
     function InstallCrowdSec() {
         app_list=(
-            "crowdsec-firewall-bouncer-nftables"
             "crowdsec"
+            "crowdsec-firewall-bouncer-nftables"
         )
         if [ ! -d "/etc/apt/keyrings" ]; then
             mkdir "/etc/apt/keyrings"
@@ -721,6 +721,13 @@ function InstallCustomPackages() {
         rm -rf "/etc/apt/keyrings/crowdsec.gpg" && curl -fsSL "https://packagecloud.io/crowdsec/crowdsec/gpgkey" | gpg --dearmor -o "/etc/apt/keyrings/crowdsec.gpg"
         echo "deb [signed-by=/etc/apt/keyrings/crowdsec.gpg] https://packagecloud.io/crowdsec/crowdsec/debian ${LSBCodename} main" > "/etc/apt/sources.list.d/crowdsec.list"
         echo "deb-src [signed-by=/etc/apt/keyrings/crowdsec.gpg] https://packagecloud.io/crowdsec/crowdsec/debian ${LSBCodename} main" >> "/etc/apt/sources.list.d/crowdsec.list"
+        which "cscli" > "/dev/null" 2>&1
+        if [ "$?" -eq "0" ]; then
+            bouncers_list=($(cscli bouncers list | grep 'FirewallBouncer' | cut -d ' ' -f 2))
+            for bouncers_list_task in "${!bouncers_list[@]}"; do
+                cscli bouncers delete ${bouncers_list[$bouncers_list_task]}
+            done
+        fi
         apt update && for app_list_task in "${!app_list[@]}"; do
             apt-cache show ${app_list[$app_list_task]} && if [ "$?" -eq "0" ]; then
                 apt install -qy ${app_list[$app_list_task]}
