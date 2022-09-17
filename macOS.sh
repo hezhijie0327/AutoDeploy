@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 2.4.0
+# Current Version: 2.4.1
 
 ## How to get and use?
 # /bin/bash -c "$(curl -fsSL 'https://source.zhijie.online/AutoDeploy/main/macOS.sh')"
@@ -238,6 +238,8 @@ function ConfigurePackages() {
                 "export PATH=\"${CUSTOM_PATH}:${DEFAULT_PATH}:\$PATH\""
                 "# export SSH_AUTH_SOCK=\"\$(gpgconf --list-dirs agent-ssh-socket)\" && gpgconf --launch gpg-agent && gpg-connect-agent updatestartuptty /bye > \"/dev/null\" 2>&1"
                 "export ZSH=\"\$HOME/.oh-my-zsh\""
+                "function proxy_off(){ unset all_proxy; unset ftp_proxy; unset http_proxy; unset https_proxy; unset rsync_proxy }"
+                "function proxy_on(){ export all_proxy=\"socks5://vpn.zhijie.online:7890\"; export ftp_proxy=\"http://vpn.zhijie.online:7890\"; export http_proxy=\"http://vpn.zhijie.online:7890\"; export https_proxy=\"http://vpn.zhijie.online:7890\"; export rsync_proxy=\"http://vpn.zhijie.online:7890\" }"
                 "plugins=(zsh-autosuggestions zsh-completions zsh-history-substring-search zsh-syntax-highlighting)"
                 "ZSH_CACHE_DIR=\"\$ZSH/cache\""
                 "ZSH_CUSTOM=\"\$ZSH/custom\""
@@ -308,7 +310,6 @@ function InstallCustomPackages() {
             "blackhole-16ch" # BlackHole 16ch
             "blackhole-2ch" # BlackHole 2ch
             "blackhole-64ch" # BlackHole 64ch
-            "cleanmymac" # CleanMyMac X
             "cleanshot" # CleanShot X
             "cursorsense" # CursorSense
             "docker" # Docker
@@ -336,7 +337,6 @@ function InstallCustomPackages() {
         app_list=(
             "1136220934" # Infuse
             "1365531024" # 1Blocker
-            "409222199" # Cyberduck
             "424389933" # Final Cut Pro
             "424390742" # Compressor
             "430798174" # HazeOver
@@ -353,6 +353,7 @@ function InstallCustomPackages() {
             "823766827" # OneDrive
             "824183456" # Affinity Photo
             "836500024" # Wechat
+            "937984704" # Amphetamine
             "993841014" # CopyLess 2
         )
         which "mas" > "/dev/null" 2>&1
