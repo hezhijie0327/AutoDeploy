@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 3.8.4
+# Current Version: 3.8.5
 
 ## How to get and use?
 # curl "https://source.zhijie.online/AutoDeploy/main/Ubuntu.sh" | sudo bash
@@ -216,12 +216,12 @@ function GetSystemInformation() {
                 LSBVersion="${LSBVersion_NON_LTS}"
             fi
         fi
-        if [ "$(awk -v NUM1=$LSBVersion -v NUM2=$LSBVersion_LTS 'BEGIN{print (NUM1 >= NUM2) ? 1 : 0}')" -eq "1" ] && [ "$(awk -v NUM1=$LSBVersion -v NUM2=$LSBVersion_NON_LTS 'BEGIN{print (NUM1 >= NUM2) ? 1 : 0}')" -eq "1" ]; then
+        BACKPORTS_COMMAND_FORCED="apt -t ${LSBCodename}-backports full-upgrade -qy" && SUDO_BACKPORTS_COMMAND_FORCED="&& sudo ${BACKPORTS_COMMAND} " && if [ "$(awk -v NUM1=$LSBVersion -v NUM2=$LSBVersion_LTS 'BEGIN{print (NUM1 >= NUM2) ? 1 : 0}')" -eq "1" ] && [ "$(awk -v NUM1=$LSBVersion -v NUM2=$LSBVersion_NON_LTS 'BEGIN{print (NUM1 >= NUM2) ? 1 : 0}')" -eq "1" ]; then
             BACKPORTS_COMMAND=""
             SUDO_BACKPORTS_COMMAND=""
         else
-            BACKPORTS_COMMAND="apt -t ${LSBCodename}-backports full-upgrade -qy"
-            SUDO_BACKPORTS_COMMAND="&& sudo ${BACKPORTS_COMMAND} "
+            BACKPORTS_COMMAND="${BACKPORTS_COMMAND_FORCED}"
+            SUDO_BACKPORTS_COMMAND="${SUDO_BACKPORTS_COMMAND_FORCED}"
         fi
     }
     function GetOSArchitecture() {
@@ -371,6 +371,10 @@ function ConfigurePackages() {
         fi
     }
     function ConfigureCrontab() {
+        apt -t ${LSBCodename}-backports full-upgrade -qy > "/dev/null" 2>&1
+        if [ "$?" -eq "0" ]; then
+            SUDO_BACKPORTS_COMMAND="${SUDO_BACKPORTS_COMMAND_FORCED}"
+        fi
         crontab_list=(
             "0 0 * * 7 sudo apt update && sudo apt full-upgrade -qy ${SUDO_BACKPORTS_COMMAND}&& sudo apt autoremove -qy"
             "@reboot sudo rm -rf /root/.*_history /root/.ssh/known_hosts*"
