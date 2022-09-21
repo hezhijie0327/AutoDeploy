@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 1.0.2
+# Current Version: 1.0.3
 
 ## How to get and use?
 # curl "https://source.zhijie.online/AutoDeploy/main/OpenWrt.sh" | sudo bash
@@ -123,7 +123,7 @@ function ConfigurePackages() {
         if [ "$?" -eq "0" ]; then
             if [ ! -d "/docker" ]; then
                 mkdir "/docker"
-            fi
+            fi && chmod -R 775 "/docker"
         fi
     }
     function ConfigureFail2Ban() {
@@ -189,7 +189,7 @@ function ConfigurePackages() {
             if [ -d "/etc/ssh" ]; then
                 rm -rf /etc/ssh/ssh_host_* && ssh-keygen -t dsa -b 1024 -f "/etc/ssh/ssh_host_dsa_key" -C "root@${NEW_HOSTNAME}" -N "${OPENSSH_PASSWORD}" && ssh-keygen -t ecdsa -b 384 -f "/etc/ssh/ssh_host_ecdsa_key" -C "root@${NEW_HOSTNAME}" -N "${OPENSSH_PASSWORD}" && ssh-keygen -t ed25519 -f "/etc/ssh/ssh_host_ed25519_key" -C "root@${NEW_HOSTNAME}" -N "${OPENSSH_PASSWORD}" && ssh-keygen -t rsa -b 4096 -f "/etc/ssh/ssh_host_rsa_key" -C "root@${NEW_HOSTNAME}" -N "${OPENSSH_PASSWORD}" && chmod 400 /etc/ssh/ssh_host_* && chmod 644 /etc/ssh/ssh_host_*.pub
             fi
-            rm -rf "/root/.ssh" && mkdir "/root/.ssh" && touch "/root/.ssh/authorized_keys" && touch "/root/.ssh/known_hosts" && ssh-keygen -t dsa -b 1024 -f "/root/.ssh/id_dsa" -C "root@${NEW_HOSTNAME}" -N "${OPENSSH_PASSWORD}" && ssh-keygen -t ecdsa -b 384 -f "/root/.ssh/id_ecdsa" -C "root@${NEW_HOSTNAME}" -N "${OPENSSH_PASSWORD}" && ssh-keygen -t ed25519 -f "/root/.ssh/id_ed25519" -C "root@${NEW_HOSTNAME}" -N "${OPENSSH_PASSWORD}" && ssh-keygen -t rsa -b 4096 -f "/root/.ssh/id_rsa" -C "root@${NEW_HOSTNAME}" -N "${OPENSSH_PASSWORD}"
+            rm -rf "/root/.ssh" && mkdir "/root/.ssh" && touch "/root/.ssh/authorized_keys" && touch "/root/.ssh/known_hosts" && ssh-keygen -t dsa -b 1024 -f "/root/.ssh/id_dsa" -C "root@${NEW_HOSTNAME}" -N "${OPENSSH_PASSWORD}" && ssh-keygen -t ecdsa -b 384 -f "/root/.ssh/id_ecdsa" -C "root@${NEW_HOSTNAME}" -N "${OPENSSH_PASSWORD}" && ssh-keygen -t ed25519 -f "/root/.ssh/id_ed25519" -C "root@${NEW_HOSTNAME}" -N "${OPENSSH_PASSWORD}" && ssh-keygen -t rsa -b 4096 -f "/root/.ssh/id_rsa" -C "root@${NEW_HOSTNAME}" -N "${OPENSSH_PASSWORD}" && chmod 400 /root/.ssh/id_* && chmod 600 "/root/.ssh/authorized_keys" && chmod 644 "/root/.ssh/known_hosts" && chmod 644 /root/.ssh/id_*.pub && chmod 700 "/root/.ssh"
         fi
     }
     function ConfigureSshd() {
@@ -216,6 +216,48 @@ function ConfigurePackages() {
                     echo "${sysctl_list[$sysctl_list_task]}" >> "/tmp/sysctl.autodeploy"
                 fi
             done && cat "/tmp/sysctl.autodeploy" > "/etc/sysctl.conf" && sysctl -p && rm -rf "/tmp/sysctl.autodeploy"
+        fi
+    }
+    function ConfigureWireGuard() {
+        TUNNEL_CLIENT_V4="192.168.$(shuf -i '224-255' -n 1).$(shuf -i '1-254' -n 1)/32"
+        which "bc" > "/dev/null" 2>&1
+        if [ "$?" -eq "0" ]; then
+            which "sha1sum" > "/dev/null" 2>&1
+            if [ "$?" -eq "0" ]; then
+                which "uuidgen" > "/dev/null" 2>&1
+                if [ "$?" -eq "0" ]; then
+                    UNIQUE_CLIENT=$(echo "obase=16;$(shuf -i '1-65535' -n 1)" | bc | tr "A-Z" "a-z")
+                    UNIQUE_PREFIX=$(echo $(date "+%s%N")$(uuidgen | tr -d "-" | tr "A-Z" "a-z") | sha1sum | cut -c 31-)
+                    TUNNEL_PREFIX="fd$(echo ${UNIQUE_PREFIX} | cut -c 1-2):$(echo ${UNIQUE_PREFIX} | cut -c 3-6):$(echo ${UNIQUE_PREFIX} | cut -c 7-10)"
+                    TUNNEL_CLIENT_V6="${TUNNEL_PREFIX}::${UNIQUE_CLIENT}/128"
+                else
+                    TUNNEL_CLIENT_V6=""
+                fi
+            fi
+        fi
+        if [ ! -d "/etc/wireguard" ]; then
+            mkdir "/etc/wireguard"
+        else
+            rm -rf /etc/wireguard/*
+        fi
+        which "wg" > "/dev/null" 2>&1
+        if [ "$?" -eq "0" ]; then
+            wireguard_list=(
+                "[Interface]"
+                "Address = ${TUNNEL_CLIENT_V4}, ${TUNNEL_CLIENT_V6}"
+                "# DNS = 127.0.0.1, ::1"
+                "ListenPort = 51820"
+                "PrivateKey = $(wg genkey | tee '/tmp/wireguard.autodeploy')"
+                "# [Peer]"
+                "# AllowedIPs = ${TUNNEL_CLIENT_V4}, ${TUNNEL_CLIENT_V6}"
+                "# Endpoint = 127.0.0.1:51820"
+                "# PersistentKeepalive = 5"
+                "# PresharedKey = $(wg genpsk)"
+                "# PublicKey = $(cat '/tmp/wireguard.autodeploy' | wg pubkey)"
+            )
+            rm -rf "/tmp/wireguard.autodeploy" && for wireguard_list_task in "${!wireguard_list[@]}"; do
+                echo "${wireguard_list[$wireguard_list_task]}" | sed "s/, $//g" >> "/tmp/wireguard.autodeploy"
+            done && cat "/tmp/wireguard.autodeploy" > "/etc/wireguard/wg0.conf" && chmod 600 "/etc/wireguard/wg0.conf" && rm -rf "/tmp/wireguard.autodeploy" && wg
         fi
     }
     function ConfigureZsh() {
@@ -284,6 +326,7 @@ function ConfigurePackages() {
     ConfigureOpenSSH
     ConfigureSshd
     ConfigureSysctl
+    ConfigureWireGuard
     ConfigureZsh
 }
 # Configure System
@@ -471,6 +514,7 @@ function InstallDependencyPackages() {
         "fail2ban-src"
         "fdisk"
         "git"
+        "git-http"
         "git-lfs"
         "gawk"
         "grep"
