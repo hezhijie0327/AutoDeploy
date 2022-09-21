@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 1.0.1
+# Current Version: 1.0.2
 
 ## How to get and use?
 # curl "https://source.zhijie.online/AutoDeploy/main/OpenWrt.sh" | sudo bash
@@ -157,8 +157,6 @@ function ConfigurePackages() {
     }
     function ConfigureGit() {
         gitconfig_key_list=(
-            "commit.gpgsign"
-            "gpg.program"
             "http.proxy"
             "https.proxy"
             "user.name"
@@ -167,8 +165,6 @@ function ConfigurePackages() {
             "url.https://${GHPROXY_URL}/https://github.com/.insteadOf"
         )
         gitconfig_value_list=(
-            "${GIT_COMMIT_GPGSIGN:-false}"
-            "${GIT_GPG_PROGRAM:-gpg}"
             "${GIT_HTTP_PROXY}"
             "${GIT_HTTPS_PROXY}"
             "${GIT_USER_NAME}"
@@ -241,9 +237,7 @@ function ConfigurePackages() {
             omz_list=(
                 "export DEBIAN_FRONTEND=\"noninteractive\""
                 "export EDITOR=\"nano\""
-                "export GPG_TTY=\$(tty)"
                 "export PATH=\"${DEFAULT_PATH}:\$PATH\""
-                "# export SSH_AUTH_SOCK=\"\$(gpgconf --list-dirs agent-ssh-socket)\" && gpgconf --launch gpg-agent && gpg-connect-agent updatestartuptty /bye > \"/dev/null\" 2>&1"
                 "export ZSH=\"\$HOME/.oh-my-zsh\""
                 "function proxy_off(){ unset all_proxy; unset ftp_proxy; unset http_proxy; unset https_proxy; unset rsync_proxy }"
                 "function proxy_on(){ export all_proxy=\"socks5://vpn.zhijie.online:7890\"; export ftp_proxy=\"http://vpn.zhijie.online:7890\"; export http_proxy=\"http://vpn.zhijie.online:7890\"; export https_proxy=\"http://vpn.zhijie.online:7890\"; export rsync_proxy=\"http://vpn.zhijie.online:7890\" }"
