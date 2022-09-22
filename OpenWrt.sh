@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 1.0.5
+# Current Version: 1.0.6
 
 ## How to get and use?
 # curl "https://source.zhijie.online/AutoDeploy/main/OpenWrt.sh" | sudo bash
@@ -455,6 +455,7 @@ function InstallDependencyPackages() {
         "curl"
         "ddns-scripts"
         "ddns-scripts-cloudflare"
+        "dnsmasq-full"
         "docker"
         "docker-compose"
         "dockerd"
@@ -524,6 +525,7 @@ function UpgradePackages() {
 # Cleanup Temp Files
 function CleanupTempFiles() {
     cleanup_list=(
+        "dnsmasq"
         "dropbear"
     )
     for cleanup_list_task in "${!cleanup_list[@]}"; do
@@ -533,7 +535,7 @@ function CleanupTempFiles() {
             rm -rf "${FILE_LIST[$FILE_LIST_TASK]}"
         done
     done
-    rm -rf /root/.*_history /tmp/*.autodeploy
+    rm -rf /etc/config/*-opkg /root/.*_history /tmp/*.autodeploy
 }
 
 ## Process
