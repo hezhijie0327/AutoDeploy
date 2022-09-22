@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 1.0.4
+# Current Version: 1.0.5
 
 ## How to get and use?
 # curl "https://source.zhijie.online/AutoDeploy/main/OpenWrt.sh" | sudo bash
@@ -453,10 +453,12 @@ function InstallDependencyPackages() {
         "coreutils-yes"
         "crowdsec"
         "curl"
-        "docker"
+        "ddns-scripts"
+        "ddns-scripts-cloudflare"
         "docker"
         "docker-compose"
         "dockerd"
+        "etherwake"
         "ethtool"
         "fail2ban"
         "fail2ban-src"
@@ -492,13 +494,23 @@ function InstallDependencyPackages() {
         "zsh"
     )
     app_luci_list=(
+        "luci-app-ddns"
         "luci-app-dockerman"
+        "luci-app-firewall"
+        "luci-app-nft-qos"
+        "luci-app-upnp"
         "luci-app-wireguard"
+        "luci-app-wol"
     )
     app_luci_lang_list=(
         "luci-i18n-base-zh-cn"
+        "luci-i18n-ddns-zh-cn"
         "luci-i18n-dockerman-zh-cn"
+        "luci-i18n-firewall-zh-cn"
+        "luci-i18n-nft-qos-zh-cn"
+        "luci-i18n-upnp-zh-cn"
         "luci-i18n-wireguard-zh-cn"
+        "luci-i18n-wol-zh-cn"
     )
     app_list=(${app_regular_list[@]} ${app_luci_list[*]} ${app_luci_lang_list[*]} ${MICROCODE[*]})
     opkg update && for app_list_task in "${!app_list[@]}"; do
