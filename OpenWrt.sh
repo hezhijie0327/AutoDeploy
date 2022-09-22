@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 1.0.8
+# Current Version: 1.0.9
 
 ## How to get and use?
 # curl "https://source.zhijie.online/AutoDeploy/main/OpenWrt.sh" | sudo bash
@@ -489,6 +489,42 @@ function InstallDependencyPackages() {
         "python3-pip"
         "qrencode"
         "resize2fs"
+        "shadow-chage"
+        "shadow-chfn"
+        "shadow-chgpasswd"
+        "shadow-chpasswd"
+        "shadow-chsh"
+        "shadow-common"
+        "shadow-expiry"
+        "shadow-faillog"
+        "shadow-gpasswd"
+        "shadow-groupadd"
+        "shadow-groupdel"
+        "shadow-groupmems"
+        "shadow-groupmod"
+        "shadow-groups"
+        "shadow-grpck"
+        "shadow-grpconv"
+        "shadow-grpunconv"
+        "shadow-lastlog"
+        "shadow-login"
+        "shadow-logoutd"
+        "shadow-newgidmap"
+        "shadow-newgrp"
+        "shadow-newuidmap"
+        "shadow-newusers"
+        "shadow-nologin"
+        "shadow-passwd"
+        "shadow-pwck"
+        "shadow-pwconv"
+        "shadow-pwunconv"
+        "shadow-su"
+        "shadow-useradd"
+        "shadow-userdel"
+        "shadow-usermod"
+        "shadow-utils"
+        "shadow-vipw"
+        "sudo"
         "tcpdump"
         "vim"
         "wget"
@@ -497,6 +533,7 @@ function InstallDependencyPackages() {
         "zsh"
     )
     app_luci_list=(
+        "luci-app-acl"
         "luci-app-ddns"
         "luci-app-dockerman"
         "luci-app-firewall"
@@ -506,6 +543,7 @@ function InstallDependencyPackages() {
         "luci-app-wol"
     )
     app_luci_lang_list=(
+        "luci-i18n-acl-zh-cn"
         "luci-i18n-base-zh-cn"
         "luci-i18n-ddns-zh-cn"
         "luci-i18n-dockerman-zh-cn"
