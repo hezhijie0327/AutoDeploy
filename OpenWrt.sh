@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 1.0.6
+# Current Version: 1.0.7
 
 ## How to get and use?
 # curl "https://source.zhijie.online/AutoDeploy/main/OpenWrt.sh" | sudo bash
@@ -528,6 +528,7 @@ function CleanupTempFiles() {
         "dnsmasq"
         "dropbear"
     )
+    opkg_config=($(find "/etc/config" -name "*-opkg" -print | awk "{print $2}"))
     for cleanup_list_task in "${!cleanup_list[@]}"; do
         opkg remove --force-remove "${cleanup_list[$cleanup_list_task]}" > "/dev/null" 2>&1
         FILE_LIST=($(find "/" \( -path "/dev" -o -path "/home" -o -path "/mnt" -o -path "/proc" -o -path "/root" -o -path "/sys" \) -prune -o -name "${cleanup_list[$cleanup_list_task]}" -print | awk "{print $2}"))
@@ -535,7 +536,10 @@ function CleanupTempFiles() {
             rm -rf "${FILE_LIST[$FILE_LIST_TASK]}"
         done
     done
-    rm -rf /etc/config/*-opkg /root/.*_history /tmp/*.autodeploy
+    for opkg_config_task in "${!opkg_config[@]}"; do
+        mv ${opkg_config[$opkg_config_task]} ${opkg_config[$opkg_config_task]%-opkg}
+    done
+    rm -rf /root/.*_history /tmp/*.autodeploy
 }
 
 ## Process
