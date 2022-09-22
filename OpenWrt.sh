@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 1.1.0
+# Current Version: 1.1.1
 
 ## How to get and use?
 # curl "https://source.zhijie.online/AutoDeploy/main/OpenWrt.sh" | sudo bash
@@ -17,7 +17,7 @@
 function GetSystemInformation() {
     function DetectBASH() {
         if which "bash" > "/dev/null" 2>&1; then
-            echo "BASH has been installed!"
+            echo 'BASH has been installed!' > "/dev/null" 2>&1
         else
             SetRepositoryMirror && opkg update && opkg install bash
             if which "bash" > "/dev/null" 2>&1; then
@@ -29,6 +29,9 @@ function GetSystemInformation() {
                 exit 1
             fi
         fi
+    }
+    function GenerateDomain() {
+        NEW_DOMAIN=("localdomain")
     }
     function GenerateHostname() {
         NEW_HOSTNAME="OpenWrt-$(date '+%Y%m%d%H%M%S')"
@@ -47,6 +50,7 @@ function GetSystemInformation() {
         export GHPROXY_URL="ghproxy.com"
     }
     DetectBASH
+    GenerateDomain
     GenerateHostname
     GetCPUVendorID
     SetGHProxyDomain
@@ -149,6 +153,8 @@ function ConfigurePackages() {
     }
     function ConfigureGit() {
         gitconfig_key_list=(
+            "commit.gpgsign"
+            "gpg.program"
             "http.proxy"
             "https.proxy"
             "user.name"
@@ -157,6 +163,8 @@ function ConfigurePackages() {
             "url.https://${GHPROXY_URL}/https://github.com/.insteadOf"
         )
         gitconfig_value_list=(
+            "${GIT_COMMIT_GPGSIGN:-false}"
+            "${GIT_GPG_PROGRAM:-gpg}"
             "${GIT_HTTP_PROXY}"
             "${GIT_HTTPS_PROXY}"
             "${GIT_USER_NAME}"
@@ -188,7 +196,6 @@ function ConfigurePackages() {
             if [ "${GPG_PUBKEY_ID_A}" != "" ]; then
                 gpg_agent_list=(
                     "enable-ssh-support"
-                    "pinentry-program /usr/bin/pinentry-curses"
                 )
                 rm -rf "/root/.gnupg/gpg-agent.conf" && for gpg_agent_list_task in "${!gpg_agent_list[@]}"; do
                     echo "${gpg_agent_list[$gpg_agent_list_task]}" >> "/root/.gnupg/gpg-agent.conf"
@@ -393,6 +400,7 @@ function ConfigureSystem() {
         echo root:$ROOT_PASSWORD | chpasswd
     }
     ConfigureDefaultShell
+    ConfigureDefaultUser
     ConfigureHostfile
     ConfigureRootUser
 }
@@ -558,6 +566,8 @@ function InstallDependencyPackages() {
         "git-http"
         "git-lfs"
         "gnupg2"
+        "gnupg2-dirmngr"
+        "gnupg2-utils"
         "grep"
         "iperf3"
         "jq"
