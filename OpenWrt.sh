@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 1.1.4
+# Current Version: 1.1.5
 
 ## How to get and use?
 # curl "https://source.zhijie.online/AutoDeploy/main/OpenWrt.sh" | sudo bash
@@ -637,6 +637,7 @@ function InstallDependencyPackages() {
         "luci-app-dockerman"
         "luci-app-firewall"
         "luci-app-nft-qos"
+        "luci-app-opkg"
         "luci-app-upnp"
         "luci-app-wireguard"
         "luci-app-wol"
@@ -648,6 +649,7 @@ function InstallDependencyPackages() {
         "luci-i18n-dockerman-zh-cn"
         "luci-i18n-firewall-zh-cn"
         "luci-i18n-nft-qos-zh-cn"
+        "luci-i18n-opkg-zh-cn"
         "luci-i18n-upnp-zh-cn"
         "luci-i18n-wireguard-zh-cn"
         "luci-i18n-wol-zh-cn"
