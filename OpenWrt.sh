@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 1.1.7
+# Current Version: 1.1.8
 
 ## How to get and use?
 # curl "https://source.zhijie.online/AutoDeploy/main/OpenWrt.sh" | sudo bash
@@ -361,8 +361,8 @@ function ConfigurePackages() {
         uci set nft-qos.default.limit_type="static"
         uci set nft-qos.default.priority_enable="1"
         uci set nft-qos.default.priority_netdev="lan"
-        uci set nft-qos.default.static_rate_dl="300"
-        uci set nft-qos.default.static_rate_ul="30"
+        uci set nft-qos.default.static_rate_dl="125"
+        uci set nft-qos.default.static_rate_ul="125"
         uci set nft-qos.default.static_unit_dl="mbytes"
         uci set nft-qos.default.static_unit_ul="mbytes"
         uci commit nft-qos
@@ -761,12 +761,31 @@ function InstallDependencyPackages() {
         "gnupg2-dirmngr"
         "gnupg2-utils"
         "grep"
-        "iperf3"
+        "iperf3-ssl"
         "jq"
         "kmod-tcp-bbr"
         "knot-dig"
         "lua-cs-bouncer"
         "luci"
+        "luci-proto-3g"
+        "luci-proto-bonding"
+        "luci-proto-gre"
+        "luci-proto-hnet"
+        "luci-proto-ipip"
+        "luci-proto-ipv6"
+        "luci-proto-modemmanager"
+        "luci-proto-ncm"
+        "luci-proto-openconnect"
+        "luci-proto-openfortivpn"
+        "luci-proto-ppp"
+        "luci-proto-pppossh"
+        "luci-proto-qmi"
+        "luci-proto-relay"
+        "luci-proto-sstp"
+        "luci-proto-vpnc"
+        "luci-proto-vxlan"
+        "luci-proto-wireguard"
+        "luci-proto-xfrm"
         "luci-ssl-openssl"
         "mtr-json"
         "nano"
