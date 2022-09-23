@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 1.1.8
+# Current Version: 1.1.9
 
 ## How to get and use?
 # curl "https://source.zhijie.online/AutoDeploy/main/OpenWrt.sh" | sudo bash
@@ -404,6 +404,13 @@ function ConfigurePackages() {
             done && cat "/tmp/sysctl.autodeploy" > "/etc/sysctl.conf" && sysctl -p && rm -rf "/tmp/sysctl.autodeploy"
         fi
     }
+    function ConfigureuHTTPd() {
+        uci set uhttpd.defaults.days="90"
+        uci set uhttpd.defaults.bits="4096"
+        uci set uhttpd.defaults.ec_curve="ec-384"
+        uci set uhttpd.main.redirect_https="on"
+        uci commit uhttpd
+    }
     function ConfigureUPnP() {
         uci set upnpd.config.enabled="1"
         uci set upnpd.config.igdv1="1"
@@ -519,6 +526,7 @@ function ConfigurePackages() {
     ConfigureRPCD
     ConfigureSshd
     ConfigureSysctl
+    ConfigureuHTTPd
     ConfigureUPnP
     ConfigureWireGuard
     ConfigureZsh
