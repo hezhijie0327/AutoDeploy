@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 1.2.0
+# Current Version: 1.2.1
 
 ## How to get and use?
 # curl "https://source.zhijie.online/AutoDeploy/main/OpenWrt.sh" | sudo bash
@@ -55,6 +55,41 @@ function GetSystemInformation() {
     GenerateHostname
     GetCPUVendorID
     SetGHProxyDomain
+}
+# Set Repository Mirror
+function SetRepositoryMirror() {
+    sed -i 's/downloads.openwrt.org/mirrors.ustc.edu.cn\/openwrt/g' "/etc/opkg/distfeeds.conf"
+}
+# Set Readonly Flag
+function SetReadonlyFlag() {
+    file_list=(
+        "/etc/chrony/chrony.conf"
+        "/etc/docker/daemon.json"
+        "/etc/fail2ban/fail2ban.local"
+        "/etc/fail2ban/jail.local"
+        "/etc/fail2ban/jail.d/fail2ban_default.conf"
+        "/etc/hostname"
+        "/etc/hosts"
+        "/etc/opkg/distfeeds.conf"
+        "/etc/sysctl.conf"
+        "/etc/zsh/oh-my-zsh.zshrc"
+    )
+    which "chattr" > "/dev/null" 2>&1
+    if [ "$?" -eq "0" ]; then
+        if [ "${read_only}" == "TRUE" ]; then
+            for file_list_task in "${!file_list[@]}"; do
+                if [ -d "${file_list[$file_list_task]}" ] || [ -f "${file_list[$file_list_task]}" ]; then
+                    chattr +i "${file_list[$file_list_task]}" > "/dev/null" 2>&1
+                fi
+            done
+        elif [ "${read_only}" == "FALSE" ]; then
+            for file_list_task in "${!file_list[@]}"; do
+                if [ -d "${file_list[$file_list_task]}" ] || [ -f "${file_list[$file_list_task]}" ]; then
+                    chattr -i "${file_list[$file_list_task]}" > "/dev/null" 2>&1
+                fi
+            done
+        fi
+    fi
 }
 # Configure Packages
 function ConfigurePackages() {
@@ -602,10 +637,6 @@ function ConfigureSystem() {
     ConfigureRootUser
     ConfigureSystemDefaults
 }
-# Set Repository Mirror
-function SetRepositoryMirror() {
-    sed -i 's/downloads.openwrt.org/mirrors.ustc.edu.cn\/openwrt/g' "/etc/opkg/distfeeds.conf"
-}
 # Install Custom Packages
 function InstallCustomPackages() {
     function InstallOhMyZsh() {
@@ -638,6 +669,7 @@ function InstallDependencyPackages() {
         "bc"
         "bind-dig"
         "ca-certificates"
+        "chattr"
         "chrony"
         "coreutils"
         "coreutils-b2sum"
@@ -904,6 +936,8 @@ function CleanupTempFiles() {
 }
 
 ## Process
+# Set read_only="FALSE"; Call SetReadonlyFlag
+read_only="FALSE" && SetReadonlyFlag
 # Call GetSystemInformation
 GetSystemInformation
 # Call SetRepositoryMirror
@@ -918,5 +952,7 @@ InstallCustomPackages
 ConfigureSystem
 # Call ConfigurePackages
 ConfigurePackages
+# Set read_only="TRUE"; Call SetReadonlyFlag
+read_only="TRUE" && SetReadonlyFlag
 # Call CleanupTempFiles
 CleanupTempFiles
