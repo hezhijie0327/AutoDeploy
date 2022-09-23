@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 1.1.9
+# Current Version: 1.2.0
 
 ## How to get and use?
 # curl "https://source.zhijie.online/AutoDeploy/main/OpenWrt.sh" | sudo bash
@@ -593,7 +593,7 @@ function ConfigureSystem() {
         uci set system.@system[0].hostname="${NEW_HOSTNAME}"
         uci set system.@system[0].timezone="CST-8"
         uci set system.@system[0].zonename="Asia/Shanghai"
-        uci set system.ntp.enabled="-"
+        uci set system.ntp.enabled="0"
         uci commit system
     }
     ConfigureDefaultShell
