@@ -1,12 +1,13 @@
 #!/bin/bash
 
-# Current Version: 1.1.5
+# Current Version: 1.1.6
 
 ## How to get and use?
 # curl "https://source.zhijie.online/AutoDeploy/main/OpenWrt.sh" | sudo bash
 # wget -qO- "https://source.zhijie.online/AutoDeploy/main/OpenWrt.sh" | sudo bash
 
 ## How to install OpenWrt on Ubuntu?
+# wget https://mirrors.ustc.edu.cn/openwrt/releases/22.03.0/targets/x86/64/openwrt-22.03.0-x86-64-generic-ext4-combined-efi.img.gz
 # dd if=openwrt-*-x86-64-combined-ext4.img of=/dev/sda bs=4M; sync;
 # parted /dev/sda print
 # parted /dev/sda resizepart 2 <MAX SIZE>G
@@ -31,7 +32,7 @@ function GetSystemInformation() {
         fi
     }
     function GenerateDomain() {
-        NEW_DOMAIN=("localdomain")
+        NEW_DOMAIN="localdomain"
     }
     function GenerateHostname() {
         NEW_HOSTNAME="OpenWrt-$(date '+%Y%m%d%H%M%S')"
@@ -70,7 +71,6 @@ function ConfigurePackages() {
             "ratelimit burst 8 interval 3 leak 2"
             "rtcsync"
         )
-        DHCP_NTP=()
         chrony_ntp_list=(
             "ntp.ntsc.ac.cn"
             "ntp1.nim.ac.cn"
@@ -82,14 +82,13 @@ function ConfigurePackages() {
             "time.cloudflare.com"
             "time.nist.gov"
             "pool.ntp.org"
-            "${DHCP_NTP[@]}"
         )
         which "chronyc" > "/dev/null" 2>&1
         if [ "$?" -eq "0" ]; then
             rm -rf "/tmp/chrony.autodeploy" && for chrony_list_task in "${!chrony_list[@]}"; do
                 echo "${chrony_list[$chrony_list_task]}" >> "/tmp/chrony.autodeploy"
             done && for chrony_ntp_list_task in "${!chrony_ntp_list[@]}"; do
-                if [ "${chrony_ntp_list[$chrony_ntp_list_task]}" == "ntp.ntsc.ac.cn" ] || [ "${chrony_ntp_list[$chrony_ntp_list_task]}" == "ntp1.nim.ac.cn" ] || [ "${chrony_ntp_list[$chrony_ntp_list_task]}" == "ntp2.nim.ac.cn" ] || [ "$(echo ${DHCP_NTP[@]} | grep ${chrony_ntp_list[$chrony_ntp_list_task]})" != "" ]; then
+                if [ "${chrony_ntp_list[$chrony_ntp_list_task]}" == "ntp.ntsc.ac.cn" ] || [ "${chrony_ntp_list[$chrony_ntp_list_task]}" == "ntp1.nim.ac.cn" ] || [ "${chrony_ntp_list[$chrony_ntp_list_task]}" == "ntp2.nim.ac.cn" ]; then
                     echo "server ${chrony_ntp_list[$chrony_ntp_list_task]} iburst prefer" >> "/tmp/chrony.autodeploy"
                 else
                     echo "server ${chrony_ntp_list[$chrony_ntp_list_task]} iburst" >> "/tmp/chrony.autodeploy"
@@ -122,6 +121,73 @@ function ConfigurePackages() {
             done
         fi && "/etc/init.d/crowdsec" restart && cscli hub list
     }
+    function ConfigureDDNS() {
+        uci set ddns.global.use_curl="1"
+        uci -q delete ddns.myddns_ipv4 > "/dev/null" 2>&1
+        uci -q delete ddns.myddns_ipv6 > "/dev/null" 2>&1
+        uci commit ddns
+    }
+    function ConfigureDNSMasq() {
+        uci set dhcp.@dnsmasq[0].allservers="1"
+        uci set dhcp.@dnsmasq[0].authoritative="1"
+        uci set dhcp.@dnsmasq[0].domain="${NEW_DOMAIN}"
+        uci set dhcp.@dnsmasq[0].domainneeded="1"
+        uci set dhcp.@dnsmasq[0].ednspacket_max="1232"
+        uci set dhcp.@dnsmasq[0].expandhosts="1"
+        uci set dhcp.@dnsmasq[0].filterwin2k="1"
+        uci set dhcp.@dnsmasq[0].leasefile="/tmp/dhcp.leases"
+        uci set dhcp.@dnsmasq[0].local="/${NEW_DOMAIN}/"
+        uci set dhcp.@dnsmasq[0].localise_queries="1"
+        uci set dhcp.@dnsmasq[0].localservice="1"
+        uci set dhcp.@dnsmasq[0].nohosts="1"
+        uci set dhcp.@dnsmasq[0].nonegcache="1"
+        uci set dhcp.@dnsmasq[0].noresolv="1"
+        uci set dhcp.@dnsmasq[0].port="53"
+        uci set dhcp.@dnsmasq[0].quietdhcp="1"
+        uci set dhcp.@dnsmasq[0].readethers="1"
+        uci set dhcp.@dnsmasq[0].rebind_localhost="1"
+        uci set dhcp.@dnsmasq[0].rebind_protection="1"
+        uci set dhcp.@dnsmasq[0].sequential_ip="1"
+        uci set dhcp.@dnsmasq[0].strictorder="1"
+        uci set dhcp.lan.dhcpv6="hybrid"
+        uci set dhcp.lan.leasetime="1h"
+        uci set dhcp.lan.master="1"
+        uci set dhcp.lan.ndp="hybrid"
+        uci set dhcp.lan.ra="hybrid"
+        uci commit dhcp
+    }
+    function ConfigureDockerEngine() {
+        docker_list=(
+            "{"
+            "  \"experimental\": true,"
+            "  \"fixed-cidr-v6\": \"2001:db8:1::/64\","
+            "  \"ipv6\": true,"
+            "  \"registry-mirrors\": ["
+            "    \"https://docker.mirrors.ustc.edu.cn\""
+            "  ]"
+            "}"
+        )
+        which "docker" > "/dev/null" 2>&1
+        if [ "$?" -eq "0" ]; then
+            if [ ! -d "/docker" ]; then
+                mkdir "/docker"
+            fi && chown -R ${DEFAULT_USERNAME}:${DEFAULT_USERNAME} "/docker" && chmod -R 775 "/docker"
+            if [ ! -d "/etc/docker" ]; then
+                mkdir "/etc/docker"
+            fi
+            rm -rf "/tmp/docker.autodeploy" && for docker_list_task in "${!docker_list[@]}"; do
+                echo "${docker_list[$docker_list_task]}" >> "/tmp/docker.autodeploy"
+            done && cat "/tmp/docker.autodeploy" > "/etc/docker/daemon.json" && rm -rf "/tmp/docker.autodeploy"
+
+            uci -q delete dockerd.globals
+            uci set dockerd.globals="globals"
+            uci set dockerd.globals.alt_config_file="/etc/docker/daemon.json"
+            uci set dockerd.globals.data_root="/opt/docker/"
+            uci set dockerd.globals.log_level="warn"
+            uci set dockerd.globals.iptables="1"
+            uci commit dockerd
+        fi
+    }
     function ConfigureFail2Ban() {
         fail2ban_list=(
             "[sshd]"
@@ -150,6 +216,27 @@ function ConfigurePackages() {
                 echo "${fail2ban_list[$fail2ban_list_task]}" >> "/tmp/fail2ban.autodeploy"
             done && cat "/tmp/fail2ban.autodeploy" > "/etc/fail2ban/jail.d/fail2ban_default.conf" && rm -rf "/tmp/fail2ban.autodeploy" && fail2ban-client reload && sleep 5s && fail2ban-client status
         fi
+    }
+    function ConfigureFirewall() {
+        function ConfigureFirewallDefaults() {
+            uci set firewall.@defaults[0].synflood_protect="1"
+            uci set firewall.@defaults[0].drop_invalid="1"
+            uci set firewall.@defaults[0].flow_offloading="1"
+        }
+        function ConfigureFirewallWireGuard() {
+            uci -q delete firewall.wireguard
+            uci set firewall.wireguard="rule"
+            uci set firewall.wireguard.name="Allow-WireGuard"
+            uci set firewall.wireguard.src="wan"
+            uci set firewall.wireguard.dest_port="51820"
+            uci set firewall.wireguard.proto="udp"
+            uci set firewall.wireguard.target="ACCEPT"
+            uci del_list firewall.@zone[0].network="wg0"
+            uci add_list firewall.@zone[0].network="wg0"
+        }
+        ConfigureFirewallDefaults
+        ConfigureFirewallWireGuard
+        uci commit firewall
     }
     function ConfigureGit() {
         gitconfig_key_list=(
@@ -205,6 +292,29 @@ function ConfigurePackages() {
             fi
         fi
     }
+    function ConfigureLuci() {
+        uci -d delete luci.flash_keep.dropbear
+        uci -d delete luci.flash_keep.openvpn
+        uci set luci.diag.dns="dns.alidns.com"
+        uci set luci.diag.ping="dns.alidns.com"
+        uci set luci.diag.route="dns.alidns.com"
+    }
+    function ConfigureNetwork() {
+        dns_list=(
+            "223.5.5.5"
+            "223.6.6.6"
+            "2400:3200::1"
+            "2400:3200:baba::1"
+        )
+        uci set network.globals.packet_steering="1"
+        uci del network.lan.dns > "/dev/null" 2>&1
+        for dns_list_task in "${!dns_list[@]}"; do
+            uci add_list network.lan.dns="${dns_list[$dns_list_task]}"
+        done
+        uci set network.lan.dns_search="${NEW_DOMAIN}"
+        uci set network.lan.ip6assign="64"
+        uci commit network
+    }
     function ConfigureOpenSSH() {
         OPENSSH_PASSWORD=""
         which "ssh-keygen" > "/dev/null" 2>&1
@@ -245,6 +355,29 @@ function ConfigurePackages() {
             rm -rf "/home/${DEFAULT_USERNAME}/.config/pip/pip.conf" && cp -rf "/root/.config/pip/pip.conf" "/home/${DEFAULT_USERNAME}/.config/pip/pip.conf" && chown -R $DEFAULT_USERNAME:$DEFAULT_USERNAME "/home/${DEFAULT_USERNAME}/.config" && chown -R $DEFAULT_USERNAME:$DEFAULT_USERNAME "/home/${DEFAULT_USERNAME}/.config/pip" && chown -R $DEFAULT_USERNAME:$DEFAULT_USERNAME "/home/${DEFAULT_USERNAME}/.config/pip/pip.conf"
         fi
     }
+    function ConfigureQoS() {
+        uci set nft-qos.default.limit_enable="1"
+        uci set nft-qos.default.limit_mac_enable="1"
+        uci set nft-qos.default.limit_type="static"
+        uci set nft-qos.default.priority_enable="1"
+        uci set nft-qos.default.priority_netdev="lan"
+        uci set nft-qos.default.static_rate_dl="300"
+        uci set nft-qos.default.static_rate_ul="30"
+        uci set nft-qos.default.static_unit_dl="mbytes"
+        uci set nft-qos.default.static_unit_ul="mbytes"
+        uci commit nft-qos
+    }
+    function ConfigureRPCD() {
+        uci -q delete rpcd.@login[2]
+        uci add rpcd login
+        uci set rpcd.@login[2]=login
+        uci set rpcd.@login[2].timeout="300"
+        uci set rpcd.@login[2].username="${DEFAULT_USERNAME}"
+        uci set rpcd.@login[2].password="\$p\$${DEFAULT_USERNAME}"
+        uci set rpcd.@login[2].read="*"
+        uci set rpcd.@login[2].write="*"
+        uci commit rpcd
+    }
     function ConfigureSshd() {
         if [ -f "/etc/ssh/sshd_config" ]; then
             if [ ! -f "/etc/ssh/sshd_config.bak" ]; then
@@ -269,6 +402,40 @@ function ConfigurePackages() {
                     echo "${sysctl_list[$sysctl_list_task]}" >> "/tmp/sysctl.autodeploy"
                 fi
             done && cat "/tmp/sysctl.autodeploy" > "/etc/sysctl.conf" && sysctl -p && rm -rf "/tmp/sysctl.autodeploy"
+        fi
+    }
+    function ConfigureUPnP() {
+        uci set upnpd.config.enabled="1"
+        uci set upnpd.config.igdv1="1"
+        uci commit upnpd
+    }
+    function ConfigureWireGuard() {
+        TUNNEL_CLIENT_V4="192.168.$(shuf -i '224-255' -n 1).$(shuf -i '1-254' -n 1)/32"
+        which "bc" > "/dev/null" 2>&1
+        if [ "$?" -eq "0" ]; then
+            which "sha1sum" > "/dev/null" 2>&1
+            if [ "$?" -eq "0" ]; then
+                which "uuidgen" > "/dev/null" 2>&1
+                if [ "$?" -eq "0" ]; then
+                    UNIQUE_CLIENT=$(echo "obase=16;$(shuf -i '1-65535' -n 1)" | bc | tr "A-Z" "a-z")
+                    UNIQUE_PREFIX=$(echo $(date "+%s%N")$(uuidgen | tr -d "-" | tr "A-Z" "a-z") | sha1sum | cut -c 31-)
+                    TUNNEL_PREFIX="fd$(echo ${UNIQUE_PREFIX} | cut -c 1-2):$(echo ${UNIQUE_PREFIX} | cut -c 3-6):$(echo ${UNIQUE_PREFIX} | cut -c 7-10)"
+                    TUNNEL_CLIENT_V6="${TUNNEL_PREFIX}::${UNIQUE_CLIENT}/128"
+                else
+                    TUNNEL_CLIENT_V6=""
+                fi
+            fi
+        fi
+        which "wg" > "/dev/null" 2>&1
+        if [ "$?" -eq "0" ]; then
+            uci -q delete network.wg0
+            uci set network.wg0="interface"
+            uci set network.wg0.proto="wireguard"
+            uci set network.wg0.listen_port="51820"
+            uci set network.wg0.private_key="$(wg genkey | tee '/tmp/wireguard.autodeploy')"
+            uci add_list network.wg0.addresses="${TUNNEL_CLIENT_V4}"
+            uci add_list network.wg0.addresses="${TUNNEL_CLIENT_V6}"
+            uci commit network
         fi
     }
     function ConfigureZsh() {
@@ -337,13 +504,23 @@ function ConfigurePackages() {
     ConfigureChrony
     ConfigureCrontab
     ConfigureCrowdSec
+    ConfigureDDNS
+    ConfigureDNSMasq
+    ConfigureDockerEngine
     ConfigureFail2Ban
+    ConfigureFirewall
     ConfigureGit
     ConfigureGPG
+    ConfigureLuci
+    ConfigureNetwork
     ConfigureOpenSSH
     ConfigurePythonPyPI
+    ConfigureQoS
+    ConfigureRPCD
     ConfigureSshd
     ConfigureSysctl
+    ConfigureUPnP
+    ConfigureWireGuard
     ConfigureZsh
 }
 # Configure System
@@ -396,13 +573,26 @@ function ConfigureSystem() {
         done && cat "/tmp/hosts.autodeploy" > "/etc/hosts" && rm -rf "/tmp/hosts.autodeploy" && echo "${NEW_HOSTNAME}" > "/tmp/hostname.autodeploy" && cat "/tmp/hostname.autodeploy" > "/etc/hostname" && rm -rf "/tmp/hostname.autodeploy"
     }
     function ConfigureRootUser() {
+        LOCK_ROOT="FALSE"
         ROOT_PASSWORD='R00t@123!'
-        echo root:$ROOT_PASSWORD | chpasswd
+        echo root:$ROOT_PASSWORD | chpasswd && if [ "${LOCK_ROOT}" == "TRUE" ]; then
+            passwd -l "root"
+        else
+            passwd -u "root"
+        fi
+    }
+    function ConfigureSystemDefaults() {
+        uci set system.@system[0].hostname="${NEW_HOSTNAME}"
+        uci set system.@system[0].timezone="CST-8"
+        uci set system.@system[0].zonename="Asia/Shanghai"
+        uci set system.ntp.enabled="-"
+        uci commit system
     }
     ConfigureDefaultShell
     ConfigureDefaultUser
     ConfigureHostfile
     ConfigureRootUser
+    ConfigureSystemDefaults
 }
 # Set Repository Mirror
 function SetRepositoryMirror() {
@@ -437,6 +627,7 @@ function InstallCustomPackages() {
 # Install Dependency Packages
 function InstallDependencyPackages() {
     app_regular_list=(
+        "bc"
         "bind-dig"
         "ca-certificates"
         "chrony"
@@ -625,6 +816,7 @@ function InstallDependencyPackages() {
         "shadow-vipw"
         "sudo"
         "tcpdump"
+        "uuidgen"
         "vim"
         "wget"
         "whois"
@@ -671,6 +863,7 @@ function CleanupTempFiles() {
     opkg_config=($(find "/etc/config" -name "*-opkg" -print | awk "{print $2}"))
     for cleanup_list_task in "${!cleanup_list[@]}"; do
         opkg remove --force-remove "${cleanup_list[$cleanup_list_task]}" > "/dev/null" 2>&1
+        uci -q delete ucitrack.@${cleanup_list[$cleanup_list_task]}[0] > "/dev/null" 2>&1
         FILE_LIST=($(find "/" \( -path "/dev" -o -path "/home" -o -path "/mnt" -o -path "/proc" -o -path "/root" -o -path "/sys" \) -prune -o -name "${cleanup_list[$cleanup_list_task]}" -print | awk "{print $2}"))
         for FILE_LIST_TASK in "${!FILE_LIST[@]}"; do
             rm -rf "${FILE_LIST[$FILE_LIST_TASK]}"
