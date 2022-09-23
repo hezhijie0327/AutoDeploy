@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 1.1.6
+# Current Version: 1.1.7
 
 ## How to get and use?
 # curl "https://source.zhijie.online/AutoDeploy/main/OpenWrt.sh" | sudo bash
@@ -293,8 +293,8 @@ function ConfigurePackages() {
         fi
     }
     function ConfigureLuci() {
-        uci -d delete luci.flash_keep.dropbear
-        uci -d delete luci.flash_keep.openvpn
+        uci -d delete luci.flash_keep.dropbear > "/dev/null" 2>&1
+        uci -d delete luci.flash_keep.openvpn > "/dev/null" 2>&1
         uci set luci.diag.dns="dns.alidns.com"
         uci set luci.diag.ping="dns.alidns.com"
         uci set luci.diag.route="dns.alidns.com"
@@ -864,6 +864,7 @@ function CleanupTempFiles() {
     for cleanup_list_task in "${!cleanup_list[@]}"; do
         opkg remove --force-remove "${cleanup_list[$cleanup_list_task]}" > "/dev/null" 2>&1
         uci -q delete ucitrack.@${cleanup_list[$cleanup_list_task]}[0] > "/dev/null" 2>&1
+        uci commit ucitrack
         FILE_LIST=($(find "/" \( -path "/dev" -o -path "/home" -o -path "/mnt" -o -path "/proc" -o -path "/root" -o -path "/sys" \) -prune -o -name "${cleanup_list[$cleanup_list_task]}" -print | awk "{print $2}"))
         for FILE_LIST_TASK in "${!FILE_LIST[@]}"; do
             rm -rf "${FILE_LIST[$FILE_LIST_TASK]}"
