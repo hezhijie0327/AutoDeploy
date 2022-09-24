@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 1.2.3
+# Current Version: 1.2.4
 
 ## How to get and use?
 # curl "https://source.zhijie.online/AutoDeploy/main/OpenWrt.sh" | sudo bash
@@ -187,7 +187,15 @@ function ConfigurePackages() {
         uci set dhcp.@dnsmasq[0].rebind_protection="1"
         uci set dhcp.@dnsmasq[0].sequential_ip="1"
         uci set dhcp.@dnsmasq[0].strictorder="1"
+        uci del dhcp.lan.dhcp_option > "/dev/null" 2>&1
+        uci add_list dhcp.lan.dhcp_option="6,${dns_ipv4_list_dhcp_option}"
         uci set dhcp.lan.dhcpv6="hybrid"
+        uci del dhcp.lan.dns > "/dev/null" 2>&1
+        for dns_ipv6_list_task in "${!dns_ipv6_list[@]}"; do
+            uci add_list dhcp.lan.dns="${dns_ipv6_list[$dns_ipv6_list_task]}"
+        done
+        uci del dhcp.lan.domain > "/dev/null" 2>&1
+        uci add_list dhcp.lan.domain="${NEW_DOMAIN}"
         uci set dhcp.lan.leasetime="1h"
         uci set dhcp.lan.ndp="hybrid"
         uci set dhcp.lan.ra="hybrid"
@@ -340,12 +348,23 @@ function ConfigurePackages() {
         uci set luci.diag.route="dns.alidns.com"
     }
     function ConfigureNetwork() {
-        dns_list=(
+        dns_ipv4_list=(
             "223.5.5.5"
             "223.6.6.6"
+        )
+        dns_ipv6_list=(
             "2400:3200::1"
             "2400:3200:baba::1"
         )
+        dns_list=(
+            ${dns_ipv4_list[@]}
+            ${dns_ipv6_list[@]}
+        )
+        dns_ipv4_list_line="" && for dns_ipv4_list_task in "${!dns_ipv4_list[@]}"; do
+            dns_ipv4_list_line="${dns_ipv4_list_line} ${dns_ipv4_list[$dns_ipv4_list_task]}"
+            dns_ipv4_list_line=$(echo "${dns_ipv4_list_line}" | sed "s/^\ //g")
+            dns_ipv4_list_dhcp_option=$(echo "${dns_ipv4_list_line}" | sed "s/\ /\,/g")
+        done
         uci set network.globals.packet_steering="1"
         uci del network.lan.dns > "/dev/null" 2>&1
         for dns_list_task in "${!dns_list[@]}"; do
@@ -552,14 +571,13 @@ function ConfigurePackages() {
     ConfigureCrontab
     ConfigureCrowdSec
     ConfigureDDNS
-    ConfigureDNSMasq
+    ConfigureNetwork && ConfigureDNSMasq
     ConfigureDockerEngine
     ConfigureFail2Ban
     ConfigureFirewall
     ConfigureGit
     ConfigureGPG
     ConfigureLuci
-    ConfigureNetwork
     ConfigureOpenSSH
     ConfigurePythonPyPI
     ConfigureQoS
