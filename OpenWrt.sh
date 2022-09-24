@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 1.2.2
+# Current Version: 1.2.3
 
 ## How to get and use?
 # curl "https://source.zhijie.online/AutoDeploy/main/OpenWrt.sh" | sudo bash
@@ -165,6 +165,7 @@ function ConfigurePackages() {
         uci commit ddns
     }
     function ConfigureDNSMasq() {
+        DNS_PORT=""
         uci set dhcp.@dnsmasq[0].allservers="1"
         uci set dhcp.@dnsmasq[0].authoritative="1"
         uci set dhcp.@dnsmasq[0].domain="${NEW_DOMAIN}"
@@ -179,7 +180,7 @@ function ConfigurePackages() {
         uci set dhcp.@dnsmasq[0].nohosts="1"
         uci set dhcp.@dnsmasq[0].nonegcache="1"
         uci set dhcp.@dnsmasq[0].noresolv="1"
-        uci set dhcp.@dnsmasq[0].port="53"
+        uci set dhcp.@dnsmasq[0].port="${DNS_PORT:-53}"
         uci set dhcp.@dnsmasq[0].quietdhcp="1"
         uci set dhcp.@dnsmasq[0].readethers="1"
         uci set dhcp.@dnsmasq[0].rebind_localhost="1"
@@ -188,9 +189,11 @@ function ConfigurePackages() {
         uci set dhcp.@dnsmasq[0].strictorder="1"
         uci set dhcp.lan.dhcpv6="hybrid"
         uci set dhcp.lan.leasetime="1h"
-        uci set dhcp.lan.master="1"
         uci set dhcp.lan.ndp="hybrid"
         uci set dhcp.lan.ra="hybrid"
+        uci del dhcp.lan.ra_flags > "/dev/null" 2>&1
+        uci add_list dhcp.lan.ra_flags="managed-config"
+        uci add_list dhcp.lan.ra_flags="other-config"
         uci commit dhcp
     }
     function ConfigureDockerEngine() {
