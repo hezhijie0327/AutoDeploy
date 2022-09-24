@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 1.2.4
+# Current Version: 1.2.5
 
 ## How to get and use?
 # curl "https://source.zhijie.online/AutoDeploy/main/OpenWrt.sh" | sudo bash
@@ -464,9 +464,10 @@ function ConfigurePackages() {
         fi
     }
     function ConfigureuHTTPd() {
+        rm -rf "/etc/uhttpd.crt" "/etc/uhttpd.key"
         uci set uhttpd.defaults.days="90"
         uci set uhttpd.defaults.bits="4096"
-        uci set uhttpd.defaults.ec_curve="ec-384"
+        uci set uhttpd.defaults.ec_curve="P-384"
         uci set uhttpd.main.redirect_https="on"
         uci commit uhttpd
     }
