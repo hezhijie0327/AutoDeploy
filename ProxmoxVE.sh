@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 2.2.3
+# Current Version: 2.2.4
 
 ## How to get and use?
 # curl "https://source.zhijie.online/AutoDeploy/main/ProxmoxVE.sh" | sudo bash
@@ -210,10 +210,23 @@ function ConfigurePackages() {
         fi && systemctl restart crowdsec.service && cscli hub list
     }
     function ConfigureDockerEngine() {
+        which "bc" > "/dev/null" 2>&1
+        if [ "$?" -eq "0" ]; then
+            which "sha1sum" > "/dev/null" 2>&1
+            if [ "$?" -eq "0" ]; then
+                which "uuidgen" > "/dev/null" 2>&1
+                if [ "$?" -eq "0" ]; then
+                    UNIQUE_PREFIX=$(echo $(date "+%s%N")$(uuidgen | tr -d "-" | tr "A-Z" "a-z") | sha1sum | cut -c 31-)
+                    DOCKER_PREFIX="fd$(echo ${UNIQUE_PREFIX} | cut -c 1-2):$(echo ${UNIQUE_PREFIX} | cut -c 3-6):$(echo ${UNIQUE_PREFIX} | cut -c 7-10)"
+                else
+                    DOCKER_PREFIX="2001:db8:1"
+                fi
+            fi
+        fi
         docker_list=(
             "{"
             "  \"experimental\": true,"
-            "  \"fixed-cidr-v6\": \"2001:db8:1::/64\","
+            "  \"fixed-cidr-v6\": \"${DOCKER_PREFIX}::/64\","
             "  \"ipv6\": true,"
             "  \"registry-mirrors\": ["
             "    \"https://docker.mirrors.ustc.edu.cn\""
