@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 2.4.1
+# Current Version: 2.4.2
 
 ## How to get and use?
 # /bin/bash -c "$(curl -fsSL 'https://source.zhijie.online/AutoDeploy/main/macOS.sh')"
@@ -148,7 +148,7 @@ function ConfigurePackages() {
         fi
     }
     function ConfigureWireGuard() {
-        TUNNEL_CLIENT_V4="192.168.$(shuf -i '224-255' -n 1).$(shuf -i '1-254' -n 1)/32"
+        TUNNEL_CLIENT_V4="192.168.$(shuf -i '240-255' -n 1).$(shuf -i '1-254' -n 1)/32"
         which "bc" > "/dev/null" 2>&1
         if [ "$?" -eq "0" ]; then
             which "sha1sum" > "/dev/null" 2>&1
