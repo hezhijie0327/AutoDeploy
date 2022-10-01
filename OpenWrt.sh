@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 1.3.0
+# Current Version: 1.3.1
 
 ## How to get and use?
 # curl "https://source.zhijie.online/AutoDeploy/main/OpenWrt.sh" | sudo bash
@@ -362,12 +362,23 @@ function ConfigurePackages() {
     }
     function Configureodhcpd() {
         uci -q delete dhcp.@dnsmasq[0] > "/dev/null" 2>&1
+        uci del dhcp.lan.dhcp_option > "/dev/null" 2>&1
+        uci add_list dhcp.lan.dhcp_option="6,${dns_ipv4_list_dhcp_option}"
         uci set dhcp.lan.dhcpv4="server"
-        uci set dhcp.lan.dhcpv6="server"
+        uci set dhcp.lan.dhcpv6="hybrid"
+        uci del dhcp.lan.dns > "/dev/null" 2>&1
+        for dns_ipv6_list_task in "${!dns_ipv6_list[@]}"; do
+            uci add_list dhcp.lan.dns="${dns_ipv6_list[$dns_ipv6_list_task]}"
+        done
+        uci del dhcp.lan.domain > "/dev/null" 2>&1
+        uci add_list dhcp.lan.domain="${NEW_DOMAIN}"
         uci set dhcp.lan.interface="lan"
         uci set dhcp.lan.leasetime="1h"
-        uci set dhcp.lan.ra="server"
-        uci set dhcp.lan.ra_management="1"
+        uci set dhcp.lan.ndp="hybrid"
+        uci set dhcp.lan.ra="hybrid"
+        uci del dhcp.lan.ra_flags > "/dev/null" 2>&1
+        uci add_list dhcp.lan.ra_flags="managed-config"
+        uci add_list dhcp.lan.ra_flags="other-config"
         uci set dhcp.odhcpd.leasefile="/var/lib/odhcpd/dhcp.leases"
         uci set dhcp.odhcpd.leasetrigger="/usr/lib/unbound/odhcpd.sh"
         uci set dhcp.odhcpd.maindhcp="1"
