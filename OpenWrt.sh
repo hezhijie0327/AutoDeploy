@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 1.2.8
+# Current Version: 1.2.9
 
 ## How to get and use?
 # curl "https://source.zhijie.online/AutoDeploy/main/OpenWrt.sh" | sudo bash
@@ -253,7 +253,6 @@ function ConfigurePackages() {
             rm -rf "/tmp/docker.autodeploy" && for docker_list_task in "${!docker_list[@]}"; do
                 echo "${docker_list[$docker_list_task]}" >> "/tmp/docker.autodeploy"
             done && cat "/tmp/docker.autodeploy" > "/etc/docker/daemon.json" && rm -rf "/tmp/docker.autodeploy"
-
             uci -q delete dockerd.globals
             uci set dockerd.globals="globals"
             uci set dockerd.globals.alt_config_file="/etc/docker/daemon.json"
@@ -667,7 +666,7 @@ function ConfigureSystem() {
         done && cat "/tmp/hosts.autodeploy" > "/etc/hosts" && rm -rf "/tmp/hosts.autodeploy" && echo "${NEW_HOSTNAME}" > "/tmp/hostname.autodeploy" && cat "/tmp/hostname.autodeploy" > "/etc/hostname" && rm -rf "/tmp/hostname.autodeploy"
     }
     function ConfigureRootUser() {
-        LOCK_ROOT="FALSE"
+        LOCK_ROOT="TRUE"
         ROOT_PASSWORD='R00t@123!'
         echo root:$ROOT_PASSWORD | chpasswd && if [ "${LOCK_ROOT}" == "TRUE" ]; then
             passwd -l "root"
@@ -971,6 +970,25 @@ function InstallDependencyPackages() {
 function UpgradePackages() {
     opkg update && opkg list-upgradable | cut -f 1 -d ' ' | xargs opkg upgrade > "/dev/null" 2>&1
 }
+# Service Restart
+function RestartService() {
+    service_list=(
+        "ddns"
+        "dhcp"
+        "dockerd"
+        "firewall"
+        "network"
+        "nft-qos"
+        "rpcd"
+        "system"
+        "ucitrack"
+        "uhttpd"
+        "upnpd"
+    )
+    for service_list_task in "${!service_list[@]}"; do
+        /etc/init.d/${service_list[$service_list_task]} restart > "/dev/null" 2>&1
+    done
+}
 # Cleanup Temp Files
 function CleanupTempFiles() {
     cleanup_list=(
@@ -1011,5 +1029,7 @@ ConfigureSystem
 ConfigurePackages
 # Set read_only="TRUE"; Call SetReadonlyFlag
 read_only="TRUE" && SetReadonlyFlag
+# Call RestartService
+RestartService
 # Call CleanupTempFiles
 CleanupTempFiles
