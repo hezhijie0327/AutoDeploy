@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 1.3.1
+# Current Version: 1.3.2
 
 ## How to get and use?
 # curl "https://source.zhijie.online/AutoDeploy/main/OpenWrt.sh" | sudo bash
@@ -177,6 +177,46 @@ function ConfigurePackages() {
         uci -q delete ddns.myddns_ipv4 > "/dev/null" 2>&1
         uci -q delete ddns.myddns_ipv6 > "/dev/null" 2>&1
         uci commit ddns
+    }
+    function ConfigureDNSMasq() {
+        DNS_PORT=""
+        uci set dhcp.@dnsmasq[0].allservers="1"
+        uci set dhcp.@dnsmasq[0].authoritative="1"
+        uci set dhcp.@dnsmasq[0].domain="${NEW_DOMAIN}"
+        uci set dhcp.@dnsmasq[0].domainneeded="1"
+        uci set dhcp.@dnsmasq[0].ednspacket_max="1232"
+        uci set dhcp.@dnsmasq[0].expandhosts="1"
+        uci set dhcp.@dnsmasq[0].filterwin2k="1"
+        uci set dhcp.@dnsmasq[0].leasefile="/tmp/dhcp.leases"
+        uci set dhcp.@dnsmasq[0].local="/${NEW_DOMAIN}/"
+        uci set dhcp.@dnsmasq[0].localise_queries="1"
+        uci set dhcp.@dnsmasq[0].localservice="1"
+        uci set dhcp.@dnsmasq[0].nohosts="1"
+        uci set dhcp.@dnsmasq[0].nonegcache="1"
+        uci set dhcp.@dnsmasq[0].noresolv="1"
+        uci set dhcp.@dnsmasq[0].port="${DNS_PORT:-53}"
+        uci set dhcp.@dnsmasq[0].quietdhcp="1"
+        uci set dhcp.@dnsmasq[0].readethers="1"
+        uci set dhcp.@dnsmasq[0].rebind_localhost="1"
+        uci set dhcp.@dnsmasq[0].rebind_protection="1"
+        uci set dhcp.@dnsmasq[0].sequential_ip="1"
+        uci set dhcp.@dnsmasq[0].strictorder="1"
+        uci del dhcp.lan.dhcp_option > "/dev/null" 2>&1
+        uci add_list dhcp.lan.dhcp_option="6,${dns_ipv4_list_dhcp_option}"
+        uci set dhcp.lan.dhcpv6="hybrid"
+        uci del dhcp.lan.dns > "/dev/null" 2>&1
+        for dns_ipv6_list_task in "${!dns_ipv6_list[@]}"; do
+            uci add_list dhcp.lan.dns="${dns_ipv6_list[$dns_ipv6_list_task]}"
+        done
+        uci del dhcp.lan.domain > "/dev/null" 2>&1
+        uci add_list dhcp.lan.domain="${NEW_DOMAIN}"
+        uci set dhcp.lan.leasetime="1h"
+        uci set dhcp.lan.ndp="hybrid"
+        uci set dhcp.lan.ra="hybrid"
+        uci del dhcp.lan.ra_flags > "/dev/null" 2>&1
+        uci add_list dhcp.lan.ra_flags="managed-config"
+        uci add_list dhcp.lan.ra_flags="other-config"
+        uci commit dhcp
     }
     function ConfigureDockerEngine() {
         which "bc" > "/dev/null" 2>&1
@@ -360,30 +400,6 @@ function ConfigurePackages() {
         uci set network.lan.ip6assign="64"
         uci commit network
     }
-    function Configureodhcpd() {
-        uci -q delete dhcp.@dnsmasq[0] > "/dev/null" 2>&1
-        uci del dhcp.lan.dhcp_option > "/dev/null" 2>&1
-        uci add_list dhcp.lan.dhcp_option="6,${dns_ipv4_list_dhcp_option}"
-        uci set dhcp.lan.dhcpv4="server"
-        uci set dhcp.lan.dhcpv6="hybrid"
-        uci del dhcp.lan.dns > "/dev/null" 2>&1
-        for dns_ipv6_list_task in "${!dns_ipv6_list[@]}"; do
-            uci add_list dhcp.lan.dns="${dns_ipv6_list[$dns_ipv6_list_task]}"
-        done
-        uci del dhcp.lan.domain > "/dev/null" 2>&1
-        uci add_list dhcp.lan.domain="${NEW_DOMAIN}"
-        uci set dhcp.lan.interface="lan"
-        uci set dhcp.lan.leasetime="1h"
-        uci set dhcp.lan.ndp="hybrid"
-        uci set dhcp.lan.ra="hybrid"
-        uci del dhcp.lan.ra_flags > "/dev/null" 2>&1
-        uci add_list dhcp.lan.ra_flags="managed-config"
-        uci add_list dhcp.lan.ra_flags="other-config"
-        uci set dhcp.odhcpd.leasefile="/var/lib/odhcpd/dhcp.leases"
-        uci set dhcp.odhcpd.leasetrigger="/usr/lib/unbound/odhcpd.sh"
-        uci set dhcp.odhcpd.maindhcp="1"
-        uci commit dhcp
-    }
     function ConfigureOpenSSH() {
         OPENSSH_PASSWORD=""
         which "ssh-keygen" > "/dev/null" 2>&1
@@ -472,19 +488,6 @@ function ConfigurePackages() {
                 fi
             done && cat "/tmp/sysctl.autodeploy" > "/etc/sysctl.conf" && sysctl -p && rm -rf "/tmp/sysctl.autodeploy"
         fi
-    }
-    function ConfigureUnbound() {
-        DNS_PORT=""
-        uci set unbound.@unbound[0].add_local_fqdn="3"
-        uci set unbound.@unbound[0].add_wan_fqdn="1"
-        uci set unbound.@unbound[0].dhcp4_slaac6="1"
-        uci set unbound.@unbound[0].dhcp_link="odhcpd"
-        uci set unbound.@unbound[0].unbound_control="1"
-        uci set unbound.@unbound[0].domain="${NEW_DOMAIN}"
-        uci set unbound.@unbound[0].domain_type="static"
-        uci set unbound.@unbound[0].listen_port="${DNS_PORT:-53}"
-        uci set unbound.@unbound[0].rebind_protection="1"
-        uci commit unbound
     }
     function ConfigureuHTTPd() {
         rm -rf "/etc/uhttpd.crt" "/etc/uhttpd.key"
@@ -595,7 +598,7 @@ function ConfigurePackages() {
     ConfigureCrontab
     ConfigureCrowdSec
     ConfigureDDNS
-    ConfigureNetwork && ConfigureUnbound && Configureodhcpd
+    ConfigureNetwork && ConfigureDNSMasq
     ConfigureDockerEngine
     ConfigureFail2Ban
     ConfigureFirewall
@@ -828,6 +831,9 @@ function InstallDependencyPackages() {
         "curl"
         "ddns-scripts"
         "ddns-scripts-cloudflare"
+        "dnsmasq"
+        "dnsmasq-dhcpv6"
+        "dnsmasq-full"
         "docker"
         "docker-compose"
         "dockerd"
@@ -855,7 +861,6 @@ function InstallDependencyPackages() {
         "nano"
         "nmap"
         "ntfs-3g"
-        "odhcpd"
         "openssh-client"
         "openssh-server"
         "parted"
@@ -900,12 +905,6 @@ function InstallDependencyPackages() {
         "shadow-vipw"
         "sudo"
         "tcpdump"
-        "unbound-anchor"
-        "unbound-checkconf"
-        "unbound-control-setup"
-        "unbound-control"
-        "unbound-daemon"
-        "unbound-host"
         "uuidgen"
         "vim"
         "wget"
@@ -925,7 +924,6 @@ function InstallDependencyPackages() {
         "luci-app-firewall"
         "luci-app-nft-qos"
         "luci-app-opkg"
-        "luci-app-unbound"
         "luci-app-upnp"
         "luci-app-wireguard"
         "luci-app-wol"
@@ -938,7 +936,6 @@ function InstallDependencyPackages() {
         "luci-i18n-firewall-zh-cn"
         "luci-i18n-nft-qos-zh-cn"
         "luci-i18n-opkg-zh-cn"
-        "luci-i18n-unbound-zh-cn"
         "luci-i18n-upnp-zh-cn"
         "luci-i18n-wireguard-zh-cn"
         "luci-i18n-wol-zh-cn"
@@ -976,9 +973,7 @@ function UpgradePackages() {
 # Cleanup Temp Files
 function CleanupTempFiles() {
     cleanup_list=(
-        "dnsmasq"
         "dropbear"
-        "odhcpd-ipv6only"
     )
     opkg_config=($(find "/etc/config" -name "*-opkg" -print | awk "{print $2}"))
     for cleanup_list_task in "${!cleanup_list[@]}"; do
