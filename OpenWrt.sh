@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 1.2.7
+# Current Version: 1.2.8
 
 ## How to get and use?
 # curl "https://source.zhijie.online/AutoDeploy/main/OpenWrt.sh" | sudo bash
@@ -12,6 +12,20 @@
 # parted /dev/sda print
 # parted /dev/sda resizepart 2 <MAX SIZE>G
 # resize2fs /dev/sda2
+
+## How to set up interface?
+# uci export network
+#
+# uci set network.wan.ifname="eth0"
+# uci set network.wan.proto="dhcp"
+#
+# uci set network.lan.ifname="eth1"
+# uci set network.lan.ipaddr="192.168.0.1"
+# uci set network.lan.netmask="255.255.255.0"
+# uci set network.lan.proto="static"
+#
+# uci commit network
+# /etc/init.d/network restart
 
 ## Function
 # Get System Information
@@ -840,29 +854,9 @@ function InstallDependencyPackages() {
         "grep"
         "iperf3-ssl"
         "jq"
-        "kmod-tcp-bbr"
         "knot-dig"
         "lua-cs-bouncer"
         "luci"
-        "luci-proto-3g"
-        "luci-proto-bonding"
-        "luci-proto-gre"
-        "luci-proto-hnet"
-        "luci-proto-ipip"
-        "luci-proto-ipv6"
-        "luci-proto-modemmanager"
-        "luci-proto-ncm"
-        "luci-proto-openconnect"
-        "luci-proto-openfortivpn"
-        "luci-proto-ppp"
-        "luci-proto-pppossh"
-        "luci-proto-qmi"
-        "luci-proto-relay"
-        "luci-proto-sstp"
-        "luci-proto-vpnc"
-        "luci-proto-vxlan"
-        "luci-proto-wireguard"
-        "luci-proto-xfrm"
         "luci-ssl-openssl"
         "mtr-json"
         "nano"
@@ -919,6 +913,11 @@ function InstallDependencyPackages() {
         "wireguard-tools"
         "zsh"
     )
+    app_kmod_list-(
+        "kmod-igc"
+        "kmod-mlx4-core"
+        "kmod-tcp-bbr"
+    )
     app_luci_list=(
         "luci-app-acl"
         "luci-app-ddns"
@@ -942,7 +941,28 @@ function InstallDependencyPackages() {
         "luci-i18n-wireguard-zh-cn"
         "luci-i18n-wol-zh-cn"
     )
-    app_list=(${app_regular_list[@]} ${app_luci_list[*]} ${app_luci_lang_list[*]} ${MICROCODE[*]})
+    app_luci_proto_list=(
+        "luci-proto-3g"
+        "luci-proto-bonding"
+        "luci-proto-gre"
+        "luci-proto-hnet"
+        "luci-proto-ipip"
+        "luci-proto-ipv6"
+        "luci-proto-modemmanager"
+        "luci-proto-ncm"
+        "luci-proto-openconnect"
+        "luci-proto-openfortivpn"
+        "luci-proto-ppp"
+        "luci-proto-pppossh"
+        "luci-proto-qmi"
+        "luci-proto-relay"
+        "luci-proto-sstp"
+        "luci-proto-vpnc"
+        "luci-proto-vxlan"
+        "luci-proto-wireguard"
+        "luci-proto-xfrm"
+    )
+    app_list=(${app_regular_list[@]} ${app_kmod_list[*]} ${app_luci_list[*]} ${app_luci_lang_list[*]} ${app_luci_proto_list[*]} ${MICROCODE[*]})
     opkg update && for app_list_task in "${!app_list[@]}"; do
         opkg install --force-overwrite ${app_list[$app_list_task]}
     done
