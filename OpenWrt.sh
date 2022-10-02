@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 1.3.3
+# Current Version: 1.3.4
 
 ## How to get and use?
 # curl "https://source.zhijie.online/AutoDeploy/main/OpenWrt.sh" | sudo bash
@@ -204,6 +204,7 @@ function ConfigurePackages() {
         uci add_list dhcp.lan.ra_flags="managed-config"
         uci add_list dhcp.lan.ra_flags="other-config"
         uci set dhcp.lan.start="100"
+        uci commit dhcp
     }
     function ConfigureDNSMasq() {
         dns_list=(
