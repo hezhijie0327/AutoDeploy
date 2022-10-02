@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 1.4.1
+# Current Version: 1.4.2
 
 ## How to get and use?
 # curl "https://source.zhijie.online/AutoDeploy/main/OpenWrt.sh" | sudo bash
@@ -301,9 +301,12 @@ function ConfigurePackages() {
     }
     function ConfigureFirewall() {
         function ConfigureFirewallDefaults() {
-            uci set firewall.@defaults[0].synflood_protect="1"
             uci set firewall.@defaults[0].drop_invalid="1"
             uci set firewall.@defaults[0].flow_offloading="1"
+            uci set firewall.@defaults[0].forward="ACCEPT"
+            uci set firewall.@defaults[0].input="ACCEPT"
+            uci set firewall.@defaults[0].output="ACCEPT"
+            uci set firewall.@defaults[0].synflood_protect="1"
         }
         function ConfigureFirewallWireGuard() {
             uci -q delete firewall.wireguard
