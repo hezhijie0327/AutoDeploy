@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 1.4.0
+# Current Version: 1.4.1
 
 ## How to get and use?
 # curl "https://source.zhijie.online/AutoDeploy/main/OpenWrt.sh" | sudo bash
@@ -285,7 +285,8 @@ function ConfigurePackages() {
         fi
     }
     function ConfigureDropbear() {
-        rm -rf "/etc/dropbear/authorized_keys" /etc/dropbear_*_host_key
+        AUTHORIZED_KEYS="ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIHFxnNMm1Cs+cIgA5qWrW5Pt+ZfU/k2v0ydPazXueZF6 openpgp:0xB2193F4D"
+        echo "${AUTHORIZED_KEYS}" > "/etc/dropbear/authorized_keys" && rm -rf "/etc/dropbear/authorized_keys" /etc/dropbear_*_host_key
         uci set dropbear.@dropbear[0].GatewayPorts="on"
         uci set dropbear.@dropbear[0].IdleTimeout="0"
         uci set dropbear.@dropbear[0].Interface="lan"
