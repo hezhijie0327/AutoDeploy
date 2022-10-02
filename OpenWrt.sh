@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 1.3.9
+# Current Version: 1.4.0
 
 ## How to get and use?
 # curl "https://source.zhijie.online/AutoDeploy/main/OpenWrt.sh" | sudo bash
@@ -285,9 +285,7 @@ function ConfigurePackages() {
         fi
     }
     function ConfigureDropbear() {
-        if [ -f "/root/.gnupg/authorized_keys" ]; then
-            cat "/root/.gnupg/authorized_keys" > "/etc/dropbear/authorized_keys"
-        fi && rm -rf /etc/dropbear_*_host_key
+        rm -rf "/etc/dropbear/authorized_keys" /etc/dropbear_*_host_key
         uci set dropbear.@dropbear[0].GatewayPorts="on"
         uci set dropbear.@dropbear[0].IdleTimeout="0"
         uci set dropbear.@dropbear[0].Interface="lan"
@@ -323,8 +321,6 @@ function ConfigurePackages() {
     }
     function ConfigureGit() {
         gitconfig_key_list=(
-            "commit.gpgsign"
-            "gpg.program"
             "http.proxy"
             "https.proxy"
             "user.name"
@@ -333,8 +329,6 @@ function ConfigurePackages() {
             "url.https://${GHPROXY_URL}/https://github.com/.insteadOf"
         )
         gitconfig_value_list=(
-            "${GIT_COMMIT_GPGSIGN:-false}"
-            "${GIT_GPG_PROGRAM:-gpg}"
             "${GIT_HTTP_PROXY}"
             "${GIT_HTTPS_PROXY}"
             "${GIT_USER_NAME}"
@@ -352,27 +346,7 @@ function ConfigurePackages() {
             done
         fi
         if [ -f "/root/.gitconfig" ] && [ "${GIT_USER_CONFIG}" != "TRUE" ]; then
-            mv "/root/.gitconfig" "/root/.gitconfig.bak" && GIT_COMMIT_GPGSIGN="" && GIT_GPG_PROGRAM="" && GIT_HTTP_PROXY="" && GIT_HTTPS_PROXY="" && GIT_USER_NAME="" && GIT_USER_EMAIL="" && GIT_USER_SIGNINGKEY="" && GIT_USER_CONFIG="TRUE" && ConfigureGit && mv "/root/.gitconfig" "/home/${DEFAULT_USERNAME}/.gitconfig" && chown -R $DEFAULT_USERNAME:$DEFAULT_USERNAME "/home/${DEFAULT_USERNAME}/.gitconfig" && mv "/root/.gitconfig.bak" "/root/.gitconfig"
-        fi
-    }
-    function ConfigureGPG() {
-        GPG_PUBKEY=""
-        if [ "${GPG_PUBKEY}" == "" ]; then
-            GPG_PUBKEY="DD982DAAB9C71C78F9563E5207EB56787030D792"
-        fi
-        which "gpg" > "/dev/null" 2>&1
-        if [ "$?" -eq "0" ]; then
-            rm -rf "/home/${DEFAULT_USERNAME}/.gnupg" "/root/.gnupg" && gpg --keyserver hkp://keys.openpgp.org --recv ${GPG_PUBKEY} && gpg --keyserver hkp://keyserver.ubuntu.com --recv ${GPG_PUBKEY} && echo "${GPG_PUBKEY}" | awk 'BEGIN { FS = "\n" }; { print $1":6:" }' | gpg --import-ownertrust && GPG_PUBKEY_ID_A=$(gpg --list-keys --keyid-format LONG | grep "pub\|sub" | awk '{print $2, $4}' | grep "\[A\]" | awk '{print $1}' | awk -F '/' '{print $2}') && GPG_PUBKEY_ID_C=$(gpg --list-keys --keyid-format LONG | grep "pub\|sub" | awk '{print $2, $4}' | grep "\[C\]" | awk '{print $1}' | awk -F '/' '{print $2}')
-            if [ "${GPG_PUBKEY_ID_A}" != "" ]; then
-                gpg_agent_list=(
-                    "enable-ssh-support"
-                )
-                rm -rf "/root/.gnupg/gpg-agent.conf" && for gpg_agent_list_task in "${!gpg_agent_list[@]}"; do
-                    echo "${gpg_agent_list[$gpg_agent_list_task]}" >> "/root/.gnupg/gpg-agent.conf"
-                done && echo "${GPG_PUBKEY_ID_A}" > "/root/.gnupg/sshcontrol" && gpg --export-ssh-key ${GPG_PUBKEY_ID_C} > "/root/.gnupg/authorized_keys" && if [ -d "/root/.gnupg" ]; then
-                    mv "/root/.gnupg" "/home/${DEFAULT_USERNAME}/.gnupg" && chown -R $DEFAULT_USERNAME:$DEFAULT_USERNAME "/home/${DEFAULT_USERNAME}/.gnupg"
-                fi
-            fi
+            mv "/root/.gitconfig" "/root/.gitconfig.bak" && GIT_HTTP_PROXY="" && GIT_HTTPS_PROXY="" && GIT_USER_NAME="" && GIT_USER_EMAIL="" && GIT_USER_SIGNINGKEY="" && GIT_USER_CONFIG="TRUE" && ConfigureGit && mv "/root/.gitconfig" "/home/${DEFAULT_USERNAME}/.gitconfig" && chown -R $DEFAULT_USERNAME:$DEFAULT_USERNAME "/home/${DEFAULT_USERNAME}/.gitconfig" && mv "/root/.gitconfig.bak" "/root/.gitconfig"
         fi
     }
     function ConfigureLuci() {
@@ -561,8 +535,9 @@ function ConfigurePackages() {
     ConfigureDDNS
     ConfigureNetwork && ConfigureDHCP && ConfigureDNSMasq
     ConfigureDockerEngine
+    ConfigureDropbear
     ConfigureFirewall
-    ConfigureGPG && ConfigureGit && ConfigureDropbear
+    ConfigureGit
     ConfigureLuci
     ConfigurePythonPyPI
     ConfigureQoS
@@ -803,9 +778,6 @@ function InstallDependencyPackages() {
         "git"
         "git-http"
         "git-lfs"
-        "gnupg2"
-        "gnupg2-dirmngr"
-        "gnupg2-utils"
         "grep"
         "iperf3-ssl"
         "jq"
