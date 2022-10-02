@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 1.3.5
+# Current Version: 1.3.6
 
 ## How to get and use?
 # curl "https://source.zhijie.online/AutoDeploy/main/OpenWrt.sh" | sudo bash
@@ -977,14 +977,14 @@ function UpgradePackages() {
 function ReloadModules() {
     modules_list=($(ls /lib/modules/*/ | cut -d '.' -f 1 | awk "{print $2}"))
     for modules_list_task in "${!modules_list[@]}"; do
-        modprobe -v ${modules_list[$modules_list_task]}
+        modprobe -v ${modules_list[$modules_list_task]} > "/dev/null" 2>&1
     done
 }
 # Restart Services
 function RestartServices() {
     services_list=($(ls /etc/init.d/ | cut -d '.' -f 1 | awk "{print $2}"))
     for services_list_task in "${!services_list[@]}"; do
-        /etc/init.d/${services_list[$services_list_task]} restart
+        /etc/init.d/${services_list[$services_list_task]} restart > "/dev/null" 2>&1
     done
 }
 # Cleanup Temp Files
