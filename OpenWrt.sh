@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 1.3.2
+# Current Version: 1.3.3
 
 ## How to get and use?
 # curl "https://source.zhijie.online/AutoDeploy/main/OpenWrt.sh" | sudo bash
@@ -178,8 +178,43 @@ function ConfigurePackages() {
         uci -q delete ddns.myddns_ipv6 > "/dev/null" 2>&1
         uci commit ddns
     }
+    function ConfigureDHCP() {
+        # https://openwrt.org/docs/guide-user/base-system/dhcp_configuration#dhcp_pool_for_a_large_network
+        CYRRENT_GW=$(uci get network.lan.ipaddr)
+        dhcp_option_list=(
+            "3,${CYRRENT_GW}" # Gateway
+            "6,${CYRRENT_GW}" # DNS
+            "42,${CYRRENT_GW}" # NTP
+            "44" # WINS (DISABLE)
+        )
+        uci del dhcp.lan.dhcp_option > "/dev/null" 2>&1
+        for dhcp_option_list_task in "${!dhcp_option_list[@]}"; do
+            uci add_list dhcp.lan.dhcp_option="${dhcp_option_list[$dhcp_option_list_task]}"
+        done
+        uci set dhcp.lan.dhcpv4="hybrid"
+        uci set dhcp.lan.dhcpv6="hybrid"
+        uci del dhcp.lan.domain > "/dev/null" 2>&1
+        uci add_list dhcp.lan.domain="${NEW_DOMAIN}"
+        uci set dhcp.lan.interface="lan"
+        uci set dhcp.lan.leasetime="1h"
+        uci set dhcp.lan.limit="150"
+        uci set dhcp.lan.ndp="hybrid"
+        uci set dhcp.lan.ra="hybrid"
+        uci del dhcp.lan.ra_flags > "/dev/null" 2>&1
+        uci add_list dhcp.lan.ra_flags="managed-config"
+        uci add_list dhcp.lan.ra_flags="other-config"
+        uci set dhcp.lan.start="100"
+    }
     function ConfigureDNSMasq() {
+        dns_list=(
+            "223.5.5.5"
+            "223.6.6.6"
+            "2400:3200::1"
+            "2400:3200:baba::1"
+        )
         DNS_PORT=""
+        uci del dhcp.@dnsmasq[0] > "/dev/null" 2>&1
+        uci add dhcp dnsmasq
         uci set dhcp.@dnsmasq[0].allservers="1"
         uci set dhcp.@dnsmasq[0].authoritative="1"
         uci set dhcp.@dnsmasq[0].domain="${NEW_DOMAIN}"
@@ -200,22 +235,11 @@ function ConfigurePackages() {
         uci set dhcp.@dnsmasq[0].rebind_localhost="1"
         uci set dhcp.@dnsmasq[0].rebind_protection="1"
         uci set dhcp.@dnsmasq[0].sequential_ip="1"
-        uci set dhcp.@dnsmasq[0].strictorder="1"
-        uci del dhcp.lan.dhcp_option > "/dev/null" 2>&1
-        uci add_list dhcp.lan.dhcp_option="6,${dns_ipv4_list_dhcp_option}"
-        uci set dhcp.lan.dhcpv6="hybrid"
-        uci del dhcp.lan.dns > "/dev/null" 2>&1
-        for dns_ipv6_list_task in "${!dns_ipv6_list[@]}"; do
-            uci add_list dhcp.lan.dns="${dns_ipv6_list[$dns_ipv6_list_task]}"
+        uci del dhcp.@dnsmasq[0].server > "/dev/null" 2>&1
+        for dns_list_task in "${!dns_list[@]}"; do
+            uci add_list dhcp.@dnsmasq[0].server="${dns_list[$dns_list_task]}"
         done
-        uci del dhcp.lan.domain > "/dev/null" 2>&1
-        uci add_list dhcp.lan.domain="${NEW_DOMAIN}"
-        uci set dhcp.lan.leasetime="1h"
-        uci set dhcp.lan.ndp="hybrid"
-        uci set dhcp.lan.ra="hybrid"
-        uci del dhcp.lan.ra_flags > "/dev/null" 2>&1
-        uci add_list dhcp.lan.ra_flags="managed-config"
-        uci add_list dhcp.lan.ra_flags="other-config"
+        uci set dhcp.@dnsmasq[0].strictorder="1"
         uci commit dhcp
     }
     function ConfigureDockerEngine() {
@@ -374,29 +398,7 @@ function ConfigurePackages() {
         uci set luci.diag.route="dns.alidns.com"
     }
     function ConfigureNetwork() {
-        dns_ipv4_list=(
-            "223.5.5.5"
-            "223.6.6.6"
-        )
-        dns_ipv6_list=(
-            "2400:3200::1"
-            "2400:3200:baba::1"
-        )
-        dns_list=(
-            ${dns_ipv4_list[@]}
-            ${dns_ipv6_list[@]}
-        )
-        dns_ipv4_list_line="" && for dns_ipv4_list_task in "${!dns_ipv4_list[@]}"; do
-            dns_ipv4_list_line="${dns_ipv4_list_line} ${dns_ipv4_list[$dns_ipv4_list_task]}"
-            dns_ipv4_list_line=$(echo "${dns_ipv4_list_line}" | sed "s/^\ //g")
-            dns_ipv4_list_dhcp_option=$(echo "${dns_ipv4_list_line}" | sed "s/\ /\,/g")
-        done
         uci set network.globals.packet_steering="1"
-        uci del network.lan.dns > "/dev/null" 2>&1
-        for dns_list_task in "${!dns_list[@]}"; do
-            uci add_list network.lan.dns="${dns_list[$dns_list_task]}"
-        done
-        uci set network.lan.dns_search="${NEW_DOMAIN}"
         uci set network.lan.ip6assign="64"
         uci commit network
     }
@@ -598,7 +600,7 @@ function ConfigurePackages() {
     ConfigureCrontab
     ConfigureCrowdSec
     ConfigureDDNS
-    ConfigureNetwork && ConfigureDNSMasq
+    ConfigureNetwork && ConfigureDHCP && ConfigureDNSMasq
     ConfigureDockerEngine
     ConfigureFail2Ban
     ConfigureFirewall
