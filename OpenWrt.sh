@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 1.3.7
+# Current Version: 1.3.8
 
 ## How to get and use?
 # curl "https://source.zhijie.online/AutoDeploy/main/OpenWrt.sh" | sudo bash
@@ -313,7 +313,10 @@ function ConfigurePackages() {
             fi
             rm -rf "/tmp/fail2ban.autodeploy" && for fail2ban_list_task in "${!fail2ban_list[@]}"; do
                 echo "${fail2ban_list[$fail2ban_list_task]}" >> "/tmp/fail2ban.autodeploy"
-            done && cat "/tmp/fail2ban.autodeploy" > "/etc/fail2ban/jail.d/fail2ban_default.conf" && rm -rf "/tmp/fail2ban.autodeploy" && fail2ban-client reload && sleep 5s && fail2ban-client status
+            done
+            if [ ! -d "/var/log/auth.log" ]; then
+                touch "/var/log/auth.log"
+            fi && cat "/tmp/fail2ban.autodeploy" > "/etc/fail2ban/jail.d/fail2ban_default.conf" && rm -rf "/tmp/fail2ban.autodeploy" && fail2ban-client reload && sleep 5s && fail2ban-client status
         fi
     }
     function ConfigureFirewall() {
@@ -397,6 +400,7 @@ function ConfigurePackages() {
         uci set luci.diag.dns="dns.alidns.com"
         uci set luci.diag.ping="dns.alidns.com"
         uci set luci.diag.route="dns.alidns.com"
+        uci commit luci
     }
     function ConfigureNetwork() {
         uci set network.globals.packet_steering="1"
@@ -454,17 +458,6 @@ function ConfigurePackages() {
         uci set nft-qos.default.static_unit_dl="mbytes"
         uci set nft-qos.default.static_unit_ul="mbytes"
         uci commit nft-qos
-    }
-    function ConfigureRPCD() {
-        uci -q delete rpcd.@login[2]
-        uci add rpcd login
-        uci set rpcd.@login[2]=login
-        uci set rpcd.@login[2].timeout="300"
-        uci set rpcd.@login[2].username="${DEFAULT_USERNAME}"
-        uci set rpcd.@login[2].password="\$p\$${DEFAULT_USERNAME}"
-        uci set rpcd.@login[2].read="*"
-        uci set rpcd.@login[2].write="*"
-        uci commit rpcd
     }
     function ConfigureSshd() {
         if [ -f "/etc/ssh/sshd_config" ]; then
@@ -611,7 +604,6 @@ function ConfigurePackages() {
     ConfigureOpenSSH
     ConfigurePythonPyPI
     ConfigureQoS
-    ConfigureRPCD
     ConfigureSshd
     ConfigureSysctl
     ConfigureuHTTPd
@@ -669,7 +661,7 @@ function ConfigureSystem() {
         done && cat "/tmp/hosts.autodeploy" > "/etc/hosts" && rm -rf "/tmp/hosts.autodeploy" && echo "${NEW_HOSTNAME}" > "/tmp/hostname.autodeploy" && cat "/tmp/hostname.autodeploy" > "/etc/hostname" && rm -rf "/tmp/hostname.autodeploy"
     }
     function ConfigureRootUser() {
-        LOCK_ROOT="TRUE"
+        LOCK_ROOT="FALSE"
         ROOT_PASSWORD='R00t@123!'
         echo root:$ROOT_PASSWORD | chpasswd && if [ "${LOCK_ROOT}" == "TRUE" ]; then
             passwd -l "root"
@@ -921,7 +913,6 @@ function InstallDependencyPackages() {
         "kmod-tcp-bbr"
     )
     app_luci_list=(
-        "luci-app-acl"
         "luci-app-ddns"
         "luci-app-dockerman"
         "luci-app-firewall"
@@ -932,7 +923,6 @@ function InstallDependencyPackages() {
         "luci-app-wol"
     )
     app_luci_lang_list=(
-        "luci-i18n-acl-zh-cn"
         "luci-i18n-base-zh-cn"
         "luci-i18n-ddns-zh-cn"
         "luci-i18n-dockerman-zh-cn"
