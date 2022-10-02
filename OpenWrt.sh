@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 1.3.4
+# Current Version: 1.3.5
 
 ## How to get and use?
 # curl "https://source.zhijie.online/AutoDeploy/main/OpenWrt.sh" | sudo bash
@@ -973,6 +973,20 @@ function InstallDependencyPackages() {
 function UpgradePackages() {
     opkg update && opkg list-upgradable | cut -f 1 -d ' ' | xargs opkg upgrade > "/dev/null" 2>&1
 }
+# Reload Modules
+function ReloadModules() {
+    modules_list=($(ls /lib/modules/*/ | cut -d '.' -f 1 | awk "{print $2}"))
+    for modules_list_task in "${!modules_list[@]}"; do
+        modprobe -v ${modules_list[$modules_list_task]}
+    done
+}
+# Restart Services
+function RestartServices() {
+    services_list=($(ls /etc/init.d/ | cut -d '.' -f 1 | awk "{print $2}"))
+    for services_list_task in "${!services_list[@]}"; do
+        /etc/init.d/${services_list[$services_list_task]} restart
+    done
+}
 # Cleanup Temp Files
 function CleanupTempFiles() {
     cleanup_list=(
@@ -1005,6 +1019,8 @@ SetRepositoryMirror
 InstallDependencyPackages
 # Call UpgradePackages
 UpgradePackages
+# Call ReloadModules
+ReloadModules
 # Call InstallCustomPackages
 InstallCustomPackages
 # Call ConfigureSystem
@@ -1013,5 +1029,7 @@ ConfigureSystem
 ConfigurePackages
 # Set read_only="TRUE"; Call SetReadonlyFlag
 read_only="TRUE" && SetReadonlyFlag
+# Call RestartServices
+RestartServices
 # Call CleanupTempFiles
 CleanupTempFiles
