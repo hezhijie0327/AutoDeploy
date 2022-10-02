@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 1.3.8
+# Current Version: 1.3.9
 
 ## How to get and use?
 # curl "https://source.zhijie.online/AutoDeploy/main/OpenWrt.sh" | sudo bash
@@ -80,9 +80,6 @@ function SetReadonlyFlag() {
     file_list=(
         "/etc/chrony/chrony.conf"
         "/etc/docker/daemon.json"
-        "/etc/fail2ban/fail2ban.local"
-        "/etc/fail2ban/jail.local"
-        "/etc/fail2ban/jail.d/fail2ban_default.conf"
         "/etc/hostname"
         "/etc/hosts"
         "/etc/opkg/customfeeds.conf"
@@ -287,37 +284,21 @@ function ConfigurePackages() {
             uci commit dockerd
         fi
     }
-    function ConfigureFail2Ban() {
-        fail2ban_list=(
-            "[sshd]"
-            "bantime = 604800"
-            "enabled = true"
-            "filter = sshd"
-            "findtime = 60"
-            "logpath = /var/log/auth.log"
-            "maxretry = 5"
-            "port = 22"
-        )
-        which "fail2ban-client" > "/dev/null" 2>&1
-        if [ "$?" -eq "0" ]; then
-            if [ -d "/etc/fail2ban/jail.d" ]; then
-                rm -rf /etc/fail2ban/jail.d/*
-            else
-                mkdir "/etc/fail2ban/jail.d"
-            fi
-            if [ -f "/etc/fail2ban/fail2ban.conf" ]; then
-                cat "/etc/fail2ban/fail2ban.conf" > "/etc/fail2ban/fail2ban.local"
-            fi
-            if [ -f "/etc/fail2ban/jail.conf" ]; then
-                cat "/etc/fail2ban/jail.conf" > "/etc/fail2ban/jail.local"
-            fi
-            rm -rf "/tmp/fail2ban.autodeploy" && for fail2ban_list_task in "${!fail2ban_list[@]}"; do
-                echo "${fail2ban_list[$fail2ban_list_task]}" >> "/tmp/fail2ban.autodeploy"
-            done
-            if [ ! -d "/var/log/auth.log" ]; then
-                touch "/var/log/auth.log"
-            fi && cat "/tmp/fail2ban.autodeploy" > "/etc/fail2ban/jail.d/fail2ban_default.conf" && rm -rf "/tmp/fail2ban.autodeploy" && fail2ban-client reload && sleep 5s && fail2ban-client status
-        fi
+    function ConfigureDropbear() {
+        if [ -f "/root/.gnupg/authorized_keys" ]; then
+            cat "/root/.gnupg/authorized_keys" > "/etc/dropbear/authorized_keys"
+        fi && rm -rf /etc/dropbear_*_host_key
+        uci set dropbear.@dropbear[0].GatewayPorts="on"
+        uci set dropbear.@dropbear[0].IdleTimeout="0"
+        uci set dropbear.@dropbear[0].Interface="lan"
+        uci set dropbear.@dropbear[0].MaxAuthTries="5"
+        uci set dropbear.@dropbear[0].PasswordAuth="on"
+        uci set dropbear.@dropbear[0].Port="22"
+        uci set dropbear.@dropbear[0].RootLogin="on"
+        uci set dropbear.@dropbear[0].RootPasswordAuth="on"
+        uci set dropbear.@dropbear[0].SSHKeepAlive="900"
+        uci set dropbear.@dropbear[0]=dropbear
+        uci commit dropbear
     }
     function ConfigureFirewall() {
         function ConfigureFirewallDefaults() {
@@ -395,7 +376,6 @@ function ConfigurePackages() {
         fi
     }
     function ConfigureLuci() {
-        uci -d delete luci.flash_keep.dropbear > "/dev/null" 2>&1
         uci -d delete luci.flash_keep.openvpn > "/dev/null" 2>&1
         uci set luci.diag.dns="dns.alidns.com"
         uci set luci.diag.ping="dns.alidns.com"
@@ -406,21 +386,6 @@ function ConfigurePackages() {
         uci set network.globals.packet_steering="1"
         uci set network.lan.ip6assign="64"
         uci commit network
-    }
-    function ConfigureOpenSSH() {
-        OPENSSH_PASSWORD=""
-        which "ssh-keygen" > "/dev/null" 2>&1
-        if [ "$?" -eq "0" ]; then
-            if [ -d "/etc/ssh" ]; then
-                rm -rf /etc/ssh/ssh_host_* && ssh-keygen -t dsa -b 1024 -f "/etc/ssh/ssh_host_dsa_key" -C "root@${NEW_HOSTNAME}" -N "${OPENSSH_PASSWORD}" && ssh-keygen -t ecdsa -b 384 -f "/etc/ssh/ssh_host_ecdsa_key" -C "root@${NEW_HOSTNAME}" -N "${OPENSSH_PASSWORD}" && ssh-keygen -t ed25519 -f "/etc/ssh/ssh_host_ed25519_key" -C "root@${NEW_HOSTNAME}" -N "${OPENSSH_PASSWORD}" && ssh-keygen -t rsa -b 4096 -f "/etc/ssh/ssh_host_rsa_key" -C "root@${NEW_HOSTNAME}" -N "${OPENSSH_PASSWORD}" && chmod 400 /etc/ssh/ssh_host_* && chmod 644 /etc/ssh/ssh_host_*.pub
-            fi
-            rm -rf "/root/.ssh" && mkdir "/root/.ssh" && touch "/root/.ssh/authorized_keys" && touch "/root/.ssh/known_hosts" && ssh-keygen -t dsa -b 1024 -f "/root/.ssh/id_dsa" -C "root@${NEW_HOSTNAME}" -N "${OPENSSH_PASSWORD}" && ssh-keygen -t ecdsa -b 384 -f "/root/.ssh/id_ecdsa" -C "root@${NEW_HOSTNAME}" -N "${OPENSSH_PASSWORD}" && ssh-keygen -t ed25519 -f "/root/.ssh/id_ed25519" -C "root@${NEW_HOSTNAME}" -N "${OPENSSH_PASSWORD}" && ssh-keygen -t rsa -b 4096 -f "/root/.ssh/id_rsa" -C "root@${NEW_HOSTNAME}" -N "${OPENSSH_PASSWORD}" && chmod 400 /root/.ssh/id_* && chmod 600 "/root/.ssh/authorized_keys" && chmod 644 "/root/.ssh/known_hosts" && chmod 644 /root/.ssh/id_*.pub && chmod 700 "/root/.ssh"
-            rm -rf "/home/${DEFAULT_USERNAME}/.ssh" && mkdir "/home/${DEFAULT_USERNAME}/.ssh" && if [ -f "/home/${DEFAULT_USERNAME}/.gnupg/authorized_keys" ]; then
-                mv "/home/${DEFAULT_USERNAME}/.gnupg/authorized_keys" "/home/${DEFAULT_USERNAME}/.ssh/authorized_keys"
-            else
-                touch "/home/${DEFAULT_USERNAME}/.ssh/authorized_keys"
-            fi && touch "/home/${DEFAULT_USERNAME}/.ssh/known_hosts" && ssh-keygen -t dsa -b 1024 -f "/home/${DEFAULT_USERNAME}/.ssh/id_dsa" -C "${DEFAULT_USERNAME}@${NEW_HOSTNAME}" -N "${OPENSSH_PASSWORD}" && ssh-keygen -t ecdsa -b 384 -f "/home/${DEFAULT_USERNAME}/.ssh/id_ecdsa" -C "${DEFAULT_USERNAME}@${NEW_HOSTNAME}" -N "${OPENSSH_PASSWORD}" && ssh-keygen -t ed25519 -f "/home/${DEFAULT_USERNAME}/.ssh/id_ed25519" -C "${DEFAULT_USERNAME}@${NEW_HOSTNAME}" -N "${OPENSSH_PASSWORD}" && ssh-keygen -t rsa -b 4096 -f "/home/${DEFAULT_USERNAME}/.ssh/id_rsa" -C "${DEFAULT_USERNAME}@${NEW_HOSTNAME}" -N "${OPENSSH_PASSWORD}" && chown -R $DEFAULT_USERNAME:$DEFAULT_USERNAME "/home/${DEFAULT_USERNAME}/.ssh" && chown -R $DEFAULT_USERNAME:$DEFAULT_USERNAME /home/${DEFAULT_USERNAME}/.ssh/* && chmod 400 /home/${DEFAULT_USERNAME}/.ssh/id_* && chmod 600 "/home/${DEFAULT_USERNAME}/.ssh/authorized_keys" && chmod 644 "/home/${DEFAULT_USERNAME}/.ssh/known_hosts" && chmod 644 /home/${DEFAULT_USERNAME}/.ssh/id_*.pub && chmod 700 "/home/${DEFAULT_USERNAME}/.ssh"
-        fi
     }
     function ConfigurePythonPyPI() {
         which "pip3" > "/dev/null" 2>&1
@@ -596,12 +561,9 @@ function ConfigurePackages() {
     ConfigureDDNS
     ConfigureNetwork && ConfigureDHCP && ConfigureDNSMasq
     ConfigureDockerEngine
-    ConfigureFail2Ban
     ConfigureFirewall
-    ConfigureGit
-    ConfigureGPG
+    ConfigureGPG && ConfigureGit && ConfigureDropbear
     ConfigureLuci
-    ConfigureOpenSSH
     ConfigurePythonPyPI
     ConfigureQoS
     ConfigureSshd
@@ -833,10 +795,9 @@ function InstallDependencyPackages() {
         "docker-compose"
         "dockerd"
         "drill"
+        "dropbear"
         "etherwake"
         "ethtool"
-        "fail2ban"
-        "fail2ban-src"
         "fdisk"
         "gawk"
         "git"
@@ -856,8 +817,6 @@ function InstallDependencyPackages() {
         "nano"
         "nmap"
         "ntfs-3g"
-        "openssh-client"
-        "openssh-server"
         "parted"
         "python3"
         "python3-pip"
@@ -979,9 +938,7 @@ function RestartServices() {
 }
 # Cleanup Temp Files
 function CleanupTempFiles() {
-    cleanup_list=(
-        "dropbear"
-    )
+    cleanup_list=()
     opkg_config=($(find "/etc/config" -name "*-opkg" -print | awk "{print $2}"))
     for cleanup_list_task in "${!cleanup_list[@]}"; do
         opkg remove --force-remove "${cleanup_list[$cleanup_list_task]}" > "/dev/null" 2>&1
