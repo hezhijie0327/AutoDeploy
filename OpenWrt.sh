@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 1.3.6
+# Current Version: 1.3.7
 
 ## How to get and use?
 # curl "https://source.zhijie.online/AutoDeploy/main/OpenWrt.sh" | sudo bash
@@ -915,7 +915,7 @@ function InstallDependencyPackages() {
         "wireguard-tools"
         "zsh"
     )
-    app_kmod_list-(
+    app_kmod_list=(
         "kmod-igc"
         "kmod-mlx4-core"
         "kmod-tcp-bbr"
