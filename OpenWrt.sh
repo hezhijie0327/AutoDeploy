@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 1.5.2
+# Current Version: 1.5.3
 
 ## How to get and use?
 # curl "https://source.zhijie.online/AutoDeploy/main/OpenWrt.sh" | sudo bash
@@ -306,7 +306,7 @@ function ConfigurePackages() {
             uci set firewall.@defaults[0].drop_invalid="1"
             uci set firewall.@defaults[0].flow_offloading="1"
             uci set firewall.@defaults[0].forward="ACCEPT"
-            uci set firewall.@defaults[0].input="ACCEPT"
+            uci set firewall.@defaults[0].input="REJECT"
             uci set firewall.@defaults[0].output="ACCEPT"
             uci set firewall.@defaults[0].synflood_protect="1"
         }
