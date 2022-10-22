@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 1.5.0
+# Current Version: 1.5.1
 
 ## How to get and use?
 # curl "https://source.zhijie.online/AutoDeploy/main/OpenWrt.sh" | sudo bash
@@ -412,6 +412,14 @@ function ConfigurePackages() {
         fi
     }
     function ConfigureuHTTPd() {
+        HTTPS_PORT=""
+        HTTP_PORT=""
+        uci del uhttpd.main.listen_http > "/dev/null" 2>&1
+        uci add_list uhttpd.main.listen_http="0.0.0.0:${HTTP_PORT:-80}"
+        uci add_list uhttpd.main.listen_http="[::]:${HTTP_PORT:-80}"
+        uci del uhttpd.main.listen_https > "/dev/null" 2>&1
+        uci add_list uhttpd.main.listen_http="0.0.0.0:${HTTPS_PORT:-443}"
+        uci add_list uhttpd.main.listen_http="[::]:${HTTPS_PORT:-443}"
         rm -rf "/etc/uhttpd.crt" "/etc/uhttpd.key"
         uci set uhttpd.defaults.days="90"
         uci set uhttpd.defaults.bits="4096"
