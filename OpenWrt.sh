@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 1.4.3
+# Current Version: 1.4.4
 
 ## How to get and use?
 # curl "https://source.zhijie.online/AutoDeploy/main/OpenWrt.sh" | sudo bash
@@ -843,8 +843,6 @@ function InstallDependencyPackages() {
         "zsh"
     )
     app_kmod_list=(
-        "kmod-igc"
-        "kmod-mlx4-core"
         "kmod-tcp-bbr"
     )
     app_luci_list=(
