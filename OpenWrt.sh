@@ -1,13 +1,14 @@
 #!/bin/bash
 
-# Current Version: 1.4.7
+# Current Version: 1.4.8
 
 ## How to get and use?
 # curl "https://source.zhijie.online/AutoDeploy/main/OpenWrt.sh" | sudo bash
 # wget -qO- "https://source.zhijie.online/AutoDeploy/main/OpenWrt.sh" | sudo bash
 
 ## How to install OpenWrt on Ubuntu?
-# wget https://mirrors.ustc.edu.cn/openwrt/releases/22.03.0/targets/x86/64/openwrt-22.03.0-x86-64-generic-ext4-combined-efi.img.gz
+# wget https://mirrors.ustc.edu.cn/openwrt/releases/22.03.2/targets/x86/64/openwrt-22.03.2-x86-64-generic-ext4-combined-efi.img.gz
+# gzip -d openwrt-22.03.2-x86-64-generic-ext4-combined-efi.img.gz
 # dd if=openwrt-*-x86-64-combined-ext4.img of=/dev/sda bs=4M; sync;
 # parted /dev/sda print
 # parted /dev/sda resizepart 2 <MAX SIZE>G
@@ -16,10 +17,10 @@
 ## How to set up interface?
 # uci export network
 #
-# uci set network.wan.ifname="eth0"
+# uci set network.wan.device="eth0"
 # uci set network.wan.proto="dhcp"
 #
-# uci set network.lan.ifname="eth1"
+# uci set network.lan.device="eth1"
 # uci set network.lan.ipaddr="192.168.0.1"
 # uci set network.lan.netmask="255.255.255.0"
 # uci set network.lan.proto="static"
@@ -742,6 +743,7 @@ function InstallDependencyPackages() {
         "parted"
         "python3"
         "python3-pip"
+        "qemu-ga"
         "qrencode"
         "resize2fs"
         "shadow-chage"
