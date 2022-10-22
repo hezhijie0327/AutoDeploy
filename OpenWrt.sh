@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 1.4.6
+# Current Version: 1.4.7
 
 ## How to get and use?
 # curl "https://source.zhijie.online/AutoDeploy/main/OpenWrt.sh" | sudo bash
@@ -221,7 +221,7 @@ function ConfigurePackages() {
         uci set dhcp.@dnsmasq[0].expandhosts="1"
         uci set dhcp.@dnsmasq[0].filterwin2k="1"
         uci set dhcp.@dnsmasq[0].leasefile="/tmp/dhcp.leases"
-        uci set dhcp.@dnsmasq[0].local="/${NEW_DOMAIN}/"
+        uci set dhcp.@dnsmasq[0].local=""
         uci set dhcp.@dnsmasq[0].localise_queries="1"
         uci set dhcp.@dnsmasq[0].localservice="1"
         uci set dhcp.@dnsmasq[0].nohosts="1"
@@ -268,7 +268,7 @@ function ConfigurePackages() {
         if [ "$?" -eq "0" ]; then
             if [ ! -d "/docker" ]; then
                 mkdir "/docker"
-            fi && chown -R ${DEFAULT_USERNAME}:${DEFAULT_USERNAME} "/docker" && chmod -R 775 "/docker"
+            fi
             if [ ! -d "/etc/docker" ]; then
                 mkdir "/etc/docker"
             fi
@@ -349,9 +349,6 @@ function ConfigurePackages() {
                 fi
             done
         fi
-        if [ -f "/root/.gitconfig" ] && [ "${GIT_USER_CONFIG}" != "TRUE" ]; then
-            mv "/root/.gitconfig" "/root/.gitconfig.bak" && GIT_HTTP_PROXY="" && GIT_HTTPS_PROXY="" && GIT_USER_NAME="" && GIT_USER_EMAIL="" && GIT_USER_SIGNINGKEY="" && GIT_USER_CONFIG="TRUE" && ConfigureGit && mv "/root/.gitconfig" "/home/${DEFAULT_USERNAME}/.gitconfig" && chown -R $DEFAULT_USERNAME:$DEFAULT_USERNAME "/home/${DEFAULT_USERNAME}/.gitconfig" && mv "/root/.gitconfig.bak" "/root/.gitconfig"
-        fi
     }
     function ConfigureNetwork() {
         uci set network.globals.packet_steering="1"
@@ -372,15 +369,6 @@ function ConfigurePackages() {
         fi
         if [ "${WHICH_PIP}" != "null" ]; then
             ${WHICH_PIP} config set global.index-url "https://mirrors.ustc.edu.cn/pypi/web/simple"
-        fi
-        if [ -f "/root/.config/pip/pip.conf" ]; then
-            if [ ! -d "/home/${DEFAULT_USERNAME}/.config" ]; then
-                mkdir "/home/${DEFAULT_USERNAME}/.config"
-            fi
-            if [ ! -d "/home/${DEFAULT_USERNAME}/.config/pip" ]; then
-                mkdir "/home/${DEFAULT_USERNAME}/.config/pip"
-            fi
-            rm -rf "/home/${DEFAULT_USERNAME}/.config/pip/pip.conf" && cp -rf "/root/.config/pip/pip.conf" "/home/${DEFAULT_USERNAME}/.config/pip/pip.conf" && chown -R $DEFAULT_USERNAME:$DEFAULT_USERNAME "/home/${DEFAULT_USERNAME}/.config" && chown -R $DEFAULT_USERNAME:$DEFAULT_USERNAME "/home/${DEFAULT_USERNAME}/.config/pip" && chown -R $DEFAULT_USERNAME:$DEFAULT_USERNAME "/home/${DEFAULT_USERNAME}/.config/pip/pip.conf"
         fi
     }
     function ConfigureQoS() {
@@ -516,12 +504,6 @@ function ConfigurePackages() {
                     echo "${omz_list[$omz_list_task]}" >> "/tmp/omz.autodeploy"
                 done && cat "/tmp/omz.autodeploy" > "/etc/zsh/oh-my-zsh.zshrc" && rm -rf "/tmp/omz.autodeploy" && rm -rf "/root/.oh-my-zsh" "/root/.zshrc" && ln -s "/etc/zsh/oh-my-zsh" "/root/.oh-my-zsh" && ln -s "/etc/zsh/oh-my-zsh.zshrc" "/root/.zshrc"
             fi
-            if [ -d "/etc/zsh/oh-my-zsh" ]; then
-                cp -rf "/etc/zsh/oh-my-zsh" "/home/${DEFAULT_USERNAME}/.oh-my-zsh" && chown -R $DEFAULT_USERNAME:$DEFAULT_USERNAME "/home/${DEFAULT_USERNAME}/.oh-my-zsh"
-                if [ -f "/etc/zsh/oh-my-zsh.zshrc" ]; then
-                    cp -rf "/etc/zsh/oh-my-zsh.zshrc" "/home/${DEFAULT_USERNAME}/.zshrc" && chown -R $DEFAULT_USERNAME:$DEFAULT_USERNAME "/home/${DEFAULT_USERNAME}/.zshrc"
-                fi
-            fi
         }
         GenerateCommandPath
         GenerateOMZProfile
@@ -554,31 +536,6 @@ function ConfigureSystem() {
             cat "/tmp/shell.autodeploy" > "/etc/passwd" && rm -rf "/tmp/shell.autodeploy"
         fi
     }
-    function ConfigureDefaultUser() {
-        DEFAULT_FIRSTNAME="User"
-        DEFAULT_LASTNAME="OpenWrt"
-        DEFAULT_FULLNAME="${DEFAULT_LASTNAME} ${DEFAULT_FIRSTNAME}"
-        DEFAULT_USERNAME="openwrt"
-        DEFAULT_PASSWORD='*OpenWrt123*'
-        crontab_list=(
-            "@reboot rm -rf /home/${DEFAULT_USERNAME}/.*_history /home/${DEFAULT_USERNAME}/.ssh/known_hosts*"
-        )
-        if [ -d "/home" ]; then
-            USER_LIST=($(ls "/home" | grep -v "${DEFAULT_USERNAME}" | awk "{print $2}") ${DEFAULT_USERNAME})
-        else
-            mkdir "/home" && USER_LIST=(${DEFAULT_USERNAME})
-        fi && for USER_LIST_TASK in "${!USER_LIST[@]}"; do
-            userdel -rf "${USER_LIST[$USER_LIST_TASK]}" > "/dev/null" 2>&1
-            rm -rf "/home/${USER_LIST[$USER_LIST]}" "/etc/sudoers.d/${USER_LIST[$USER_LIST]}"
-        done
-        useradd -c "${DEFAULT_FULLNAME}" -d "/home/${DEFAULT_USERNAME}" -s "/usr/bin/zsh" -m "${DEFAULT_USERNAME}" && echo $DEFAULT_USERNAME:$DEFAULT_PASSWORD | chpasswd && echo "${DEFAULT_USERNAME} ALL=(ALL:ALL) ALL" > "/etc/sudoers.d/${DEFAULT_USERNAME}"
-        which "crontab" > "/dev/null" 2>&1
-        if [ "$?" -eq "0" ]; then
-            rm -rf "/tmp/crontab.autodeploy" && for crontab_list_task in "${!crontab_list[@]}"; do
-                echo "${crontab_list[$crontab_list_task]}" >> "/tmp/crontab.autodeploy"
-            done && crontab -u "${DEFAULT_USERNAME}" "/tmp/crontab.autodeploy" && crontab -lu "${DEFAULT_USERNAME}" && rm -rf "/tmp/crontab.autodeploy"
-        fi
-    }
     function ConfigureHostfile() {
         host_list=(
             "127.0.0.1 localhost"
@@ -596,13 +553,8 @@ function ConfigureSystem() {
         done && cat "/tmp/hosts.autodeploy" > "/etc/hosts" && rm -rf "/tmp/hosts.autodeploy" && echo "${NEW_HOSTNAME}" > "/tmp/hostname.autodeploy" && cat "/tmp/hostname.autodeploy" > "/etc/hostname" && rm -rf "/tmp/hostname.autodeploy"
     }
     function ConfigureRootUser() {
-        LOCK_ROOT="FALSE"
         ROOT_PASSWORD='R00t@123!'
-        echo root:$ROOT_PASSWORD | chpasswd && if [ "${LOCK_ROOT}" == "TRUE" ]; then
-            passwd -l "root"
-        else
-            passwd -u "root"
-        fi
+        echo root:$ROOT_PASSWORD | chpasswd && passwd -u "root"
     }
     function ConfigureSystemDefaults() {
         uci set system.@system[0].hostname="${NEW_HOSTNAME}"
@@ -612,7 +564,6 @@ function ConfigureSystem() {
         uci commit system
     }
     ConfigureDefaultShell
-    ConfigureDefaultUser
     ConfigureHostfile
     ConfigureRootUser
     ConfigureSystemDefaults
