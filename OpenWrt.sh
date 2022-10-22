@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 1.4.5
+# Current Version: 1.4.6
 
 ## How to get and use?
 # curl "https://source.zhijie.online/AutoDeploy/main/OpenWrt.sh" | sudo bash
@@ -353,13 +353,6 @@ function ConfigurePackages() {
             mv "/root/.gitconfig" "/root/.gitconfig.bak" && GIT_HTTP_PROXY="" && GIT_HTTPS_PROXY="" && GIT_USER_NAME="" && GIT_USER_EMAIL="" && GIT_USER_SIGNINGKEY="" && GIT_USER_CONFIG="TRUE" && ConfigureGit && mv "/root/.gitconfig" "/home/${DEFAULT_USERNAME}/.gitconfig" && chown -R $DEFAULT_USERNAME:$DEFAULT_USERNAME "/home/${DEFAULT_USERNAME}/.gitconfig" && mv "/root/.gitconfig.bak" "/root/.gitconfig"
         fi
     }
-    function ConfigureLuci() {
-        uci -d delete luci.flash_keep.openvpn > "/dev/null" 2>&1
-        uci set luci.diag.dns="dns.alidns.com"
-        uci set luci.diag.ping="dns.alidns.com"
-        uci set luci.diag.route="dns.alidns.com"
-        uci commit luci
-    }
     function ConfigureNetwork() {
         uci set network.globals.packet_steering="1"
         uci set network.lan.ip6assign="64"
@@ -543,7 +536,6 @@ function ConfigurePackages() {
     ConfigureDropbear
     ConfigureFirewall
     ConfigureGit
-    ConfigureLuci
     ConfigureNetwork
     ConfigurePythonPyPI
     ConfigureQoS
