@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 1.4.4
+# Current Version: 1.4.5
 
 ## How to get and use?
 # curl "https://source.zhijie.online/AutoDeploy/main/OpenWrt.sh" | sudo bash
@@ -537,12 +537,14 @@ function ConfigurePackages() {
     ConfigureCrontab
     ConfigureCrowdSec
     ConfigureDDNS
-    ConfigureNetwork && ConfigureDHCP && ConfigureDNSMasq
+    ConfigureDHCP
+    ConfigureDNSMasq
     ConfigureDockerEngine
     ConfigureDropbear
     ConfigureFirewall
     ConfigureGit
     ConfigureLuci
+    ConfigureNetwork
     ConfigurePythonPyPI
     ConfigureQoS
     ConfigureSshd
@@ -789,6 +791,7 @@ function InstallDependencyPackages() {
         "lua-cs-bouncer"
         "luci"
         "luci-ssl-openssl"
+        "luci-theme-bootstrap"
         "mtr-json"
         "nano"
         "nmap"
@@ -889,7 +892,7 @@ function InstallDependencyPackages() {
     )
     app_list=(${app_regular_list[@]} ${app_kmod_list[*]} ${app_luci_list[*]} ${app_luci_lang_list[*]} ${app_luci_proto_list[*]} ${MICROCODE[*]})
     opkg update && for app_list_task in "${!app_list[@]}"; do
-        opkg install --force-overwrite ${app_list[$app_list_task]}
+        opkg install --force-overwrite --force-reinstall ${app_list[$app_list_task]}
     done
 }
 # Upgrade Packages
