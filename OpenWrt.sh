@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 1.4.9
+# Current Version: 1.5.0
 
 ## How to get and use?
 # curl "https://source.zhijie.online/AutoDeploy/main/OpenWrt.sh" | sudo bash
@@ -191,6 +191,7 @@ function ConfigurePackages() {
         done
         uci set dhcp.lan.dhcpv4="hybrid"
         uci set dhcp.lan.dhcpv6="hybrid"
+        uci set dhcp.lan.dns_service="0"
         uci del dhcp.lan.domain > "/dev/null" 2>&1
         uci add_list dhcp.lan.domain="${NEW_DOMAIN}"
         uci set dhcp.lan.interface="lan"
