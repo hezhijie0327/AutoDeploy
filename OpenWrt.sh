@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 1.5.3
+# Current Version: 1.5.4
 
 ## How to get and use?
 # curl "https://source.zhijie.online/AutoDeploy/main/OpenWrt.sh" | sudo bash
@@ -352,6 +352,12 @@ function ConfigurePackages() {
             done
         fi
     }
+    function ConfigureLuci() {
+        uci set luci.diag.dns="dns.alidns.com"
+        uci set luci.diag.ping="dns.alidns.com"
+        uci set luci.diag.route="dns.alidns.com"
+        uci commit luci
+    }
     function ConfigureNetwork() {
         uci set network.globals.packet_steering="1"
         uci set network.lan.ip6assign="64"
@@ -528,6 +534,7 @@ function ConfigurePackages() {
     ConfigureDropbear
     ConfigureFirewall
     ConfigureGit
+    ConfigureLuci
     ConfigureNetwork
     ConfigurePythonPyPI
     ConfigureQoS
