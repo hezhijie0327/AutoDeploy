@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 3.8.8
+# Current Version: 3.8.9
 
 ## How to get and use?
 # curl "https://source.zhijie.online/AutoDeploy/main/Ubuntu.sh" | sudo bash
@@ -181,9 +181,9 @@ function GetSystemInformation() {
     }
     function GetLSBCodename() {
         LSBCodename_LTS="jammy"
-        LSBCodename_NON_LTS="impish"
+        LSBCodename_NON_LTS="kinetic"
         LSBVersion_LTS="22.04"
-        LSBVersion_NON_LTS="21.10"
+        LSBVersion_NON_LTS="22.10"
         which "lsb_release" > "/dev/null" 2>&1
         if [ "$?" -eq "0" ]; then
             LSBCodename_CURRENT=$(lsb_release -cs)
