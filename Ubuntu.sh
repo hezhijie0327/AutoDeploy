@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 3.8.9
+# Current Version: 3.9.0
 
 ## How to get and use?
 # curl "https://source.zhijie.online/AutoDeploy/main/Ubuntu.sh" | sudo bash
@@ -216,13 +216,6 @@ function GetSystemInformation() {
                 LSBVersion="${LSBVersion_NON_LTS}"
             fi
         fi
-        BACKPORTS_COMMAND_FORCED="apt -t ${LSBCodename}-backports full-upgrade -qy" && SUDO_BACKPORTS_COMMAND_FORCED="&& sudo ${BACKPORTS_COMMAND} " && if [ "$(awk -v NUM1=$LSBVersion -v NUM2=$LSBVersion_LTS 'BEGIN{print (NUM1 >= NUM2) ? 1 : 0}')" -eq "1" ] && [ "$(awk -v NUM1=$LSBVersion -v NUM2=$LSBVersion_NON_LTS 'BEGIN{print (NUM1 >= NUM2) ? 1 : 0}')" -eq "1" ]; then
-            BACKPORTS_COMMAND=""
-            SUDO_BACKPORTS_COMMAND=""
-        else
-            BACKPORTS_COMMAND="${BACKPORTS_COMMAND_FORCED}"
-            SUDO_BACKPORTS_COMMAND="${SUDO_BACKPORTS_COMMAND_FORCED}"
-        fi
     }
     function GetOSArchitecture() {
         which "dpkg" > "/dev/null" 2>&1
@@ -371,12 +364,8 @@ function ConfigurePackages() {
         fi
     }
     function ConfigureCrontab() {
-        apt -t ${LSBCodename}-backports full-upgrade -qy > "/dev/null" 2>&1
-        if [ "$?" -eq "0" ]; then
-            SUDO_BACKPORTS_COMMAND="${SUDO_BACKPORTS_COMMAND_FORCED}"
-        fi
         crontab_list=(
-            "0 0 * * 7 sudo apt update && sudo apt full-upgrade -qy ${SUDO_BACKPORTS_COMMAND}&& sudo apt autoremove -qy"
+            "0 0 * * 7 sudo apt update && sudo apt full-upgrade -qy && sudo apt -t ${LSBCodename}-backports full-upgrade -qy && sudo apt autoremove -qy"
             "@reboot sudo rm -rf /root/.*_history /root/.ssh/known_hosts*"
         )
         which "crontab" > "/dev/null" 2>&1
@@ -1123,7 +1112,7 @@ function InstallDependencyPackages() {
 }
 # Upgrade Packages
 function UpgradePackages() {
-    apt update && apt full-upgrade -qy && $(echo "${BACKPORTS_COMMAND}") && apt autoremove -qy
+    apt update && apt full-upgrade -qy && apt -t ${LSBCodename}-backports full-upgrade -qy && apt autoremove -qy
 }
 # Cleanup Temp Files
 function CleanupTempFiles() {
