@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 2.2.7
+# Current Version: 2.2.8
 
 ## How to get and use?
 # curl "https://source.zhijie.online/AutoDeploy/main/ProxmoxVE.sh" | sudo bash
@@ -48,8 +48,8 @@ function GetSystemInformation() {
             CPU_VENDOR_ID="Intel"
             ENABLE_IOMMU=" intel_iommu=on iommu=pt pcie_acs_override=downstream"
             MICROCODE=("intel-microcode")
-            echo "options snd-hda-intel enable_msi=1" > "/etc/modprobe.d/snd-hda-intel.conf"
             echo "options kvm-intel nested=1" > "/etc/modprobe.d/kvm-intel.conf"
+            echo "options snd-hda-intel enable_msi=1" > "/etc/modprobe.d/snd-hda-intel.conf"
         else
             CPU_VENDOR_ID="Unknown"
             ENABLE_IOMMU=""
