@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 2.2.6
+# Current Version: 2.2.7
 
 ## How to get and use?
 # curl "https://source.zhijie.online/AutoDeploy/main/ProxmoxVE.sh" | sudo bash
@@ -43,17 +43,18 @@ function GetSystemInformation() {
             CPU_VENDOR_ID="AMD"
             ENABLE_IOMMU=" amd_iommu=on iommu=pt pcie_acs_override=downstream"
             MICROCODE=("amd64-microcode")
-            echo "options kvm-amd nested=Y" > "/etc/modprobe.d/kvm-amd.conf"
+            echo "options kvm-amd nested=1" > "/etc/modprobe.d/kvm-amd.conf"
         elif [ "${CPU_VENDOR_ID}" == "GenuineIntel" ]; then
             CPU_VENDOR_ID="Intel"
             ENABLE_IOMMU=" intel_iommu=on iommu=pt pcie_acs_override=downstream"
             MICROCODE=("intel-microcode")
-            echo "options kvm-intel nested=Y" > "/etc/modprobe.d/kvm-intel.conf"
+            echo "options snd-hda-intel enable_msi=1" > "/etc/modprobe.d/snd-hda-intel.conf"
+            echo "options kvm-intel nested=1" > "/etc/modprobe.d/kvm-intel.conf"
         else
             CPU_VENDOR_ID="Unknown"
             ENABLE_IOMMU=""
             MICROCODE=()
-        fi
+        fi && echo "options kvm ignore_msrs=1 report_ignored_msrs=0" >> "/etc/modprobe.d/kvm.conf"
     }
     function GetHostname() {
         OLD_HOSTNAME=$(cat "/etc/hostname")
@@ -122,7 +123,6 @@ function SetReadonlyFlag() {
         "/etc/fail2ban/jail.d/fail2ban_default.conf"
         "/etc/hostname"
         "/etc/hosts"
-        "/etc/modprobe.d/iommu_unsafe_interrupts.conf"
         "/etc/modules"
         "/etc/sysctl.conf"
         "/etc/zsh/oh-my-zsh.zshrc"
@@ -367,7 +367,7 @@ function ConfigurePackages() {
                 echo "${module_list[$module_list_task]}" >> "/tmp/module.autodeploy"
             done && cat "/tmp/module.autodeploy" > "/etc/modules" && rm -rf "/tmp/module.autodeploy" && if [ -f "/etc/modprobe.d/iommu_unsafe_interrupts.conf" ]; then
                 rm -rf "/etc/modprobe.d/iommu_unsafe_interrupts.conf"
-            fi && echo "# options vfio_iommu_type1 allow_unsafe_interrupts=1" > "/etc/modprobe.d/iommu_unsafe_interrupts.conf"
+            fi && echo "options vfio_iommu_type1 allow_unsafe_interrupts=1" > "/etc/modprobe.d/iommu_unsafe_interrupts.conf"
         fi
     }
     function ConfigureOpenSSH() {
