@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 2.2.9
+# Current Version: 2.3.0
 
 ## How to get and use?
 # curl "https://source.zhijie.online/AutoDeploy/main/ProxmoxVE.sh" | sudo bash
@@ -510,6 +510,11 @@ function ConfigurePackages() {
         fi
     }
     function ConfigureSysctl() {
+        bridge_interface=(
+            "all"
+            "default"
+            $(cat "/proc/net/dev" | grep -v "docker0\|lo\|wg0" | grep "\:" | sed "s/[[:space:]]//g" | cut -d ":" -f 1 | sort | uniq | grep "vmbr" | awk "{print $2}")
+        )
         sysctl_list=(
             "net.core.default_qdisc = fq"
             "net.ipv4.ip_forward = 1"
@@ -524,6 +529,9 @@ function ConfigurePackages() {
                 if [ "$?" -eq "0" ]; then
                     echo "${sysctl_list[$sysctl_list_task]}" >> "/tmp/sysctl.autodeploy"
                 fi
+            done
+            for bridge_interface_task in "${!bridge_interface[@]}"; do
+                echo -e "net.ipv6.conf.${bridge_interface[$bridge_interface_task]}.accept_ra = 2\nnet.ipv6.conf.${bridge_interface[$bridge_interface_task]}.autoconf = 1" >> "/tmp/sysctl.autodeploy"
             done && cat "/tmp/sysctl.autodeploy" > "/etc/sysctl.conf" && sysctl -p && rm -rf "/tmp/sysctl.autodeploy"
         fi
     }
@@ -676,16 +684,6 @@ function ConfigureSystem() {
         done && cat "/tmp/hosts.autodeploy" > "/etc/hosts" && rm -rf "/tmp/hosts.autodeploy"
         rm -rf "/tmp/hostname.autodeploy" && echo "${NEW_HOSTNAME}" > "/tmp/hostname.autodeploy" && cat "/tmp/hostname.autodeploy" > "/etc/hostname" && rm -rf "/tmp/hostname.autodeploy"
     }
-    function ConfigureIPv6() {
-        bridge_interface=(
-            "all"
-            "default"
-            $(cat "/proc/net/dev" | grep -v "docker0\|lo\|wg0" | grep "\:" | sed "s/[[:space:]]//g" | cut -d ":" -f 1 | sort | uniq | grep "vmbr" | awk "{print $2}")
-        )
-        for bridge_interface_task in "${!bridge_interface[@]}"; do
-            echo -e "net.ipv6.conf.${bridge_interface[$bridge_interface_task]}.accept_ra = 2\nnet.ipv6.conf.${bridge_interface[$bridge_interface_task]}.autoconf = 1" >> "/etc/sysctl.conf"
-        done
-    }
     function ConfigureProxmoxVENode() {
         if [ "${OLD_HOSTNAME}" != "${NEW_HOSTNAME}" ]; then
             if [ -d "/etc/pve/nodes/${OLD_HOSTNAME}" ]; then
@@ -717,7 +715,6 @@ function ConfigureSystem() {
     ConfigureDefaultShell
     ConfigureDefaultUser
     ConfigureHostfile
-    ConfigureIPv6
     ConfigureProxmoxVENode
     ConfigureRootUser
 }
