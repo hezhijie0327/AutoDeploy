@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 2.4.4
+# Current Version: 2.4.5
 
 ## How to get and use?
 # /bin/bash -c "$(curl -fsSL 'https://source.zhijie.online/AutoDeploy/main/macOS.sh')"
@@ -310,17 +310,15 @@ function InstallCustomPackages() {
             "blackhole-16ch" # BlackHole 16ch
             "blackhole-2ch" # BlackHole 2ch
             "blackhole-64ch" # BlackHole 64ch
-            "cleanshot" # CleanShot X
             "cursorsense" # CursorSense
             "docker" # Docker
             "downie" # Downie 4
-            "firefox" # Firefox
             "iina" # IINA
             "kekaexternalhelper" # Keka External Helper
+            "microsoft-edge" # Microsoft Edge
             "obs" # OBS
             "parallels" # Parallels Desktop
             "permute" # Permute 3
-            "pixelsnap" # PixelSnap 2
             "steermouse" # SteerMouse
             "visual-studio-code" # Visual Studio Code
         )
@@ -337,6 +335,7 @@ function InstallCustomPackages() {
         app_list=(
             "1136220934" # Infuse
             "1365531024" # 1Blocker
+            "409222199" # Cyberduck
             "424389933" # Final Cut Pro
             "424390742" # Compressor
             "430798174" # HazeOver
@@ -350,6 +349,7 @@ function InstallCustomPackages() {
             "497799835" # Xcode
             "634148309" # Logic Pro
             "634159523" # MainStage
+            "732710998" # Enpass
             "823766827" # OneDrive
             "824183456" # Affinity Photo
             "836500024" # Wechat
