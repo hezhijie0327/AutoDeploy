@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 3.9.1
+# Current Version: 3.9.2
 
 ## How to get and use?
 # curl "https://source.zhijie.online/AutoDeploy/main/Ubuntu.sh" | sudo bash
@@ -32,12 +32,22 @@ function CallServiceController(){
 # Get System Information
 function GetSystemInformation() {
     function CheckDNSConfiguration() {
-        CUSTOM_DNS=(
-            "223.5.5.5"
-            "223.6.6.6"
-            "2400:3200::1"
-            "2400:3200:baba::1"
-        )
+        USE_GLOBAL_DNS=""
+        if [ "${USE_GLOBAL_DNS}" == "true" ]; then
+            CUSTOM_DNS=(
+                "8.8.4.4"
+                "8.8.8.8"
+                "2001:4860:4860::8844"
+                "2001:4860:4860::8888"
+            )
+        else
+            CUSTOM_DNS=(
+                "223.5.5.5"
+                "223.6.6.6"
+                "2400:3200::1"
+                "2400:3200:baba::1"
+            )
+        fi
         DHCP_DNS=()
         CUSTOM_DNS_LINE="" && for CUSTOM_DNS_TASK in "${!CUSTOM_DNS[@]}"; do
             CUSTOM_DNS_LINE="${CUSTOM_DNS_LINE} ${CUSTOM_DNS[$CUSTOM_DNS_TASK]}"
