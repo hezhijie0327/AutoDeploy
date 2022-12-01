@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 3.9.4
+# Current Version: 3.9.5
 
 ## How to get and use?
 # curl "https://source.zhijie.online/AutoDeploy/main/Ubuntu.sh" | sudo bash
@@ -32,7 +32,7 @@ function CallServiceController(){
 # Get System Information
 function GetSystemInformation() {
     function CheckDNSConfiguration() {
-        USE_GLOBAL_DNS=""
+        USE_GLOBAL_DNS="false"
         if [ "${USE_GLOBAL_DNS}" == "true" ]; then
             CUSTOM_DNS=(
                 "8.8.4.4"
