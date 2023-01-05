@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 1.1.2
+# Current Version: 1.1.3
 
 ## How to get and use?
 # curl "https://source.zhijie.online/AutoDeploy/main/SteamOS.sh" | sudo bash
@@ -255,7 +255,17 @@ function InstallCustomPackages() {
             echo "${plugin_upgrade_list[$plugin_upgrade_list_task]}" >> "/tmp/oh-my-zsh-plugin.autodeploy"
         done && cat "/tmp/oh-my-zsh-plugin.autodeploy" > "/etc/zsh/oh-my-zsh/oh-my-zsh-plugin.sh" && rm -rf "/tmp/oh-my-zsh-plugin.autodeploy"
     }
+    function InstallProtonGE() {
+        flatpak install -y com.valvesoftware.Steam.CompatibilityTool.Proton-GE
+        if [ ! -d "/home/deck/.steam/root/compatibilitytools.d" ]; then
+            mkdir "/home/deck/.steam/root/compatibilitytools.d"
+        fi
+        if [ -d "/var/lib/flatpak/runtime/com.valvesoftware.Steam.CompatibilityTool.Proton-GE/x86_64/stable/active/files" ]; then
+            cp -rf "/var/lib/flatpak/runtime/com.valvesoftware.Steam.CompatibilityTool.Proton-GE/x86_64/stable/active/files" "/home/deck/.steam/root/compatibilitytools.d/Proton-GE"
+        fi echo 'if [ -d "/var/lib/flatpak/runtime/com.valvesoftware.Steam.CompatibilityTool.Proton-GE/x86_64/stable/active/files" ]; then sudo flatpak update -y com.valvesoftware.Steam.CompatibilityTool.Proton-GE && sudo cp -rf "/var/lib/flatpak/runtime/com.valvesoftware.Steam.CompatibilityTool.Proton-GE/x86_64/stable/active/files" "/home/deck/.steam/root/compatibilitytools.d/Proton-GE" && sudo chown -R deck:deck "/home/deck/.steam/root/compatibilitytools.d"; fi' > "/home/deck/.steam/root/compatibilitytools.d/Proton-GE.sh" && chown -R deck:deck "/home/deck/.steam/root/compatibilitytools.d
+    }
     InstallOhMyZsh
+    InstallProtonGE
 }
 
 ## Process
