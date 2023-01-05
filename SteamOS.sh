@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 1.0.4
+# Current Version: 1.0.5
 
 ## How to get and use?
 # curl "https://source.zhijie.online/AutoDeploy/main/SteamOS.sh" | bash
@@ -23,7 +23,7 @@ function ConfigureSystem() {
 function ConfigurePackages() {
     function ConfigureIOMMU() {
         ENABLE_IOMMU="true"
-        if [ -z $(cat "/etc/default/grub" | grep "amd_iommu=on iommu=pt") ] || [ "${ENABLE_IOMMU}" == "true" ]; then
+        if [ "${ENABLE_IOMMU}" == "true" ]; then
             sudo sed -i 's/amd_iommu=off/amd_iommu=on iommu=pt/' '/etc/default/grub'
         else
             sudo sed -i 's/amd_iommu=on iommu=pt/amd_iommu=off/' '/etc/default/grub'
