@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 1.1.3
+# Current Version: 1.1.4
 
 ## How to get and use?
 # curl "https://source.zhijie.online/AutoDeploy/main/SteamOS.sh" | sudo bash
@@ -260,9 +260,13 @@ function InstallCustomPackages() {
         if [ ! -d "/home/deck/.steam/root/compatibilitytools.d" ]; then
             mkdir "/home/deck/.steam/root/compatibilitytools.d"
         fi
+        if [ -d "/home/deck/.steam/root/compatibilitytools.d/Proton-GE" ]; then
+            rm -rf "/home/deck/.steam/root/compatibilitytools.d/Proton-GE"
+        fi
         if [ -d "/var/lib/flatpak/runtime/com.valvesoftware.Steam.CompatibilityTool.Proton-GE/x86_64/stable/active/files" ]; then
             cp -rf "/var/lib/flatpak/runtime/com.valvesoftware.Steam.CompatibilityTool.Proton-GE/x86_64/stable/active/files" "/home/deck/.steam/root/compatibilitytools.d/Proton-GE"
-        fi echo 'if [ -d "/var/lib/flatpak/runtime/com.valvesoftware.Steam.CompatibilityTool.Proton-GE/x86_64/stable/active/files" ]; then sudo flatpak update -y com.valvesoftware.Steam.CompatibilityTool.Proton-GE && sudo cp -rf "/var/lib/flatpak/runtime/com.valvesoftware.Steam.CompatibilityTool.Proton-GE/x86_64/stable/active/files" "/home/deck/.steam/root/compatibilitytools.d/Proton-GE" && sudo chown -R deck:deck "/home/deck/.steam/root/compatibilitytools.d"; fi' > "/home/deck/.steam/root/compatibilitytools.d/Proton-GE.sh" && chown -R deck:deck "/home/deck/.steam/root/compatibilitytools.d
+        fi
+        echo 'if [ -d "/var/lib/flatpak/runtime/com.valvesoftware.Steam.CompatibilityTool.Proton-GE/x86_64/stable/active/files" ]; then sudo flatpak update -y com.valvesoftware.Steam.CompatibilityTool.Proton-GE && sudo cp -rf "/var/lib/flatpak/runtime/com.valvesoftware.Steam.CompatibilityTool.Proton-GE/x86_64/stable/active/files" "/home/deck/.steam/root/compatibilitytools.d/Proton-GE" && sudo chown -R deck:deck "/home/deck/.steam/root/compatibilitytools.d"; fi' > "/home/deck/.steam/root/compatibilitytools.d/Proton-GE.sh" && chown -R deck:deck "/home/deck/.steam/root/compatibilitytools.d"
     }
     InstallOhMyZsh
     InstallProtonGE
