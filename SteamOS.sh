@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 1.0.1
+# Current Version: 1.0.2
 
 ## How to get and use?
 # curl "https://source.zhijie.online/AutoDeploy/main/SteamOS.sh" | bash
@@ -27,7 +27,7 @@ function ConfigurePackages() {
             sudo sed -i 's/amd_iommu=off/amd_iommu=on iommu=pt/' '/etc/default/grub'
         else
             sudo sed -i 's/amd_iommu=on iommu=pt/amd_iommu=off/' '/etc/default/grub'
-        fi
+        fi && sudo update-grub
     }
     function ConfigureSysctl() {
         which "sysctl" > "/dev/null" 2>&1
@@ -35,10 +35,10 @@ function ConfigurePackages() {
             if [ ! -d "/etc/sysctl.d" ]; then
                 mkdir "/etc/sysctl.d"
             fi
-            sudo echo -e "net.core.default_qdisc = fq\nnet.ipv4.tcp_congestion_control = bbr" > "/etc/sysctl.d/bbr.conf"
-            sudo echo -e "net.ipv4.ip_forward = 1\nnet.ipv6.conf.all.forwarding = 1" > "/etc/sysctl.d/ip_forward.conf"
-            sudo echo -e "net.ipv4.tcp_fastopen = 3" > "/etc/sysctl.d/tcp_fastopen.conf"
-            sudo echo -e "vm.swappiness = 10" > "/etc/sysctl.d/swappiness.conf"
+            echo -e "net.core.default_qdisc = fq\nnet.ipv4.tcp_congestion_control = bbr" | sudo tee "/etc/sysctl.d/bbr.conf"
+            echo -e "net.ipv4.ip_forward = 1\nnet.ipv6.conf.all.forwarding = 1" | sudo tee "/etc/sysctl.d/ip_forward.conf"
+            echo -e "net.ipv4.tcp_fastopen = 3" | sudo tee "/etc/sysctl.d/tcp_fastopen.conf"
+            echo -e "vm.swappiness = 10" | sudo tee "/etc/sysctl.d/swappiness.conf"
         fi && sudo sysctl -p
     }
     ConfigureIOMMU
