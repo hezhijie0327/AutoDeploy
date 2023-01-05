@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 1.0.8
+# Current Version: 1.0.9
 
 ## How to get and use?
 # curl "https://source.zhijie.online/AutoDeploy/main/SteamOS.sh" | sudo bash
@@ -97,10 +97,6 @@ function ConfigurePackages() {
         if [ "$?" -eq "0" ]; then
             for gitconfig_list_task in "${!gitconfig_key_list[@]}"; do
                 git config --global --unset ${gitconfig_key_list[$gitconfig_list_task]}
-                if [ "${container_environment}" == "wsl2" ]; then
-                    GIT_COMMIT_GPGSIGN="false"
-                    GIT_USER_SIGNINGKEY=""
-                fi
                 if [ "${gitconfig_value_list[$gitconfig_list_task]}" != "" ]; then
                     git config --global ${gitconfig_key_list[$gitconfig_list_task]} "${gitconfig_value_list[$gitconfig_list_task]}"
                 fi
