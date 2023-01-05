@@ -1,26 +1,133 @@
 #!/bin/bash
 
-# Current Version: 1.0.6
+# Current Version: 1.0.7
 
 ## How to get and use?
 # curl "https://source.zhijie.online/AutoDeploy/main/SteamOS.sh" | bash
 # wget -qO- "https://source.zhijie.online/AutoDeploy/main/SteamOS.sh" | bash
 
 ## Function
-function CheckSteamDeckUser() {
+function GetSystemInformation() {
+    function CheckSteamDeckUser() {
         if [[ $(passwd -S "deck" | awk -F " " '{print $2}') != "P" ]]; then
             echo "deck's password has not been set. Please run <passwd> first!"
             exit 1
         fi
     }
+    function SetGHProxyDomain() {
+        export GHPROXY_URL="ghproxy.com"
+    }
+    CheckSteamDeckUser
+    SetGHProxyDomain
+}
 function ConfigureSystem() {
+    function ConfigureDefaultShell() {
+        if [ -f "/etc/passwd" ]; then
+            echo "$(cat '/etc/passwd' | sed 's/\/bin\/bash/\/bin\/zsh/g;s/\/bin\/sh/\/bin\/zsh/g')" > "/tmp/shell.autodeploy"
+            cat "/tmp/shell.autodeploy" | sudo tee "/etc/passwd" && rm -rf "/tmp/shell.autodeploy"
+        fi
+    }
+    function ConfigureHostfile() {
+        host_list=(
+            "127.0.0.1 localhost"
+            "255.255.255.255 broadcasthost"
+            "::1 ip6-localhost ip6-loopback localhost"
+            "fe00::0 ip6-localnet"
+            "ff00::0 ip6-mcastprefix"
+            "ff02::1 ip6-allnodes"
+            "ff02::2 ip6-allrouters"
+            "ff02::3 ip6-allhosts"
+        )
+        rm -rf "/tmp/hosts.autodeploy" && for host_list_task in "${!host_list[@]}"; do
+            echo "${host_list[$host_list_task]}" >> "/tmp/hosts.autodeploy"
+        done && cat "/tmp/hosts.autodeploy" | sudo tee "/etc/hosts" && rm -rf "/tmp/hosts.autodeploy"
+    }
+    function ConfigureRootUser() {
+        LOCK_ROOT="TRUE"
+        ROOT_PASSWORD='R00t@123!'
+        echo root:$ROOT_PASSWORD | sudo chpasswd && if [ "${LOCK_ROOT}" == "TRUE" ]; then
+            sudo passwd -l "root"
+        else
+            sudo passwd -u "root"
+        fi
+    }
     function ConfigureSWAP() {
         SWAP_SIZE="4"
         sudo swapoff -a && sudo dd if=/dev/zero of=/home/swapfile bs=1G count=${SWAP_SIZE} && sudo chmod 0600 /home/swapfile && sudo mkswap /home/swapfile && sudo swapon /home/swapfile
     }
+    ConfigureDefaultShell
+    ConfigureHostfile
+    ConfigureRootUser
     ConfigureSWAP
 }
 function ConfigurePackages() {
+    function ConfigureCrontab() {
+        which "crontab" > "/dev/null" 2>&1
+        if [ "$?" -eq "0" ]; then
+            rm -rf "/tmp/crontab.autodeploy"
+            echo "@reboot sudo rm -rf /root/.*_history /root/.ssh/known_hosts*" > "/tmp/crontab.autodeploy" && sudo crontab -u "root" "/tmp/crontab.autodeploy" && sudo crontab -lu "root" && rm -rf "/tmp/crontab.autodeploy"
+            echo "@reboot rm -rf /home/deck/.*_history /home/deck/.ssh/known_hosts*" > "/tmp/crontab.autodeploy" && sudo crontab -u "deck" "/tmp/crontab.autodeploy" && sudo crontab -lu "deck" && rm -rf "/tmp/crontab.autodeploy"
+        fi
+    }
+    function ConfigureGit() {
+        gitconfig_key_list=(
+            "commit.gpgsign"
+            "gpg.program"
+            "http.proxy"
+            "https.proxy"
+            "user.name"
+            "user.email"
+            "user.signingkey"
+            "url.https://${GHPROXY_URL}/https://github.com/.insteadOf"
+        )
+        gitconfig_value_list=(
+            "${GIT_COMMIT_GPGSIGN:-false}"
+            "${GIT_GPG_PROGRAM:-gpg}"
+            "${GIT_HTTP_PROXY}"
+            "${GIT_HTTPS_PROXY}"
+            "${GIT_USER_NAME}"
+            "${GIT_USER_EMAIL}"
+            "${GIT_USER_SIGNINGKEY}"
+            "https://github.com/"
+        )
+        which "git" > "/dev/null" 2>&1
+        if [ "$?" -eq "0" ]; then
+            for gitconfig_list_task in "${!gitconfig_key_list[@]}"; do
+                git config --global --unset ${gitconfig_key_list[$gitconfig_list_task]}
+                if [ "${container_environment}" == "wsl2" ]; then
+                    GIT_COMMIT_GPGSIGN="false"
+                    GIT_USER_SIGNINGKEY=""
+                fi
+                if [ "${gitconfig_value_list[$gitconfig_list_task]}" != "" ]; then
+                    git config --global ${gitconfig_key_list[$gitconfig_list_task]} "${gitconfig_value_list[$gitconfig_list_task]}"
+                fi
+            done
+        fi
+        if [ -f "/root/.gitconfig" ] && [ "${GIT_USER_CONFIG}" != "TRUE" ]; then
+            mv "/root/.gitconfig" "/root/.gitconfig.bak" && GIT_COMMIT_GPGSIGN="" && GIT_GPG_PROGRAM="" && GIT_HTTP_PROXY="" && GIT_HTTPS_PROXY="" && GIT_USER_NAME="" && GIT_USER_EMAIL="" && GIT_USER_SIGNINGKEY="" && GIT_USER_CONFIG="TRUE" && ConfigureGit && mv "/root/.gitconfig" "/home/deck/.gitconfig" && chown -R deck:deck "/home/deck/.gitconfig" && mv "/root/.gitconfig.bak" "/root/.gitconfig"
+        fi
+    }
+    function ConfigureGPG() {
+        GPG_PUBKEY=""
+        if [ "${GPG_PUBKEY}" == "" ]; then
+            GPG_PUBKEY="DD982DAAB9C71C78F9563E5207EB56787030D792"
+        fi
+        which "gpg" > "/dev/null" 2>&1
+        if [ "$?" -eq "0" ]; then
+            rm -rf "/home/deck/.gnupg" "/root/.gnupg" && gpg --keyserver hkps://keys.openpgp.org --recv ${GPG_PUBKEY} && gpg --keyserver hkps://keyserver.ubuntu.com --recv ${GPG_PUBKEY} && echo "${GPG_PUBKEY}" | awk 'BEGIN { FS = "\n" }; { print $1":6:" }' | gpg --import-ownertrust && GPG_PUBKEY_ID_A=$(gpg --list-keys --keyid-format LONG | grep "pub\|sub" | awk '{print $2, $4}' | grep "\[A\]" | awk '{print $1}' | awk -F '/' '{print $2}') && GPG_PUBKEY_ID_C=$(gpg --list-keys --keyid-format LONG | grep "pub\|sub" | awk '{print $2, $4}' | grep "\[C\]" | awk '{print $1}' | awk -F '/' '{print $2}')
+            if [ "${GPG_PUBKEY_ID_A}" != "" ]; then
+                gpg_agent_list=(
+                    "enable-ssh-support"
+                    "pinentry-program /usr/bin/pinentry-curses"
+                )
+                rm -rf "/root/.gnupg/gpg-agent.conf" && for gpg_agent_list_task in "${!gpg_agent_list[@]}"; do
+                    echo "${gpg_agent_list[$gpg_agent_list_task]}" >> "/root/.gnupg/gpg-agent.conf"
+                done && echo "${GPG_PUBKEY_ID_A}" > "/root/.gnupg/sshcontrol" && gpg --export-ssh-key ${GPG_PUBKEY_ID_C} > "/root/.gnupg/authorized_keys" && if [ -d "/root/.gnupg" ]; then
+                    mv "/root/.gnupg" "/home/deck/.gnupg" && chown -R deck:deck "/home/deck/.gnupg"
+                fi
+            fi
+        fi
+    }
     function ConfigureIOMMU() {
         ENABLE_IOMMU="true"
         if [ "${ENABLE_IOMMU}" == "true" ]; then
@@ -37,8 +144,15 @@ function ConfigurePackages() {
                 rm -rf /etc/ssh/ssh_host_* && ssh-keygen -t dsa -b 1024 -f "/etc/ssh/ssh_host_dsa_key" -C "root@$(hostname)" -N "${OPENSSH_PASSWORD}" && ssh-keygen -t ecdsa -b 384 -f "/etc/ssh/ssh_host_ecdsa_key" -C "root@$(hostname)" -N "${OPENSSH_PASSWORD}" && ssh-keygen -t ed25519 -f "/etc/ssh/ssh_host_ed25519_key" -C "root@$(hostname)" -N "${OPENSSH_PASSWORD}" && ssh-keygen -t rsa -b 4096 -f "/etc/ssh/ssh_host_rsa_key" -C "root@$(hostname)" -N "${OPENSSH_PASSWORD}" && chmod 400 /etc/ssh/ssh_host_* && chmod 644 /etc/ssh/ssh_host_*.pub
             fi
             rm -rf "/root/.ssh" && mkdir "/root/.ssh" && touch "/root/.ssh/authorized_keys" && touch "/root/.ssh/known_hosts" && ssh-keygen -t dsa -b 1024 -f "/root/.ssh/id_dsa" -C "root@$(hostname)" -N "${OPENSSH_PASSWORD}" && ssh-keygen -t ecdsa -b 384 -f "/root/.ssh/id_ecdsa" -C "root@$(hostname)" -N "${OPENSSH_PASSWORD}" && ssh-keygen -t ed25519 -f "/root/.ssh/id_ed25519" -C "root@$(hostname)" -N "${OPENSSH_PASSWORD}" && ssh-keygen -t rsa -b 4096 -f "/root/.ssh/id_rsa" -C "root@$(hostname)" -N "${OPENSSH_PASSWORD}" && chmod 400 /root/.ssh/id_* && chmod 600 "/root/.ssh/authorized_keys" && chmod 644 "/root/.ssh/known_hosts" && chmod 644 /root/.ssh/id_*.pub && chmod 700 "/root/.ssh"
-            rm -rf "/home/deck/.ssh" && mkdir "/home/deck/.ssh" && touch "/home/deck/.ssh/authorized_keys" && touch "/home/deck/.ssh/known_hosts" && ssh-keygen -t dsa -b 1024 -f "/home/deck/.ssh/id_dsa" -C "deck@$(hostname)" -N "${OPENSSH_PASSWORD}" && ssh-keygen -t ecdsa -b 384 -f "/home/deck/.ssh/id_ecdsa" -C "deck@$(hostname)" -N "${OPENSSH_PASSWORD}" && ssh-keygen -t ed25519 -f "/home/deck/.ssh/id_ed25519" -C "deck@$(hostname)" -N "${OPENSSH_PASSWORD}" && ssh-keygen -t rsa -b 4096 -f "/home/deck/.ssh/id_rsa" -C "deck@$(hostname)" -N "${OPENSSH_PASSWORD}" && chown -R deck:deck "/home/deck/.ssh" && chown -R deck:deck /home/deck/.ssh/* && chmod 400 /home/deck/.ssh/id_* && chmod 600 "/home/deck/.ssh/authorized_keys" && chmod 644 "/home/deck/.ssh/known_hosts" && chmod 644 /home/deck/.ssh/id_*.pub && chmod 700 "/home/deck/.ssh" && sudo systemctl enable sshd
+            rm -rf "/home/deck/.ssh" && mkdir "/home/deck/.ssh" && if [ -f "/home/deck/.gnupg/authorized_keys" ]; then
+                mv "/home/deck/.gnupg/authorized_keys" "/home/deck/.ssh/authorized_keys"
+            else
+                touch "/home/deck/.ssh/authorized_keys"
+            fi && touch "/home/deck/.ssh/known_hosts" && ssh-keygen -t dsa -b 1024 -f "/home/deck/.ssh/id_dsa" -C "deck@$(hostname)" -N "${OPENSSH_PASSWORD}" && ssh-keygen -t ecdsa -b 384 -f "/home/deck/.ssh/id_ecdsa" -C "deck@$(hostname)" -N "${OPENSSH_PASSWORD}" && ssh-keygen -t ed25519 -f "/home/deck/.ssh/id_ed25519" -C "deck@$(hostname)" -N "${OPENSSH_PASSWORD}" && ssh-keygen -t rsa -b 4096 -f "/home/deck/.ssh/id_rsa" -C "deck@$(hostname)" -N "${OPENSSH_PASSWORD}" && chown -R deck:deck "/home/deck/.ssh" && chown -R deck:deck /home/deck/.ssh/* && chmod 400 /home/deck/.ssh/id_* && chmod 600 "/home/deck/.ssh/authorized_keys" && chmod 644 "/home/deck/.ssh/known_hosts" && chmod 644 /home/deck/.ssh/id_*.pub && chmod 700 "/home/deck/.ssh" && sudo systemctl enable sshd
         fi
+    }
+    function ConfigureSshd() {
+        cat "/etc/ssh/sshd_config" | sed "s/\#PasswordAuthentication\ yes/PasswordAuthentication\ yes/g;s/\#PermitRootLogin\ prohibit\-password/PermitRootLogin\ yes/g;s/\#PubkeyAuthentication\ yes/PubkeyAuthentication\ yes/g" > "/tmp/sshd_config.autodeploy" && cat "/tmp/sshd_config.autodeploy" | sudo tee "/etc/ssh/sshd_config" && rm -rf "/tmp/sshd_config.autodeploy"
     }
     function ConfigureSysctl() {
         which "sysctl" > "/dev/null" 2>&1
@@ -52,16 +166,116 @@ function ConfigurePackages() {
             echo -e "vm.swappiness = 10" | sudo tee "/etc/sysctl.d/swappiness.conf"
         fi
     }
+    function ConfigureZsh() {
+        function GenerateCommandPath() {
+            default_path_list=(
+                "/bin"
+                "/sbin"
+                "/usr/bin"
+                "/usr/sbin"
+                "/usr/local/bin"
+                "/usr/local/sbin"
+                "/usr/bin/site_perl:/usr/bin/vendor_perl:/usr/bin/core_perl"
+            )
+            DEFAULT_PATH="" && for default_path_list_task in "${!default_path_list[@]}"; do
+                if [ "${default_path_list[$default_path_list_task]}" != "" ]; then
+                    DEFAULT_PATH="${default_path_list[$default_path_list_task]}:${DEFAULT_PATH}"
+                    DEFAULT_PATH=$(echo "${DEFAULT_PATH}" | sed "s/\:$//g")
+                fi
+            done
+        }
+        function GenerateOMZProfile() {
+            omz_list=(
+                "export DEBIAN_FRONTEND=\"noninteractive\""
+                "export EDITOR=\"nano\""
+                "export GPG_TTY=\$(tty)"
+                "export PATH=\"${DEFAULT_PATH}:\$PATH\""
+                "# export SSH_AUTH_SOCK=\"\$(gpgconf --list-dirs agent-ssh-socket)\" && gpgconf --launch gpg-agent && gpg-connect-agent updatestartuptty /bye > \"/dev/null\" 2>&1"
+                "export ZSH=\"\$HOME/.oh-my-zsh\""
+                "function proxy_off(){ unset all_proxy; unset ftp_proxy; unset http_proxy; unset https_proxy; unset rsync_proxy }"
+                "function proxy_on(){ export all_proxy=\"socks5://localhost.zhijie.online:7890\"; export ftp_proxy=\"http://localhost.zhijie.online:7890\"; export http_proxy=\"http://localhost.zhijie.online:7890\"; export https_proxy=\"http://localhost.zhijie.online:7890\"; export rsync_proxy=\"http://localhost.zhijie.online:7890\" }"
+                "plugins=(zsh-autosuggestions zsh-completions zsh-history-substring-search zsh-syntax-highlighting)"
+                "ZSH_CACHE_DIR=\"\$ZSH/cache\""
+                "ZSH_CUSTOM=\"\$ZSH/custom\""
+                "ZSH_THEME=\"ys\""
+                "DISABLE_AUTO_UPDATE=\"false\""
+                "DISABLE_UPDATE_PROMPT=\"false\""
+                "UPDATE_ZSH_DAYS=\"7\""
+                "ZSH_COMPDUMP=\"\$ZSH_CACHE_DIR/.zcompdump\""
+                "ZSH_DISABLE_COMPFIX=\"false\""
+                "CASE_SENSITIVE=\"true\""
+                "COMPLETION_WAITING_DOTS=\"true\""
+                "DISABLE_AUTO_TITLE=\"false\""
+                "DISABLE_LS_COLORS=\"false\""
+                "DISABLE_MAGIC_FUNCTIONS=\"false\""
+                "DISABLE_UNTRACKED_FILES_DIRTY=\"false\""
+                "ENABLE_CORRECTION=\"true\""
+                "HIST_STAMPS=\"yyyy-mm-dd\""
+                "HYPHEN_INSENSITIVE=\"false\""
+                "ZSH_THEME_RANDOM_QUIET=\"true\""
+                "ZSH_AUTOSUGGEST_HIGHLIGHT_STYLE=\"bg=250,fg=238,bold,underline\""
+                "ZSH_AUTOSUGGEST_STRATEGY=(match_prev_cmd history completion)"
+                "ZSH_AUTOSUGGEST_USE_ASYNC=\"true\""
+                "source \"\$ZSH/oh-my-zsh.sh\""
+            )
+            which "zsh" > "/dev/null" 2>&1
+            if [ "$?" -eq "0" ] && [ -d "/etc/zsh/oh-my-zsh" ]; then
+                rm -rf "/tmp/omz.autodeploy" && for omz_list_task in "${!omz_list[@]}"; do
+                    echo "${omz_list[$omz_list_task]}" >> "/tmp/omz.autodeploy"
+                done && cat "/tmp/omz.autodeploy" | sudo tee "/etc/zsh/oh-my-zsh.zshrc" && rm -rf "/tmp/omz.autodeploy" && sudo rm -rf "/root/.oh-my-zsh" "/root/.zshrc" && sudo ln -s "/etc/zsh/oh-my-zsh" "/root/.oh-my-zsh" && sudo ln -s "/etc/zsh/oh-my-zsh.zshrc" "/root/.zshrc"
+            fi
+            if [ -d "/etc/zsh/oh-my-zsh" ]; then
+                sudo cp -rf "/etc/zsh/oh-my-zsh" "/home/deck/.oh-my-zsh" && sudo chown -R deck:deck "/home/deck/.oh-my-zsh"
+                if [ -f "/etc/zsh/oh-my-zsh.zshrc" ]; then
+                    sudo cp -rf "/etc/zsh/oh-my-zsh.zshrc" "/home/deck/.zshrc" && sudo chown -R deck:deck "/home/deck/.zshrc"
+                fi
+            fi
+        }
+        GenerateCommandPath
+        GenerateOMZProfile
+    }
+    ConfigureCrontab
+    ConfigureGPG && ConfigureGit
     ConfigureIOMMU
     ConfigureOpenSSH
+    ConfigureSshd
     ConfigureSysctl
+    ConfigureZsh
+}
+# Install Custom Packages
+function InstallCustomPackages() {
+    function InstallOhMyZsh() {
+        plugin_list=(
+            "zsh-autosuggestions"
+            "zsh-completions"
+            "zsh-history-substring-search"
+            "zsh-syntax-highlighting"
+        )
+        plugin_upgrade_list=(
+            '#!/bin/bash'
+            'plugin_list=($(ls "$HOME/.oh-my-zsh/custom/plugins" | grep -v "^example$" | awk "{print $1}"))'
+            'for plugin_list_task in "${!plugin_list[@]}"; do'
+            "    rm -rf \"\$HOME/.oh-my-zsh/custom/plugins/\${plugin_list[\$plugin_list_task]}\" && git clone --depth=1 \"https://${GHPROXY_URL}/https://github.com/zsh-users/\${plugin_list[\$plugin_list_task]}.git\" \"\$HOME/.oh-my-zsh/custom/plugins/\${plugin_list[\$plugin_list_task]}\""
+            'done'
+        )
+        sudo rm -rf "/etc/zsh/oh-my-zsh" && sudo git clone --depth=1 "https://${GHPROXY_URL}/https://github.com/ohmyzsh/ohmyzsh.git" "/etc/zsh/oh-my-zsh" && if [ -d "/etc/zsh/oh-my-zsh/custom/plugins" ]; then
+            for plugin_list_task in "${!plugin_list[@]}"; do
+                sudo rm -rf "/etc/zsh/oh-my-zsh/custom/plugins/${plugin_list[$plugin_list_task]}" && sudo git clone --depth=1 "https://${GHPROXY_URL}/https://github.com/zsh-users/${plugin_list[$plugin_list_task]}.git" "/etc/zsh/oh-my-zsh/custom/plugins/${plugin_list[$plugin_list_task]}"
+            done
+        fi && sudo rm -rf "/etc/zsh/oh-my-zsh/oh-my-zsh-plugin.sh" && for plugin_upgrade_list_task in "${!plugin_upgrade_list[@]}"; do
+            echo "${plugin_upgrade_list[$plugin_upgrade_list_task]}" >> "/tmp/oh-my-zsh-plugin.autodeploy"
+        done && cat "/tmp/oh-my-zsh-plugin.autodeploy" | sudo tee "/etc/zsh/oh-my-zsh/oh-my-zsh-plugin.sh" && rm -rf "/tmp/oh-my-zsh-plugin.autodeploy"
+    }
+    InstallOhMyZsh
 }
 
 ## Process
-# Call CheckSteamDeckUser
-CheckSteamDeckUser
+# Call GetSystemInformation
+GetSystemInformation
 # Disable Steam OS Protection
 sudo steamos-readonly disable
+# Call InstallCustomPackages
+InstallCustomPackages
 # Call ConfigureSystem
 ConfigureSystem
 # Call ConfigurePackages
