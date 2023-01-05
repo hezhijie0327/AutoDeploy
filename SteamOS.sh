@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 1.1.0
+# Current Version: 1.1.1
 
 ## How to get and use?
 # curl "https://source.zhijie.online/AutoDeploy/main/SteamOS.sh" | sudo bash
@@ -69,14 +69,6 @@ function ConfigureSystem() {
     ConfigureSWAP
 }
 function ConfigurePackages() {
-    function ConfigureCrontab() {
-        which "crontab" > "/dev/null" 2>&1
-        if [ "$?" -eq "0" ]; then
-            rm -rf "/tmp/crontab.autodeploy"
-            echo "@reboot rm -rf /root/.*_history /root/.ssh/known_hosts*" > "/tmp/crontab.autodeploy" && crontab -u "root" "/tmp/crontab.autodeploy" && crontab -lu "root" && rm -rf "/tmp/crontab.autodeploy"
-            echo "@reboot rm -rf /home/deck/.*_history /home/deck/.ssh/known_hosts*" > "/tmp/crontab.autodeploy" && crontab -u "deck" "/tmp/crontab.autodeploy" && crontab -lu "deck" && rm -rf "/tmp/crontab.autodeploy"
-        fi
-    }
     function ConfigureGit() {
         gitconfig_key_list=(
             "commit.gpgsign"
@@ -232,7 +224,6 @@ function ConfigurePackages() {
         GenerateCommandPath
         GenerateOMZProfile
     }
-    ConfigureCrontab
     ConfigureGPG && ConfigureGit
     ConfigureIOMMU
     ConfigureOpenSSH
