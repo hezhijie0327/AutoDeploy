@@ -1,28 +1,28 @@
 #!/bin/bash
 
-# Current Version: 1.0.0
+# Current Version: 1.0.1
 
 ## How to get and use?
 # curl "https://source.zhijie.online/AutoDeploy/main/SteamOS.sh" | bash
 # wget -qO- "https://source.zhijie.online/AutoDeploy/main/SteamOS.sh" | bash
 
 ## Function
-function ConfigureDeckUser() {
+function CheckSteamDeckUser() {
         if [[ $(passwd -S "deck" | awk -F " " '{print $2}') != "P" ]]; then
-            DECK_PASSWORD='*SteamOS123*'
-            echo deck:$DECK_PASSWORD | chpasswd
-        fi && echo ${DECK_PASSWORD} | sudo -v -S
+            echo "deck's password has not been set. Please run <passwd> first!"
+            exit 1
+        fi
     }
 function ConfigureSystem() {
     function ConfigureSWAP() {
-        SWAP_SIZE="1"
+        SWAP_SIZE="4"
         sudo swapoff -a && sudo dd if=/dev/zero of=/home/swapfile bs=1G count=${SWAP_SIZE} && sudo chmod 0600 /home/swapfile && sudo mkswap /home/swapfile && sudo swapon /home/swapfile
     }
     ConfigureSWAP
 }
 function ConfigurePackages() {
     function ConfigureIOMMU() {
-        ENABLE_IOMMU="false"
+        ENABLE_IOMMU="true"
         if [ -z $(cat "/etc/default/grub" | grep -E -i 'GRUB_CMDLINE_LINUX_DEFAULT=".+(amd_iommu=on iommu=pt).+"') ] || [ "${ENABLE_IOMMU}" == "true" ]; then
             sudo sed -i 's/amd_iommu=off/amd_iommu=on iommu=pt/' '/etc/default/grub'
         else
@@ -46,8 +46,8 @@ function ConfigurePackages() {
 }
 
 ## Process
-# Call ConfigureDeckUser
-ConfigureDeckUser
+# Call CheckSteamDeckUser
+CheckSteamDeckUser
 # Disable Steam OS Protection
 sudo steamos-readonly disable
 # Call ConfigureSystem
