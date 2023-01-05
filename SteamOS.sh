@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 1.0.3
+# Current Version: 1.0.4
 
 ## How to get and use?
 # curl "https://source.zhijie.online/AutoDeploy/main/SteamOS.sh" | bash
@@ -39,7 +39,7 @@ function ConfigurePackages() {
             echo -e "net.ipv4.ip_forward = 1\nnet.ipv6.conf.all.forwarding = 1" | sudo tee "/etc/sysctl.d/ip_forward.conf"
             echo -e "net.ipv4.tcp_fastopen = 3" | sudo tee "/etc/sysctl.d/tcp_fastopen.conf"
             echo -e "vm.swappiness = 10" | sudo tee "/etc/sysctl.d/swappiness.conf"
-        fi && sudo sysctl -p
+        fi
     }
     ConfigureIOMMU
     ConfigureSysctl
