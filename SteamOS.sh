@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 1.0.9
+# Current Version: 1.1.0
 
 ## How to get and use?
 # curl "https://source.zhijie.online/AutoDeploy/main/SteamOS.sh" | sudo bash
@@ -29,6 +29,10 @@ function ConfigureSystem() {
             echo "$(cat '/etc/passwd' | sed 's/\/bin\/bash/\/bin\/zsh/g;s/\/bin\/sh/\/bin\/zsh/g')" > "/tmp/shell.autodeploy"
             cat "/tmp/shell.autodeploy" | tee "/etc/passwd" && rm -rf "/tmp/shell.autodeploy"
         fi
+    }
+    function ConfigureFlathubMirror() {
+        flatpak remote-modify flathub --url="https://mirror.sjtu.edu.cn/flathub"
+        wget -P "/tmp" "https://mirror.sjtu.edu.cn/flathub/flathub.gpg" && flatpak remote-modify --gpg-import="/tmp/flathub.gpg" flathub && rm -rf "/tmp/flathub.gpg"
     }
     function ConfigureHostfile() {
         host_list=(
@@ -59,6 +63,7 @@ function ConfigureSystem() {
         swapoff -a && dd if=/dev/zero of=/home/swapfile bs=1G count=${SWAP_SIZE} && chmod 0600 /home/swapfile && mkswap /home/swapfile && swapon /home/swapfile
     }
     ConfigureDefaultShell
+    ConfigureFlathubMirror
     ConfigureHostfile
     ConfigureRootUser
     ConfigureSWAP
