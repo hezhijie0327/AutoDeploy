@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 1.1.1
+# Current Version: 1.1.2
 
 ## How to get and use?
 # curl "https://source.zhijie.online/AutoDeploy/main/SteamOS.sh" | sudo bash
@@ -27,7 +27,7 @@ function ConfigureSystem() {
     function ConfigureDefaultShell() {
         if [ -f "/etc/passwd" ]; then
             echo "$(cat '/etc/passwd' | sed 's/\/bin\/bash/\/bin\/zsh/g;s/\/bin\/sh/\/bin\/zsh/g')" > "/tmp/shell.autodeploy"
-            cat "/tmp/shell.autodeploy" | tee "/etc/passwd" && rm -rf "/tmp/shell.autodeploy"
+            cat "/tmp/shell.autodeploy" > "/etc/passwd" && rm -rf "/tmp/shell.autodeploy"
         fi
     }
     function ConfigureFlathubMirror() {
@@ -47,7 +47,7 @@ function ConfigureSystem() {
         )
         rm -rf "/tmp/hosts.autodeploy" && for host_list_task in "${!host_list[@]}"; do
             echo "${host_list[$host_list_task]}" >> "/tmp/hosts.autodeploy"
-        done && cat "/tmp/hosts.autodeploy" | tee "/etc/hosts" && rm -rf "/tmp/hosts.autodeploy"
+        done && cat "/tmp/hosts.autodeploy" > "/etc/hosts" && rm -rf "/tmp/hosts.autodeploy"
     }
     function ConfigureRootUser() {
         LOCK_ROOT="TRUE"
@@ -112,7 +112,7 @@ function ConfigurePackages() {
         if [ "$?" -eq "0" ]; then
             rm -rf "/home/deck/.gnupg" "/root/.gnupg" && gpg --keyserver hkps://keys.openpgp.org --recv ${GPG_PUBKEY} && gpg --keyserver hkps://keyserver.ubuntu.com --recv ${GPG_PUBKEY} && echo "${GPG_PUBKEY}" | awk 'BEGIN { FS = "\n" }; { print $1":6:" }' | gpg --import-ownertrust && GPG_PUBKEY_ID_A=$(gpg --list-keys --keyid-format LONG | grep "pub\|sub" | awk '{print $2, $4}' | grep "\[A\]" | awk '{print $1}' | awk -F '/' '{print $2}') && GPG_PUBKEY_ID_C=$(gpg --list-keys --keyid-format LONG | grep "pub\|sub" | awk '{print $2, $4}' | grep "\[C\]" | awk '{print $1}' | awk -F '/' '{print $2}')
             if [ "${GPG_PUBKEY_ID_A}" != "" ]; then
-                rm -rf "/root/.gnupg/gpg-agent.conf" && echo -e "enable-ssh-support\npinentry-program /usr/bin/pinentry-curses" | tee "/root/.gnupg/gpg-agent.conf" && echo "${GPG_PUBKEY_ID_A}" | tee "/root/.gnupg/sshcontrol" && gpg --export-ssh-key ${GPG_PUBKEY_ID_C} | tee "/root/.gnupg/authorized_keys" && if [ -d "/root/.gnupg" ]; then
+                rm -rf "/root/.gnupg/gpg-agent.conf" && echo -e "enable-ssh-support\npinentry-program /usr/bin/pinentry-curses" > "/root/.gnupg/gpg-agent.conf" && echo "${GPG_PUBKEY_ID_A}" > "/root/.gnupg/sshcontrol" && gpg --export-ssh-key ${GPG_PUBKEY_ID_C} > "/root/.gnupg/authorized_keys" && if [ -d "/root/.gnupg" ]; then
                     mv "/root/.gnupg" "/home/deck/.gnupg" && chown -R deck:deck "/home/deck/.gnupg"
                 fi
             fi
@@ -142,7 +142,7 @@ function ConfigurePackages() {
         fi
     }
     function ConfigureSshd() {
-        cat "/etc/ssh/sshd_config" | sed "s/\#PasswordAuthentication\ yes/PasswordAuthentication\ yes/g;s/\#PermitRootLogin\ prohibit\-password/PermitRootLogin\ yes/g;s/\#PubkeyAuthentication\ yes/PubkeyAuthentication\ yes/g" > "/tmp/sshd_config.autodeploy" && cat "/tmp/sshd_config.autodeploy" | tee "/etc/ssh/sshd_config" && rm -rf "/tmp/sshd_config.autodeploy"
+        cat "/etc/ssh/sshd_config" | sed "s/\#PasswordAuthentication\ yes/PasswordAuthentication\ yes/g;s/\#PermitRootLogin\ prohibit\-password/PermitRootLogin\ yes/g;s/\#PubkeyAuthentication\ yes/PubkeyAuthentication\ yes/g" > "/tmp/sshd_config.autodeploy" && cat "/tmp/sshd_config.autodeploy" > "/etc/ssh/sshd_config" && rm -rf "/tmp/sshd_config.autodeploy"
     }
     function ConfigureSysctl() {
         which "sysctl" > "/dev/null" 2>&1
@@ -150,10 +150,10 @@ function ConfigurePackages() {
             if [ ! -d "/etc/sysctl.d" ]; then
                 mkdir "/etc/sysctl.d"
             fi
-            echo -e "net.core.default_qdisc = fq\nnet.ipv4.tcp_congestion_control = bbr" | tee "/etc/sysctl.d/bbr.conf"
-            echo -e "net.ipv4.ip_forward = 1\nnet.ipv6.conf.all.forwarding = 1" | tee "/etc/sysctl.d/ip_forward.conf"
-            echo -e "net.ipv4.tcp_fastopen = 3" | tee "/etc/sysctl.d/tcp_fastopen.conf"
-            echo -e "vm.swappiness = 10" | tee "/etc/sysctl.d/swappiness.conf"
+            echo -e "net.core.default_qdisc = fq\nnet.ipv4.tcp_congestion_control = bbr" > "/etc/sysctl.d/bbr.conf"
+            echo -e "net.ipv4.ip_forward = 1\nnet.ipv6.conf.all.forwarding = 1" > "/etc/sysctl.d/ip_forward.conf"
+            echo -e "net.ipv4.tcp_fastopen = 3" > "/etc/sysctl.d/tcp_fastopen.conf"
+            echo -e "vm.swappiness = 10" > "/etc/sysctl.d/swappiness.conf"
         fi
     }
     function ConfigureZsh() {
@@ -212,7 +212,7 @@ function ConfigurePackages() {
             if [ "$?" -eq "0" ] && [ -d "/etc/zsh/oh-my-zsh" ]; then
                 rm -rf "/tmp/omz.autodeploy" && for omz_list_task in "${!omz_list[@]}"; do
                     echo "${omz_list[$omz_list_task]}" >> "/tmp/omz.autodeploy"
-                done && cat "/tmp/omz.autodeploy" | tee "/etc/zsh/oh-my-zsh.zshrc" && rm -rf "/tmp/omz.autodeploy" && rm -rf "/root/.oh-my-zsh" "/root/.zshrc" && ln -s "/etc/zsh/oh-my-zsh" "/root/.oh-my-zsh" && ln -s "/etc/zsh/oh-my-zsh.zshrc" "/root/.zshrc"
+                done && cat "/tmp/omz.autodeploy" > "/etc/zsh/oh-my-zsh.zshrc" && rm -rf "/tmp/omz.autodeploy" && rm -rf "/root/.oh-my-zsh" "/root/.zshrc" && ln -s "/etc/zsh/oh-my-zsh" "/root/.oh-my-zsh" && ln -s "/etc/zsh/oh-my-zsh.zshrc" "/root/.zshrc"
             fi
             if [ -d "/etc/zsh/oh-my-zsh" ]; then
                 cp -rf "/etc/zsh/oh-my-zsh" "/home/deck/.oh-my-zsh" && chown -R deck:deck "/home/deck/.oh-my-zsh"
@@ -253,7 +253,7 @@ function InstallCustomPackages() {
             done
         fi && rm -rf "/etc/zsh/oh-my-zsh/oh-my-zsh-plugin.sh" && for plugin_upgrade_list_task in "${!plugin_upgrade_list[@]}"; do
             echo "${plugin_upgrade_list[$plugin_upgrade_list_task]}" >> "/tmp/oh-my-zsh-plugin.autodeploy"
-        done && cat "/tmp/oh-my-zsh-plugin.autodeploy" | tee "/etc/zsh/oh-my-zsh/oh-my-zsh-plugin.sh" && rm -rf "/tmp/oh-my-zsh-plugin.autodeploy"
+        done && cat "/tmp/oh-my-zsh-plugin.autodeploy" > "/etc/zsh/oh-my-zsh/oh-my-zsh-plugin.sh" && rm -rf "/tmp/oh-my-zsh-plugin.autodeploy"
     }
     InstallOhMyZsh
 }
