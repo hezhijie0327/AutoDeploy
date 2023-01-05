@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 1.1.5
+# Current Version: 1.1.6
 
 ## How to get and use?
 # curl "https://source.zhijie.online/AutoDeploy/main/SteamOS.sh" | sudo bash
@@ -266,7 +266,7 @@ function InstallCustomPackages() {
         if [ -d "/var/lib/flatpak/runtime/com.valvesoftware.Steam.CompatibilityTool.Proton-GE/x86_64/stable/active/files" ]; then
             cp -rf "/var/lib/flatpak/runtime/com.valvesoftware.Steam.CompatibilityTool.Proton-GE/x86_64/stable/active/files" "/home/deck/.steam/root/compatibilitytools.d/Proton-GE"
         fi
-        echo 'if [ -d "/var/lib/flatpak/runtime/com.valvesoftware.Steam.CompatibilityTool.Proton-GE/x86_64/stable/active/files" ]; then sudo flatpak install -y com.valvesoftware.Steam.CompatibilityTool.Proton-GE && sudo cp -rf "/var/lib/flatpak/runtime/com.valvesoftware.Steam.CompatibilityTool.Proton-GE/x86_64/stable/active/files" "/home/deck/.steam/root/compatibilitytools.d/Proton-GE" && sudo chown -R deck:deck "/home/deck/.steam/root/compatibilitytools.d" && sudo flatpak uninstall -y com.valvesoftware.Steam.CompatibilityTool.Proton-GE; fi' > "/home/deck/.steam/root/compatibilitytools.d/Proton-GE.sh" && chown -R deck:deck "/home/deck/.steam/root/compatibilitytools.d"
+        echo '#!/bin/bash\nif [ -d "/var/lib/flatpak/runtime/com.valvesoftware.Steam.CompatibilityTool.Proton-GE/x86_64/stable/active/files" ]; then sudo flatpak install -y com.valvesoftware.Steam.CompatibilityTool.Proton-GE && sudo cp -rf "/var/lib/flatpak/runtime/com.valvesoftware.Steam.CompatibilityTool.Proton-GE/x86_64/stable/active/files" "/home/deck/.steam/root/compatibilitytools.d/Proton-GE" && sudo chown -R deck:deck "/home/deck/.steam/root/compatibilitytools.d" && sudo flatpak uninstall -y com.valvesoftware.Steam.CompatibilityTool.Proton-GE; fi' > "/home/deck/.steam/root/compatibilitytools.d/Proton-GE.sh" && chown -R deck:deck "/home/deck/.steam/root/compatibilitytools.d"
         flatpak uninstall -y com.valvesoftware.Steam.CompatibilityTool.Proton-GE
     }
     InstallOhMyZsh
