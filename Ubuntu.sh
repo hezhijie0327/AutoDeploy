@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 3.9.7
+# Current Version: 3.9.8
 
 ## How to get and use?
 # curl "https://source.zhijie.online/AutoDeploy/main/Ubuntu.sh" | sudo bash
@@ -705,18 +705,13 @@ function ConfigurePackages() {
     function ConfigureSysctl() {
         sysctl_list=(
             "net.core.default_qdisc = fq"
-            "net.ipv4.ip_forward = 1"
             "net.ipv4.tcp_congestion_control = bbr"
             "net.ipv4.tcp_fastopen = 3"
-            "net.ipv6.conf.all.forwarding = 1"
         )
         which "sysctl" > "/dev/null" 2>&1
         if [ "$?" -eq "0" ]; then
             rm -rf "/tmp/sysctl.autodeploy" && for sysctl_list_task in "${!sysctl_list[@]}"; do
-                sysctl -w "$(echo ${sysctl_list[$sysctl_list_task]} | sed 's/\ //g')" > "/dev/null" 2>&1
-                if [ "$?" -eq "0" ]; then
-                    echo "${sysctl_list[$sysctl_list_task]}" >> "/tmp/sysctl.autodeploy"
-                fi
+                echo "${sysctl_list[$sysctl_list_task]}" >> "/tmp/sysctl.autodeploy"
             done && cat "/tmp/sysctl.autodeploy" > "/etc/sysctl.conf" && sysctl -p && rm -rf "/tmp/sysctl.autodeploy"
         fi
     }
@@ -821,8 +816,8 @@ function ConfigurePackages() {
                 "export PATH=\"${DEFAULT_PATH}:\$PATH\""
                 "# export SSH_AUTH_SOCK=\"\$(gpgconf --list-dirs agent-ssh-socket)\" && gpgconf --launch gpg-agent && gpg-connect-agent updatestartuptty /bye > \"/dev/null\" 2>&1"
                 "export ZSH=\"\$HOME/.oh-my-zsh\""
-                "function proxy_off(){ unset all_proxy; unset ftp_proxy; unset http_proxy; unset https_proxy; unset rsync_proxy }"
-                "function proxy_on(){ export all_proxy=\"socks5://localhost.zhijie.online:7890\"; export ftp_proxy=\"http://localhost.zhijie.online:7890\"; export http_proxy=\"http://localhost.zhijie.online:7890\"; export https_proxy=\"http://localhost.zhijie.online:7890\"; export rsync_proxy=\"http://localhost.zhijie.online:7890\" }"
+                "# function proxy_off(){ unset all_proxy; unset ftp_proxy; unset http_proxy; unset https_proxy; unset rsync_proxy }"
+                "# function proxy_on(){ export all_proxy=\"socks5://localhost.zhijie.online:7890\"; export ftp_proxy=\"http://localhost.zhijie.online:7890\"; export http_proxy=\"http://localhost.zhijie.online:7890\"; export https_proxy=\"http://localhost.zhijie.online:7890\"; export rsync_proxy=\"http://localhost.zhijie.online:7890\" }"
                 "plugins=(zsh-autosuggestions zsh-completions zsh-history-substring-search zsh-syntax-highlighting)"
                 "ZSH_CACHE_DIR=\"\$ZSH/cache\""
                 "ZSH_CUSTOM=\"\$ZSH/custom\""
