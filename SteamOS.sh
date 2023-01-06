@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 1.3.3
+# Current Version: 1.3.4
 
 ## How to get and use?
 # curl "https://source.zhijie.online/AutoDeploy/main/SteamOS.sh" | sudo bash
@@ -111,8 +111,8 @@ function ConfigurePackages() {
             rm -rf "/home/deck/.gnupg" "/root/.gnupg" && gpg --keyserver hkps://keyserver.ubuntu.com:443 --recv ${GPG_PUBKEY} && echo "${GPG_PUBKEY}" | awk 'BEGIN { FS = "\n" }; { print $1":6:" }' | gpg --import-ownertrust && GPG_PUBKEY_ID_A=$(gpg --list-keys --keyid-format LONG | grep "pub\|sub" | awk '{print $2, $4}' | grep "\[A\]" | awk '{print $1}' | awk -F '/' '{print $2}') && GPG_PUBKEY_ID_C=$(gpg --list-keys --keyid-format LONG | grep "pub\|sub" | awk '{print $2, $4}' | grep "\[C\]" | awk '{print $1}' | awk -F '/' '{print $2}')
             if [ "${GPG_PUBKEY_ID_A}" != "" ]; then
                 rm -rf "/root/.gnupg/gpg-agent.conf" && echo -e "enable-ssh-support\npinentry-program /usr/bin/pinentry-curses" > "/root/.gnupg/gpg-agent.conf" && echo "${GPG_PUBKEY_ID_A}" > "/root/.gnupg/sshcontrol" && gpg --export-ssh-key ${GPG_PUBKEY_ID_C} > "/root/.gnupg/authorized_keys" && if [ -d "/root/.gnupg" ]; then
-                    mv "/root/.gnupg" "/home/deck/.gnupg" && chown -R deck:deck "/home/deck/.gnupg"
-                fi
+                    mv "/root/.gnupg" "/home/deck/.gnupg"
+                fi && chown -R deck:deck "/home/deck/.gnupg"
             fi
         fi
     }
