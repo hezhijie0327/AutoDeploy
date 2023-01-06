@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 1.1.7
+# Current Version: 1.1.8
 
 ## How to get and use?
 # curl "https://source.zhijie.online/AutoDeploy/main/SteamOS.sh" | sudo bash
@@ -60,8 +60,7 @@ function ConfigureSystem() {
         fi
     }
     function ConfigureSWAP() {
-        SWAP_SIZE="4"
-        swapoff -a && dd if=/dev/zero of=/home/swapfile bs=1G count=${SWAP_SIZE} && chmod 0600 /home/swapfile && mkswap /home/swapfile && swapon /home/swapfile
+        swapoff -a && dd if=/dev/zero of="/home/swapfile" bs=1G count=$(( $(dmesg | grep "memory" | grep "VRAM" | cut -d ':' -f 2 | cut -d ' ' -f 2 | tr -d 'a-zA-Z') * 2 / 1024 )) && chmod 0600 "/home/swapfile" && mkswap "/home/swapfile" && swapon "/home/swapfile"
     }
     ConfigureDefaultShell
     ConfigureFlathubMirror
