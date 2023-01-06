@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 2.3.2
+# Current Version: 2.3.3
 
 ## How to get and use?
 # curl "https://source.zhijie.online/AutoDeploy/main/ProxmoxVE.sh" | sudo bash
@@ -518,18 +518,13 @@ function ConfigurePackages() {
         )
         sysctl_list=(
             "net.core.default_qdisc = fq"
-            "net.ipv4.ip_forward = 1"
             "net.ipv4.tcp_congestion_control = bbr"
             "net.ipv4.tcp_fastopen = 3"
-            "net.ipv6.conf.all.forwarding = 1"
         )
         which "sysctl" > "/dev/null" 2>&1
         if [ "$?" -eq "0" ]; then
             rm -rf "/tmp/sysctl.autodeploy" && for sysctl_list_task in "${!sysctl_list[@]}"; do
-                sysctl -w "$(echo ${sysctl_list[$sysctl_list_task]} | sed 's/\ //g')" > "/dev/null" 2>&1
-                if [ "$?" -eq "0" ]; then
-                    echo "${sysctl_list[$sysctl_list_task]}" >> "/tmp/sysctl.autodeploy"
-                fi
+                echo "${sysctl_list[$sysctl_list_task]}" >> "/tmp/sysctl.autodeploy"
             done
             for bridge_interface_task in "${!bridge_interface[@]}"; do
                 echo -e "net.ipv6.conf.${bridge_interface[$bridge_interface_task]}.accept_ra = 2\nnet.ipv6.conf.${bridge_interface[$bridge_interface_task]}.autoconf = 1" >> "/tmp/sysctl.autodeploy"
