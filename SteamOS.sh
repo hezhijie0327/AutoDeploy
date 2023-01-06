@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 1.3.5
+# Current Version: 1.3.6
 
 ## How to get and use?
 # curl "https://source.zhijie.online/AutoDeploy/main/SteamOS.sh" | sudo bash
@@ -181,9 +181,9 @@ function ConfigurePackages() {
                 "function clean_history(){ rm -rf ~/.*_history ~/.ssh/known_hosts* }"
                 "function disable_steamos_readonly(){ sudo steamos-readonly disable }"
                 "function enable_steamos_readonly(){ sudo steamos-readonly enable }"
-                "function update_ge_proton(){ bash \"/home/deck/.steam/root/compatibilitytools.d/GE-Proton.sh\" }"
                 "# function proxy_off(){ unset all_proxy; unset ftp_proxy; unset http_proxy; unset https_proxy; unset rsync_proxy }"
                 "# function proxy_on(){ export all_proxy=\"socks5://localhost.zhijie.online:7890\"; export ftp_proxy=\"http://localhost.zhijie.online:7890\"; export http_proxy=\"http://localhost.zhijie.online:7890\"; export https_proxy=\"http://localhost.zhijie.online:7890\"; export rsync_proxy=\"http://localhost.zhijie.online:7890\" }"
+                "function update_ge_proton(){ bash \"/home/deck/.steam/root/compatibilitytools.d/GE-Proton.sh\" }"
                 "plugins=(zsh-autosuggestions zsh-completions zsh-history-substring-search zsh-syntax-highlighting)"
                 "ZSH_CACHE_DIR=\"\$ZSH/cache\""
                 "ZSH_CUSTOM=\"\$ZSH/custom\""
