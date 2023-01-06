@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 1.2.1
+# Current Version: 1.2.3
 
 ## How to get and use?
 # curl "https://source.zhijie.online/AutoDeploy/main/SteamOS.sh" | sudo bash
@@ -151,7 +151,6 @@ function ConfigurePackages() {
                 mkdir "/etc/sysctl.d"
             fi
             echo -e "net.core.default_qdisc = fq\nnet.ipv4.tcp_congestion_control = bbr" > "/etc/sysctl.d/bbr.conf"
-            echo -e "net.ipv4.ip_forward = 1\nnet.ipv6.conf.all.forwarding = 1" > "/etc/sysctl.d/ip_forward.conf"
             echo -e "net.ipv4.tcp_fastopen = 3" > "/etc/sysctl.d/tcp_fastopen.conf"
             echo -e "vm.swappiness = 10" > "/etc/sysctl.d/swappiness.conf"
         fi
