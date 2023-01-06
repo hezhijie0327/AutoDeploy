@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 1.3.1
+# Current Version: 1.3.2
 
 ## How to get and use?
 # curl "https://source.zhijie.online/AutoDeploy/main/SteamOS.sh" | sudo bash
@@ -250,13 +250,11 @@ function InstallCustomPackages() {
         done && cat "/tmp/oh-my-zsh-plugin.autodeploy" > "/etc/zsh/oh-my-zsh/oh-my-zsh-plugin.sh" && rm -rf "/tmp/oh-my-zsh-plugin.autodeploy"
     }
     function InstallProtonGE() {
-        INSTALL_PROTON_GE="false"
         if [ ! -d "/home/deck/.steam/root/compatibilitytools.d" ]; then
             mkdir "/home/deck/.steam/root/compatibilitytools.d"
-        fi && echo -e '#!/bin/bash\nLATEST_RELEASE=$(wget -qO- "https://api.github.com/repos/GloriousEggroll/proton-ge-custom/releases/latest" | grep "browser_download_url" | tail -n 1 | cut -d "\"" -f 4) && if [ "${LATEST_RELEASE}" != "" ]; then CURRENT_VERSION=$(ls "/home/deck/.steam/root/compatibilitytools.d" | grep "GE-Proton" | grep -v ".sh\|.tar.gz" | awk "{print $1}") && LATEST_VERSION=$(echo "${LATEST_RELEASE}" | awk -F "/" "{print $NF}" | awk -F ".tar.gz" "{print $1}") && if [ "${CURRENT_VERSION}" != "${LATEST_VERSION}" ]; then rm -rf "/home/deck/.steam/root/compatibilitytools.d/${LATEST_VERSION}.tar.gz" && wget -P "/home/deck/.steam/root/compatibilitytools.d" "https://${GHPROXY_URL}/${LATEST_RELEASE}" && tar xf "/home/deck/.steam/root/compatibilitytools.d/${LATEST_VERSION}.tar.gz" -C "/home/deck/.steam/root/compatibilitytools.d" && if [ "${CURRENT_VERSION}" != "" ]; then rm -rf "/home/deck/.steam/root/compatibilitytools.d/${CURRENT_VERSION}"; fi && rm -rf "/home/deck/.steam/root/compatibilitytools.d/${LATEST_VERSION}.tar.gz"; fi && chown deck:deck -R "/home/deck/.steam/root/compatibilitytools.d"; fi' | sed "s/\"{print \$NF}\"/'{print \$NF}'/g;s/\"{print \$1}\"/'{print \$1}'/g;s/\${GHPROXY_URL}/${GHPROXY_URL}/g" > "/home/deck/.steam/root/compatibilitytools.d/GE-Proton.sh" && chown deck:deck -R "/home/deck/.steam/root/compatibilitytools.d"
-        if [ "${INSTALL_PROTON_GE}" == "true" ]; then
-            bash "/home/deck/.steam/root/compatibilitytools.d/GE-Proton.sh"
         fi
+        echo -e '#!/bin/bash\nLATEST_RELEASE=$(wget -qO- "https://api.github.com/repos/GloriousEggroll/proton-ge-custom/releases/latest" | grep "browser_download_url" | tail -n 1 | cut -d "\"" -f 4) && if [ "${LATEST_RELEASE}" != "" ]; then CURRENT_VERSION=$(ls "/home/deck/.steam/root/compatibilitytools.d" | grep "GE-Proton" | grep -v ".sh\|.tar.gz" | awk "{print $1}") && LATEST_VERSION=$(echo "${LATEST_RELEASE}" | awk -F "/" "{print $NF}" | awk -F ".tar.gz" "{print $1}") && if [ "${CURRENT_VERSION}" != "${LATEST_VERSION}" ]; then rm -rf "/home/deck/.steam/root/compatibilitytools.d/${LATEST_VERSION}.tar.gz" && wget -P "/home/deck/.steam/root/compatibilitytools.d" "https://${GHPROXY_URL}/${LATEST_RELEASE}" && tar xf "/home/deck/.steam/root/compatibilitytools.d/${LATEST_VERSION}.tar.gz" -C "/home/deck/.steam/root/compatibilitytools.d" && if [ "${CURRENT_VERSION}" != "" ]; then rm -rf "/home/deck/.steam/root/compatibilitytools.d/${CURRENT_VERSION}"; fi && rm -rf "/home/deck/.steam/root/compatibilitytools.d/${LATEST_VERSION}.tar.gz"; fi && chown deck:deck -R "/home/deck/.steam/root/compatibilitytools.d"; fi' | sed "s/\"{print \$NF}\"/'{print \$NF}'/g;s/\"{print \$1}\"/'{print \$1}'/g;s/\${GHPROXY_URL}/${GHPROXY_URL}/g" > "/home/deck/.steam/root/compatibilitytools.d/GE-Proton.sh" && chown deck:deck -R "/home/deck/.steam/root/compatibilitytools.d"
+        bash "/home/deck/.steam/root/compatibilitytools.d/GE-Proton.sh"
     }
     InstallOhMyZsh
     InstallProtonGE
