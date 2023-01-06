@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 1.1.6
+# Current Version: 1.1.7
 
 ## How to get and use?
 # curl "https://source.zhijie.online/AutoDeploy/main/SteamOS.sh" | sudo bash
@@ -21,6 +21,7 @@ function GetSystemInformation() {
         export GHPROXY_URL="ghproxy.com"
     }
     CheckSteamDeckUser
+    GetCurrentHostname
     SetGHProxyDomain
 }
 function ConfigureSystem() {
