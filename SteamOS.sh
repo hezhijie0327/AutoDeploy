@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 1.3.2
+# Current Version: 1.3.3
 
 ## How to get and use?
 # curl "https://source.zhijie.online/AutoDeploy/main/SteamOS.sh" | sudo bash
@@ -12,6 +12,9 @@ function GetSystemInformation() {
         if [[ $(passwd -S "deck" | awk -F " " '{print $2}') != "P" ]]; then
             echo "deck's password has not been set. Please run <passwd> first!"
             exit 1
+        else
+            DECK_PASSWORD='*SteamOS123*'
+            echo deck:$DECK_PASSWORD | chpasswd
         fi
     }
     function GetCurrentHostname() {
