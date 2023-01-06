@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 1.2.5
+# Current Version: 1.2.6
 
 ## How to get and use?
 # curl "https://source.zhijie.online/AutoDeploy/main/SteamOS.sh" | sudo bash
@@ -17,16 +17,11 @@ function GetSystemInformation() {
     function GetCurrentHostname() {
         export CURRENT_HOSTNAME=$(cat "/etc/hostname")
     }
-    function SetFlathubMirror() {
-        flatpak remote-modify flathub --url="https://mirror.sjtu.edu.cn/flathub"
-        wget -P "/tmp" "https://mirror.sjtu.edu.cn/flathub/flathub.gpg" && flatpak remote-modify --gpg-import="/tmp/flathub.gpg" flathub && rm -rf "/tmp/flathub.gpg"
-    }
     function SetGHProxyDomain() {
         export GHPROXY_URL="ghproxy.com"
     }
     CheckSteamDeckUser
     GetCurrentHostname
-    SetFlathubMirror
     SetGHProxyDomain
 }
 function ConfigureSystem() {
@@ -255,18 +250,16 @@ function InstallCustomPackages() {
         done && cat "/tmp/oh-my-zsh-plugin.autodeploy" > "/etc/zsh/oh-my-zsh/oh-my-zsh-plugin.sh" && rm -rf "/tmp/oh-my-zsh-plugin.autodeploy"
     }
     function InstallProtonGE() {
-        flatpak install -y com.valvesoftware.Steam.CompatibilityTool.Proton-GE
         if [ ! -d "/home/deck/.steam/root/compatibilitytools.d" ]; then
             mkdir "/home/deck/.steam/root/compatibilitytools.d"
         fi
-        if [ -d "/home/deck/.steam/root/compatibilitytools.d/Proton-GE" ]; then
-            rm -rf "/home/deck/.steam/root/compatibilitytools.d/Proton-GE"
+        LATEST_RELEASE=$(wget -qO- "https://api.github.com/repos/GloriousEggroll/proton-ge-custom/releases/latest" | grep 'browser_download_url' | tail -n 1 | cut -d '"' -f 4) && if [ "${LATEST_RELEASE}" != "" ]; then
+            CURRENT_VERSION=$(ls "/home/deck/.steam/root/compatibilitytools.d" | grep "GE-Proton" | awk '{print $1}')
+            LATEST_VERSION=$(echo "${LATEST_RELEASE}" | awk -F '/' '{print $NF}' | awk -F '.tar.gz' '{print $1}')
+            if [ "${CURRENT_VERSION}" != "${LATEST_VERSION}" ]; then
+                wget -qO- "https://${GHPROXY_URL}/${LATEST_RELEASE}" | tar -xf -C "/home/deck/.steam/root/compatibilitytools.d" && rm -rf "/home/deck/.steam/root/compatibilitytools.d/${CURRENT_VERSION}" "/home/deck/.steam/root/compatibilitytools.d/${LATEST_VERSION}.tar.gz"
+            fi
         fi
-        if [ -d "/var/lib/flatpak/runtime/com.valvesoftware.Steam.CompatibilityTool.Proton-GE/x86_64/stable/active/files" ]; then
-            cp -rf "/var/lib/flatpak/runtime/com.valvesoftware.Steam.CompatibilityTool.Proton-GE/x86_64/stable/active/files" "/home/deck/.steam/root/compatibilitytools.d/Proton-GE"
-        fi
-        echo '#!/bin/bash\nif [ -d "/var/lib/flatpak/runtime/com.valvesoftware.Steam.CompatibilityTool.Proton-GE/x86_64/stable/active/files" ]; then sudo flatpak install -y com.valvesoftware.Steam.CompatibilityTool.Proton-GE && sudo cp -rf "/var/lib/flatpak/runtime/com.valvesoftware.Steam.CompatibilityTool.Proton-GE/x86_64/stable/active/files" "/home/deck/.steam/root/compatibilitytools.d/Proton-GE" && sudo chown -R deck:deck "/home/deck/.steam/root/compatibilitytools.d" && sudo flatpak uninstall -y com.valvesoftware.Steam.CompatibilityTool.Proton-GE; fi' > "/home/deck/.steam/root/compatibilitytools.d/Proton-GE.sh" && chown -R deck:deck "/home/deck/.steam/root/compatibilitytools.d"
-        flatpak uninstall -y com.valvesoftware.Steam.CompatibilityTool.Proton-GE
     }
     InstallOhMyZsh
     InstallProtonGE
