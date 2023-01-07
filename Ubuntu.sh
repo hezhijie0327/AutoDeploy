@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 3.9.8
+# Current Version: 3.9.9
 
 ## How to get and use?
 # curl "https://source.zhijie.online/AutoDeploy/main/Ubuntu.sh" | sudo bash
@@ -525,14 +525,9 @@ function ConfigurePackages() {
         if [ "$?" -eq "0" ]; then
             rm -rf "/home/${DEFAULT_USERNAME}/.gnupg" "/root/.gnupg" && gpg --keyserver hkps://keyserver.ubuntu.com:443 --recv ${GPG_PUBKEY} && echo "${GPG_PUBKEY}" | awk 'BEGIN { FS = "\n" }; { print $1":6:" }' | gpg --import-ownertrust && GPG_PUBKEY_ID_A=$(gpg --list-keys --keyid-format LONG | grep "pub\|sub" | awk '{print $2, $4}' | grep "\[A\]" | awk '{print $1}' | awk -F '/' '{print $2}') && GPG_PUBKEY_ID_C=$(gpg --list-keys --keyid-format LONG | grep "pub\|sub" | awk '{print $2, $4}' | grep "\[C\]" | awk '{print $1}' | awk -F '/' '{print $2}')
             if [ "${GPG_PUBKEY_ID_A}" != "" ]; then
-                if [ "$(apt list --installed | grep 'ubuntu-desktop')" != "" ]; then
-                    PINENTRY_PROGRAM_NAME="pinentry-gnome3"
-                else
-                    PINENTRY_PROGRAM_NAME="pinentry-curses"
-                fi
                 gpg_agent_list=(
                     "enable-ssh-support"
-                    "pinentry-program /usr/bin/${PINENTRY_PROGRAM_NAME}"
+                    "pinentry-program /usr/bin/pinentry-curses"
                 )
                 rm -rf "/root/.gnupg/gpg-agent.conf" && for gpg_agent_list_task in "${!gpg_agent_list[@]}"; do
                     echo "${gpg_agent_list[$gpg_agent_list_task]}" >> "/root/.gnupg/gpg-agent.conf"
@@ -1065,7 +1060,6 @@ function InstallDependencyPackages() {
         "openssh-server"
         "p7zip-full"
         "pinentry-curses"
-        "pinentry-gnome3"
         "postfix"
         "python3"
         "python3-pip"
