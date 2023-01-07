@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 1.3.7
+# Current Version: 1.3.8
 
 ## How to get and use?
 # curl "https://source.zhijie.online/AutoDeploy/main/SteamOS.sh" | sudo bash
@@ -277,3 +277,5 @@ InstallCustomPackages
 ConfigureSystem
 # Call ConfigurePackages
 ConfigurePackages
+# Enable Steam OS Protection
+steamos-readonly enable
