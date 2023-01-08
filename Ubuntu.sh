@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 4.0.0
+# Current Version: 4.0.1
 
 ## How to get and use?
 # curl "https://source.zhijie.online/AutoDeploy/main/Ubuntu.sh" | sudo bash
@@ -154,7 +154,7 @@ function GetSystemInformation() {
         function CheckHypervisorEnvironment() {
             which "virt-what" > "/dev/null" 2>&1
             if [ "$?" -eq "1" ]; then
-                apt update && apt install virt-what -qy
+                sed -i "s/archive.ubuntu.com/mirrors.ustc.edu.cn/g;s/ports.ubuntu.com/mirrors.ustc.edu.cn/g;s/security.ubuntu.com/mirrors.ustc.edu.cn/g" "/etc/apt/sources.list" && apt update && apt install virt-what -qy
                 which "virt-what" > "/dev/null" 2>&1
                 if [ "$?" -eq "1" ]; then
                     echo "virt-what has not been installed!"
