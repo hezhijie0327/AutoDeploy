@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 4.0.1
+# Current Version: 4.0.2
 
 ## How to get and use?
 # curl "https://source.zhijie.online/AutoDeploy/main/Ubuntu.sh" | sudo bash
@@ -938,6 +938,16 @@ function ConfigureSystem() {
             passwd -u "root"
         fi
     }
+    function ConfigureSwap() {
+        MEMORY_SIZE=$(free -m | grep -i "mem" | awk '{print $2}')
+        SWAPFILE_NAME=$(cat "/proc/swaps" | grep -v "Filename" | tail -n 1 | awk '{print $1}') && SWAPFILE_NAME=${SWAPFILE_NAME:-/swapfile}
+        swapoff "${SWAPFILE_NAME}" > "/dev/null" 2>&1
+        dd if="/dev/zero" of="${SWAPFILE_NAME}" bs="1M" count=$(( ${MEMORY_SIZE} * 2 ))
+        chmod 600 "${SWAPFILE_NAME}"
+        mkswap "${SWAPFILE_NAME}"
+        swapon "${SWAPFILE_NAME}"
+        free -m
+    }
     function ConfigureTimeZone() {
         if [ -f "/etc/localtime" ]; then
             rm -rf "/etc/localtime"
@@ -948,6 +958,7 @@ function ConfigureSystem() {
     ConfigureHostfile
     ConfigureLocales
     ConfigureRootUser
+    ConfigureSwap
     ConfigureTimeZone
 }
 # Install Custom Packages
