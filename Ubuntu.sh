@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 3.9.9
+# Current Version: 4.0.0
 
 ## How to get and use?
 # curl "https://source.zhijie.online/AutoDeploy/main/Ubuntu.sh" | sudo bash
@@ -1056,6 +1056,7 @@ function InstallDependencyPackages() {
         "nfs-common"
         "nmap"
         "ntfs-3g"
+        "nut"
         "openssh-client"
         "openssh-server"
         "p7zip-full"
