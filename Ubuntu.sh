@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 4.0.2
+# Current Version: 4.0.3
 
 ## How to get and use?
 # curl "https://source.zhijie.online/AutoDeploy/main/Ubuntu.sh" | sudo bash
@@ -702,6 +702,7 @@ function ConfigurePackages() {
             "net.core.default_qdisc = fq"
             "net.ipv4.tcp_congestion_control = bbr"
             "net.ipv4.tcp_fastopen = 3"
+            "vm.swappiness = 10"
         )
         which "sysctl" > "/dev/null" 2>&1
         if [ "$?" -eq "0" ]; then
