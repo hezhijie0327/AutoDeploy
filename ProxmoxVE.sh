@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 2.4.1
+# Current Version: 2.4.2
 
 ## How to get and use?
 # curl "https://source.zhijie.online/AutoDeploy/main/ProxmoxVE.sh" | sudo bash
@@ -702,11 +702,43 @@ function ConfigureSystem() {
             passwd -u "root"
         fi
     }
+    function ConfigureSWAP() {
+        function ClearSWAP() {
+            sysctl -w "vm.overcommit_memory=0"
+            sysctl -w "vm.swappiness=0"
+            sync ; echo "3" > "/proc/sys/vm/drop_caches"
+        }
+        function CreateSWAP() {
+            truncate -s 0 "/swapfile"
+            chattr +C "/swapfile"
+            fallocate -l $(( $(free -m | grep -i "mem" | awk '{print $2}') * 2 ))M "/swapfile"
+            chmod 600 "/swapfile"
+            mkswap "/swapfile"
+            swapon "/swapfile"
+        }
+        function RemoveSWAP() {
+            SWAPFILE_NAME=($(cat "/proc/swaps" | grep -v "Filename" | awk '{print $1}'))
+            for SWAPFILE_NAME_TASK in "${!SWAPFILE_NAME[@]}"; do
+                swapoff "${SWAPFILE_NAME[$SWAPFILE_NAME_TASK]}" > "/dev/null" 2>&1
+                rm -rf "${SWAPFILE_NAME[$SWAPFILE_NAME_TASK]}"
+            done
+        }
+        function UpdateFSTAB() {
+            cat "/etc/fstab" | grep -v "swap" > "/tmp/fstab.autodeploy"
+            echo "/swapfile none swap sw 0 0" >> "/tmp/fstab.autodeploy"
+            cat "/tmp/fstab.autodeploy" > "/etc/fstab"
+        }
+        ClearSWAP
+        RemoveSWAP
+        CreateSWAP
+        UpdateFSTAB
+    }
     ConfigureDefaultShell
     ConfigureDefaultUser
     ConfigureHostfile
     ConfigureProxmoxVENode
     ConfigureRootUser
+    ConfigureSWAP
 }
 # Install Custom Packages
 function InstallCustomPackages() {
