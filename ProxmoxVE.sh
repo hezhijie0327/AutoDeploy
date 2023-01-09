@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 2.4.3
+# Current Version: 2.4.4
 
 ## How to get and use?
 # curl "https://source.zhijie.online/AutoDeploy/main/ProxmoxVE.sh" | sudo bash
@@ -146,7 +146,7 @@ function SetRepositoryMirror() {
     done && cat "/tmp/apt.autodeploy" > "/etc/apt/sources.list" && rm -rf "/tmp/apt.autodeploy"
     rm -rf "/tmp/apt.autodeploy" && for proxmox_mirror_list_task in "${!proxmox_mirror_list[@]}"; do
         echo "${proxmox_mirror_list[$proxmox_mirror_list_task]}" >> "/tmp/apt.autodeploy"
-    done && cat "/tmp/apt.autodeploy" > "/etc/apt/sources.list.d/proxmox.list" && rm -rf "/tmp/apt.autodeploy" && sed -i 's|http://download.proxmox.com|https://mirrors.ustc.edu.cn/proxmox|g' "/usr/share/perl5/PVE/APLInfo.pm"
+    done && cat "/tmp/apt.autodeploy" > "/etc/apt/sources.list.d/proxmox.list" && rm -rf "/tmp/apt.autodeploy"
 }
 # Set Readonly Flag
 function SetReadonlyFlag() {
@@ -448,6 +448,9 @@ function ConfigurePackages() {
     function ConfigurePVECluster() {
         systemctl stop pve-cluster && systemctl stop corosync && pmxcfs -l && rm -rf "/etc/pve/corosync.conf" && rm -rf /etc/corosync/* /var/log/corosync/* /var/lib/corosync/* && killall pmxcfs && systemctl start pve-cluster
     }
+    function ConfigurePVEContainer() {
+        sed -i 's|http://download.proxmox.com|https://mirrors.ustc.edu.cn/proxmox|g' "/usr/share/perl5/PVE/APLInfo.pm" && systemctl restart pvedaemon.service
+    }
     function ConfigurePVEFirewall() {
         cluster_fw_list=(
             "[OPTIONS]"
@@ -649,6 +652,7 @@ function ConfigurePackages() {
     ConfigurePostfix
     ConfigurePVECeph
     ConfigurePVECluster
+    ConfigurePVEContainer
     ConfigurePVEFirewall
     ConfigurePythonPyPI
     ConfigureSshd
