@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 4.0.7
+# Current Version: 4.0.8
 
 ## How to get and use?
 # curl "https://source.zhijie.online/AutoDeploy/main/Ubuntu.sh" | sudo bash
@@ -942,9 +942,17 @@ function ConfigureSystem() {
     }
     function ConfigureSWAP() {
         function ClearSWAP() {
-            sysctl -w "vm.overcommit_memory=0"
-            sysctl -w "vm.swappiness=0"
-            sync ; echo "3" > "/proc/sys/vm/drop_caches"
+            sysctl_swap_list=(
+                "vm.drop_caches=3"
+                "vm.overcommit_memory=0"
+                "vm.swappiness=0"
+            )
+            which "sysctl" > "/dev/null" 2>&1
+            if [ "$?" -eq "0" ]; then
+                sync && for sysctl_swap_list_task in "${!sysctl_swap_list[@]}"; do
+                    sysctl -w "${sysctl_swap_list[$sysctl_swap_list_task]}"
+                done
+            fi
         }
         function CreateSWAP() {
             truncate -s 0 "/swapfile"
