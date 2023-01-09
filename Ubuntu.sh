@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 4.0.6
+# Current Version: 4.0.7
 
 ## How to get and use?
 # curl "https://source.zhijie.online/AutoDeploy/main/Ubuntu.sh" | sudo bash
@@ -527,7 +527,7 @@ function ConfigurePackages() {
             if [ "${GPG_PUBKEY_ID_A}" != "" ]; then
                 gpg_agent_list=(
                     "enable-ssh-support"
-                    "pinentry-program /usr/bin/pinentry-curses"
+                    "pinentry-program /usr/bin/pinentry-tty"
                 )
                 rm -rf "/root/.gnupg/gpg-agent.conf" && for gpg_agent_list_task in "${!gpg_agent_list[@]}"; do
                     echo "${gpg_agent_list[$gpg_agent_list_task]}" >> "/root/.gnupg/gpg-agent.conf"
@@ -1096,7 +1096,7 @@ function InstallDependencyPackages() {
         "openssh-client"
         "openssh-server"
         "p7zip-full"
-        "pinentry-curses"
+        "pinentry-tty"
         "postfix"
         "python3"
         "python3-pip"
