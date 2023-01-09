@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 2.4.2
+# Current Version: 2.4.3
 
 ## How to get and use?
 # curl "https://source.zhijie.online/AutoDeploy/main/ProxmoxVE.sh" | sudo bash
@@ -10,12 +10,9 @@
 # Get System Information
 function GetSystemInformation() {
     function CheckHypervisorEnvironment() {
-        if [ -f "/etc/apt/sources.list.d/pve-enterprise.list" ]; then
-            rm -rf "/etc/apt/sources.list.d/pve-enterprise.list"
-        fi
         which "virt-what" > "/dev/null" 2>&1
         if [ "$?" -eq "1" ]; then
-            sed -i 's|deb.debian.org|mirrors.ustc.edu.cn|g;s|ftp.debian.org|mirrors.ustc.edu.cn|g;s|security.debian.org/debian-security|mirrors.ustc.edu.cn/debian-security|g;s|security.debian.org|mirrors.ustc.edu.cn/debian-security|g' "/etc/apt/sources.list" && apt update && apt install virt-what -qy
+            rm -rf "/etc/apt/sources.list.d/pve-enterprise.list" && sed -i 's|deb.debian.org|mirrors.ustc.edu.cn|g;s|ftp.debian.org|mirrors.ustc.edu.cn|g;s|security.debian.org/debian-security|mirrors.ustc.edu.cn/debian-security|g;s|security.debian.org|mirrors.ustc.edu.cn/debian-security|g' "/etc/apt/sources.list" && apt update && apt install virt-what -qy
             which "virt-what" > "/dev/null" 2>&1
             if [ "$?" -eq "1" ]; then
                 echo "virt-what has not been installed!"
@@ -36,6 +33,48 @@ function GetSystemInformation() {
     }
     function GenerateHostname() {
         NEW_HOSTNAME="ProxmoxVE-$(date '+%Y%m%d%H%M%S')"
+    }
+    function GenerateResolv() {
+        USE_GLOBAL_DNS="false"
+        if [ "${USE_GLOBAL_DNS}" == "true" ]; then
+            CUSTOM_DNS=(
+                "8.8.4.4"
+                "8.8.8.8"
+                "2001:4860:4860::8844"
+                "2001:4860:4860::8888"
+            )
+        else
+            CUSTOM_DNS=(
+                "223.5.5.5"
+                "223.6.6.6"
+                "2400:3200::1"
+                "2400:3200:baba::1"
+            )
+        fi
+        DHCP_DNS=()
+        CUSTOM_DNS_LINE="" && for CUSTOM_DNS_TASK in "${!CUSTOM_DNS[@]}"; do
+            CUSTOM_DNS_LINE="${CUSTOM_DNS_LINE} ${CUSTOM_DNS[$CUSTOM_DNS_TASK]}"
+            CUSTOM_DNS_LINE=$(echo "${CUSTOM_DNS_LINE}" | sed "s/^\ //g")
+        done && CURRENT_DNS_EXCLUDE="$(echo ${DHCP_DNS[*]} ${CUSTOM_DNS_LINE} | sed 's/\ /\\\|/g')\|127.0.0.53"
+        if [ -f "/etc/resolv.conf" ]; then
+            CURRENT_DNS=(${DHCP_DNS[*]} $(cat "/etc/resolv.conf" | grep "nameserver\ " | sed "s/nameserver\ //g" | grep -v "${CURRENT_DNS_EXCLUDE}" | awk "{print $2}"))
+        fi
+        resolv_conf_list=(
+            ${CURRENT_DNS[@]}
+            ${CUSTOM_DNS[@]}
+        )
+        rm -rf "/tmp/resolv.autodeploy" && DNS_COUNT="1" && for resolv_conf_list_task in "${!resolv_conf_list[@]}"; do
+            if [ "${DNS_COUNT}" -gt "3" ]; then
+                break
+            else
+                echo "nameserver ${resolv_conf_list[$resolv_conf_list_task]}" >> "/tmp/resolv.autodeploy"
+            fi && DNS_COUNT=$(( ${DNS_COUNT} + 1 ))
+        done && echo "search ${NEW_DOMAIN[*]}" >> "/tmp/resolv.autodeploy" && if [ -f "/etc/resolv.conf" ]; then
+            chattr -i "/etc/resolv.conf" > "/dev/null" 2>&1
+            if [ "$?" -eq "1" ]; then
+                rm -rf "/etc/resolv.conf"
+            fi
+        fi && rm -rf "/etc/resolv.conf" && cat "/tmp/resolv.autodeploy" > "/etc/resolv.conf" && rm -rf "/tmp/resolv.autodeploy"
     }
     function GetCPUVendorID() {
         CPU_VENDOR_ID=$(cat '/proc/cpuinfo' | grep 'vendor_id' | uniq | awk -F ':' '{print $2}' | awk -F ' ' '{print $1}')
@@ -71,6 +110,7 @@ function GetSystemInformation() {
     CheckHypervisorEnvironment
     GenerateDomain
     GenerateHostname
+    GenerateResolv
     GetCPUVendorID
     GetHostname
     GetLSBCodename
