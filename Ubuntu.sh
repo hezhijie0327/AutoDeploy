@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 4.0.3
+# Current Version: 4.0.4
 
 ## How to get and use?
 # curl "https://source.zhijie.online/AutoDeploy/main/Ubuntu.sh" | sudo bash
@@ -702,6 +702,7 @@ function ConfigurePackages() {
             "net.core.default_qdisc = fq"
             "net.ipv4.tcp_congestion_control = bbr"
             "net.ipv4.tcp_fastopen = 3"
+            "vm.overcommit_memory = 1"
             "vm.swappiness = 10"
         )
         which "sysctl" > "/dev/null" 2>&1
@@ -939,15 +940,31 @@ function ConfigureSystem() {
             passwd -u "root"
         fi
     }
-    function ConfigureSwap() {
-        MEMORY_SIZE=$(free -m | grep -i "mem" | awk '{print $2}')
-        SWAPFILE_NAME=$(cat "/proc/swaps" | grep -v "Filename" | tail -n 1 | awk '{print $1}') && SWAPFILE_NAME=${SWAPFILE_NAME:-/swapfile}
-        swapoff "${SWAPFILE_NAME}" > "/dev/null" 2>&1
-        dd if="/dev/zero" of="${SWAPFILE_NAME}" bs="1M" count=$(( ${MEMORY_SIZE} * 2 ))
-        chmod 600 "${SWAPFILE_NAME}"
-        mkswap "${SWAPFILE_NAME}"
-        swapon "${SWAPFILE_NAME}"
-        free -m
+    function ConfigureSWAP() {
+        function ClearSWAP() {
+            sysctl -w "vm.overcommit_memory=0"
+            sysctl -w "vm.swappiness=0"
+            sync ; echo "3" > "/proc/sys/vm/drop_caches"
+        }
+        function CreateSWAP() {
+            dd if="/dev/zero" of="/swapfile" bs="1M" count=$(( $(free -m | grep -i "mem" | awk '{print $2}') * 2 )) && chmod 600 "/swapfile" && mkswap "/swapfile" && swapon "/swapfile"
+        }
+        function RemoveSWAP() {
+            SWAPFILE_NAME=($(cat "/proc/swaps" | grep -v "Filename" | awk '{print $1}'))
+            for SWAPFILE_NAME_TASK in "${!SWAPFILE_NAME[@]}"; do
+                swapoff "${SWAPFILE_NAME[$SWAPFILE_NAME_TASK]}" > "/dev/null" 2>&1
+                rm -rf "${SWAPFILE_NAME[$SWAPFILE_NAME_TASK]}"
+            done
+        }
+        function UpdateFSTAB() {
+            cat "/etc/fstab" | grep -v "swap" > "/tmp/fstab.autodeploy"
+            echo "/swapfile none swap sw 0 0" >> "/tmp/fstab.autodeploy"
+            cat "/tmp/fstab.autodeploy" > "/etc/fstab"
+        }
+        ClearSWAP
+        RemoveSWAP
+        CreateSWAP
+        UpdateFSTAB
     }
     function ConfigureTimeZone() {
         if [ -f "/etc/localtime" ]; then
@@ -959,7 +976,7 @@ function ConfigureSystem() {
     ConfigureHostfile
     ConfigureLocales
     ConfigureRootUser
-    ConfigureSwap
+    ConfigureSWAP
     ConfigureTimeZone
 }
 # Install Custom Packages
