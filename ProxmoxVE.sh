@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 2.4.0
+# Current Version: 2.4.1
 
 ## How to get and use?
 # curl "https://source.zhijie.online/AutoDeploy/main/ProxmoxVE.sh" | sudo bash
@@ -515,6 +515,7 @@ function ConfigurePackages() {
             "net.core.default_qdisc = fq"
             "net.ipv4.tcp_congestion_control = bbr"
             "net.ipv4.tcp_fastopen = 3"
+            "vm.overcommit_memory = 1"
             "vm.swappiness = 10"
         )
         which "sysctl" > "/dev/null" 2>&1
