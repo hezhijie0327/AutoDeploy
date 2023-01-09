@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 4.0.4
+# Current Version: 4.0.5
 
 ## How to get and use?
 # curl "https://source.zhijie.online/AutoDeploy/main/Ubuntu.sh" | sudo bash
@@ -947,7 +947,12 @@ function ConfigureSystem() {
             sync ; echo "3" > "/proc/sys/vm/drop_caches"
         }
         function CreateSWAP() {
-            dd if="/dev/zero" of="/swapfile" bs="1M" count=$(( $(free -m | grep -i "mem" | awk '{print $2}') * 2 )) && chmod 600 "/swapfile" && mkswap "/swapfile" && swapon "/swapfile"
+            truncate -s 0 "/swapfile"
+            chattr +C "/swapfile"
+            fallocate -l $(( $(free -m | grep -i "mem" | awk '{print $2}') * 2 ))M "/swapfile"
+            chmod 600 "/swapfile"
+            mkswap "/swapfile"
+            swapon "/swapfile"
         }
         function RemoveSWAP() {
             SWAPFILE_NAME=($(cat "/proc/swaps" | grep -v "Filename" | awk '{print $1}'))
