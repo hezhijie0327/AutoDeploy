@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 4.0.5
+# Current Version: 4.0.6
 
 ## How to get and use?
 # curl "https://source.zhijie.online/AutoDeploy/main/Ubuntu.sh" | sudo bash
@@ -966,10 +966,12 @@ function ConfigureSystem() {
             echo "/swapfile none swap sw 0 0" >> "/tmp/fstab.autodeploy"
             cat "/tmp/fstab.autodeploy" > "/etc/fstab"
         }
-        ClearSWAP
-        RemoveSWAP
-        CreateSWAP
-        UpdateFSTAB
+        if [ "${container_environment}" != "docker" ] && [ "${container_environment}" != "wsl2" ]; then
+            ClearSWAP
+            RemoveSWAP
+            CreateSWAP
+            UpdateFSTAB
+        fi
     }
     function ConfigureTimeZone() {
         if [ -f "/etc/localtime" ]; then
