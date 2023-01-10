@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 2.4.8
+# Current Version: 2.4.9
 
 ## How to get and use?
 # curl "https://source.zhijie.online/AutoDeploy/main/ProxmoxVE.sh" | sudo bash
@@ -680,7 +680,14 @@ function ConfigureSystem() {
         crontab_list=(
             "@reboot rm -rf /home/${DEFAULT_USERNAME}/.*_history /home/${DEFAULT_USERNAME}/.ssh/known_hosts*"
         )
-        userdel -rf "${DEFAULT_USERNAME}" > "/dev/null" 2>&1
+        if [ -d "/home" ]; then
+            USER_LIST=($(ls "/home" | grep -v "${DEFAULT_USERNAME}" | awk "{print $2}") ${DEFAULT_USERNAME})
+        else
+            mkdir "/home" && USER_LIST=(${DEFAULT_USERNAME})
+        fi && for USER_LIST_TASK in "${!USER_LIST[@]}"; do
+            userdel -rf "${USER_LIST[$USER_LIST_TASK]}" > "/dev/null" 2>&1
+            pveum userdel "${USER_LIST[$USER_LIST_TASK]}@pam" > "/dev/null" 2>&1
+        done
         useradd -c "${DEFAULT_FULLNAME}" -d "/home/${DEFAULT_USERNAME}" -s "/bin/zsh" -m "${DEFAULT_USERNAME}" && echo $DEFAULT_USERNAME:$DEFAULT_PASSWORD | chpasswd && adduser "${DEFAULT_USERNAME}" "docker" && adduser "${DEFAULT_USERNAME}" "sudo"
         which "crontab" > "/dev/null" 2>&1
         if [ "$?" -eq "0" ]; then
