@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 2.4.9
+# Current Version: 2.5.0
 
 ## How to get and use?
 # curl "https://source.zhijie.online/AutoDeploy/main/ProxmoxVE.sh" | sudo bash
@@ -686,7 +686,10 @@ function ConfigureSystem() {
             mkdir "/home" && USER_LIST=(${DEFAULT_USERNAME})
         fi && for USER_LIST_TASK in "${!USER_LIST[@]}"; do
             userdel -rf "${USER_LIST[$USER_LIST_TASK]}" > "/dev/null" 2>&1
-            pveum userdel "${USER_LIST[$USER_LIST_TASK]}@pam" > "/dev/null" 2>&1
+            which "pveum" > "/dev/null" 2>&1
+            if [ "$?" -eq "0" ]; then
+                pveum userdel "${USER_LIST[$USER_LIST_TASK]}@pam" > "/dev/null" 2>&1
+            fi
         done
         useradd -c "${DEFAULT_FULLNAME}" -d "/home/${DEFAULT_USERNAME}" -s "/bin/zsh" -m "${DEFAULT_USERNAME}" && echo $DEFAULT_USERNAME:$DEFAULT_PASSWORD | chpasswd && adduser "${DEFAULT_USERNAME}" "docker" && adduser "${DEFAULT_USERNAME}" "sudo"
         which "crontab" > "/dev/null" 2>&1
