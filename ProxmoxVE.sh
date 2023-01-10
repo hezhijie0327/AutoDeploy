@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 2.4.6
+# Current Version: 2.4.7
 
 ## How to get and use?
 # curl "https://source.zhijie.online/AutoDeploy/main/ProxmoxVE.sh" | sudo bash
@@ -772,7 +772,12 @@ function ConfigureSystem() {
             SWAPFILE_NAME=($(cat "/proc/swaps" | grep -v "Filename" | awk '{print $1}'))
             for SWAPFILE_NAME_TASK in "${!SWAPFILE_NAME[@]}"; do
                 swapoff "${SWAPFILE_NAME[$SWAPFILE_NAME_TASK]}" > "/dev/null" 2>&1
-                rm -rf "${SWAPFILE_NAME[$SWAPFILE_NAME_TASK]}"
+                if [[ "${SWAPFILE_NAME[$SWAPFILE_NAME_TASK]}" =~ ^/dev/dm-* ]]; then
+                    lvremove -f "/dev/mapper/pve-swap" > "/dev/null" 2>&1
+                    lvextend -l +100%FREE "/dev/mapper/pve-root"
+                else
+                    rm -rf "${SWAPFILE_NAME[$SWAPFILE_NAME_TASK]}"
+                fi
             done
         }
         function UpdateFSTAB() {
