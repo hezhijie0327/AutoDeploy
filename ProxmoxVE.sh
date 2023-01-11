@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 2.5.2
+# Current Version: 2.5.3
 
 ## How to get and use?
 # curl "https://source.zhijie.online/AutoDeploy/main/ProxmoxVE.sh" | sudo bash
@@ -461,14 +461,14 @@ function ConfigurePackages() {
         cluster_fw_list=(
             "[OPTIONS]"
             "ebtables: 1"
-            "enable: 1"
+            "enable: 0"
             "log_ratelimit: burst=5,enable=1,rate=1/second"
             "policy_in: REJECT"
             "policy_out: ACCEPT"
         )
         host_fw_list=(
             "[OPTIONS]"
-            "enable: 1"
+            "enable: 0"
             "log_level_in: err"
             "log_level_out: err"
             "log_nf_conntrack: 1"
@@ -505,8 +505,8 @@ function ConfigurePackages() {
             "log_level_out: err"
             "macfilter: 1"
             "ndp: 1"
-            "policy_in: ACCEPT"
-            "policy_out: REJECT"
+            "policy_in: REJECT"
+            "policy_out: ACCEPT"
             "radv: 1"
         )
         vm_container_list=(
