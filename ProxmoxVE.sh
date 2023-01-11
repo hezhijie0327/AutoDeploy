@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 2.5.0
+# Current Version: 2.5.1
 
 ## How to get and use?
 # curl "https://source.zhijie.online/AutoDeploy/main/ProxmoxVE.sh" | sudo bash
@@ -452,8 +452,11 @@ function ConfigurePackages() {
         sed -i 's|http://download.proxmox.com|https://mirrors.ustc.edu.cn/proxmox|g' "/usr/share/perl5/PVE/APLInfo.pm" && systemctl restart pvedaemon.service
     }
     function ConfigurePVEDashboard() {
-        sed -i "s/(Ext.Msg.show\(\{\s+title: gettext\('No valid sub)/void\(\{ \/\/\1/g" "/usr/share/javascript/proxmox-widget-toolkit/proxmoxlib.js" && systemctl restart pveproxy.service
-    }
+        DISABLE_SUBSCRIPTION_NOTICE="false"
+        if [ "${DISABLE_SUBSCRIPTION_NOTICE}" == "true" ]; then
+            sed -i "s/(Ext.Msg.show\(\{\s+title: gettext\('No valid sub)/void\(\{ \/\/\1/g" "/usr/share/javascript/proxmox-widget-toolkit/proxmoxlib.js" && systemctl restart pveproxy.service
+        fi
+}
     function ConfigurePVEFirewall() {
         cluster_fw_list=(
             "[OPTIONS]"
