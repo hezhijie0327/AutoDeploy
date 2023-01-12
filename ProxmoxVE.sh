@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 2.5.7
+# Current Version: 2.5.8
 
 ## How to get and use?
 # curl "https://source.zhijie.online/AutoDeploy/main/ProxmoxVE.sh" | sudo bash
@@ -468,6 +468,7 @@ function ConfigurePackages() {
             "policy_in: REJECT"
             "policy_out: ACCEPT"
             "[RULES]"
+            "IN ACCEPT -p icmp -log err"
             "IN ACCEPT -p tcp -dport 135 -log err"
             "IN ACCEPT -p udp -dport 135 -log err"
             "IN ACCEPT -p udp -dport 137:139 -log err"
@@ -530,6 +531,8 @@ function ConfigurePackages() {
             "policy_in: REJECT"
             "policy_out: ACCEPT"
             "radv: 1"
+            "[RULES]"
+            "IN ACCEPT -p icmp -log err"
         )
         vm_container_list=(
             $(ls "/etc/pve/lxc" | grep "\.conf" | sed "s/\.conf//g" | awk '{print $1}')
