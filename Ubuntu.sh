@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 4.0.8
+# Current Version: 4.0.9
 
 ## How to get and use?
 # curl "https://source.zhijie.online/AutoDeploy/main/Ubuntu.sh" | sudo bash
@@ -566,7 +566,7 @@ function ConfigurePackages() {
             "      dhcp4: true"
             "      dhcp6: true"
         )
-        network_interface=($(cat "/proc/net/dev" | grep -v "docker0\|lo\|wg0" | grep "\:" | sed "s/[[:space:]]//g" | cut -d ":" -f 1 | sort | uniq))
+        network_interface=($(cat "/proc/net/dev" | grep -v "docker0\|lo\|wg0" | grep "\:" | sed "s/[[:space:]]//g" | cut -d ":" -f 1 | sort | uniq | awk "{print $2}"))
         which "netplan" > "/dev/null" 2>&1
         if [ "$?" -eq "0" ]; then
             if [ "${container_environment}" != "docker" ] && [ "${container_environment}" != "wsl2" ]; then
@@ -698,8 +698,14 @@ function ConfigurePackages() {
         fi
     }
     function ConfigureSysctl() {
+        bridge_interface=(
+            "all"
+            "default"
+            $(cat "/proc/net/dev" | grep -v "docker0\|lo\|wg0" | grep "\:" | sed "s/[[:space:]]//g" | cut -d ":" -f 1 | sort | uniq | awk "{print $2}")
+        )
         sysctl_list=(
             "net.core.default_qdisc = fq"
+            "net.ipv4.ip_forward = 1"
             "net.ipv4.tcp_congestion_control = bbr"
             "net.ipv4.tcp_fastopen = 3"
             "vm.overcommit_memory = 1"
@@ -709,6 +715,8 @@ function ConfigurePackages() {
         if [ "$?" -eq "0" ]; then
             rm -rf "/tmp/sysctl.autodeploy" && for sysctl_list_task in "${!sysctl_list[@]}"; do
                 echo "${sysctl_list[$sysctl_list_task]}" >> "/tmp/sysctl.autodeploy"
+            done && for bridge_interface_task in "${!bridge_interface[@]}"; do
+                echo -e "net.ipv6.conf.${bridge_interface[$bridge_interface_task]}.accept_ra = 2\nnet.ipv6.conf.${bridge_interface[$bridge_interface_task]}.autoconf = 1\nnet.ipv6.conf.${bridge_interface[$bridge_interface_task]}.forwarding" >> "/tmp/sysctl.autodeploy"
             done && cat "/tmp/sysctl.autodeploy" > "/etc/sysctl.conf" && sysctl -p && rm -rf "/tmp/sysctl.autodeploy"
         fi
     }
