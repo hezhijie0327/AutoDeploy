@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 2.5.4
+# Current Version: 2.5.5
 
 ## How to get and use?
 # curl "https://source.zhijie.online/AutoDeploy/main/ProxmoxVE.sh" | sudo bash
@@ -394,8 +394,10 @@ function ConfigurePackages() {
             fi
         fi
     }
-    function ConfigureIOMMU() {
+    function ConfigureModules() {
         module_list=(
+            "ip_conntrack_ftp"
+            "nfnetlink_queue"
             "vfio"
             "vfio_iommu_type1"
             "vfio_pci"
@@ -465,6 +467,24 @@ function ConfigurePackages() {
             "log_ratelimit: burst=5,enable=1,rate=1/second"
             "policy_in: REJECT"
             "policy_out: ACCEPT"
+            "[RULES]"
+            "IN ACCEPT -p tcp -dport 135 -log err"
+            "IN ACCEPT -p udp -dport 135 -log err"
+            "IN ACCEPT -p udp -dport 137:139 -log err"
+            "IN ACCEPT -p tcp -dport 139 -log err"
+            "IN ACCEPT -p udp -dport 1900 -log err"
+            "IN ACCEPT -p tcp -dport 22 -log err"
+            "IN ACCEPT -p tcp -dport 3128 -log err"
+            "IN ACCEPT -p tcp -dport 43 -log err"
+            "IN ACCEPT -p tcp -dport 445 -log err"
+            "IN ACCEPT -p udp -dport 445 -log err"
+            "IN ACCEPT -p tcp -dport 53 -log err"
+            "IN ACCEPT -p udp -dport 53 -log err"
+            "IN ACCEPT -p udp -dport 5405:5412 -log err"
+            "IN ACCEPT -p udp -dport 546:547 -log err"
+            "IN ACCEPT -p tcp -dport 5900:5999 -log err"
+            "IN ACCEPT -p udp -dport 67:68 -log err"
+            "IN ACCEPT -p tcp -dport 8006 -log err"
         )
         host_fw_list=(
             "[OPTIONS]"
@@ -478,7 +498,7 @@ function ConfigurePackages() {
             "nf_conntrack_tcp_timeout_established: 432000"
             "nf_conntrack_tcp_timeout_syn_recv: 60"
             "nosmurfs: 1"
-            "protection_synflood: 1"
+            "protection_synflood: 0"
             "protection_synflood_burst: 1000"
             "protection_synflood_rate: 200"
             "smurf_log_level: err"
@@ -492,10 +512,8 @@ function ConfigurePackages() {
             "IN ACCEPT -p tcp -dport 3128 -log err"
             "IN ACCEPT -p udp -dport 323 -log err"
             "IN ACCEPT -p udp -dport 5404:5405 -log err"
-            "IN ACCEPT -p udp -dport 546:547 -log err"
             "IN ACCEPT -p tcp -dport 5900:5999 -log err"
             "IN ACCEPT -p tcp -dport 60000:60050 -log err"
-            "IN ACCEPT -p udp -dport 67:68 -log err"
             "IN ACCEPT -p tcp -dport 8006 -log err"
         )
         vm_container_fw_list=(
@@ -503,6 +521,8 @@ function ConfigurePackages() {
             "dhcp: 1"
             "enable: 0"
             "ipfilter: 1"
+            "ips: 0"
+            "ips_queues: 0"
             "log_level_in: err"
             "log_level_out: err"
             "macfilter: 1"
@@ -655,7 +675,7 @@ function ConfigurePackages() {
     ConfigureFail2Ban
     ConfigureGPG && ConfigureGit
     ConfigureGrub
-    ConfigureIOMMU
+    ConfigureModules
     ConfigureOpenSSH
     ConfigurePostfix
     ConfigurePVECeph
