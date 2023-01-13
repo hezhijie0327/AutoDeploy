@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 2.5.8
+# Current Version: 2.5.9
 
 ## How to get and use?
 # curl "https://source.zhijie.online/AutoDeploy/main/ProxmoxVE.sh" | sudo bash
@@ -945,6 +945,12 @@ function InstallDependencyPackages() {
         "nmap"
         "ntfs-3g"
         "nut"
+        "nut-i2c"
+        "nut-ipmi"
+        "nut-modbus"
+        "nut-powerman-pdu"
+        "nut-snmp"
+        "nut-xml"
         "openssh-client"
         "openssh-server"
         "p7zip-full"
