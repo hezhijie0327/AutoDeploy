@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 4.1.3
+# Current Version: 4.1.4
 
 ## How to get and use?
 # curl "https://source.zhijie.online/AutoDeploy/main/Ubuntu.sh" | sudo bash
@@ -588,6 +588,33 @@ function ConfigurePackages() {
             fi
         fi
     }
+    function ConfigureNut() {
+        ENABLE_NUT="false"
+        if [ "${ENABLE_NUT}" == "true" ]; then
+            which "upsmon" > "/dev/null" 2>&1
+            if [ "$?" -eq "0" ]; then
+                if [ -f "/etc/nut/nut.conf" ]; then
+                    NUT_MODE="" # standalone | netclient | netserver | none
+                    sed -i "s/MODE=.*/MODE=${NUT_MODE:-none}/g" "/etc/nut/nut.conf"
+                fi
+                if [ -f "/etc/nut/upsmon.conf" ]; then
+                    UPSMON_MASTER="false"
+                    UPSMON_USERNAME=""
+                    UPSMON_PASSWORD=""
+                    UPSMON_SYSTEM=""
+                    UPSMON_LIST=($(cat "/etc/nut/upsmon.conf" | grep -n "^MONITOR" | cut -d ':' -f 1 | awk '{print $1}'))
+                    for UPSMON_LIST_TASK in "${!UPSMON_LIST[@]}"; do
+                        sed -i "${UPSMON_LIST[$UPSMON_LIST_TASK]}d" "/etc/nut/upsmon.conf"
+                    done
+                    if [ "${UPSMON_MASTER}" == "false" ]; then
+                        echo "MONITOR ${UPSMON_SYSTEM:-ups@127.0.0.1} 1 ${UPSMON_USERNAME:-monuser} ${UPSMON_PASSWORD:-secret} slave" >> "/etc/nut/upsmon.conf"
+                    else
+                        echo "MONITOR ${UPSMON_SYSTEM:-ups@127.0.0.1} 1 ${UPSMON_USERNAME:-monuser} ${UPSMON_PASSWORD:-secret} master" >> "/etc/nut/upsmon.conf"
+                    fi
+                fi
+            fi
+        fi
+    }
     function ConfigureOpenSSH() {
         OPENSSH_PASSWORD=""
         which "ssh-keygen" > "/dev/null" 2>&1
@@ -873,6 +900,7 @@ function ConfigurePackages() {
     ConfigureGrub
     ConfigureLandscape
     ConfigureNetplan
+    ConfigureNut
     ConfigureOpenSSH
     ConfigurePostfix
     ConfigurePythonPyPI
