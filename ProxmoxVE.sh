@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 2.6.1
+# Current Version: 2.6.2
 
 ## How to get and use?
 # curl "https://source.zhijie.online/AutoDeploy/main/ProxmoxVE.sh" | sudo bash
@@ -164,6 +164,8 @@ function SetReadonlyFlag() {
         "/etc/hostname"
         "/etc/hosts"
         "/etc/modules"
+        "/etc/nut/nut.conf"
+        "/etc/nut/upsmon.conf"
         "/etc/sysctl.conf"
         "/etc/zsh/oh-my-zsh.zshrc"
     )
