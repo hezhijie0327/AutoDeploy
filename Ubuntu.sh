@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 4.1.4
+# Current Version: 4.1.5
 
 ## How to get and use?
 # curl "https://source.zhijie.online/AutoDeploy/main/Ubuntu.sh" | sudo bash
@@ -610,7 +610,7 @@ function ConfigurePackages() {
                         echo "MONITOR ${UPSMON_SYSTEM:-ups@127.0.0.1} 1 ${UPSMON_USERNAME:-monuser} ${UPSMON_PASSWORD:-secret} slave" >> "/etc/nut/upsmon.conf"
                     else
                         echo "MONITOR ${UPSMON_SYSTEM:-ups@127.0.0.1} 1 ${UPSMON_USERNAME:-monuser} ${UPSMON_PASSWORD:-secret} master" >> "/etc/nut/upsmon.conf"
-                    fi
+                    fi && upsc ${UPSMON_SYSTEM:-ups@127.0.0.1}
                 fi
             fi
         fi
