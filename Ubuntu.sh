@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 4.1.5
+# Current Version: 4.1.6
 
 ## How to get and use?
 # curl "https://source.zhijie.online/AutoDeploy/main/Ubuntu.sh" | sudo bash
@@ -295,6 +295,8 @@ function SetReadonlyFlag() {
         "/etc/hostname"
         "/etc/hosts"
         "/etc/netplan/netplan.yaml"
+        "/etc/nut/nut.conf"
+        "/etc/nut/upsmon.conf"
         "/etc/sysctl.conf"
         "/etc/systemd/resolved.conf.d/resolved.conf"
         "/etc/zsh/oh-my-zsh.zshrc"
