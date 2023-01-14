@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 2.6.4
+# Current Version: 2.6.5
 
 ## How to get and use?
 # curl "https://source.zhijie.online/AutoDeploy/main/ProxmoxVE.sh" | sudo bash
@@ -12,7 +12,7 @@ function GetSystemInformation() {
     function CheckHypervisorEnvironment() {
         which "virt-what" > "/dev/null" 2>&1
         if [ "$?" -eq "1" ]; then
-            rm -rf "/etc/apt/sources.list.d/pve-enterprise.list" && sed -i 's|deb.debian.org|mirrors.ustc.edu.cn|g;s|ftp.debian.org|mirrors.ustc.edu.cn|g;s|security.debian.org/debian-security|mirrors.ustc.edu.cn/debian-security|g;s|security.debian.org|mirrors.ustc.edu.cn/debian-security|g' "/etc/apt/sources.list" && apt update && apt install virt-what -qy
+            rm -rf "/etc/apt/sources.list.d/pve-enterprise.list" && sed -i 's|deb.debian.org|mirrors.ustc.edu.cn|g;s|ftp.[a-z]\{0,\}[.]\{0,\}debian.org|mirrors.ustc.edu.cn|g;s|security.debian.org/debian-security|mirrors.ustc.edu.cn/debian-security|g;s|security.debian.org|mirrors.ustc.edu.cn/debian-security|g' "/etc/apt/sources.list" && apt update && apt install virt-what -qy
             which "virt-what" > "/dev/null" 2>&1
             if [ "$?" -eq "1" ]; then
                 echo "virt-what has not been installed!"
