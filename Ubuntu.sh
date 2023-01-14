@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 4.1.6
+# Current Version: 4.1.7
 
 ## How to get and use?
 # curl "https://source.zhijie.online/AutoDeploy/main/Ubuntu.sh" | sudo bash
@@ -1131,6 +1131,7 @@ function InstallDependencyPackages() {
         "jq"
         "knot-dnsutils"
         "landscape-common"
+        "lm-sensors"
         "lsb-release"
         "mailutils"
         "mtr-tiny"
