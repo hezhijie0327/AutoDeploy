@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 2.6.6
+# Current Version: 2.6.7
 
 ## How to get and use?
 # curl "https://source.zhijie.online/AutoDeploy/main/ProxmoxVE.sh" | sudo bash
@@ -982,6 +982,7 @@ function InstallDependencyPackages() {
         "nut-xml"
         "openssh-client"
         "openssh-server"
+        "openvswitch-switch"
         "p7zip-full"
         "pinentry-tty"
         "postfix"
