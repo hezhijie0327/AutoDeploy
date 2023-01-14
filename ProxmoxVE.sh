@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 2.6.2
+# Current Version: 2.6.3
 
 ## How to get and use?
 # curl "https://source.zhijie.online/AutoDeploy/main/ProxmoxVE.sh" | sudo bash
@@ -966,6 +966,7 @@ function InstallDependencyPackages() {
         "iperf3"
         "jq"
         "knot-dnsutils"
+        "lm-sensors"
         "lsb-release"
         "mailutils"
         "mtr-tiny"
