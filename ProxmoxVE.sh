@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 2.6.5
+# Current Version: 2.6.6
 
 ## How to get and use?
 # curl "https://source.zhijie.online/AutoDeploy/main/ProxmoxVE.sh" | sudo bash
@@ -511,9 +511,7 @@ function ConfigurePackages() {
             "IN ACCEPT -p tcp -dport 53 -log err"
             "IN ACCEPT -p udp -dport 53 -log err"
             "IN ACCEPT -p udp -dport 5405:5412 -log err"
-            "IN ACCEPT -p udp -dport 546:547 -log err"
             "IN ACCEPT -p tcp -dport 5900:5999 -log err"
-            "IN ACCEPT -p udp -dport 67:68 -log err"
             "IN ACCEPT -p tcp -dport 8006 -log err"
         )
         host_fw_list=(
