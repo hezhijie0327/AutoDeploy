@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 4.1.9
+# Current Version: 4.2.0
 
 ## How to get and use?
 # curl "https://source.zhijie.online/AutoDeploy/main/Ubuntu.sh" | sudo bash
@@ -1169,6 +1169,7 @@ function InstallDependencyPackages() {
         "unrar"
         "unzip"
         "update-notifier-common"
+        "uuidgen"
         "vim"
         "virt-what"
         "wget"
