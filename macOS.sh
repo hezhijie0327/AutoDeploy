@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 2.4.8
+# Current Version: 2.4.9
 
 ## How to get and use?
 # /bin/bash -c "$(curl -fsSL 'https://source.zhijie.online/AutoDeploy/main/macOS.sh')"
@@ -239,7 +239,7 @@ function ConfigurePackages() {
                 "# export SSH_AUTH_SOCK=\"\$(gpgconf --list-dirs agent-ssh-socket)\" && gpgconf --launch gpg-agent && gpg-connect-agent updatestartuptty /bye > \"/dev/null\" 2>&1"
                 "export ZSH=\"\$HOME/.oh-my-zsh\""
                 "# function proxy_off(){ unset all_proxy; unset ftp_proxy; unset http_proxy; unset https_proxy; unset rsync_proxy }"
-                "# function proxy_on(){ export all_proxy=\"socks5://localhost.zhijie.online:7890\"; export ftp_proxy=\"http://localhost.zhijie.online:7890\"; export http_proxy=\"http://localhost.zhijie.online:7890\"; export https_proxy=\"http://localhost.zhijie.online:7890\"; export rsync_proxy=\"http://localhost.zhijie.online:7890\" }"
+                "# function proxy_on(){ export all_proxy=\"socks5://vpn.zhijie.online:7890\"; export ftp_proxy=\"http://vpn.zhijie.online:7890\"; export http_proxy=\"http://vpn.zhijie.online:7890\"; export https_proxy=\"http://vpn.zhijie.online:7890\"; export rsync_proxy=\"http://vpn.zhijie.online:7890\" }"
                 "plugins=(zsh-autosuggestions zsh-completions zsh-history-substring-search zsh-syntax-highlighting)"
                 "ZSH_CACHE_DIR=\"\$ZSH/cache\""
                 "ZSH_CUSTOM=\"\$ZSH/custom\""
