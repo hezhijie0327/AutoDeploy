@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 2.6.9
+# Current Version: 2.7.0
 
 ## How to get and use?
 # curl "https://source.zhijie.online/AutoDeploy/main/ProxmoxVE.sh" | sudo bash
@@ -619,7 +619,7 @@ function ConfigurePackages() {
         if [ "${DISABLE_ICMP_ECHO}" == "true" ]; then
             icmp_echo=(
                 "net.ipv4.icmp_echo_ignore_all = 1"
-                "net.ipv6.icmp_echo_ignore_all = 1"
+                "net.ipv6.icmp.echo_ignore_all = 1"
             )
         fi
         bridge_interface=(
