@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 4.2.3
+# Current Version: 4.2.4
 
 ## How to get and use?
 # curl "https://source.zhijie.online/AutoDeploy/main/Ubuntu.sh" | sudo bash
@@ -734,7 +734,7 @@ function ConfigurePackages() {
         if [ "${DISABLE_ICMP_ECHO}" == "true" ]; then
             icmp_echo=(
                 "net.ipv4.icmp_echo_ignore_all = 1"
-                "net.ipv6.icmp_echo_ignore_all = 1"
+                "net.ipv6.icmp.echo_ignore_all = 1"
             )
         fi
         network_interface=(
