@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 4.2.5
+# Current Version: 4.2.6
 
 ## How to get and use?
 # curl "https://source.zhijie.online/AutoDeploy/main/Ubuntu.sh" | sudo bash
@@ -1187,6 +1187,7 @@ function InstallDependencyPackages() {
         "qrencode"
         "rar"
         "realmd"
+        "rsyslog"
         "sudo"
         "tcpdump"
         "tshark"
