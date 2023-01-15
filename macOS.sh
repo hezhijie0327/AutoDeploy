@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 2.4.9
+# Current Version: 2.5.0
 
 ## How to get and use?
 # /bin/bash -c "$(curl -fsSL 'https://source.zhijie.online/AutoDeploy/main/macOS.sh')"
@@ -26,7 +26,10 @@ function GetSystemInformation() {
         fi
     }
     function SetGHProxyDomain() {
-        export GHPROXY_URL="ghproxy.com"
+        GHPROXY_URL=""
+        if [ "${GHPROXY_URL}" != "" ]; then
+            export GHPROXY_URL="https://${GHPROXY_URL}/"
+        fi
     }
     GetCurrentUsername
     IsArmArchitecture
@@ -54,7 +57,7 @@ function ConfigurePackages() {
             "user.name"
             "user.email"
             "user.signingkey"
-            "url.https://${GHPROXY_URL}/https://github.com/.insteadOf"
+            "url.${GHPROXY_URL}https://github.com/.insteadOf"
         )
         gitconfig_value_list=(
             "false"
@@ -230,8 +233,8 @@ function ConfigurePackages() {
                 "export EDITOR=\"nano\""
                 "export GPG_TTY=\$(tty)"
                 "export HOMEBREW_BOTTLE_DOMAIN=\"https://mirrors.ustc.edu.cn/homebrew-bottles/bottles\""
-                "export HOMEBREW_BREW_GIT_REMOTE=\"https://${GHPROXY_URL}/https://github.com/homebrew/brew.git\""
-                "export HOMEBREW_CORE_GIT_REMOTE=\"https://${GHPROXY_URL}/https://github.com/homebrew/homebrew-core.git\""
+                "export HOMEBREW_BREW_GIT_REMOTE=\"${GHPROXY_URL}https://github.com/homebrew/brew.git\""
+                "export HOMEBREW_CORE_GIT_REMOTE=\"${GHPROXY_URL}https://github.com/homebrew/homebrew-core.git\""
                 "export HOMEBREW_GITHUB_API_TOKEN=\"${HOMEBREW_GITHUB_API_TOKEN}\""
                 "export HOMEBREW_NO_AUTO_UPDATE=\"1\""
                 "export MANPATH=\"${CUSTOM_MANPATH}:\$MANPATH\""
@@ -378,12 +381,12 @@ function InstallCustomPackages() {
             '#!/bin/bash'
             'plugin_list=($(ls "$HOME/.oh-my-zsh/custom/plugins" | grep -v "^example$" | awk "{print $1}"))'
             'for plugin_list_task in "${!plugin_list[@]}"; do'
-            "    rm -rf \"\$HOME/.oh-my-zsh/custom/plugins/\${plugin_list[\$plugin_list_task]}\" && git clone --depth=1 \"https://${GHPROXY_URL}/https://github.com/zsh-users/\${plugin_list[\$plugin_list_task]}.git\" \"\$HOME/.oh-my-zsh/custom/plugins/\${plugin_list[\$plugin_list_task]}\""
+            "    rm -rf \"\$HOME/.oh-my-zsh/custom/plugins/\${plugin_list[\$plugin_list_task]}\" && git clone --depth=1 \"${GHPROXY_URL}https://github.com/zsh-users/\${plugin_list[\$plugin_list_task]}.git\" \"\$HOME/.oh-my-zsh/custom/plugins/\${plugin_list[\$plugin_list_task]}\""
             'done'
         )
-        rm -rf "/Users/${CurrentUsername}/.oh-my-zsh" && git clone --depth=1 "https://${GHPROXY_URL}/https://github.com/ohmyzsh/ohmyzsh.git" "/Users/${CurrentUsername}/.oh-my-zsh" && if [ -d "/Users/${CurrentUsername}/.oh-my-zsh/custom/plugins" ]; then
+        rm -rf "/Users/${CurrentUsername}/.oh-my-zsh" && git clone --depth=1 "${GHPROXY_URL}https://github.com/ohmyzsh/ohmyzsh.git" "/Users/${CurrentUsername}/.oh-my-zsh" && if [ -d "/Users/${CurrentUsername}/.oh-my-zsh/custom/plugins" ]; then
             for plugin_list_task in "${!plugin_list[@]}"; do
-                rm -rf "/Users/${CurrentUsername}/.oh-my-zsh/custom/plugins/${plugin_list[$plugin_list_task]}" && git clone --depth=1 "https://${GHPROXY_URL}/https://github.com/zsh-users/${plugin_list[$plugin_list_task]}.git" "/Users/${CurrentUsername}/.oh-my-zsh/custom/plugins/${plugin_list[$plugin_list_task]}"
+                rm -rf "/Users/${CurrentUsername}/.oh-my-zsh/custom/plugins/${plugin_list[$plugin_list_task]}" && git clone --depth=1 "${GHPROXY_URL}https://github.com/zsh-users/${plugin_list[$plugin_list_task]}.git" "/Users/${CurrentUsername}/.oh-my-zsh/custom/plugins/${plugin_list[$plugin_list_task]}"
             done
         fi && rm -rf "/Users/${CurrentUsername}/.oh-my-zsh/oh-my-zsh-plugin.sh" && for plugin_upgrade_list_task in "${!plugin_upgrade_list[@]}"; do
             echo "${plugin_upgrade_list[$plugin_upgrade_list_task]}" >> "/Users/${CurrentUsername}/.oh-my-zsh/oh-my-zsh-plugin.sh"
@@ -412,7 +415,7 @@ function InstallDependencyPackages() {
     export PATH="/opt/homebrew/sbin:/opt/homebrew/bin:${PATH}" && rm -rf "/opt/homebrew" "/usr/local/Homebrew"
     which "brew" > "/dev/null" 2>&1
     if [ "$?" -eq "1" ]; then
-        /bin/bash -c $(curl -fsSL "https://${GHPROXY_URL}/https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh" | sed "s/https\:\/\/github\.com/https\:\/\/${GHPROXY_URL}\/https\:\/\/github\.com/g" | sed "1 a export HOMEBREW_BOTTLE_DOMAIN=\"https://mirrors.ustc.edu.cn/homebrew-bottles/bottles\"")
+        /bin/bash -c $(curl -fsSL "${GHPROXY_URL}https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh" | sed "s/https\:\/\/github\.com/https\:\/\/${GHPROXY_URL}\/https\:\/\/github\.com/g" | sed "1 a export HOMEBREW_BOTTLE_DOMAIN=\"https://mirrors.ustc.edu.cn/homebrew-bottles/bottles\"")
     fi
     if [ -d "$(brew --repo)/Library/Taps/homebrew" ]; then
         app_list=(
@@ -474,10 +477,10 @@ function InstallDependencyPackages() {
             "zsh"
         )
         for tap_list_task in "${!tap_list[@]}"; do
-            export HOMEBREW_BREW_GIT_REMOTE="https://${GHPROXY_URL}/https://github.com/homebrew/brew.git" && export HOMEBREW_CORE_GIT_REMOTE="https://${GHPROXY_URL}/https://github.com/homebrew/homebrew-core.git" && if [ -d "$(brew --repo)/Library/Taps/homebrew/${tap_list[$tap_list_task]}" ]; then
-                brew tap --custom-remote --force-auto-update "${tap_list[$tap_list_task]/-/\/}" "https://${GHPROXY_URL}/https://github.com/homebrew/${tap_list[$tap_list_task]}.git"
+            export HOMEBREW_BREW_GIT_REMOTE="${GHPROXY_URL}https://github.com/homebrew/brew.git" && export HOMEBREW_CORE_GIT_REMOTE="${GHPROXY_URL}https://github.com/homebrew/homebrew-core.git" && if [ -d "$(brew --repo)/Library/Taps/homebrew/${tap_list[$tap_list_task]}" ]; then
+                brew tap --custom-remote --force-auto-update "${tap_list[$tap_list_task]/-/\/}" "${GHPROXY_URL}https://github.com/homebrew/${tap_list[$tap_list_task]}.git"
             else
-                git clone "https://${GHPROXY_URL}/https://github.com/Homebrew/${tap_list[$tap_list_task]}.git" "$(brew --repo)/Library/Taps/homebrew/${tap_list[$tap_list_task]}"
+                git clone "${GHPROXY_URL}https://github.com/Homebrew/${tap_list[$tap_list_task]}.git" "$(brew --repo)/Library/Taps/homebrew/${tap_list[$tap_list_task]}"
             fi
         done && export HOMEBREW_BOTTLE_DOMAIN="https://mirrors.ustc.edu.cn/homebrew-bottles/bottles" && brew update && for app_list_task in "${!app_list[@]}"; do
             brew info --formula ${app_list[$app_list_task]} && if [ "$?" -eq "0" ]; then
