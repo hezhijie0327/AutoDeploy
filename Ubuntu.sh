@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 4.2.4
+# Current Version: 4.2.5
 
 ## How to get and use?
 # curl "https://source.zhijie.online/AutoDeploy/main/Ubuntu.sh" | sudo bash
@@ -293,6 +293,7 @@ function SetReadonlyFlag() {
         "/etc/default/ufw"
         "/etc/docker/daemon.json"
         "/etc/fail2ban/fail2ban.local"
+        "/etc/fail2ban/filter.d/cockpit.conf"
         "/etc/fail2ban/jail.local"
         "/etc/fail2ban/jail.d/fail2ban_default.conf"
         "/etc/hostname"
@@ -452,6 +453,14 @@ function ConfigurePackages() {
     }
     function ConfigureFail2Ban() {
         fail2ban_list=(
+            "[cockpit]"
+            "bantime = 604800"
+            "enabled = true"
+            "filter = cockpit"
+            "findtime = 60"
+            "logpath = /var/log/auth.log"
+            "maxretry = 5"
+            "port = 9090"
             "[sshd]"
             "bantime = 604800"
             "enabled = true"
@@ -460,6 +469,11 @@ function ConfigurePackages() {
             "logpath = /var/log/auth.log"
             "maxretry = 5"
             "port = 9022"
+        )
+        fail2ban_cockpit_list=(
+            "[Definition]"
+            "failregex = pam_unix\(cockpit:auth\): authentication failure; logname=.* uid=.* euid=.* tty=.* ruser=.* rhost=<HOST>"
+            "journalmatch = SYSLOG_FACILITY=10 PRIORITY=5"
         )
         which "fail2ban-client" > "/dev/null" 2>&1
         if [ "$?" -eq "0" ]; then
@@ -475,6 +489,9 @@ function ConfigurePackages() {
                 if [ -f "/etc/fail2ban/jail.conf" ]; then
                     cat "/etc/fail2ban/jail.conf" | sed "s/action\ \=\ iptables\-allports/action\ \=\ ufw/g;s/banaction\ \=\ iptables\-multiport/banaction\ \=\ ufw/g;s/banaction\ \=\ iptables\-multiport\-log/banaction\ \=\ ufw/g;s/banaction\ \=\ ufw\-log/banaction\ \=\ ufw/g;s/banaction\_allports\ \=\ iptables\-allports/banaction\_allports\ \=\ ufw/g" > "/etc/fail2ban/jail.local"
                 fi
+                rm -rf "/tmp/fail2ban.autodeploy" && for fail2ban_cockpit_list_task in "${!fail2ban_cockpit_list[@]}"; do
+                    echo "${fail2ban_cockpit_list[$fail2ban_cockpit_list_task]}" >> "/tmp/fail2ban.autodeploy"
+                done && cat "/tmp/fail2ban.autodeploy" > "/etc/fail2ban/filter.d/cockpit.conf" && rm -rf "/tmp/fail2ban.autodeploy"
                 rm -rf "/tmp/fail2ban.autodeploy" && for fail2ban_list_task in "${!fail2ban_list[@]}"; do
                     echo "${fail2ban_list[$fail2ban_list_task]}" >> "/tmp/fail2ban.autodeploy"
                 done && cat "/tmp/fail2ban.autodeploy" > "/etc/fail2ban/jail.d/fail2ban_default.conf" && rm -rf "/tmp/fail2ban.autodeploy" && if [ "${container_environment}" != "docker" ] && [ "${container_environment}" != "wsl2" ]; then
