@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 2.7.3
+# Current Version: 2.7.4
 
 ## How to get and use?
 # curl "https://source.zhijie.online/AutoDeploy/main/ProxmoxVE.sh" | sudo bash
@@ -98,9 +98,6 @@ function GetSystemInformation() {
     function GetHostname() {
         OLD_HOSTNAME=$(cat "/etc/hostname")
     }
-    function GetLSBCodename() {
-        LSBCodename="bullseye"
-    }
     function GetManagementIPAddress() {
         CURRENT_MANAGEMENT_IP=$(ip address show vmbr0 | grep "inet" | awk '{print $2}' | sort | head -n 1 | sed "s/\/.*//")
     }
@@ -110,15 +107,19 @@ function GetSystemInformation() {
             export GHPROXY_URL="https://${GHPROXY_URL}/"
         fi
     }
+    function SetPackageCodename() {
+        CephCodename="quincy"
+        LSBCodename="bullseye"
+    }
     CheckHypervisorEnvironment
     GenerateDomain
     GenerateHostname
     GenerateResolv
     GetCPUVendorID
     GetHostname
-    GetLSBCodename
     GetManagementIPAddress
     SetGHProxyDomain
+    SetPackageCodename
 }
 # Set Repository Mirror
 function SetRepositoryMirror() {
@@ -140,8 +141,8 @@ function SetRepositoryMirror() {
         "# deb ${transport_protocol}://enterprise.proxmox.com/debian/pve ${LSBCodename} pve-enterprise"
         "deb ${transport_protocol}://mirrors.ustc.edu.cn/proxmox/debian ${LSBCodename} pve-no-subscription"
         "# deb ${transport_protocol}://mirrors.ustc.edu.cn/proxmox/debian ${LSBCodename} pvetest"
-        "deb ${transport_protocol}://mirrors.ustc.edu.cn/proxmox/debian/ceph-quincy ${LSBCodename} main"
-        "# deb ${transport_protocol}://mirrors.ustc.edu.cn/proxmox/debian/ceph-quincy ${LSBCodename} test"
+        "deb ${transport_protocol}://mirrors.ustc.edu.cn/proxmox/debian/ceph-${CephCodename} ${LSBCodename} main"
+        "# deb ${transport_protocol}://mirrors.ustc.edu.cn/proxmox/debian/ceph-${CephCodename} ${LSBCodename} test"
     )
     if [ ! -d "/etc/apt/sources.list.d" ]; then
         mkdir "/etc/apt/sources.list.d"
