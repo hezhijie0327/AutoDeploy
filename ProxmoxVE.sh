@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 2.7.8
+# Current Version: 2.7.9
 
 ## How to get and use?
 # curl "https://source.zhijie.online/AutoDeploy/main/ProxmoxVE.sh" | sudo bash
@@ -1007,6 +1007,7 @@ function InstallDependencyPackages() {
         "iperf3"
         "jq"
         "knot-dnsutils"
+        "libsnmp-dev"
         "lm-sensors"
         "lsb-release"
         "mailutils"
@@ -1033,6 +1034,9 @@ function InstallDependencyPackages() {
         "python3-pip"
         "qrencode"
         "rar"
+        "snmp"
+        "snmp-mibs-downloader"
+        "snmpd"
         "sudo"
         "systemd"
         "tcpdump"
