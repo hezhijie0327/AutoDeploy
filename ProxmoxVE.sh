@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 2.7.4
+# Current Version: 2.7.5
 
 ## How to get and use?
 # curl "https://source.zhijie.online/AutoDeploy/main/ProxmoxVE.sh" | sudo bash
@@ -619,6 +619,35 @@ function ConfigurePackages() {
             rm -rf "/home/${DEFAULT_USERNAME}/.config/pip/pip.conf" && cp -rf "/root/.config/pip/pip.conf" "/home/${DEFAULT_USERNAME}/.config/pip/pip.conf" && chown -R $DEFAULT_USERNAME:$DEFAULT_USERNAME "/home/${DEFAULT_USERNAME}/.config" && chown -R $DEFAULT_USERNAME:$DEFAULT_USERNAME "/home/${DEFAULT_USERNAME}/.config/pip" && chown -R $DEFAULT_USERNAME:$DEFAULT_USERNAME "/home/${DEFAULT_USERNAME}/.config/pip/pip.conf"
         fi
     }
+    function ConfigureSNMP() {
+        SNMP_USER="${DEFAULT_USERNAME}"
+        SNMP_AUTH_PASS="${DEFAULT_PASSWORD}"
+        SNMP_PRIV_PASS="${ROOT_PASSWORD}"
+        SNMP_SYS_LOCATION="${NEW_HOSTNAME}"
+        SNMP_SYS_CONTACT="${DEFAULT_FULLNAME}"
+        snmp_list=(
+            "agentaddress udp:161,udp6:161"
+            "master agentx"
+            "rouser ${SNMP_USER}"
+            "sysContact ${SNMP_SYS_CONTACT}"
+            "sysLocation ${SNMP_SYS_LOCATION}"
+            "sysServices 72"
+            "view systemonly included .1"
+        )
+        which "snmpwalk" > "/dev/null" 2>&1
+        if [ "$?" -eq "0" ]; then
+            kill $(ps -ef | grep snmp | grep -v 'grep' | cut -d ' ' -f 3) > "/dev/null" 2>&1
+            echo "createUser ${SNMP_USER} SHA \"${SNMP_AUTH_PASS}\" AES \"${SNMP_PRIV_PASS}\"" > "/var/lib/snmp/snmpd.conf"
+            rm -rf "/tmp/snmp.autodeploy" && for snmp_list_task in "${!snmp_list[@]}"; do
+                echo "${snmp_list[$snmp_list_task]}" >> "/tmp/snmp.autodeploy"
+            done && cat "/tmp/snmp.autodeploy" | sort > "/etc/snmp/snmpd.conf" && rm -rf "/tmp/snmp.autodeploy" && systemctl restart snmpd.serivce && snmpwalk -v3 -a SHA -A ${SNMP_AUTH_PASS} -x AES -X ${SNMP_PRIV_PASS} -l authPriv -u ${SNMP_USER} 127.0.0.1 | head
+        fi
+    }
+    function ConfigureSshd() {
+        if [ -f "/usr/share/openssh/sshd_config" ]; then
+            cat "/usr/share/openssh/sshd_config" | sed "s/\#PasswordAuthentication\ yes/PasswordAuthentication\ yes/g;s/\#PermitRootLogin\ prohibit\-password/PermitRootLogin\ yes/g;s/\#PubkeyAuthentication\ yes/PubkeyAuthentication\ yes/g" > "/tmp/sshd_config.autodeploy" && cat "/tmp/sshd_config.autodeploy" > "/etc/ssh/sshd_config" && rm -rf "/tmp/sshd_config.autodeploy"
+        fi
+    }
     function ConfigureSysctl() {
         DISABLE_ICMP_ECHO="false"
         if [ "${DISABLE_ICMP_ECHO}" == "true" ]; then
@@ -649,11 +678,6 @@ function ConfigurePackages() {
             done && for bridge_interface_task in "${!bridge_interface[@]}"; do
                 echo -e "net.ipv6.conf.${bridge_interface[$bridge_interface_task]}.accept_ra = 2\nnet.ipv6.conf.${bridge_interface[$bridge_interface_task]}.autoconf = 1\nnet.ipv6.conf.${bridge_interface[$bridge_interface_task]}.forwarding = 1" >> "/tmp/sysctl.autodeploy"
             done && cat "/tmp/sysctl.autodeploy" | sort | uniq > "/etc/sysctl.conf" && sysctl -p && rm -rf "/tmp/sysctl.autodeploy"
-        fi
-    }
-    function ConfigureSshd() {
-        if [ -f "/usr/share/openssh/sshd_config" ]; then
-            cat "/usr/share/openssh/sshd_config" | sed "s/\#PasswordAuthentication\ yes/PasswordAuthentication\ yes/g;s/\#PermitRootLogin\ prohibit\-password/PermitRootLogin\ yes/g;s/\#PubkeyAuthentication\ yes/PubkeyAuthentication\ yes/g" > "/tmp/sshd_config.autodeploy" && cat "/tmp/sshd_config.autodeploy" > "/etc/ssh/sshd_config" && rm -rf "/tmp/sshd_config.autodeploy"
         fi
     }
     function ConfigureZsh() {
@@ -740,6 +764,7 @@ function ConfigurePackages() {
     ConfigurePVEDashboard
     ConfigurePVEFirewall
     ConfigurePythonPyPI
+    ConfigureSNMP
     ConfigureSshd
     ConfigureSysctl
     ConfigureZsh
