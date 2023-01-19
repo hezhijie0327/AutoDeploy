@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 2.7.9
+# Current Version: 2.8.0
 
 ## How to get and use?
 # curl "https://source.zhijie.online/AutoDeploy/main/ProxmoxVE.sh" | sudo bash
@@ -638,6 +638,7 @@ function ConfigurePackages() {
         if [ "$?" -eq "0" ]; then
             systemctl stop snmpd
             kill $(ps -ef | grep snmp | grep -v 'grep' | cut -d ' ' -f 3) > "/dev/null" 2>&1
+            sed -i 's/^mibs :/# mibs :/g' "/etc/snmp/snmp.conf"
             echo "createUser ${SNMP_USER} SHA \"${SNMP_AUTH_PASS}\" AES \"${SNMP_PRIV_PASS}\"" > "/var/lib/snmp/snmpd.conf"
             rm -rf "/tmp/snmp.autodeploy" && for snmp_list_task in "${!snmp_list[@]}"; do
                 echo "${snmp_list[$snmp_list_task]}" >> "/tmp/snmp.autodeploy"
