@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 4.3.2
+# Current Version: 4.3.3
 
 ## How to get and use?
 # curl "https://source.zhijie.online/AutoDeploy/main/Ubuntu.sh" | sudo bash
@@ -751,8 +751,7 @@ function ConfigurePackages() {
             "rouser ${SNMP_USER}"
             "sysContact ${SNMP_SYS_CONTACT}"
             "sysLocation ${SNMP_SYS_LOCATION}"
-            "sysServices 72"
-            "view systemonly included .1"
+            "sysServices 76"
         )
         which "snmpwalk" > "/dev/null" 2>&1
         if [ "$?" -eq "0" ]; then
