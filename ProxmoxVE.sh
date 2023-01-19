@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 2.7.7
+# Current Version: 2.7.8
 
 ## How to get and use?
 # curl "https://source.zhijie.online/AutoDeploy/main/ProxmoxVE.sh" | sudo bash
@@ -632,8 +632,7 @@ function ConfigurePackages() {
             "rouser ${SNMP_USER}"
             "sysContact ${SNMP_SYS_CONTACT}"
             "sysLocation ${SNMP_SYS_LOCATION}"
-            "sysServices 72"
-            "view systemonly included .1"
+            "sysServices 76"
         )
         which "snmpwalk" > "/dev/null" 2>&1
         if [ "$?" -eq "0" ]; then
