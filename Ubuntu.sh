@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 4.2.8
+# Current Version: 4.2.9
 
 ## How to get and use?
 # curl "https://source.zhijie.online/AutoDeploy/main/Ubuntu.sh" | sudo bash
@@ -739,6 +739,30 @@ function ConfigurePackages() {
             fi && rm -rf "/etc/resolv.conf" && cat "/tmp/resolv.autodeploy" > "/etc/resolv.conf" && rm -rf "/tmp/resolv.autodeploy" && chattr +i "/etc/resolv.conf"
         fi
     }
+    function ConfigureSNMP() {
+        SNMP_USER='ubuntu'
+        SNMP_AUTH_PASS='*Ubuntu123*'
+        SNMP_PRIV_PASS='AutoDeploy'
+        SNMP_SYS_LOCATION='AutoDeploy for Ubuntu'
+        SNMP_SYS_CONTACT='ubuntu@zhijie.online'
+        snmp_list=(
+            "agentaddress udp:161,udp6:161"
+            "master agentx"
+            "rouser ${SNMP_USER}"
+            "sysContact ${SNMP_SYS_CONTACT}"
+            "sysLocation ${SNMP_SYS_LOCATION}"
+            "sysServices 72"
+            "view systemonly included .1"
+        )
+        which "snmpwalk" > "/dev/null" 2>&1
+        if [ "$?" -eq "0" ]; then
+            kill $(ps -ef | grep snmp | grep -v 'grep' | cut -d ' ' -f 3) > "/dev/null" 2>&1
+            echo "createUser ${SNMP_USER} SHA \"${SNMP_AUTH_PASS}\" AES \"${SNMP_PRIV_PASS}\"" > "/var/lib/snmp/snmpd.conf"
+            rm -rf "/tmp/snmp.autodeploy" && for snmp_list_task in "${!snmp_list[@]}"; do
+                echo "${snmp_list[$snmp_list_task]}" >> "/tmp/snmp.autodeploy"
+            done && cat "/tmp/snmp.autodeploy" | sort > "/etc/snmp/snmpd.conf" && rm -rf "/tmp/snmp.autodeploy" && OPRATIONS="restart" && SERVICE_NAME="snmpd" && CallServiceController && snmpwalk -v3 -a SHA -A ${SNMP_AUTH_PASS} -x AES -X ${SNMP_PRIV_PASS} -l authPriv -u ${SNMP_USER} 127.0.0.1 | head
+        fi
+    }
     function ConfigureSshd() {
         if [ -f "/usr/share/openssh/sshd_config" ]; then
             SSHD_CONFIG_ADDITIONAL="" && if [ "${container_environment}" != "docker" ] && [ "${container_environment}" != "wsl2" ]; then
@@ -794,7 +818,7 @@ function ConfigurePackages() {
             if [ "${container_environment}" != "docker" ] && [ "${container_environment}" != "wsl2" ]; then
                 echo "$(cat '/etc/default/ufw' | sed 's/DEFAULT\_APPLICATION\_POLICY\=\"ACCEPT\"/DEFAULT\_APPLICATION\_POLICY\=\"REJECT\"/g;s/DEFAULT\_APPLICATION\_POLICY\=\"DROP\"/DEFAULT\_APPLICATION\_POLICY\=\"REJECT\"/g;s/DEFAULT\_APPLICATION\_POLICY\=\"SKIP\"/DEFAULT\_APPLICATION\_POLICY\=\"REJECT\"/g;s/DEFAULT\_FORWARD\_POLICY\=\"DROP\"/DEFAULT\_FORWARD\_POLICY\=\"ACCEPT\"/g;s/DEFAULT\_FORWARD\_POLICY\=\"REJECT\"/DEFAULT\_FORWARD\_POLICY\=\"ACCEPT\"/g;s/DEFAULT\_INPUT\_POLICY\=\"ACCEPT\"/DEFAULT\_INPUT\_POLICY\=\"REJECT\"/g;s/DEFAULT\_INPUT\_POLICY\=\"DROP\"/DEFAULT\_INPUT\_POLICY\=\"REJECT\"/g;s/DEFAULT\_OUTPUT\_POLICY\=\"DROP\"/DEFAULT\_OUTPUT\_POLICY\=\"ACCEPT\"/g;s/DEFAULT\_OUTPUT\_POLICY\=\"REJECT\"/DEFAULT\_OUTPUT\_POLICY\=\"ACCEPT\"/g;s/MANAGE\_BUILTINS\=yes/MANAGE\_BUILTINS\=no/g;s/IPV6\=no/IPV6\=yes/g')" > "/tmp/ufw.autodeploy" && cat "/tmp/ufw.autodeploy" > "/etc/default/ufw" && rm -rf "/tmp/ufw.autodeploy"
                 if [ "${container_environment}" != "docker" ] && [ "${container_environment}" != "wsl2" ]; then
-                    ufw reload && ufw reset && ufw allow 123/udp && ufw limit 22/tcp && ufw allow 323/udp && ufw allow 51820/udp && ufw limit 9022/tcp && ufw allow 9090/tcp && ufw enable && ufw status verbose
+                    ufw reload && ufw reset && ufw allow 123/udp && ufw allow 161/udp && ufw limit 22/tcp && ufw allow 323/udp && ufw allow 51820/udp && ufw limit 9022/tcp && ufw allow 9090/tcp && ufw enable && ufw status verbose
                 else
                     ufw disable > "/dev/null" 2>&1
                 fi
@@ -1162,6 +1186,7 @@ function InstallDependencyPackages() {
         "jq"
         "knot-dnsutils"
         "landscape-common"
+        "libsnmp-dev"
         "lm-sensors"
         "lsb-release"
         "mailutils"
@@ -1190,6 +1215,8 @@ function InstallDependencyPackages() {
         "rar"
         "realmd"
         "rsyslog"
+        "snmp"
+        "snmpd"
         "sudo"
         "tcpdump"
         "tshark"
