@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 4.3.1
+# Current Version: 4.3.2
 
 ## How to get and use?
 # curl "https://source.zhijie.online/AutoDeploy/main/Ubuntu.sh" | sudo bash
@@ -23,7 +23,7 @@ function CallServiceController(){
         if [ "${OPRATIONS}" == "daemon-reload" ]; then
             systemctl daemon-reload
         else
-            systemctl ${OPRATIONS} ${SERVICE_NAME}.service
+            systemctl ${OPRATIONS} ${SERVICE_NAME}
         fi
     else
         service ${SERVICE_NAME} ${OPRATIONS}
