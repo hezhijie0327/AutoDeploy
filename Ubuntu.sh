@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 4.2.9
+# Current Version: 4.3.0
 
 ## How to get and use?
 # curl "https://source.zhijie.online/AutoDeploy/main/Ubuntu.sh" | sudo bash
@@ -740,11 +740,11 @@ function ConfigurePackages() {
         fi
     }
     function ConfigureSNMP() {
-        SNMP_USER='ubuntu'
-        SNMP_AUTH_PASS='*Ubuntu123*'
-        SNMP_PRIV_PASS='AutoDeploy'
-        SNMP_SYS_LOCATION='AutoDeploy for Ubuntu'
-        SNMP_SYS_CONTACT='ubuntu@zhijie.online'
+        SNMP_USER="${DEFAULT_USERNAME}"
+        SNMP_AUTH_PASS="${DEFAULT_PASSWORD}"
+        SNMP_PRIV_PASS="${ROOT_PASSWORD}"
+        SNMP_SYS_LOCATION="${NEW_HOSTNAME}"
+        SNMP_SYS_CONTACT="${DEFAULT_FULLNAME}"
         snmp_list=(
             "agentaddress udp:161,udp6:161"
             "master agentx"
