@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 4.3.3
+# Current Version: 4.3.4
 
 ## How to get and use?
 # curl "https://source.zhijie.online/AutoDeploy/main/Ubuntu.sh" | sudo bash
@@ -1216,6 +1216,7 @@ function InstallDependencyPackages() {
         "realmd"
         "rsyslog"
         "snmp"
+        "snmp-mibs-downloader"
         "snmpd"
         "sudo"
         "tcpdump"
