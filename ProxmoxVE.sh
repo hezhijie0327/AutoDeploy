@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 2.8.1
+# Current Version: 2.8.2
 
 ## How to get and use?
 # curl "https://source.zhijie.online/AutoDeploy/main/ProxmoxVE.sh" | sudo bash
@@ -625,7 +625,7 @@ function ConfigurePackages() {
         SNMP_PRIV_PASS="${ROOT_PASSWORD}"
         SNMP_SYS_CONTACT="${DEFAULT_FULLNAME}"
         SNMP_SYS_LOCATION="${NEW_HOSTNAME}"
-        SNMP_SYS_NAME="${NEW_HOSTNAME}.${NEW_DOMAIN[0]}"
+        SNMP_SYS_NAME="${NEW_FULL_DOMAIN}"
         SNMP_USER="${DEFAULT_USERNAME}"
         snmp_list=(
             "agentaddress udp:161,udp6:161"
