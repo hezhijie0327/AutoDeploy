@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 4.3.5
+# Current Version: 4.3.6
 
 ## How to get and use?
 # curl "https://source.zhijie.online/AutoDeploy/main/Ubuntu.sh" | sudo bash
@@ -740,17 +740,19 @@ function ConfigurePackages() {
         fi
     }
     function ConfigureSNMP() {
-        SNMP_USER="${DEFAULT_USERNAME}"
         SNMP_AUTH_PASS="${DEFAULT_PASSWORD}"
         SNMP_PRIV_PASS="${ROOT_PASSWORD}"
-        SNMP_SYS_LOCATION="${NEW_HOSTNAME}"
         SNMP_SYS_CONTACT="${DEFAULT_FULLNAME}"
+        SNMP_SYS_LOCATION="${NEW_HOSTNAME}"
+        SNMP_SYS_NAME="${NEW_HOSTNAME}.${NEW_DOMAIN[0]}"
+        SNMP_USER="${DEFAULT_USERNAME}"
         snmp_list=(
             "agentaddress udp:161,udp6:161"
             "master agentx"
             "rouser ${SNMP_USER}"
             "sysContact ${SNMP_SYS_CONTACT}"
             "sysLocation ${SNMP_SYS_LOCATION}"
+            "sysName ${SNMP_SYS_NAME}"
             "sysServices 76"
         )
         which "snmpwalk" > "/dev/null" 2>&1
