@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 2.8.5
+# Current Version: 2.8.6
 
 ## How to get and use?
 # curl "https://source.zhijie.online/AutoDeploy/main/ProxmoxVE.sh" | sudo bash
@@ -693,7 +693,7 @@ function ConfigurePackages() {
     function ConfigureTuned() {
         which "tuned-adm" > "/dev/null" 2>&1
         if [ "$?" -eq "0" ]; then
-            tuned-adm profile "$(tuned-adm recommend)" && tuned-adm active
+            tuned-adm profile "virtual-host" && tuned-adm active
         fi
     }
     function ConfigureZsh() {
