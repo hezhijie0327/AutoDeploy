@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 2.8.4
+# Current Version: 2.8.5
 
 ## How to get and use?
 # curl "https://source.zhijie.online/AutoDeploy/main/ProxmoxVE.sh" | sudo bash
@@ -690,6 +690,12 @@ function ConfigurePackages() {
             done && cat "/tmp/sysctl.autodeploy" | sort | uniq > "/etc/sysctl.conf" && sysctl -p && rm -rf "/tmp/sysctl.autodeploy"
         fi
     }
+    function ConfigureTuned() {
+        which "tuned-adm" > "/dev/null" 2>&1
+        if [ "$?" -eq "0" ]; then
+            tuned-adm profile "$(tuned-adm recommend)" && tuned-adm active
+        fi
+    }
     function ConfigureZsh() {
         function GenerateCommandPath() {
             default_path_list=(
@@ -777,6 +783,7 @@ function ConfigurePackages() {
     ConfigureSNMP
     ConfigureSshd
     ConfigureSysctl
+    ConfigureTuned
     ConfigureZsh
 }
 # Configure System
@@ -1051,6 +1058,7 @@ function InstallDependencyPackages() {
         "systemd"
         "tcpdump"
         "tshark"
+        "tuned"
         "unrar"
         "unzip"
         "vim"
