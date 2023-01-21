@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 2.8.3
+# Current Version: 2.8.4
 
 ## How to get and use?
 # curl "https://source.zhijie.online/AutoDeploy/main/ProxmoxVE.sh" | sudo bash
@@ -1005,6 +1005,7 @@ function InstallDependencyPackages() {
         "ca-certificates"
         "ceph"
         "chrony"
+        "cpufrequtils"
         "curl"
         "dnsutils"
         "ethtool"
