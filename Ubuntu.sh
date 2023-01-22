@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 4.4.1
+# Current Version: 4.4.2
 
 ## How to get and use?
 # curl "https://source.zhijie.online/AutoDeploy/main/Ubuntu.sh" | sudo bash
@@ -58,7 +58,7 @@ function GetSystemInformation() {
             CURRENT_DNS_LINE="" && for CURRENT_DNS_TASK in "${!CURRENT_DNS[@]}"; do
                 CURRENT_DNS_LINE="${CURRENT_DNS_LINE} ${CURRENT_DNS[$CURRENT_DNS_TASK]}"
                 CURRENT_DNS_LINE=$(echo "${CURRENT_DNS_LINE}" | sed "s/^\ //g")
-            done
+            done && DNS_LINE=$(echo "${CURRENT_DNS_LINE} ${CUSTOM_DNS_LINE}" | cut -d ' ' -f 1-3)
         fi
     }
     function CheckMachineEnvironment() {
@@ -104,8 +104,12 @@ function GetSystemInformation() {
                         "# processors = 4"
                         "# swap = 2GB"
                     )
-                    rm -rf "/tmp/resolv.autodeploy" && for resolv_conf_list_task in "${!resolv_conf_list[@]}"; do
-                        echo "nameserver ${resolv_conf_list[$resolv_conf_list_task]}" >> "/tmp/resolv.autodeploy"
+                    rm -rf "/tmp/resolv.autodeploy" && DNS_COUNT="1" && for resolv_conf_list_task in "${!resolv_conf_list[@]}"; do
+                        if [ "${DNS_COUNT}" -gt "3" ]; then
+                            break
+                        else
+                            echo "nameserver ${resolv_conf_list[$resolv_conf_list_task]}" >> "/tmp/resolv.autodeploy"
+                        fi && DNS_COUNT=$(( ${DNS_COUNT} + 1 ))
                     done && echo "search ${NEW_DOMAIN[*]}" >> "/tmp/resolv.autodeploy" && if [ -f "/etc/resolv.conf" ]; then
                         chattr -i "/etc/resolv.conf" > "/dev/null" 2>&1
                         if [ "$?" -eq "1" ]; then
@@ -688,7 +692,7 @@ function ConfigurePackages() {
     function ConfigureResolved() {
         resolved_list=(
             "[Resolve]"
-            "DNS=${CURRENT_DNS_LINE} ${CUSTOM_DNS_LINE}"
+            "DNS=${DNS_LINE}"
             "DNSOverTLS=opportunistic"
             "DNSSEC=allow-downgrade"
             "DNSStubListener=false"
@@ -713,8 +717,12 @@ function ConfigurePackages() {
                     ${CURRENT_DNS[@]}
                     ${CUSTOM_DNS[@]}
                 )
-                rm -rf "/tmp/resolv.autodeploy" && for resolv_conf_list_task in "${!resolv_conf_list[@]}"; do
-                    echo "nameserver ${resolv_conf_list[$resolv_conf_list_task]}" >> "/tmp/resolv.autodeploy"
+                rm -rf "/tmp/resolv.autodeploy" && DNS_COUNT="1" && for resolv_conf_list_task in "${!resolv_conf_list[@]}"; do
+                    if [ "${DNS_COUNT}" -gt "3" ]; then
+                        break
+                    else
+                        echo "nameserver ${resolv_conf_list[$resolv_conf_list_task]}" >> "/tmp/resolv.autodeploy"
+                    fi && DNS_COUNT=$(( ${DNS_COUNT} + 1 ))
                 done && echo "search ${NEW_DOMAIN[*]}" >> "/tmp/resolv.autodeploy" && if [ -f "/etc/resolv.conf" ]; then
                     chattr -i "/etc/resolv.conf" > "/dev/null" 2>&1
                     if [ "$?" -eq "1" ]; then
@@ -727,8 +735,12 @@ function ConfigurePackages() {
                 ${CURRENT_DNS[@]}
                 ${CUSTOM_DNS[@]}
             )
-            rm -rf "/tmp/resolv.autodeploy" && for resolv_conf_list_task in "${!resolv_conf_list[@]}"; do
-                echo "nameserver ${resolv_conf_list[$resolv_conf_list_task]}" >> "/tmp/resolv.autodeploy"
+            rm -rf "/tmp/resolv.autodeploy" && DNS_COUNT="1" && for resolv_conf_list_task in "${!resolv_conf_list[@]}"; do
+                if [ "${DNS_COUNT}" -gt "3" ]; then
+                    break
+                else
+                    echo "nameserver ${resolv_conf_list[$resolv_conf_list_task]}" >> "/tmp/resolv.autodeploy"
+                fi && DNS_COUNT=$(( ${DNS_COUNT} + 1 ))
             done && echo "search ${NEW_DOMAIN[*]}" >> "/tmp/resolv.autodeploy" && if [ -f "/etc/resolv.conf" ]; then
                 chattr -i "/etc/resolv.conf" > "/dev/null" 2>&1
                 if [ "$?" -eq "1" ]; then
