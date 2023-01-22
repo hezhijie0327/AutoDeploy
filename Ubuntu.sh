@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 4.3.8
+# Current Version: 4.3.9
 
 ## How to get and use?
 # curl "https://source.zhijie.online/AutoDeploy/main/Ubuntu.sh" | sudo bash
@@ -1180,7 +1180,6 @@ function InstallDependencyPackages() {
         "apt-transport-https"
         "ca-certificates"
         "chrony"
-        "cpufrequtils"
         "cron"
         "curl"
         "dnsutils"
