@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 4.4.3
+# Current Version: 4.4.4
 
 ## How to get and use?
 # curl "https://source.zhijie.online/AutoDeploy/main/Ubuntu.sh" | sudo bash
@@ -284,16 +284,16 @@ function GetSystemInformation() {
 # Set Repository Mirror
 function SetRepositoryMirror() {
     mirror_list=(
-        "deb ${transport_protocol}://mirrors.ustc.edu.cn/${MIRROR_URL} ${LSBCodename} main restricted universe multiverse"
-        "deb ${transport_protocol}://mirrors.ustc.edu.cn/${MIRROR_URL} ${LSBCodename}-backports main restricted universe multiverse"
-        "# deb ${transport_protocol}://mirrors.ustc.edu.cn/${MIRROR_URL} ${LSBCodename}-proposed main restricted universe multiverse"
-        "deb ${transport_protocol}://mirrors.ustc.edu.cn/${MIRROR_URL} ${LSBCodename}-security main restricted universe multiverse"
-        "deb ${transport_protocol}://mirrors.ustc.edu.cn/${MIRROR_URL} ${LSBCodename}-updates main restricted universe multiverse"
-        "deb-src ${transport_protocol}://mirrors.ustc.edu.cn/${MIRROR_URL} ${LSBCodename} main restricted universe multiverse"
-        "deb-src ${transport_protocol}://mirrors.ustc.edu.cn/${MIRROR_URL} ${LSBCodename}-backports main restricted universe multiverse"
-        "# deb-src ${transport_protocol}://mirrors.ustc.edu.cn/${MIRROR_URL} ${LSBCodename}-proposed main restricted universe multiverse"
-        "deb-src ${transport_protocol}://mirrors.ustc.edu.cn/${MIRROR_URL} ${LSBCodename}-security main restricted universe multiverse"
-        "deb-src ${transport_protocol}://mirrors.ustc.edu.cn/${MIRROR_URL} ${LSBCodename}-updates main restricted universe multiverse"
+        "deb ${transport_protocol}://mirrors.ustc.edu.cn/${MIRROR_URL} ${LSBCodename} main multiverse restricted universe"
+        "deb ${transport_protocol}://mirrors.ustc.edu.cn/${MIRROR_URL} ${LSBCodename}-backports main multiverse restricted universe"
+        "# deb ${transport_protocol}://mirrors.ustc.edu.cn/${MIRROR_URL} ${LSBCodename}-proposed main multiverse restricted universe"
+        "deb ${transport_protocol}://mirrors.ustc.edu.cn/${MIRROR_URL} ${LSBCodename}-security main multiverse restricted universe"
+        "deb ${transport_protocol}://mirrors.ustc.edu.cn/${MIRROR_URL} ${LSBCodename}-updates main multiverse restricted universe"
+        "deb-src ${transport_protocol}://mirrors.ustc.edu.cn/${MIRROR_URL} ${LSBCodename} main multiverse restricted universe"
+        "deb-src ${transport_protocol}://mirrors.ustc.edu.cn/${MIRROR_URL} ${LSBCodename}-backports main multiverse restricted universe"
+        "# deb-src ${transport_protocol}://mirrors.ustc.edu.cn/${MIRROR_URL} ${LSBCodename}-proposed main multiverse restricted universe"
+        "deb-src ${transport_protocol}://mirrors.ustc.edu.cn/${MIRROR_URL} ${LSBCodename}-security main multiverse restricted universe"
+        "deb-src ${transport_protocol}://mirrors.ustc.edu.cn/${MIRROR_URL} ${LSBCodename}-updates main multiverse restricted universe"
     )
     if [ ! -d "/etc/apt/sources.list.d" ]; then
         mkdir "/etc/apt/sources.list.d"
