@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 2.8.8
+# Current Version: 2.8.9
 
 ## How to get and use?
 # curl "https://source.zhijie.online/AutoDeploy/main/ProxmoxVE.sh" | sudo bash
@@ -29,10 +29,28 @@ function GetSystemInformation() {
         fi
     }
     function GenerateDomain() {
-        NEW_DOMAIN=("localdomain")
+        RESET_DOMAIN="false"
+        if [ -f "/etc/resolv.conf" ]; then
+            NEW_DOMAIN=($(cat "/etc/resolv.conf" | grep "^search " | cut -d " " -f 2- | awk "{print $2}"))
+        fi
+        if [ $(echo "${NEW_DOMAIN[*]}" | sed "s/\ /\\n/g" | wc -l ) -lt 1 ] || [ "${RESET_DOMAIN}" == "true" ]; then
+            NEW_DOMAIN=("localdomain")
+        fi
     }
     function GenerateHostname() {
-        NEW_HOSTNAME="ProxmoxVE-$(date '+%Y%m%d%H%M%S')"
+        RESET_HOSTNAME="false"
+        if [ -f "/etc/hostname" ]; then
+            NEW_HOSTNAME=$(cat "/etc/hostname" | awk "{print $2}")
+        fi
+        if [ $(echo "${NEW_HOSTNAME}" | wc -l) -ne 1 ]; then
+            which "hostname" > "/dev/null" 2>&1
+            if [ "$?" -eq "0" ]; then
+                NEW_HOSTNAME=$(hostname)
+            fi
+        fi
+        if [ $(echo "${NEW_HOSTNAME}" | wc -l) -ne 1 ] || [ "${RESET_HOSTNAME}" == "true" ]; then
+            NEW_HOSTNAME="ProxmoxVE-$(date '+%Y%m%d%H%M%S')"
+        fi
     }
     function GenerateResolv() {
         USE_GLOBAL_DNS="false"
