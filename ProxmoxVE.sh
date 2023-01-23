@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 2.9.1
+# Current Version: 2.9.2
 
 ## How to get and use?
 # curl "https://source.zhijie.online/AutoDeploy/main/ProxmoxVE.sh" | sudo bash
@@ -153,14 +153,14 @@ function SetRepositoryMirror() {
         "deb ${transport_protocol}://mirrors.ustc.edu.cn/debian-security ${LSBCodename}-security contrib main non-free"
         "deb ${transport_protocol}://mirrors.ustc.edu.cn/debian ${LSBCodename} contrib main non-free"
         "deb ${transport_protocol}://mirrors.ustc.edu.cn/debian ${LSBCodename}-backports contrib main non-free"
-        "# deb ${transport_protocol}://mirrors.ustc.edu.cn/debian ${LSBCodename}-backports-sloppy contrib main non-free"
-        "# deb ${transport_protocol}://mirrors.ustc.edu.cn/debian ${LSBCodename}-proposed-updates contrib main non-free"
+        "deb ${transport_protocol}://mirrors.ustc.edu.cn/debian ${LSBCodename}-backports-sloppy contrib main non-free"
+        "deb ${transport_protocol}://mirrors.ustc.edu.cn/debian ${LSBCodename}-proposed-updates contrib main non-free"
         "deb ${transport_protocol}://mirrors.ustc.edu.cn/debian ${LSBCodename}-updates contrib main non-free"
         "deb-src ${transport_protocol}://mirrors.ustc.edu.cn/debian-security ${LSBCodename}-security contrib main non-free"
         "deb-src ${transport_protocol}://mirrors.ustc.edu.cn/debian ${LSBCodename} contrib main non-free"
         "deb-src ${transport_protocol}://mirrors.ustc.edu.cn/debian ${LSBCodename}-backports contrib main non-free"
-        "# deb-src ${transport_protocol}://mirrors.ustc.edu.cn/debian ${LSBCodename}-backports-sloppy contrib main non-free"
-        "# deb-src ${transport_protocol}://mirrors.ustc.edu.cn/debian ${LSBCodename}-proposed-updates contrib main non-free"
+        "deb-src ${transport_protocol}://mirrors.ustc.edu.cn/debian ${LSBCodename}-backports-sloppy contrib main non-free"
+        "deb-src ${transport_protocol}://mirrors.ustc.edu.cn/debian ${LSBCodename}-proposed-updates contrib main non-free"
         "deb-src ${transport_protocol}://mirrors.ustc.edu.cn/debian ${LSBCodename}-updates contrib main non-free"
     )
     proxmox_mirror_list=(
@@ -185,6 +185,7 @@ function SetRepositoryMirror() {
 # Set Readonly Flag
 function SetReadonlyFlag() {
     file_list=(
+        "/etc/apt/preferences"
         "/etc/apt/sources.list"
         "/etc/apt/sources.list.d/crowdsec.list"
         "/etc/apt/sources.list.d/docker.list"
@@ -219,6 +220,23 @@ function SetReadonlyFlag() {
 }
 # Configure Packages
 function ConfigurePackages() {
+    function ConfigureAPT() {
+        apt_preference_list=(
+            "${LSBCodename}-backports-sloppy"
+            "${LSBCodename}-backports"
+            "${LSBCodename}-security"
+            "${LSBCodename}-updates"
+            "${LSBCodename}"
+            "${LSBCodename}-proposed-updates"
+        )
+        if [ -d "/etc/apt/preferences.d" ]; then
+            rm -rf "/etc/apt/preferences.d"
+        fi && mkdir "/etc/apt/preferences.d"
+        rm -rf "/tmp/apt_preference_list.autodeploy" && APT_Pin_Priority=$(( ${#apt_preference_list[*]} * 100 )) && for apt_preference_list_task in "${!apt_preference_list[@]}"; do
+            echo "Package: *\nPin: release a=${apt_preference_list[$apt_preference_list_task]}\nPin-Priority: ${APT_Pin_Priority}" >> "/tmp/apt_preference_list.autodeploy"
+            APT_Pin_Priority=$(( ${APT_Pin_Priority} - 100 ))
+        done && cat "/tmp/apt_preference_list.autodeploy" > "/etc/apt/preferences"
+    }
     function ConfigureChrony() {
         chrony_list=(
             "allow"
@@ -789,6 +807,7 @@ function ConfigurePackages() {
         GenerateCommandPath
         GenerateOMZProfile
     }
+    ConfigureAPT
     ConfigureChrony
     ConfigureCrontab
     ConfigureCrowdSec
