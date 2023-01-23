@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 4.4.8
+# Current Version: 4.4.9
 
 ## How to get and use?
 # curl "https://source.zhijie.online/AutoDeploy/main/Ubuntu.sh" | sudo bash
@@ -361,8 +361,8 @@ function ConfigurePackages() {
             if [ ! -z $(echo ${APT_PIN_PRIORITY} | grep "[a-z]\|[A-Z]\|-") ]; then
                 APT_PIN_PRIORITY="500"
             fi
-            echo -e "Package: *\nPin: release a=${APT_PIN_RELEASE}\nPin-Priority: ${APT_PIN_PRIORITY}"
-        done && cat "/tmp/apt_preference_list.autodeploy" > "/etc/apt/preferences"
+            echo -e "Package: *\nPin: release a=${APT_PIN_RELEASE}\nPin-Priority: ${APT_PIN_PRIORITY}\n"
+        done && cat "/tmp/apt_preference_list.autodeploy" | sed '$d' > "/etc/apt/preferences"
     }
     function ConfigureChrony() {
         chrony_list=(
