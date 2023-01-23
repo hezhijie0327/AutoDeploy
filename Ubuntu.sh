@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 4.5.0
+# Current Version: 4.5.1
 
 ## How to get and use?
 # curl "https://source.zhijie.online/AutoDeploy/main/Ubuntu.sh" | sudo bash
@@ -379,6 +379,7 @@ function ConfigurePackages() {
         )
         DHCP_NTP=()
         chrony_ntp_list=(
+            "${DHCP_NTP[@]}"
             "ntp.ntsc.ac.cn"
             "ntp1.nim.ac.cn"
             "ntp2.nim.ac.cn"
@@ -389,7 +390,6 @@ function ConfigurePackages() {
             "time.cloudflare.com"
             "time.nist.gov"
             "pool.ntp.org"
-            "${DHCP_NTP[@]}"
         )
         which "chronyc" > "/dev/null" 2>&1
         if [ "$?" -eq "0" ]; then
@@ -440,6 +440,7 @@ function ConfigurePackages() {
             "crowdsecurity/iptables"
             "crowdsecurity/linux-lpe"
             "crowdsecurity/linux"
+            "crowdsecurity/sshd"
         )
         which "cscli" > "/dev/null" 2>&1
         if [ "$?" -eq "0" ]; then
