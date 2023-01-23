@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 2.9.6
+# Current Version: 2.9.7
 
 ## How to get and use?
 # curl "https://source.zhijie.online/AutoDeploy/main/ProxmoxVE.sh" | sudo bash
@@ -222,8 +222,8 @@ function SetReadonlyFlag() {
 function ConfigurePackages() {
     function ConfigureAPT() {
         apt_preference_list=(
-            "${LSBCodename}-backports-sloppy 900"
-            "${LSBCodename}-backports 900"
+            "${LSBCodename}-backports-sloppy 990"
+            "${LSBCodename}-backports 990"
             "${LSBCodename}-security 500"
             "${LSBCodename}-updates 500"
             "${LSBCodename} 500"
