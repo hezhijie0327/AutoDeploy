@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 2.9.3
+# Current Version: 2.9.4
 
 ## How to get and use?
 # curl "https://source.zhijie.online/AutoDeploy/main/ProxmoxVE.sh" | sudo bash
@@ -233,7 +233,7 @@ function ConfigurePackages() {
             rm -rf "/etc/apt/preferences.d"
         fi && mkdir "/etc/apt/preferences.d"
         rm -rf "/tmp/apt_preference_list.autodeploy" && APT_Pin_Priority=$(( ${#apt_preference_list[*]} * 100 )) && for apt_preference_list_task in "${!apt_preference_list[@]}"; do
-            echo "Package: *\nPin: release a=${apt_preference_list[$apt_preference_list_task]}\nPin-Priority: ${APT_Pin_Priority}" >> "/tmp/apt_preference_list.autodeploy"
+            echo -e "Package: *\nPin: release a=${apt_preference_list[$apt_preference_list_task]}\nPin-Priority: ${APT_Pin_Priority}" >> "/tmp/apt_preference_list.autodeploy"
             APT_Pin_Priority=$(( ${APT_Pin_Priority} - 100 ))
         done && cat "/tmp/apt_preference_list.autodeploy" > "/etc/apt/preferences"
     }
