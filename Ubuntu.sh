@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 4.4.4
+# Current Version: 4.4.5
 
 ## How to get and use?
 # curl "https://source.zhijie.online/AutoDeploy/main/Ubuntu.sh" | sudo bash
@@ -286,12 +286,12 @@ function SetRepositoryMirror() {
     mirror_list=(
         "deb ${transport_protocol}://mirrors.ustc.edu.cn/${MIRROR_URL} ${LSBCodename} main multiverse restricted universe"
         "deb ${transport_protocol}://mirrors.ustc.edu.cn/${MIRROR_URL} ${LSBCodename}-backports main multiverse restricted universe"
-        "# deb ${transport_protocol}://mirrors.ustc.edu.cn/${MIRROR_URL} ${LSBCodename}-proposed main multiverse restricted universe"
+        "deb ${transport_protocol}://mirrors.ustc.edu.cn/${MIRROR_URL} ${LSBCodename}-proposed main multiverse restricted universe"
         "deb ${transport_protocol}://mirrors.ustc.edu.cn/${MIRROR_URL} ${LSBCodename}-security main multiverse restricted universe"
         "deb ${transport_protocol}://mirrors.ustc.edu.cn/${MIRROR_URL} ${LSBCodename}-updates main multiverse restricted universe"
         "deb-src ${transport_protocol}://mirrors.ustc.edu.cn/${MIRROR_URL} ${LSBCodename} main multiverse restricted universe"
         "deb-src ${transport_protocol}://mirrors.ustc.edu.cn/${MIRROR_URL} ${LSBCodename}-backports main multiverse restricted universe"
-        "# deb-src ${transport_protocol}://mirrors.ustc.edu.cn/${MIRROR_URL} ${LSBCodename}-proposed main multiverse restricted universe"
+        "deb-src ${transport_protocol}://mirrors.ustc.edu.cn/${MIRROR_URL} ${LSBCodename}-proposed main multiverse restricted universe"
         "deb-src ${transport_protocol}://mirrors.ustc.edu.cn/${MIRROR_URL} ${LSBCodename}-security main multiverse restricted universe"
         "deb-src ${transport_protocol}://mirrors.ustc.edu.cn/${MIRROR_URL} ${LSBCodename}-updates main multiverse restricted universe"
     )
@@ -307,6 +307,7 @@ function SetRepositoryMirror() {
 # Set Readonly Flag
 function SetReadonlyFlag() {
     file_list=(
+        "/etc/apt/preferences"
         "/etc/apt/sources.list"
         "/etc/apt/sources.list.d/crowdsec.list"
         "/etc/apt/sources.list.d/docker.list"
@@ -343,6 +344,22 @@ function SetReadonlyFlag() {
 }
 # Configure Packages
 function ConfigurePackages() {
+    function ConfigureAPT() {
+        apt_preference_list=(
+            "${LSBCodename}-backports"
+            "${LSBCodename}-security"
+            "${LSBCodename}-updates"
+            "${LSBCodename}"
+            "${LSBCodename}-proposed"
+        )
+        if [ -d "/etc/apt/preferences.d" ]; then
+            rm -rf "/etc/apt/preferences.d"
+        fi && mkdir "/etc/apt/preferences.d"
+        rm -rf "/tmp/apt_preference_list.autodeploy" && APT_Pin_Priority=$(( ${#apt_preference_list[*]} * 100 )) && for apt_preference_list_task in "${!apt_preference_list[@]}"; do
+            echo "Package: *\nPin: release a=${apt_preference_list[$apt_preference_list_task]}\nPin-Priority: ${APT_Pin_Priority}" >> "/tmp/apt_preference_list.autodeploy"
+            APT_Pin_Priority=$(( ${APT_Pin_Priority} - 100 ))
+        done && cat "/tmp/apt_preference_list.autodeploy" > "/etc/apt/preferences"
+    }
     function ConfigureChrony() {
         chrony_list=(
             "allow"
@@ -978,6 +995,7 @@ function ConfigurePackages() {
         GenerateCommandPath
         GenerateOMZProfile
     }
+    ConfigureAPT
     ConfigureChrony
     ConfigureCockpit
     ConfigureCrontab
