@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 2.8.9
+# Current Version: 2.9.0
 
 ## How to get and use?
 # curl "https://source.zhijie.online/AutoDeploy/main/ProxmoxVE.sh" | sudo bash
@@ -114,7 +114,15 @@ function GetSystemInformation() {
         fi && echo "options kvm ignore_msrs=1 report_ignored_msrs=0" >> "/etc/modprobe.d/kvm.conf"
     }
     function GetHostname() {
-        OLD_HOSTNAME=$(cat "/etc/hostname")
+        if [ -f "/etc/hostname" ]; then
+            OLD_HOSTNAME=$(cat "/etc/hostname" | awk "{print $2}")
+        fi
+        if [ $(echo "${OLD_HOSTNAME}" | wc -l) -ne 1 ]; then
+            which "hostname" > "/dev/null" 2>&1
+            if [ "$?" -eq "0" ]; then
+                OLD_HOSTNAME=$(hostname)
+            fi
+        fi
     }
     function GetManagementIPAddress() {
         CURRENT_MANAGEMENT_IP=$(ip address show vmbr0 | grep "inet" | awk '{print $2}' | sort | head -n 1 | sed "s/\/.*//")
