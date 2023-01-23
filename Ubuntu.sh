@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 4.4.7
+# Current Version: 4.4.8
 
 ## How to get and use?
 # curl "https://source.zhijie.online/AutoDeploy/main/Ubuntu.sh" | sudo bash
@@ -346,18 +346,22 @@ function SetReadonlyFlag() {
 function ConfigurePackages() {
     function ConfigureAPT() {
         apt_preference_list=(
-            "${LSBCodename}-backports"
-            "${LSBCodename}-security"
-            "${LSBCodename}-updates"
-            "${LSBCodename}"
-            "${LSBCodename}-proposed"
+            "${LSBCodename}-backports 900"
+            "${LSBCodename}-security 500"
+            "${LSBCodename}-updates 500"
+            "${LSBCodename} 500"
+            "${LSBCodename}-proposed 100"
         )
         if [ -d "/etc/apt/preferences.d" ]; then
             rm -rf "/etc/apt/preferences.d"
         fi && mkdir "/etc/apt/preferences.d"
-        rm -rf "/tmp/apt_preference_list.autodeploy" && APT_Pin_Priority=$(( ${#apt_preference_list[*]} * 100 )) && for apt_preference_list_task in "${!apt_preference_list[@]}"; do
-            echo -e "Package: *\nPin: release a=${apt_preference_list[$apt_preference_list_task]}\nPin-Priority: ${APT_Pin_Priority}" >> "/tmp/apt_preference_list.autodeploy"
-            APT_Pin_Priority=$(( ${APT_Pin_Priority} - 100 ))
+        rm -rf "/tmp/apt_preference_list.autodeploy" && for apt_preference_list_task in "${!apt_preference_list[@]}"; do
+            APT_PIN_RELEASE=$(echo "${apt_preference_list[$apt_preference_list_task]}" | cut -d " " -f 1)
+            APT_PIN_PRIORITY=$(echo "${apt_preference_list[$apt_preference_list_task]}" | cut -d " " -f 2)
+            if [ ! -z $(echo ${APT_PIN_PRIORITY} | grep "[a-z]\|[A-Z]\|-") ]; then
+                APT_PIN_PRIORITY="500"
+            fi
+            echo -e "Package: *\nPin: release a=${APT_PIN_RELEASE}\nPin-Priority: ${APT_PIN_PRIORITY}"
         done && cat "/tmp/apt_preference_list.autodeploy" > "/etc/apt/preferences"
     }
     function ConfigureChrony() {
