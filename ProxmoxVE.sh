@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 2.9.2
+# Current Version: 2.9.3
 
 ## How to get and use?
 # curl "https://source.zhijie.online/AutoDeploy/main/ProxmoxVE.sh" | sudo bash
@@ -279,8 +279,8 @@ function ConfigurePackages() {
     }
     function ConfigureCrontab() {
         crontab_list=(
-            "0 0 * * 7 sudo apt update && sudo apt full-upgrade -qy && sudo apt -t ${LSBCodename}-backports full-upgrade -qy && sudo apt autoremove -qy"
-#           "0 4 * * 7 sudo reboot"
+            "0 0 * * 7 sudo apt update && sudo apt full-upgrade -qy && sudo apt autoremove -qy"
+            "# 0 4 * * 7 sudo reboot"
             "@reboot sudo rm -rf /root/.*_history /root/.ssh/known_hosts*"
         )
         which "crontab" > "/dev/null" 2>&1
@@ -1132,7 +1132,7 @@ function InstallDependencyPackages() {
 }
 # Upgrade Packages
 function UpgradePackages() {
-    apt update && apt full-upgrade -qy && apt -t ${LSBCodename}-backports full-upgrade -qy && apt autoremove -qy
+    apt update && apt full-upgrade -qy && apt autoremove -qy
 }
 # Cleanup Temp Files
 function CleanupTempFiles() {
