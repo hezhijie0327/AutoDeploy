@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 4.4.2
+# Current Version: 4.4.3
 
 ## How to get and use?
 # curl "https://source.zhijie.online/AutoDeploy/main/Ubuntu.sh" | sudo bash
@@ -176,10 +176,28 @@ function GetSystemInformation() {
         CheckHypervisorEnvironment
     }
     function GenerateDomain() {
-        NEW_DOMAIN=("localdomain")
+        RESET_DOMAIN="false"
+        if [ -f "/etc/resolv.conf" ]; then
+            NEW_DOMAIN=($(cat "/etc/resolv.conf" | grep "^search " | cut -d " " -f 2- | awk "{print $2}"))
+        fi
+        if [ $(echo "${NEW_DOMAIN[*]}" | sed "s/\ /\\n/g" | wc -l ) -lt 1 ] || [ "${RESET_DOMAIN}" == "true" ]; then
+            NEW_DOMAIN=("localdomain")
+        fi
     }
     function GenerateHostname() {
-        NEW_HOSTNAME="Ubuntu-$(date '+%Y%m%d%H%M%S')"
+        RESET_HOSTNAME="false"
+        if [ -f "/etc/hostname" ]; then
+            NEW_HOSTNAME=$(cat "/etc/hostname" | awk "{print $2}")
+        fi
+        if [ $(echo "${NEW_HOSTNAME}" | wc -l) -ne 1 ]; then
+            which "hostname" > "/dev/null" 2>&1
+            if [ "$?" -eq "0" ]; then
+                NEW_HOSTNAME=$(hostname)
+            fi
+        fi
+        if [ $(echo "${NEW_HOSTNAME}" | wc -l) -ne 1 ] || [ "${RESET_HOSTNAME}" == "true" ]; then
+            NEW_HOSTNAME="Ubuntu-$(date '+%Y%m%d%H%M%S')"
+        fi
     }
     function GetCPUVendorID() {
         CPU_VENDOR_ID=$(cat '/proc/cpuinfo' | grep 'vendor_id' | uniq | awk -F ':' '{print $2}' | awk -F ' ' '{print $1}')
