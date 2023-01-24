@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 4.5.1
+# Current Version: 4.5.2
 
 ## How to get and use?
 # curl "https://source.zhijie.online/AutoDeploy/main/Ubuntu.sh" | sudo bash
@@ -309,8 +309,11 @@ function SetReadonlyFlag() {
     file_list=(
         "/etc/apt/preferences"
         "/etc/apt/sources.list"
+        "/etc/apt/sources.list.d/amd.list"
         "/etc/apt/sources.list.d/crowdsec.list"
         "/etc/apt/sources.list.d/docker.list"
+        "/etc/apt/sources.list.d/intel.list"
+        "/etc/apt/sources.list.d/nvidia.list"
         "/etc/chrony/chrony.conf"
         "/etc/cockpit/cockpit.conf"
         "/etc/default/ufw"
@@ -1058,6 +1061,50 @@ function ConfigureSystem() {
             fi
         fi
     }
+    function ConfigureGPUDriver() {
+        ENABLE_AMD_GPU_DRIVER="false"
+        ENABLE_INTEL_GPU_DRIVER="false"
+        ENABLE_NVIDIA_GPU_DRIVER="false"
+        if [ "${OSArchitecture}" == "amd64" ]; then
+            amd_repo_list=(
+                "# deb [arch=${OSArchitecture} signed-by=/usr/share/keyrings/amd.gpg] https://repo.radeon.com/amdgpu/latest/ubuntu ${LSBCodename} main proprietary"
+                "# deb [arch=${OSArchitecture} signed-by=/usr/share/keyrings/amd.gpg] https://repo.radeon.com/rocm/apt/latest ${LSBCodename} main proprietary"
+                "# deb-src [arch=${OSArchitecture} signed-by=/usr/share/keyrings/amd.gpg] https://repo.radeon.com/amdgpu/latest/ubuntu ${LSBCodename} main proprietary"
+            )
+            intel_repo_list=(
+                "# deb [arch=${OSArchitecture} signed-by=/usr/share/keyrings/intel.gpg] https://repositories.intel.com/graphics/ubuntu ${LSBCodename} arc legacy"
+            )
+            nvidia_repo_list=(
+                "# deb [arch=${OSArchitecture} signed-by=/usr/share/keyrings/nvidia.gpg] https://developer.download.nvidia.com/compute/cuda/repos/ubuntu${LSBVersion//./}/x86_64/ /"
+            )
+            nvidia_patch_list=(
+                "https://raw.githubusercontent.com/keylase/nvidia-patch/master/patch-fbc.sh"
+                "https://raw.githubusercontent.com/keylase/nvidia-patch/master/patch.sh"
+            )
+            for amd_repo_list_task in "${!amd_repo_list[@]}"; do
+                echo "${amd_repo_list[$amd_repo_list_task]}" >> "/etc/apt/sources.list.d/amd.list"
+            done && curl -s --connect-timeout 15 "https://repo.radeon.com/rocm/rocm.gpg.key" | gpg --dearmor > "/usr/share/keyrings/amd.gpg"
+            for intel_repo_list_task in "${!intel_repo_list[@]}"; do
+                echo "${intel_repo_list[$intel_repo_list_task]}" >> "/etc/apt/sources.list.d/intel.list"
+            done && curl -s --connect-timeout 15 "https://repositories.intel.com/graphics/intel-graphics.key" | gpg --dearmor > "/usr/share/keyrings/intel.gpg"
+            for nvidia_repo_list_task in "${!nvidia_repo_list[@]}"; do
+                echo "${nvidia_repo_list[$nvidia_repo_list_task]}" >> "/etc/apt/sources.list.d/nvidia.list"
+            done && curl -s --connect-timeout 15 "https://developer.download.nvidia.com/compute/cuda/repos/wsl-ubuntu/x86_64/3bf863cc.pub" | gpg --dearmor > "/usr/share/keyrings/nvidia.gpg"
+            rm -rf /usr/bin/nvidia_patch* && for nvidia_patch_list_task in "${!nvidia_patch_list[@]}"; do
+                FILE_NAME=$(echo "${nvidia_patch_list[$nvidia_patch_list_task]}" | awk -F "/" '{print $NF}' | cut -d '.' -f 1 | tr "-" "_")
+                curl -s --connect-timeout 15 "${GHPROXY_URL}${nvidia_patch_list[$nvidia_patch_list_task]}" > /usr/bin/nvidia_${FILE_NAME} && chmod +x /usr/bin/nvidia_${FILE_NAME}
+            done
+            if [ "${ENABLE_AMD_DRIVER}" == "true" ]; then
+                sed -i 's/# //g' "/etc/apt/sources.list.d/amd.list"
+            fi
+            if [ "${ENABLE_INTEL_DRIVER}" == "true" ]; then
+                sed -i 's/# //g' "/etc/apt/sources.list.d/intel.list"
+            fi
+            if [ "${ENABLE_NVIDIA_DRIVER}" == "true" ]; then
+                sed -i 's/# //g' "/etc/apt/sources.list.d/nvidia.list"
+            fi
+        fi
+    }
     function ConfigureHostfile() {
         NEW_FULL_DOMAIN="" && for NEW_DOMAIN_TASK in "${!NEW_DOMAIN[@]}"; do
             NEW_FULL_DOMAIN="${NEW_FULL_DOMAIN} ${NEW_HOSTNAME}.${NEW_DOMAIN[$NEW_DOMAIN_TASK]}"
@@ -1139,6 +1186,7 @@ function ConfigureSystem() {
     }
     ConfigureDefaultShell
     ConfigureDefaultUser
+    ConfigureGPUDriver
     ConfigureHostfile
     ConfigureLocales
     ConfigureRootUser
