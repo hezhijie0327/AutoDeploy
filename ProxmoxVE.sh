@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 2.9.9
+# Current Version: 3.0.0
 
 ## How to get and use?
 # curl "https://source.zhijie.online/AutoDeploy/main/ProxmoxVE.sh" | sudo bash
@@ -283,7 +283,7 @@ function ConfigurePackages() {
     }
     function ConfigureCrontab() {
         crontab_list=(
-            "# * * * * * export CT_VMID_EXCLUDE=() && sudo pve_watchdog"
+            "# * * * * * export CT_VMID_EXCLUDE=() && sudo bash \"/usr/bin/pve_watchdog\""
             "0 0 * * 7 sudo apt update && sudo apt full-upgrade -qy && sudo apt autoremove -qy"
             "# 0 4 * * 7 sudo reboot"
             "@reboot sudo rm -rf /root/.*_history /root/.ssh/known_hosts*"
