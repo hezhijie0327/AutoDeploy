@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 2.9.8
+# Current Version: 2.9.9
 
 ## How to get and use?
 # curl "https://source.zhijie.online/AutoDeploy/main/ProxmoxVE.sh" | sudo bash
@@ -283,6 +283,7 @@ function ConfigurePackages() {
     }
     function ConfigureCrontab() {
         crontab_list=(
+            "# * * * * * export CT_VMID_EXCLUDE=() && sudo pve_watchdog"
             "0 0 * * 7 sudo apt update && sudo apt full-upgrade -qy && sudo apt autoremove -qy"
             "# 0 4 * * 7 sudo reboot"
             "@reboot sudo rm -rf /root/.*_history /root/.ssh/known_hosts*"
@@ -745,6 +746,16 @@ function ConfigurePackages() {
             tuned-adm profile "virtual-host" && tuned-adm active
         fi
     }
+    function ConfigureWatchdog() {
+        watchdog_list=(
+            '#!/bin/bash'
+            'CT_VMID=($(ls "/etc/pve/lxc" | grep "\.conf" | sed "s/\.conf//g" | grep -v "$(echo ${CT_VMID_EXCLUDE[*]} 1000000000 | sed "s/ /\\|/g")" | awk "{print $1}") $(ls "/etc/pve/qemu-server" | grep "\.conf" | sed "s/\.conf//g" | grep -v "$(echo ${CT_VMID_EXCLUDE[*]} 1000000000 | sed "s/ /\\|/g")" | awk "{print $1}"))'
+            'for CT_VMID_TASK in "${!CT_VMID[@]}"; do if [ -f "/etc/pve/qemu-server/${CT_VMID[$CT_VMID_TASK]}.conf" ]; then if [ $(cat "/etc/pve/qemu-server/${CT_VMID[$CT_VMID_TASK]}.conf" | grep "agent\:" | cut -d " " -f 2) -eq "0" ]; then if [ $(qm status ${CT_VMID[$CT_VMID_TASK]} | grep "status" | cut -d " " -f 2 | grep "running\|stoped") == "" ] && [ $(cat "/etc/pve/qemu-server/${CT_VMID[$CT_VMID_TASK]}.conf" | grep "onboot\:" | cut -d " " -f 2) -eq "1" ]; then qm stop ${CT_VMID[$CT_VMID_TASK]} > "/dev/null" 2>&1; qm start ${CT_VMID[$CT_VMID_TASK]} > "/dev/null" 2>&1; fi; else qm agent ${CT_VMID[$CT_VMID_TASK]} ping > "/dev/null" 2>&1; if [ "$?" -ne "0" ]; then qm stop ${CT_VMID[$CT_VMID_TASK]} > "/dev/null" 2>&1; qm start ${CT_VMID[$CT_VMID_TASK]} > "/dev/null" 2>&1; fi; fi; else for CT_VMID_TASK in "${!CT_VMID[@]}"; do if [ $(pct status ${CT_VMID[$CT_VMID_TASK]} | grep "status" | cut -d " " -f 2 | grep "running\|stoped") == "" ] && [ $(cat "/etc/pve/lxc/${CT_VMID[$CT_VMID_TASK]}.conf" | grep "onboot\:" | cut -d " " -f 2) -eq "1" ]; then pct stop ${CT_VMID[$CT_VMID_TASK]} > "/dev/null" 2>&1; pct start ${CT_VMID[$CT_VMID_TASK]} > "/dev/null" 2>&1; fi; done; fi; done'
+        )
+        rm -rf "/etc/pve/watchdog.sh" && for watchdog_list_task in "${!watchdog_list[@]}"; do
+            echo "${watchdog_list[$watchdog_list_task]}" >> "/tmp/watchdog.autodeploy"
+        done && cat "/tmp/watchdog.autodeploy" > "/usr/bin/pve_watchdog" && chmod +x "/usr/bin/pve_watchdog" && rm -rf "/tmp/watchdog.autodeploy"
+    }
     function ConfigureZsh() {
         function GenerateCommandPath() {
             default_path_list=(
@@ -834,6 +845,7 @@ function ConfigurePackages() {
     ConfigureSshd
     ConfigureSysctl
     ConfigureTuned
+    ConfigureWatchdog
     ConfigureZsh
 }
 # Configure System
