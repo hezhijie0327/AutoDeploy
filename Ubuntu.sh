@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 4.6.2
+# Current Version: 4.6.3
 
 ## How to get and use?
 # curl "https://source.zhijie.online/AutoDeploy/main/Ubuntu.sh" | sudo bash
@@ -736,29 +736,49 @@ function ConfigurePackages() {
                     UPSMON_PASSWORD="secret"
                     UPSMON_ROLE="slave"
                     UPSMON_SYSTEM="${UPS_NAME-ups}@localhost"
+                    nut_service_list=(
+                        "nut-client,enabled"
+                        "nut-driver,disabled"
+                        "nut-monitor,enabled"
+                        "nut-server,disabled"
+                    )
                     Generate_nut_conf
                     Generate_upsmon_conf
                     Generate_upssched_conf
-                    OPRATIONS="enable" && SERVICE_NAME="nut-server" && CallServiceController && OPRATIONS="restart" && SERVICE_NAME="nut-server" && CallServiceController
                     ;;
                 netserver|standalone_netserver)
                     UPSMON_USERNAME=$(echo "${upsd_user_list[*]}" | cut -d ' ' -f 1 | cut -d ',' -f 1)
                     UPSMON_PASSWORD=$(echo "${upsd_user_list[*]}" | cut -d ' ' -f 1 | cut -d ',' -f 2)
                     UPSMON_ROLE=$(echo "${upsd_user_list[*]}" | cut -d ' ' -f 1 | cut -d ',' -f 3)
                     UPSMON_SYSTEM="${UPS_NAME-ups}@localhost"
+                    nut_service_list=(
+                        "nut-client,enabled"
+                        "nut-driver,enabled"
+                        "nut-monitor,enabled"
+                        "nut-server,enabled"
+                    )
                     Generate_nut_conf
                     Generate_ups_conf
                     Generate_upsd_conf
                     Generate_upsd_users
                     Generate_upsmon_conf
                     Generate_upssched_conf
-                    OPRATIONS="enable" && SERVICE_NAME="nut-server" && CallServiceController && OPRATIONS="restart" && SERVICE_NAME="nut-server" && CallServiceController
                     ;;
                 none)
+                    nut_service_list=(
+                        "nut-client,disable"
+                        "nut-driver,disable"
+                        "nut-monitor,disable"
+                        "nut-server,disable"
+                    )
                     Generate_nut_conf
-                    OPRATIONS="disable" && SERVICE_NAME="nut-server" && CallServiceController && OPRATIONS="stop" && SERVICE_NAME="nut-server" && CallServiceController
                     ;;
             esac
+            for nut_service_list_task in "${!nut_service_list[@]}"; do
+                NUT_SERVICE_NAME=$(echo "${nut_service_list[$nut_service_list_task]}" | cut -d ',' -f 1)
+                NUT_SERVICE_STATUS=$(echo "${nut_service_list[$nut_service_list_task]}" | cut -d ',' -f 2)
+                OPRATIONS="${NUT_SERVICE_STATUS}" && SERVICE_NAME="${NUT_SERVICE_NAME}" && CallServiceController > "/dev/null" 2>&1
+            done
         fi
     }
     function ConfigureOpenSSH() {
