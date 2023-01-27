@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 3.0.7
+# Current Version: 3.0.8
 
 ## How to get and use?
 # curl "https://source.zhijie.online/AutoDeploy/main/ProxmoxVE.sh" | sudo bash
@@ -558,29 +558,49 @@ function ConfigurePackages() {
                     UPSMON_PASSWORD="secret"
                     UPSMON_ROLE="slave"
                     UPSMON_SYSTEM="${UPS_NAME-ups}@localhost"
+                    nut_service_list=(
+                        "nut-client,enabled"
+                        "nut-driver,disabled"
+                        "nut-monitor,enabled"
+                        "nut-server,disabled"
+                    )
                     Generate_nut_conf
                     Generate_upsmon_conf
                     Generate_upssched_conf
-                    systemctl enable nut-server && systemctl restart nut-server
                     ;;
                 netserver|standalone_netserver)
                     UPSMON_USERNAME=$(echo "${upsd_user_list[*]}" | cut -d ' ' -f 1 | cut -d ',' -f 1)
                     UPSMON_PASSWORD=$(echo "${upsd_user_list[*]}" | cut -d ' ' -f 1 | cut -d ',' -f 2)
                     UPSMON_ROLE=$(echo "${upsd_user_list[*]}" | cut -d ' ' -f 1 | cut -d ',' -f 3)
                     UPSMON_SYSTEM="${UPS_NAME-ups}@localhost"
+                    nut_service_list=(
+                        "nut-client,enabled"
+                        "nut-driver,enabled"
+                        "nut-monitor,enabled"
+                        "nut-server,enabled"
+                    )
                     Generate_nut_conf
                     Generate_ups_conf
                     Generate_upsd_conf
                     Generate_upsd_users
                     Generate_upsmon_conf
                     Generate_upssched_conf
-                    systemctl enable nut-server && systemctl restart nut-server
                     ;;
                 none)
+                    nut_service_list=(
+                        "nut-client,disable"
+                        "nut-driver,disable"
+                        "nut-monitor,disable"
+                        "nut-server,disable"
+                    )
                     Generate_nut_conf
-                    systemctl disable nut-server && systemctl stop nut-server
                     ;;
             esac
+            for nut_service_list_task in "${!nut_service_list[@]}"; do
+                NUT_SERVICE_NAME=$(echo "${nut_service_list[$nut_service_list_task]}" | cut -d ',' -f 1)
+                NUT_SERVICE_STATUS=$(echo "${nut_service_list[$nut_service_list_task]}" | cut -d ',' -f 2)
+                systemctl ${NUT_SERVICE_STATUS} ${NUT_SERVICE_NAME} > "/dev/null" 2>&1
+            done
         fi
     }
     function ConfigureOpenSSH() {
