@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 4.5.4
+# Current Version: 4.5.5
 
 ## How to get and use?
 # curl "https://source.zhijie.online/AutoDeploy/main/Ubuntu.sh" | sudo bash
@@ -662,24 +662,89 @@ function ConfigurePackages() {
         if [ "${ENABLE_NUT}" == "true" ]; then
             which "upsmon" > "/dev/null" 2>&1
             if [ "$?" -eq "0" ]; then
-                if [ -f "/etc/nut/nut.conf" ]; then
-                    NUT_MODE="" # standalone | netclient | netserver | none
-                    sed -i "s/MODE=.*/MODE=${NUT_MODE:-none}/g" "/etc/nut/nut.conf"
-                fi
-                if [ -f "/etc/nut/upsmon.conf" ]; then
-                    UPSMON_MASTER="false"
-                    UPSMON_USERNAME=""
-                    UPSMON_PASSWORD=""
-                    UPSMON_SYSTEM=""
-                    UPSMON_LIST=($(cat "/etc/nut/upsmon.conf" | grep -n "^MONITOR" | cut -d ':' -f 1 | awk '{print $1}'))
-                    for UPSMON_LIST_TASK in "${!UPSMON_LIST[@]}"; do
-                        sed -i "${UPSMON_LIST[$UPSMON_LIST_TASK]}d" "/etc/nut/upsmon.conf"
-                    done
-                    if [ "${UPSMON_MASTER}" == "false" ]; then
-                        echo "MONITOR ${UPSMON_SYSTEM:-ups@127.0.0.1} 1 ${UPSMON_USERNAME:-monuser} ${UPSMON_PASSWORD:-secret} slave" >> "/etc/nut/upsmon.conf"
-                    else
-                        echo "MONITOR ${UPSMON_SYSTEM:-ups@127.0.0.1} 1 ${UPSMON_USERNAME:-monuser} ${UPSMON_PASSWORD:-secret} master" >> "/etc/nut/upsmon.conf"
-                    fi && upsc ${UPSMON_SYSTEM:-ups@127.0.0.1}
+                function Generate_nut_conf() {
+                    echo "MODE=${NUT_MODE:-none}" > "/etc/nut/nut.conf"
+                }
+                function Generate_ups_conf() {
+                    ups_driver_list=(
+                        "ups,usbhid-ups,auto"
+                    )
+                    ups_conf_list=(
+                        "maxretry = 3"
+                        "retrydelay = 5"
+                    )
+                    rm -rf "/tmp/ups.conf.autodeploy" && for ups_conf_list_task in "${!ups_conf_list[@]}"; do
+                        echo "${ups_conf_list[$ups_conf_list_task]}" >> "/tmp/ups.conf.autodeploy"
+                    done && for ups_driver_list_task in "${!ups_driver_list[@]}"; do
+                        UPS_NAME=$(echo "${ups_driver_list[$ups_driver_list_task]}" | cut -d ',' -f 1)
+                        UPS_DRIVER=$(echo "${ups_driver_list[$ups_driver_list_task]}" | cut -d ',' -f 2)
+                        UPS_PORT=$(echo "${ups_driver_list[$ups_driver_list_task]}" | cut -d ',' -f 3)
+                        echo -e "[${UPS_NAME}]\n    driver = ${UPS_DRIVER}\n    port = ${UPS_PORT}" >> "/tmp/ups.conf.autodeploy"
+                    done && cat "/tmp/ups.conf.autodeploy" > "/etc/nut/ups.conf" && rm -rf "/tmp/ups.conf.autodeploy"
+                }
+                function Generate_upsd_conf() {
+                    upsd_config_list=(
+                        "CERTREQUEST 0"
+                        "LISTEN 0.0.0.0 3493"
+                        "LISTEN :: 3493"
+                        "MAXAGE 15"
+                        "MAXCONN 1024"
+                        "STATEPATH /var/run/nut"
+                    )
+                    rm -rf "/tmp/upsd.conf.autodeploy" && for upsd_config_list_task in "${!upsd_config_list[@]}"; do
+                        echo "${upsd_config_list[$upsd_config_list_task]}" >> "/tmp/upsd.conf.autodeploy"
+                    done && cat "/tmp/upsd.conf.autodeploy" > "/etc/nut/upsd.conf" && rm -rf "/tmp/upsd.conf.autodeploy"
+                }
+                function Generate_upsd_users() {
+                    upsd_user_list=(
+                        "admin,123456,master"
+                        "monuser,secret,slave"
+                    )
+                    rm -rf "/tmp/upsd.users.autodeploy" && for upsd_user_list_task in "${!upsd_user_list[@]}"; do
+                        UPSD_USERNAME=$(echo "${upsd_user_list[$upsd_user_list_task]}" | cut -d ',' -f 1)
+                        UPSD_PASSWORD=$(echo "${upsd_user_list[$upsd_user_list_task]}" | cut -d ',' -f 2)
+                        UPSD_ROLE=$(echo "${upsd_user_list[$upsd_user_list_task]}" | cut -d ',' -f 3)
+                        echo -e "[${UPSD_USERNAME}]\n    actions = SET\n    instcmds = ALL\n    password = ${UPSD_PASSWORD}\n    upsmon ${UPSD_ROLE}" >> "/tmp/upsd.users.autodeploy"
+                    done && cat "/tmp/upsd.users.autodeploy" > "/etc/nut/upsd.users" && rm -rf "/tmp/upsd.users.autodeploy"
+                }
+                function Generate_upsmon_conf() {
+                    upsmon_list=(
+                        "DEADTIME 15"
+                        "FINALDELAY 5"
+                        "HOSTSYNC 15"
+                        "MINSUPPLIES 1"
+                        "NOCOMMWARNTIME 300"
+                        "POLLFREQ 5"
+                        "POLLFREQALERT 5"
+                        "POWERDOWNFLAG /etc/killpower"
+                        "RBWARNTIME 43200"
+                        'SHUTDOWNCMD "/sbin/shutdown -h +0"'
+                        "MONITOR ${UPSMON_SYSTEM} 1 ${UPSMON_USERNAME} ${UPSMON_PASSWORD} ${UPSMON_ROLE}"
+                    )
+                    rm -rf "/tmp/upsmon.conf.autodeploy" && for upsmon_list_task in "${!upsmon_list[@]}"; do
+                        echo "${upsmon_list[$upsmon_list_task]}" >> "/tmp/upsmon.conf.autodeploy"
+                    done && cat "/tmp/upsmon.conf.autodeploy" > "/etc/nut/upsmon.conf" && rm -rf "/tmp/upsmon.conf.autodeploy"
+                }
+                function Generate_upssched_conf() {
+                    upssched_conf=(
+                        "CMDSCRIPT /bin/upssched-cmd"
+                    )
+                }
+                NUT_MODE="" # standalone | netclient | netserver | none
+                rm -rf /etc/nut/*.conf && if [ "${NUT_MODE:-none}" != "none" ]; then
+                    UPSMON_USERNAME="monuser"
+                    UPSMON_PASSWORD="secret"
+                    UPSMON_ROLE="slave"
+                    UPSMON_SYSTEM="ups@localhost"
+                    Generate_nut_conf
+                    Generate_ups_conf
+                    Generate_upsd_conf
+                    Generate_upsd_users
+                    Generate_upsmon_conf
+                    Generate_upssched_conf
+                    OPRATIONS="enable" && SERVICE_NAME="nut-server" && CallServiceController && OPRATIONS="restart" && SERVICE_NAME="nut-server" && CallServiceController
+                else
+                    OPRATIONS="disable" && SERVICE_NAME="nut-server" && CallServiceController && OPRATIONS="stop" && SERVICE_NAME="nut-server" && CallServiceController
                 fi
             fi
         fi
