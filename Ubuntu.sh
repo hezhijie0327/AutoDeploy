@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 4.6.3
+# Current Version: 4.6.4
 
 ## How to get and use?
 # curl "https://source.zhijie.online/AutoDeploy/main/Ubuntu.sh" | sudo bash
@@ -704,7 +704,7 @@ function ConfigurePackages() {
                     UPSD_PASSWORD=$(echo "${upsd_user_list[$upsd_user_list_task]}" | cut -d ',' -f 2)
                     UPSD_ROLE=$(echo "${upsd_user_list[$upsd_user_list_task]}" | cut -d ',' -f 3)
                     echo -e "[${UPSD_USERNAME}]\n    actions = SET\n    instcmds = ALL\n    password = ${UPSD_PASSWORD}\n    upsmon ${UPSD_ROLE}" >> "/tmp/upsd.users.autodeploy"
-                done && cat "/tmp/upsd.users.autodeploy" > "/etc/nut/upsd.users" && rm -rf "/tmp/upsd.users.autodeploy"
+                done && cat "/tmp/upsd.users.autodeploy" > "/etc/nut/upsd.users" && chmod 0640 "/etc/nut/upsd.users" && rm -rf "/tmp/upsd.users.autodeploy"
             }
             function Generate_upsmon_conf() {
                 upsmon_list=(
@@ -722,7 +722,7 @@ function ConfigurePackages() {
                 )
                 rm -rf "/tmp/upsmon.conf.autodeploy" && for upsmon_list_task in "${!upsmon_list[@]}"; do
                     echo "${upsmon_list[$upsmon_list_task]}" >> "/tmp/upsmon.conf.autodeploy"
-                done && cat "/tmp/upsmon.conf.autodeploy" > "/etc/nut/upsmon.conf" && rm -rf "/tmp/upsmon.conf.autodeploy"
+                done && cat "/tmp/upsmon.conf.autodeploy" > "/etc/nut/upsmon.conf" && chmod 0640 "/etc/nut/upsmon.conf" && rm -rf "/tmp/upsmon.conf.autodeploy"
             }
             function Generate_upssched_conf() {
                 upssched_conf=(
