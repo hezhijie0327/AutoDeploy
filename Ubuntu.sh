@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 4.6.5
+# Current Version: 4.6.6
 
 ## How to get and use?
 # curl "https://source.zhijie.online/AutoDeploy/main/Ubuntu.sh" | sudo bash
@@ -659,9 +659,6 @@ function ConfigurePackages() {
         which "upsmon" > "/dev/null" 2>&1
         if [ "$?" -eq "0" ]; then
             function Generate_nut_conf() {
-                if [ "${NUT_MODE}" == "standalone_netclient" ] || [ "${NUT_MODE}" == "standalone_netserver" ]; then
-                    NUT_MODE="standalone"
-                fi
                 echo "MODE=${NUT_MODE:-none}" > "/etc/nut/nut.conf"
             }
             function Generate_ups_conf() {
@@ -682,7 +679,7 @@ function ConfigurePackages() {
                 done && cat "/tmp/ups.conf.autodeploy" > "/etc/nut/ups.conf" && rm -rf "/tmp/ups.conf.autodeploy"
             }
             function Generate_upsd_conf() {
-                if [ "${NUT_MODE}" == "standalone_netserver" ]; then
+                if [ "${NUT_MODE}" == "standalone" ]; then
                     upsd_config_list=(
                         "CERTREQUEST 0"
                         "LISTEN 127.0.0.1 3493"
@@ -740,9 +737,9 @@ function ConfigurePackages() {
                     "CMDSCRIPT /bin/upssched-cmd"
                 )
             }
-            NUT_MODE="" # netclient | netserver | none | standalone_netclient | standalone_netserver
+            NUT_MODE="" # netclient | netserver | none | standalone
             rm -rf /etc/nut/*.* && case ${NUT_MODE:-none} in
-                netclient|standalone_netclient)
+                netclient)
                     UPSMON_USERNAME="monuser"
                     UPSMON_PASSWORD="secret"
                     UPSMON_ROLE="slave"
@@ -757,7 +754,7 @@ function ConfigurePackages() {
                     Generate_upsmon_conf
                     Generate_upssched_conf
                     ;;
-                netserver|standalone_netserver)
+                netserver|standalone)
                     UPSMON_USERNAME=$(echo "${upsd_user_list[*]}" | cut -d ' ' -f 1 | cut -d ',' -f 1)
                     UPSMON_PASSWORD=$(echo "${upsd_user_list[*]}" | cut -d ' ' -f 1 | cut -d ',' -f 2)
                     UPSMON_ROLE=$(echo "${upsd_user_list[*]}" | cut -d ' ' -f 1 | cut -d ',' -f 3)
