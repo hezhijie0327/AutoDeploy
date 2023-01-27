@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 4.6.4
+# Current Version: 4.6.5
 
 ## How to get and use?
 # curl "https://source.zhijie.online/AutoDeploy/main/Ubuntu.sh" | sudo bash
@@ -682,14 +682,25 @@ function ConfigurePackages() {
                 done && cat "/tmp/ups.conf.autodeploy" > "/etc/nut/ups.conf" && rm -rf "/tmp/ups.conf.autodeploy"
             }
             function Generate_upsd_conf() {
-                upsd_config_list=(
-                    "CERTREQUEST 0"
-                    "LISTEN 0.0.0.0 3493"
-                    "LISTEN :: 3493"
-                    "MAXAGE 15"
-                    "MAXCONN 1024"
-                    "STATEPATH /var/run/nut"
-                )
+                if [ "${NUT_MODE}" == "standalone_netserver" ]; then
+                    upsd_config_list=(
+                        "CERTREQUEST 0"
+                        "LISTEN 127.0.0.1 3493"
+                        "LISTEN ::1 3493"
+                        "MAXAGE 15"
+                        "MAXCONN 1024"
+                        "STATEPATH /var/run/nut"
+                    )
+                else
+                    upsd_config_list=(
+                        "CERTREQUEST 0"
+                        "LISTEN 0.0.0.0 3493"
+                        "LISTEN :: 3493"
+                        "MAXAGE 15"
+                        "MAXCONN 1024"
+                        "STATEPATH /var/run/nut"
+                    )
+                fi
                 rm -rf "/tmp/upsd.conf.autodeploy" && for upsd_config_list_task in "${!upsd_config_list[@]}"; do
                     echo "${upsd_config_list[$upsd_config_list_task]}" >> "/tmp/upsd.conf.autodeploy"
                 done && cat "/tmp/upsd.conf.autodeploy" > "/etc/nut/upsd.conf" && rm -rf "/tmp/upsd.conf.autodeploy"
