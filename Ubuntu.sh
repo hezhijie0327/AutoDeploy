@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 4.6.7
+# Current Version: 4.6.8
 
 ## How to get and use?
 # curl "https://source.zhijie.online/AutoDeploy/main/Ubuntu.sh" | sudo bash
@@ -704,14 +704,18 @@ function ConfigurePackages() {
             }
             function Generate_upsd_users() {
                 upsd_user_list=(
-                    "admin,123456,master"
-                    "monuser,secret,slave"
+                    "admin,123456,master,FSD,SET"
+                    "monuser,secret,slave,,"
                 )
                 rm -rf "/tmp/upsd.users.autodeploy" && for upsd_user_list_task in "${!upsd_user_list[@]}"; do
                     UPSD_USERNAME=$(echo "${upsd_user_list[$upsd_user_list_task]}" | cut -d ',' -f 1)
                     UPSD_PASSWORD=$(echo "${upsd_user_list[$upsd_user_list_task]}" | cut -d ',' -f 2)
                     UPSD_ROLE=$(echo "${upsd_user_list[$upsd_user_list_task]}" | cut -d ',' -f 3)
-                    echo -e "[${UPSD_USERNAME}]\n    actions = SET\n    instcmds = ALL\n    password = ${UPSD_PASSWORD}\n    upsmon ${UPSD_ROLE}" >> "/tmp/upsd.users.autodeploy"
+                    UPSD_ACTIONS=$(echo "${upsd_user_list[$upsd_user_list_task]}" | cut -d ',' -f 4-5 | tr ',' ' ' | sed 's/^ //g')
+                    if [ "${UPSD_ACTIONS}" != "" ]; then
+                        UPSD_ACTIONS="    actions = ${UPSD_ACTIONS}\n    instcmds = ALL\n"
+                    fi
+                    echo -e "[${UPSD_USERNAME}]\n${UPSD_ACTIONS}    password = ${UPSD_PASSWORD}\n    upsmon ${UPSD_ROLE}" >> "/tmp/upsd.users.autodeploy"
                 done && cat "/tmp/upsd.users.autodeploy" > "/etc/nut/upsd.users" && chmod 0640 "/etc/nut/upsd.users" && rm -rf "/tmp/upsd.users.autodeploy"
             }
             function Generate_upsmon_conf() {
