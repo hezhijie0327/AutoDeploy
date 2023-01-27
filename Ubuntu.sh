@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 4.5.7
+# Current Version: 4.5.8
 
 ## How to get and use?
 # curl "https://source.zhijie.online/AutoDeploy/main/Ubuntu.sh" | sudo bash
@@ -661,6 +661,9 @@ function ConfigurePackages() {
             which "upsmon" > "/dev/null" 2>&1
             if [ "$?" -eq "0" ]; then
                 function Generate_nut_conf() {
+                    if [ "${NUT_MODE}" == "netclient_standalone" ] || [ "${NUT_MODE}" == "netserver_standalone" ]; then
+                        NUT_MODE="standalone"
+                    fi
                     echo "MODE=${NUT_MODE:-none}" > "/etc/nut/nut.conf"
                 }
                 function Generate_ups_conf() {
@@ -728,22 +731,36 @@ function ConfigurePackages() {
                         "CMDSCRIPT /bin/upssched-cmd"
                     )
                 }
-                NUT_MODE="" # standalone | netclient | netserver | none
-                rm -rf /etc/nut/*.conf && if [ "${NUT_MODE:-none}" != "none" ]; then
-                    UPSMON_USERNAME="monuser"
-                    UPSMON_PASSWORD="secret"
-                    UPSMON_ROLE="slave"
-                    UPSMON_SYSTEM="ups@localhost"
-                    Generate_nut_conf
-                    Generate_ups_conf
-                    Generate_upsd_conf
-                    Generate_upsd_users
-                    Generate_upsmon_conf
-                    Generate_upssched_conf
-                    OPRATIONS="enable" && SERVICE_NAME="nut-server" && CallServiceController && OPRATIONS="restart" && SERVICE_NAME="nut-server" && CallServiceController
-                else
-                    OPRATIONS="disable" && SERVICE_NAME="nut-server" && CallServiceController && OPRATIONS="stop" && SERVICE_NAME="nut-server" && CallServiceController
-                fi
+                NUT_MODE="" # netclient | netclient_standalone | netserver | netserver_standalone | none
+                rm -rf /etc/nut/*.conf && case ${NUT_MODE:-none} in
+                    netclient|netclient_standalone)
+                        UPSMON_USERNAME="monuser"
+                        UPSMON_PASSWORD="secret"
+                        UPSMON_ROLE="slave"
+                        UPSMON_SYSTEM="${UPS_NAME-ups}@localhost"
+                        Generate_nut_conf
+                        Generate_upsmon_conf
+                        Generate_upssched_conf
+                        OPRATIONS="enable" && SERVICE_NAME="nut-server" && CallServiceController && OPRATIONS="restart" && SERVICE_NAME="nut-server" && CallServiceController
+                        ;;
+                    netserver|netserver_standalone)
+                        UPSMON_USERNAME=$(echo "${upsd_user_list[0]}" | cut -d ',' -f 1)
+                        UPSMON_PASSWORD=$(echo "${upsd_user_list[0]}" | cut -d ',' -f 2)
+                        UPSMON_ROLE=$(echo "${upsd_user_list[0]}" | cut -d ',' -f 3)
+                        UPSMON_SYSTEM="${UPS_NAME-ups}@localhost"
+                        Generate_nut_conf
+                        Generate_ups_conf
+                        Generate_upsd_conf
+                        Generate_upsd_users
+                        Generate_upsmon_conf
+                        Generate_upssched_conf
+                        OPRATIONS="enable" && SERVICE_NAME="nut-server" && CallServiceController && OPRATIONS="restart" && SERVICE_NAME="nut-server" && CallServiceController
+                        ;;
+                    none)
+                        Generate_nut_conf
+                        OPRATIONS="disable" && SERVICE_NAME="nut-server" && CallServiceController && OPRATIONS="stop" && SERVICE_NAME="nut-server" && CallServiceController
+                        ;;
+                esac
             fi
         fi
     }
