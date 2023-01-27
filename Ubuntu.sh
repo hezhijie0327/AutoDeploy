@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 4.6.0
+# Current Version: 4.6.1
 
 ## How to get and use?
 # curl "https://source.zhijie.online/AutoDeploy/main/Ubuntu.sh" | sudo bash
@@ -730,7 +730,7 @@ function ConfigurePackages() {
                 )
             }
             NUT_MODE="" # netclient | netclient_standalone | netserver | netserver_standalone | none
-            rm -rf /etc/nut/*.conf && case ${NUT_MODE:-none} in
+            rm -rf /etc/nut/*.* && case ${NUT_MODE:-none} in
                 netclient|netclient_standalone)
                     UPSMON_USERNAME="monuser"
                     UPSMON_PASSWORD="secret"
