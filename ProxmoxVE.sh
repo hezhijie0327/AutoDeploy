@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 3.1.1
+# Current Version: 3.1.2
 
 ## How to get and use?
 # curl "https://source.zhijie.online/AutoDeploy/main/ProxmoxVE.sh" | sudo bash
@@ -562,9 +562,9 @@ function ConfigurePackages() {
             NUT_MODE="" # netclient | netserver | none | standalone
             rm -rf /etc/nut/*.* && case ${NUT_MODE:-none} in
                 netclient)
-                    UPSMON_USERNAME="monuser"
-                    UPSMON_PASSWORD="secret"
-                    UPSMON_ROLE="slave"
+                    UPSMON_USERNAME=$(echo "${upsd_user_list[*]}" | cut -d ' ' -f 2 | cut -d ',' -f 1)
+                    UPSMON_PASSWORD=$(echo "${upsd_user_list[*]}" | cut -d ' ' -f 2 | cut -d ',' -f 2)
+                    UPSMON_ROLE=$(echo "${upsd_user_list[*]}" | cut -d ' ' -f 2 | cut -d ',' -f 3)
                     UPSMON_SYSTEM="${UPS_NAME-ups}@localhost"
                     nut_service_list=(
                         "nut-client,enabled"
