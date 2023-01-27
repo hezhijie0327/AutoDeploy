@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 3.0.5
+# Current Version: 3.0.6
 
 ## How to get and use?
 # curl "https://source.zhijie.online/AutoDeploy/main/ProxmoxVE.sh" | sudo bash
@@ -552,7 +552,7 @@ function ConfigurePackages() {
                 )
             }
             NUT_MODE="" # netclient | netclient_standalone | netserver | netserver_standalone | none
-            rm -rf /etc/nut/*.conf && case ${NUT_MODE:-none} in
+            rm -rf /etc/nut/*.* && case ${NUT_MODE:-none} in
                 netclient|netclient_standalone)
                     UPSMON_USERNAME="monuser"
                     UPSMON_PASSWORD="secret"
