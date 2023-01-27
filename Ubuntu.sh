@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 4.6.1
+# Current Version: 4.6.2
 
 ## How to get and use?
 # curl "https://source.zhijie.online/AutoDeploy/main/Ubuntu.sh" | sudo bash
@@ -659,7 +659,7 @@ function ConfigurePackages() {
         which "upsmon" > "/dev/null" 2>&1
         if [ "$?" -eq "0" ]; then
             function Generate_nut_conf() {
-                if [ "${NUT_MODE}" == "netclient_standalone" ] || [ "${NUT_MODE}" == "netserver_standalone" ]; then
+                if [ "${NUT_MODE}" == "standalone_netclient" ] || [ "${NUT_MODE}" == "standalone_netserver" ]; then
                     NUT_MODE="standalone"
                 fi
                 echo "MODE=${NUT_MODE:-none}" > "/etc/nut/nut.conf"
@@ -729,9 +729,9 @@ function ConfigurePackages() {
                     "CMDSCRIPT /bin/upssched-cmd"
                 )
             }
-            NUT_MODE="" # netclient | netclient_standalone | netserver | netserver_standalone | none
+            NUT_MODE="" # netclient | netserver | none | standalone_netclient | standalone_netserver
             rm -rf /etc/nut/*.* && case ${NUT_MODE:-none} in
-                netclient|netclient_standalone)
+                netclient|standalone_netclient)
                     UPSMON_USERNAME="monuser"
                     UPSMON_PASSWORD="secret"
                     UPSMON_ROLE="slave"
@@ -741,7 +741,7 @@ function ConfigurePackages() {
                     Generate_upssched_conf
                     OPRATIONS="enable" && SERVICE_NAME="nut-server" && CallServiceController && OPRATIONS="restart" && SERVICE_NAME="nut-server" && CallServiceController
                     ;;
-                netserver|netserver_standalone)
+                netserver|standalone_netserver)
                     UPSMON_USERNAME=$(echo "${upsd_user_list[*]}" | cut -d ' ' -f 1 | cut -d ',' -f 1)
                     UPSMON_PASSWORD=$(echo "${upsd_user_list[*]}" | cut -d ' ' -f 1 | cut -d ',' -f 2)
                     UPSMON_ROLE=$(echo "${upsd_user_list[*]}" | cut -d ' ' -f 1 | cut -d ',' -f 3)
