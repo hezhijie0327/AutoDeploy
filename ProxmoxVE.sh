@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 3.1.3
+# Current Version: 3.1.4
 
 ## How to get and use?
 # curl "https://source.zhijie.online/AutoDeploy/main/ProxmoxVE.sh" | sudo bash
@@ -98,15 +98,23 @@ function GetSystemInformation() {
         CPU_VENDOR_ID=$(cat '/proc/cpuinfo' | grep 'vendor_id' | uniq | awk -F ':' '{print $2}' | awk -F ' ' '{print $1}')
         if [ "${CPU_VENDOR_ID}" == "AuthenticAMD" ]; then
             CPU_VENDOR_ID="AMD"
-            ENABLE_IOMMU=" amd_iommu=on iommu=pt pcie_acs_override=downstream"
+            ENABLE_IOMMU=" amd_iommu=on iommu=pt pcie_acs_override=downstream,multifunction"
             MICROCODE=("amd64-microcode")
             echo "options kvm-amd nested=1" > "/etc/modprobe.d/kvm-amd.conf"
         elif [ "${CPU_VENDOR_ID}" == "GenuineIntel" ]; then
             CPU_VENDOR_ID="Intel"
-            ENABLE_IOMMU=" intel_iommu=on iommu=pt pcie_acs_override=downstream"
+            ENABLE_INTEL_GVT="true"
+            ENABLE_IOMMU=" intel_iommu=on iommu=pt pcie_acs_override=downstream,multifunction"
             MICROCODE=("intel-microcode")
             echo "options kvm-intel nested=1" > "/etc/modprobe.d/kvm-intel.conf"
             echo "options snd-hda-intel enable_msi=1" > "/etc/modprobe.d/snd-hda-intel.conf"
+            if [ "${ENABLE_INTEL_GVT}" == "true" ]; then
+                ENABLE_INTEL_GVT=" i915.enable_guc=3 i915.enable_gvt=1"
+                INTEL_GVT_MODULES=("kvmgt")
+            else
+                ENABLE_INTEL_GVT=""
+                INTEL_GVT_MODULES=()
+            fi
         else
             CPU_VENDOR_ID="Unknown"
             ENABLE_IOMMU=""
@@ -454,7 +462,7 @@ function ConfigurePackages() {
         which "update-grub" > "/dev/null" 2>&1
         if [ "$?" -eq "0" ]; then
             if [ -f "/usr/share/grub/default/grub" ]; then
-                rm -rf "/tmp/grub.autodeploy" && cat "/usr/share/grub/default/grub" | sed "s/GRUB\_CMDLINE\_LINUX\_DEFAULT\=\"quiet\"/GRUB\_CMDLINE\_LINUX\_DEFAULT\=\"quiet${ENABLE_IOMMU}${DISABLE_DISPLAY}\"/g" > "/tmp/grub.autodeploy" && cat "/tmp/grub.autodeploy" > "/etc/default/grub" && update-grub && rm -rf "/tmp/grub.autodeploy"
+                rm -rf "/tmp/grub.autodeploy" && cat "/usr/share/grub/default/grub" | sed "s/GRUB\_CMDLINE\_LINUX\_DEFAULT\=\"quiet\"/GRUB\_CMDLINE\_LINUX\_DEFAULT\=\"quiet${DISABLE_DISPLAY}${ENABLE_IOMMU}${ENABLE_INTEL_GVT}\"/g" > "/tmp/grub.autodeploy" && cat "/tmp/grub.autodeploy" > "/etc/default/grub" && update-grub && rm -rf "/tmp/grub.autodeploy"
             fi
         fi
     }
@@ -466,6 +474,7 @@ function ConfigurePackages() {
             "vfio_iommu_type1"
             "vfio_pci"
             "vfio_virqfd"
+            ${INTEL_GVT_MODULES[*]}
         )
         if [ "${ENABLE_IOMMU}" != "" ]; then
             if [ -f "/etc/modules" ]; then
