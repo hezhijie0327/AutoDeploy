@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 4.6.8
+# Current Version: 4.6.9
 
 ## How to get and use?
 # curl "https://source.zhijie.online/AutoDeploy/main/Ubuntu.sh" | sudo bash
@@ -1200,10 +1200,12 @@ function ConfigureSystem() {
             if [ "${OSArchitecture}" == "amd64" ]; then
                 nvidia_repo_list=(
                     "# deb [arch=${OSArchitecture} signed-by=/usr/share/keyrings/nvidia-archive-keyring.gpg] https://developer.download.nvidia.com/compute/cuda/repos/ubuntu${LSBVersion//./}/x86_64/ /"
+                    "# deb [arch=${OSArchitecture} signed-by=/usr/share/keyrings/libnvidia-archive-keyring.gpg] https://nvidia.github.io/libnvidia-container/stable/ubuntu18.04/${OSArchitecture} /"
                 )
             else
                 nvidia_repo_list=(
                     "# deb [arch=${OSArchitecture} signed-by=/usr/share/keyrings/nvidia-archive-keyring.gpg] https://developer.download.nvidia.com/compute/cuda/repos/ubuntu${LSBVersion//./}/sbsa/ /"
+                    "# deb [arch=${OSArchitecture} signed-by=/usr/share/keyrings/libnvidia-archive-keyring.gpg] https://nvidia.github.io/libnvidia-container/stable/ubuntu18.04/${OSArchitecture} /"
                 )
             fi
             nvidia_patch_list=(
@@ -1212,7 +1214,7 @@ function ConfigureSystem() {
             )
             for nvidia_repo_list_task in "${!nvidia_repo_list[@]}"; do
                 echo "${nvidia_repo_list[$nvidia_repo_list_task]}" >> "/etc/apt/sources.list.d/nvidia.list"
-            done && curl -s --connect-timeout 15 "https://developer.download.nvidia.com/compute/cuda/repos/wsl-ubuntu/x86_64/3bf863cc.pub" | gpg --dearmor > "/usr/share/keyrings/nvidia-archive-keyring.gpg"
+            done && curl -s --connect-timeout 15 "https://developer.download.nvidia.com/compute/cuda/repos/wsl-ubuntu/x86_64/3bf863cc.pub" | gpg --dearmor > "/usr/share/keyrings/nvidia-archive-keyring.gpg" && curl -s --connect-timeout 15 "https://nvidia.github.io/libnvidia-container/gpgkey" | gpg --dearmor > "/usr/share/keyrings/libnvidia-archive-keyring.gpg"
             rm -rf /usr/bin/nvidia_patch* && for nvidia_patch_list_task in "${!nvidia_patch_list[@]}"; do
                 FILE_NAME=$(echo "${nvidia_patch_list[$nvidia_patch_list_task]}" | awk -F "/" '{print $NF}' | cut -d '.' -f 1 | tr "-" "_")
                 curl -s --connect-timeout 15 "${GHPROXY_URL}${nvidia_patch_list[$nvidia_patch_list_task]}" > /usr/bin/nvidia_${FILE_NAME} && chmod +x /usr/bin/nvidia_${FILE_NAME}
