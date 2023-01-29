@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 3.2.6
+# Current Version: 3.2.7
 
 ## How to get and use?
 # curl "https://source.zhijie.online/AutoDeploy/main/ProxmoxVE.sh" | sudo bash
@@ -98,14 +98,14 @@ function GetSystemInformation() {
         CPU_VENDOR_ID=$(cat '/proc/cpuinfo' | grep 'vendor_id' | uniq | awk -F ':' '{print $2}' | awk -F ' ' '{print $1}')
         if [ "${CPU_VENDOR_ID}" == "AuthenticAMD" ]; then
             CPU_VENDOR_ID="AMD"
-            ENABLE_IOMMU=" amd_iommu=on iommu=pt pcie_acs_override=downstream,multifunction"
+            ENABLE_IOMMU=" amd_iommu=on iommu=pt pci=assign-busses pcie_acs_override=downstream,multifunction"
             INTEL_GVT_MODULES=()
             INTEL_HDMI_AUDIO_MUDULE=()
             MICROCODE=("amd64-microcode")
             NESTED_MODULES=("kvm_amd")
         elif [ "${CPU_VENDOR_ID}" == "GenuineIntel" ]; then
             CPU_VENDOR_ID="Intel"
-            ENABLE_IOMMU=" intel_iommu=on iommu=pt pcie_acs_override=downstream,multifunction"
+            ENABLE_IOMMU=" intel_iommu=on iommu=pt pci=assign-busses pcie_acs_override=downstream,multifunction"
             INTEL_GVT_MODULES=("i915" "kvmgt")
             INTEL_HDMI_AUDIO_MUDULE=("snd_hda_intel")
             MICROCODE=("intel-microcode")
