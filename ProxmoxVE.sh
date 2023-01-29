@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 3.2.3
+# Current Version: 3.2.4
 
 ## How to get and use?
 # curl "https://source.zhijie.online/AutoDeploy/main/ProxmoxVE.sh" | sudo bash
@@ -100,14 +100,13 @@ function GetSystemInformation() {
             CPU_VENDOR_ID="AMD"
             ENABLE_IOMMU=" amd_iommu=on iommu=pt pcie_acs_override=downstream,multifunction"
             INTEL_GVT_MODULES=()
+            INTEL_HDMI_AUDIO_MUDULE=()
             MICROCODE=("amd64-microcode")
             NESTED_MODULES=("kvm_amd")
         elif [ "${CPU_VENDOR_ID}" == "GenuineIntel" ]; then
             CPU_VENDOR_ID="Intel"
             ENABLE_INTEL_GVT="true"
             ENABLE_IOMMU=" intel_iommu=on iommu=pt pcie_acs_override=downstream,multifunction"
-            MICROCODE=("intel-microcode")
-            NESTED_MODULES=("kvm_intel")
             if [ "${ENABLE_INTEL_GVT}" == "true" ]; then
                 i915_GUC_OPTION="3" # 0 | 1 - GuC | 2 - HuC | 3 - GuC / HuC
                 ENABLE_INTEL_GVT=" i915.enable_guc=${i915_GUC_OPTION} i915.enable_gvt=1"
@@ -116,10 +115,14 @@ function GetSystemInformation() {
                 ENABLE_INTEL_GVT=""
                 INTEL_GVT_MODULES=()
             fi
+            INTEL_HDMI_AUDIO_MUDULE=("snd_hda_intel")
+            MICROCODE=("intel-microcode")
+            NESTED_MODULES=("kvm_intel")
         else
             CPU_VENDOR_ID="Unknown"
             ENABLE_IOMMU=""
             INTEL_GVT_MODULES=()
+            INTEL_HDMI_AUDIO_MUDULE=()
             MICROCODE=()
             NESTED_MODULES=()
         fi
@@ -486,6 +489,7 @@ function ConfigurePackages() {
             ${NESTED_MODULES[*]}
             ${INTEL_GVT_MODULES[*]}
             "nfnetlink_queue"
+            ${INTEL_HDMI_AUDIO_MUDULE[*]}
             ${IOMMU_MODULES[*]}
         )
         rm -rf "/tmp/module.autodeploy" && for module_list_task in "${!module_list[@]}"; do
