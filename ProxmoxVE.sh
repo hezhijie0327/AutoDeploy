@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 3.2.8
+# Current Version: 3.2.9
 
 ## How to get and use?
 # curl "https://source.zhijie.online/AutoDeploy/main/ProxmoxVE.sh" | sudo bash
@@ -191,6 +191,7 @@ function SetRepositoryMirror() {
 function SetReadonlyFlag() {
     file_list=(
         "/etc/apt/preferences"
+        "/etc/apt/preferences.d/proxmox.pref"
         "/etc/apt/sources.list"
         "/etc/apt/sources.list.d/crowdsec.list"
         "/etc/apt/sources.list.d/docker.list"
