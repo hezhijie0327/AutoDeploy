@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 3.2.7
+# Current Version: 3.2.8
 
 ## How to get and use?
 # curl "https://source.zhijie.online/AutoDeploy/main/ProxmoxVE.sh" | sudo bash
@@ -170,11 +170,10 @@ function SetRepositoryMirror() {
         "deb-src ${transport_protocol}://mirrors.ustc.edu.cn/debian ${LSBCodename}-updates contrib main non-free"
     )
     proxmox_mirror_list=(
-        "# deb ${transport_protocol}://enterprise.proxmox.com/debian/pve ${LSBCodename} pve-enterprise"
         "deb ${transport_protocol}://mirrors.ustc.edu.cn/proxmox/debian ${LSBCodename} pve-no-subscription"
-        "# deb ${transport_protocol}://mirrors.ustc.edu.cn/proxmox/debian ${LSBCodename} pvetest"
+        "deb ${transport_protocol}://mirrors.ustc.edu.cn/proxmox/debian ${LSBCodename} pvetest"
         "deb ${transport_protocol}://mirrors.ustc.edu.cn/proxmox/debian/ceph-${CephCodename} ${LSBCodename} main"
-        "# deb ${transport_protocol}://mirrors.ustc.edu.cn/proxmox/debian/ceph-${CephCodename} ${LSBCodename} test"
+        "deb ${transport_protocol}://mirrors.ustc.edu.cn/proxmox/debian/ceph-${CephCodename} ${LSBCodename} test"
     )
     if [ ! -d "/etc/apt/sources.list.d" ]; then
         mkdir "/etc/apt/sources.list.d"
@@ -233,6 +232,12 @@ function ConfigurePackages() {
             "${LSBCodename} 500"
             "${LSBCodename}-proposed-updates 100"
         )
+        pve_repo_preference_list=(
+            "Proxmox pve-no-subscription 990"
+            "Proxmox pvetest 100"
+            "Proxmox main 990"
+            "Proxmox test 100"
+        )
         if [ -d "/etc/apt/preferences.d" ]; then
             rm -rf "/etc/apt/preferences.d"
         fi && mkdir "/etc/apt/preferences.d"
@@ -244,6 +249,15 @@ function ConfigurePackages() {
             fi
             echo -e "Package: *\nPin: release a=${APT_PIN_RELEASE}\nPin-Priority: ${APT_PIN_PRIORITY}\n" >> "/tmp/apt_preference_list.autodeploy"
         done && cat "/tmp/apt_preference_list.autodeploy" | sed '$d' > "/etc/apt/preferences"
+        rm -rf "/tmp/apt_preference_list.autodeploy" && for pve_repo_preference_list_task in "${!pve_repo_preference_list[@]}"; do
+            PVE_REPO_PIN_ORIGIN=$(echo "${pve_repo_preference_list[$pve_repo_preference_list_task]}" | cut -d " " -f 1)
+            PVE_REPO_PIN_COMPONENT=$(echo "${pve_repo_preference_list[$pve_repo_preference_list_task]}" | cut -d " " -f 2)
+            PVE_REPO_PIN_PRIORITY=$(echo "${pve_repo_preference_list[$pve_repo_preference_list_task]}" | cut -d " " -f 3)
+            if [ ! -z $(echo ${PVE_REPO_PIN_PRIORITY} | grep "[a-z]\|[A-Z]\|-") ]; then
+                PVE_REPO_PIN_PRIORITY="500"
+            fi
+            echo -e "Package: *\nPin: release c=${PVE_REPO_PIN_COMPONENT},o=${PVE_REPO_PIN_ORIGIN}\nPin-Priority: ${PVE_REPO_PIN_PRIORITY}\n" >> "/tmp/apt_preference_list.autodeploy"
+        done && cat "/tmp/apt_preference_list.autodeploy" | sed '$d' > "/etc/apt/preferences.d/proxmox.pref"
     }
     function ConfigureChrony() {
         chrony_list=(
