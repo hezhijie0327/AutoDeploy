@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 3.2.5
+# Current Version: 3.2.6
 
 ## How to get and use?
 # curl "https://source.zhijie.online/AutoDeploy/main/ProxmoxVE.sh" | sudo bash
@@ -473,7 +473,7 @@ function ConfigurePackages() {
         fi
         if [ "${ENABLE_IOMMU}" != "" ]; then
             IOMMU_MODULES=("vfio" "vfio_iommu_type1" "vfio_pci" "vfio_virqfd")
-            echo "options vfio_iommu_type1 allow_unsafe_interrupts=1" > "/etc/modprobe.d/iommu_unsafe_interrupts.conf"
+            echo "options vfio_iommu_type1 allow_unsafe_interrupts=1" > "/etc/modprobe.d/vfio_iommu_type1.conf"
         fi
         module_list=(
             "ip_conntrack_ftp"
