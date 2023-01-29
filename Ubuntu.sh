@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 4.7.1
+# Current Version: 4.7.2
 
 ## How to get and use?
 # curl "https://source.zhijie.online/AutoDeploy/main/Ubuntu.sh" | sudo bash
@@ -1175,52 +1175,49 @@ function ConfigureSystem() {
         ENABLE_INTEL_GPU_DRIVER_REPO="false"
         ENABLE_NVIDIA_GPU_DRIVER_REPO="false"
         if [ "${OSArchitecture}" == "amd64" ]; then
-            amd_repo_list=(
-                "# deb [arch=${OSArchitecture} signed-by=/usr/share/keyrings/amd-archive-keyring.gpg] https://repo.radeon.com/amdgpu/latest/ubuntu ${LSBCodename} main proprietary"
-                "# deb [arch=${OSArchitecture} signed-by=/usr/share/keyrings/amd-archive-keyring.gpg] https://repo.radeon.com/rocm/apt/latest ${LSBCodename} main proprietary"
-                "# deb-src [arch=${OSArchitecture} signed-by=/usr/share/keyrings/amd-archive-keyring.gpg] https://repo.radeon.com/amdgpu/latest/ubuntu ${LSBCodename} main proprietary"
-            )
-            intel_repo_list=(
-                "# deb [arch=${OSArchitecture} signed-by=/usr/share/keyrings/intel-archive-keyring.gpg] https://repositories.intel.com/graphics/ubuntu ${LSBCodename} arc legacy"
-            )
-            for amd_repo_list_task in "${!amd_repo_list[@]}"; do
-                echo "${amd_repo_list[$amd_repo_list_task]}" >> "/etc/apt/sources.list.d/amd.list"
-            done && curl -s --connect-timeout 15 "https://repo.radeon.com/rocm/rocm.gpg.key" | gpg --dearmor > "/usr/share/keyrings/amd-archive-keyring.gpg"
-            for intel_repo_list_task in "${!intel_repo_list[@]}"; do
-                echo "${intel_repo_list[$intel_repo_list_task]}" >> "/etc/apt/sources.list.d/intel.list"
-            done && curl -s --connect-timeout 15 "https://repositories.intel.com/graphics/intel-graphics.key" | gpg --dearmor > "/usr/share/keyrings/intel-archive-keyring.gpg"
             if [ "${ENABLE_AMD_GPU_DRIVER_REPO}" == "true" ]; then
-                sed -i 's/# //g' "/etc/apt/sources.list.d/amd.list"
+                amd_repo_list=(
+                    "deb [arch=${OSArchitecture} signed-by=/usr/share/keyrings/amd-archive-keyring.gpg] https://repo.radeon.com/amdgpu/latest/ubuntu ${LSBCodename} main proprietary"
+                    "deb [arch=${OSArchitecture} signed-by=/usr/share/keyrings/amd-archive-keyring.gpg] https://repo.radeon.com/rocm/apt/latest ${LSBCodename} main proprietary"
+                    "deb-src [arch=${OSArchitecture} signed-by=/usr/share/keyrings/amd-archive-keyring.gpg] https://repo.radeon.com/amdgpu/latest/ubuntu ${LSBCodename} main proprietary"
+                )
+                for amd_repo_list_task in "${!amd_repo_list[@]}"; do
+                    echo "${amd_repo_list[$amd_repo_list_task]}" >> "/etc/apt/sources.list.d/amd.list"
+                done && curl -s --connect-timeout 15 "https://repo.radeon.com/rocm/rocm.gpg.key" | gpg --dearmor > "/usr/share/keyrings/amd-archive-keyring.gpg"
             fi
             if [ "${ENABLE_INTEL_GPU_DRIVER_REPO}" == "true" ]; then
-                sed -i 's/# //g' "/etc/apt/sources.list.d/intel.list"
+                intel_repo_list=(
+                    "deb [arch=${OSArchitecture} signed-by=/usr/share/keyrings/intel-archive-keyring.gpg] https://repositories.intel.com/graphics/ubuntu ${LSBCodename} arc legacy"
+                )
+                for intel_repo_list_task in "${!intel_repo_list[@]}"; do
+                    echo "${intel_repo_list[$intel_repo_list_task]}" >> "/etc/apt/sources.list.d/intel.list"
+                done && curl -s --connect-timeout 15 "https://repositories.intel.com/graphics/intel-graphics.key" | gpg --dearmor > "/usr/share/keyrings/intel-archive-keyring.gpg"
             fi
         fi
         if [ "${OSArchitecture}" == "amd64" ] || [ "${OSArchitecture}" == "arm64" ]; then
-            if [ "${OSArchitecture}" == "amd64" ]; then
-                nvidia_repo_list=(
-                    "# deb [arch=${OSArchitecture} signed-by=/usr/share/keyrings/nvidia-archive-keyring.gpg] https://developer.download.nvidia.com/compute/cuda/repos/ubuntu${LSBVersion//./}/x86_64/ /"
-                    "# deb [arch=${OSArchitecture} signed-by=/usr/share/keyrings/libnvidia-archive-keyring.gpg] https://nvidia.github.io/libnvidia-container/stable/ubuntu18.04/${OSArchitecture} /"
-                )
-            else
-                nvidia_repo_list=(
-                    "# deb [arch=${OSArchitecture} signed-by=/usr/share/keyrings/nvidia-archive-keyring.gpg] https://developer.download.nvidia.com/compute/cuda/repos/ubuntu${LSBVersion//./}/sbsa/ /"
-                    "# deb [arch=${OSArchitecture} signed-by=/usr/share/keyrings/libnvidia-archive-keyring.gpg] https://nvidia.github.io/libnvidia-container/stable/ubuntu18.04/${OSArchitecture} /"
-                )
-            fi
-            nvidia_patch_list=(
-                "https://raw.githubusercontent.com/keylase/nvidia-patch/master/patch-fbc.sh"
-                "https://raw.githubusercontent.com/keylase/nvidia-patch/master/patch.sh"
-            )
-            for nvidia_repo_list_task in "${!nvidia_repo_list[@]}"; do
-                echo "${nvidia_repo_list[$nvidia_repo_list_task]}" >> "/etc/apt/sources.list.d/nvidia.list"
-            done && curl -s --connect-timeout 15 "https://developer.download.nvidia.com/compute/cuda/repos/wsl-ubuntu/x86_64/3bf863cc.pub" | gpg --dearmor > "/usr/share/keyrings/nvidia-archive-keyring.gpg" && curl -s --connect-timeout 15 "https://nvidia.github.io/libnvidia-container/gpgkey" | gpg --dearmor > "/usr/share/keyrings/libnvidia-archive-keyring.gpg"
-            rm -rf /usr/bin/nvidia_patch* && for nvidia_patch_list_task in "${!nvidia_patch_list[@]}"; do
-                FILE_NAME=$(echo "${nvidia_patch_list[$nvidia_patch_list_task]}" | awk -F "/" '{print $NF}' | cut -d '.' -f 1 | tr "-" "_")
-                curl -s --connect-timeout 15 "${GHPROXY_URL}${nvidia_patch_list[$nvidia_patch_list_task]}" > /usr/bin/nvidia_${FILE_NAME} && chmod +x /usr/bin/nvidia_${FILE_NAME}
-            done
             if [ "${ENABLE_NVIDIA_GPU_DRIVER_REPO}" == "true" ]; then
-                sed -i 's/# //g' "/etc/apt/sources.list.d/nvidia.list"
+                if [ "${OSArchitecture}" == "amd64" ]; then
+                    nvidia_repo_list=(
+                        "# deb [arch=${OSArchitecture} signed-by=/usr/share/keyrings/nvidia-archive-keyring.gpg] https://developer.download.nvidia.com/compute/cuda/repos/ubuntu${LSBVersion//./}/x86_64/ /"
+                        "# deb [arch=${OSArchitecture} signed-by=/usr/share/keyrings/libnvidia-archive-keyring.gpg] https://nvidia.github.io/libnvidia-container/stable/ubuntu18.04/${OSArchitecture} /"
+                    )
+                else
+                    nvidia_repo_list=(
+                        "# deb [arch=${OSArchitecture} signed-by=/usr/share/keyrings/nvidia-archive-keyring.gpg] https://developer.download.nvidia.com/compute/cuda/repos/ubuntu${LSBVersion//./}/sbsa/ /"
+                        "# deb [arch=${OSArchitecture} signed-by=/usr/share/keyrings/libnvidia-archive-keyring.gpg] https://nvidia.github.io/libnvidia-container/stable/ubuntu18.04/${OSArchitecture} /"
+                    )
+                fi
+                nvidia_patch_list=(
+                    "https://raw.githubusercontent.com/keylase/nvidia-patch/master/patch-fbc.sh"
+                    "https://raw.githubusercontent.com/keylase/nvidia-patch/master/patch.sh"
+                )
+                for nvidia_repo_list_task in "${!nvidia_repo_list[@]}"; do
+                    echo "${nvidia_repo_list[$nvidia_repo_list_task]}" >> "/etc/apt/sources.list.d/nvidia.list"
+                done && curl -s --connect-timeout 15 "https://developer.download.nvidia.com/compute/cuda/repos/wsl-ubuntu/x86_64/3bf863cc.pub" | gpg --dearmor > "/usr/share/keyrings/nvidia-archive-keyring.gpg" && curl -s --connect-timeout 15 "https://nvidia.github.io/libnvidia-container/gpgkey" | gpg --dearmor > "/usr/share/keyrings/libnvidia-archive-keyring.gpg"
+                rm -rf /usr/bin/nvidia_patch* && for nvidia_patch_list_task in "${!nvidia_patch_list[@]}"; do
+                    FILE_NAME=$(echo "${nvidia_patch_list[$nvidia_patch_list_task]}" | awk -F "/" '{print $NF}' | cut -d '.' -f 1 | tr "-" "_")
+                    curl -s --connect-timeout 15 "${GHPROXY_URL}${nvidia_patch_list[$nvidia_patch_list_task]}" > /usr/bin/nvidia_${FILE_NAME} && chmod +x /usr/bin/nvidia_${FILE_NAME}
+                done
             fi
         fi
     }
