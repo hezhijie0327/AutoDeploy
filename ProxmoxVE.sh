@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 3.2.1
+# Current Version: 3.2.2
 
 ## How to get and use?
 # curl "https://source.zhijie.online/AutoDeploy/main/ProxmoxVE.sh" | sudo bash
@@ -100,13 +100,15 @@ function GetSystemInformation() {
             CPU_VENDOR_ID="AMD"
             ENABLE_IOMMU=" amd_iommu=on iommu=pt pcie_acs_override=downstream,multifunction"
             MICROCODE=("amd64-microcode")
+            NESTED_MODULES=("kvm_amd")
             echo "options kvm-amd nested=1" > "/etc/modprobe.d/kvm-amd.conf"
         elif [ "${CPU_VENDOR_ID}" == "GenuineIntel" ]; then
             CPU_VENDOR_ID="Intel"
             ENABLE_INTEL_GVT="true"
             ENABLE_IOMMU=" intel_iommu=on iommu=pt pcie_acs_override=downstream,multifunction"
             MICROCODE=("intel-microcode")
-            echo "options kvm-intel nested=1" > "/etc/modprobe.d/kvm-intel.conf"
+            NESTED_MODULES=("kvm_intel")
+            echo "options kvm-intel nested=Y" > "/etc/modprobe.d/kvm-intel.conf"
             echo "options snd-hda-intel enable_msi=1" > "/etc/modprobe.d/snd-hda-intel.conf"
             if [ "${ENABLE_INTEL_GVT}" == "true" ]; then
                 i915_GUC_OPTION="3" # 0 | 1 - GuC | 2 - HuC | 3 - GuC / HuC
@@ -120,6 +122,7 @@ function GetSystemInformation() {
             CPU_VENDOR_ID="Unknown"
             ENABLE_IOMMU=""
             MICROCODE=()
+            NESTED_MODULES=()
         fi && echo "options kvm ignore_msrs=1 report_ignored_msrs=0" >> "/etc/modprobe.d/kvm.conf"
     }
     function GetHostname() {
@@ -470,12 +473,14 @@ function ConfigurePackages() {
     function ConfigureModules() {
         module_list=(
             "ip_conntrack_ftp"
+            "kvm"
+            ${NESTED_MODULES[*]}
+            ${INTEL_GVT_MODULES[*]}
             "nfnetlink_queue"
             "vfio"
             "vfio_iommu_type1"
             "vfio_pci"
             "vfio_virqfd"
-            ${INTEL_GVT_MODULES[*]}
         )
         if [ "${ENABLE_IOMMU}" != "" ]; then
             if [ -f "/etc/modules" ]; then
