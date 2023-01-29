@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 3.2.2
+# Current Version: 3.2.3
 
 ## How to get and use?
 # curl "https://source.zhijie.online/AutoDeploy/main/ProxmoxVE.sh" | sudo bash
@@ -99,17 +99,15 @@ function GetSystemInformation() {
         if [ "${CPU_VENDOR_ID}" == "AuthenticAMD" ]; then
             CPU_VENDOR_ID="AMD"
             ENABLE_IOMMU=" amd_iommu=on iommu=pt pcie_acs_override=downstream,multifunction"
+            INTEL_GVT_MODULES=()
             MICROCODE=("amd64-microcode")
             NESTED_MODULES=("kvm_amd")
-            echo "options kvm-amd nested=1" > "/etc/modprobe.d/kvm-amd.conf"
         elif [ "${CPU_VENDOR_ID}" == "GenuineIntel" ]; then
             CPU_VENDOR_ID="Intel"
             ENABLE_INTEL_GVT="true"
             ENABLE_IOMMU=" intel_iommu=on iommu=pt pcie_acs_override=downstream,multifunction"
             MICROCODE=("intel-microcode")
             NESTED_MODULES=("kvm_intel")
-            echo "options kvm-intel nested=Y" > "/etc/modprobe.d/kvm-intel.conf"
-            echo "options snd-hda-intel enable_msi=1" > "/etc/modprobe.d/snd-hda-intel.conf"
             if [ "${ENABLE_INTEL_GVT}" == "true" ]; then
                 i915_GUC_OPTION="3" # 0 | 1 - GuC | 2 - HuC | 3 - GuC / HuC
                 ENABLE_INTEL_GVT=" i915.enable_guc=${i915_GUC_OPTION} i915.enable_gvt=1"
@@ -121,9 +119,10 @@ function GetSystemInformation() {
         else
             CPU_VENDOR_ID="Unknown"
             ENABLE_IOMMU=""
+            INTEL_GVT_MODULES=()
             MICROCODE=()
             NESTED_MODULES=()
-        fi && echo "options kvm ignore_msrs=1 report_ignored_msrs=0" >> "/etc/modprobe.d/kvm.conf"
+        fi
     }
     function GetHostname() {
         if [ -f "/etc/hostname" ]; then
@@ -471,25 +470,33 @@ function ConfigurePackages() {
         fi
     }
     function ConfigureModules() {
+        if [ -d "/etc/modprobe.d" ]; then
+            rm -rf "/etc/modprobe.d" && mkdir -p "/etc/modprobe.d"
+        fi
+        if [ -f "/etc/modules" ]; then
+            rm -rf "/etc/modules"
+        fi
+        if [ "${ENABLE_IOMMU}" != "" ]; then
+            IOMMU_MODULES=("vfio" "vfio_iommu_type1" "vfio_pci" "vfio_virqfd")
+            echo "options vfio_iommu_type1 allow_unsafe_interrupts=1" > "/etc/modprobe.d/iommu_unsafe_interrupts.conf"
+        fi
         module_list=(
             "ip_conntrack_ftp"
             "kvm"
             ${NESTED_MODULES[*]}
             ${INTEL_GVT_MODULES[*]}
             "nfnetlink_queue"
-            "vfio"
-            "vfio_iommu_type1"
-            "vfio_pci"
-            "vfio_virqfd"
+            ${IOMMU_MODULES[*]}
         )
-        if [ "${ENABLE_IOMMU}" != "" ]; then
-            if [ -f "/etc/modules" ]; then
-                rm -rf "/etc/modules"
-            fi && rm -rf "/tmp/module.autodeploy" && for module_list_task in "${!module_list[@]}"; do
-                echo "${module_list[$module_list_task]}" >> "/tmp/module.autodeploy"
-            done && cat "/tmp/module.autodeploy" > "/etc/modules" && rm -rf "/tmp/module.autodeploy" && if [ -f "/etc/modprobe.d/iommu_unsafe_interrupts.conf" ]; then
-                rm -rf "/etc/modprobe.d/iommu_unsafe_interrupts.conf"
-            fi && echo "options vfio_iommu_type1 allow_unsafe_interrupts=1" > "/etc/modprobe.d/iommu_unsafe_interrupts.conf"
+        rm -rf "/tmp/module.autodeploy" && for module_list_task in "${!module_list[@]}"; do
+            echo "${module_list[$module_list_task]}" >> "/tmp/module.autodeploy"
+        done && cat "/tmp/module.autodeploy" > "/etc/modules" && rm -rf "/tmp/module.autodeploy"
+        echo "options kvm ignore_msrs=1 report_ignored_msrs=0" >> "/etc/modprobe.d/kvm.conf"
+        if [ "${CPU_VENDOR_ID}" == "AuthenticAMD" ]; then
+            echo "options kvm-amd nested=1" > "/etc/modprobe.d/kvm-amd.conf"
+        elif [ "${CPU_VENDOR_ID}" == "GenuineIntel" ]; then
+            echo "options kvm-intel nested=Y" > "/etc/modprobe.d/kvm-intel.conf"
+            echo "options snd-hda-intel enable_msi=1" > "/etc/modprobe.d/snd-hda-intel.conf"
         fi
     }
     function ConfigureNut() {
