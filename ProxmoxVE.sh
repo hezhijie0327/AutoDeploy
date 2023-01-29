@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 3.3.0
+# Current Version: 3.3.1
 
 ## How to get and use?
 # curl "https://source.zhijie.online/AutoDeploy/main/ProxmoxVE.sh" | sudo bash
@@ -235,11 +235,11 @@ function ConfigurePackages() {
             "${LSBCodename}-proposed-updates 100"
         )
         pve_repo_preference_list=(
-            "Proxmox pve-no-subscription 990"
-            "Proxmox pve-enterprise 500"
-            "Proxmox pvetest 100"
-            "Proxmox main 990"
-            "Proxmox test 100"
+            "pve-no-subscription 990"
+            "pve-enterprise 500"
+            "pvetest 100"
+            "main 990"
+            "test 100"
         )
         if [ -d "/etc/apt/preferences.d" ]; then
             rm -rf "/etc/apt/preferences.d"
@@ -253,13 +253,12 @@ function ConfigurePackages() {
             echo -e "Package: *\nPin: release a=${APT_PIN_RELEASE}\nPin-Priority: ${APT_PIN_PRIORITY}\n" >> "/tmp/apt_preference_list.autodeploy"
         done && cat "/tmp/apt_preference_list.autodeploy" | sed '$d' > "/etc/apt/preferences"
         rm -rf "/tmp/apt_preference_list.autodeploy" && for pve_repo_preference_list_task in "${!pve_repo_preference_list[@]}"; do
-            PVE_REPO_PIN_ORIGIN=$(echo "${pve_repo_preference_list[$pve_repo_preference_list_task]}" | cut -d " " -f 1)
-            PVE_REPO_PIN_COMPONENT=$(echo "${pve_repo_preference_list[$pve_repo_preference_list_task]}" | cut -d " " -f 2)
-            PVE_REPO_PIN_PRIORITY=$(echo "${pve_repo_preference_list[$pve_repo_preference_list_task]}" | cut -d " " -f 3)
+            PVE_REPO_PIN_COMPONENT=$(echo "${pve_repo_preference_list[$pve_repo_preference_list_task]}" | cut -d " " -f 1)
+            PVE_REPO_PIN_PRIORITY=$(echo "${pve_repo_preference_list[$pve_repo_preference_list_task]}" | cut -d " " -f 2)
             if [ ! -z $(echo ${PVE_REPO_PIN_PRIORITY} | grep "[a-z]\|[A-Z]\|-") ]; then
                 PVE_REPO_PIN_PRIORITY="500"
             fi
-            echo -e "Package: *\nPin: release c=${PVE_REPO_PIN_COMPONENT},o=${PVE_REPO_PIN_ORIGIN}\nPin-Priority: ${PVE_REPO_PIN_PRIORITY}\n" >> "/tmp/apt_preference_list.autodeploy"
+            echo -e "Package: *\nPin: release c=${PVE_REPO_PIN_COMPONENT},o=Proxmox\nPin-Priority: ${PVE_REPO_PIN_PRIORITY}\n" >> "/tmp/apt_preference_list.autodeploy"
         done && cat "/tmp/apt_preference_list.autodeploy" | sed '$d' > "/etc/apt/preferences.d/proxmox.pref"
     }
     function ConfigureChrony() {
