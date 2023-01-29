@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 3.2.4
+# Current Version: 3.2.5
 
 ## How to get and use?
 # curl "https://source.zhijie.online/AutoDeploy/main/ProxmoxVE.sh" | sudo bash
@@ -105,16 +105,8 @@ function GetSystemInformation() {
             NESTED_MODULES=("kvm_amd")
         elif [ "${CPU_VENDOR_ID}" == "GenuineIntel" ]; then
             CPU_VENDOR_ID="Intel"
-            ENABLE_INTEL_GVT="true"
             ENABLE_IOMMU=" intel_iommu=on iommu=pt pcie_acs_override=downstream,multifunction"
-            if [ "${ENABLE_INTEL_GVT}" == "true" ]; then
-                i915_GUC_OPTION="3" # 0 | 1 - GuC | 2 - HuC | 3 - GuC / HuC
-                ENABLE_INTEL_GVT=" i915.enable_guc=${i915_GUC_OPTION} i915.enable_gvt=1"
-                INTEL_GVT_MODULES=("kvmgt")
-            else
-                ENABLE_INTEL_GVT=""
-                INTEL_GVT_MODULES=()
-            fi
+            INTEL_GVT_MODULES=("i915" "kvmgt")
             INTEL_HDMI_AUDIO_MUDULE=("snd_hda_intel")
             MICROCODE=("intel-microcode")
             NESTED_MODULES=("kvm_intel")
@@ -468,7 +460,7 @@ function ConfigurePackages() {
         which "update-grub" > "/dev/null" 2>&1
         if [ "$?" -eq "0" ]; then
             if [ -f "/usr/share/grub/default/grub" ]; then
-                rm -rf "/tmp/grub.autodeploy" && cat "/usr/share/grub/default/grub" | sed "s/GRUB\_CMDLINE\_LINUX\_DEFAULT\=\"quiet\"/GRUB\_CMDLINE\_LINUX\_DEFAULT\=\"quiet${DISABLE_DISPLAY}${ENABLE_IOMMU}${ENABLE_INTEL_GVT}\"/g" > "/tmp/grub.autodeploy" && cat "/tmp/grub.autodeploy" > "/etc/default/grub" && update-grub && rm -rf "/tmp/grub.autodeploy"
+                rm -rf "/tmp/grub.autodeploy" && cat "/usr/share/grub/default/grub" | sed "s/GRUB\_CMDLINE\_LINUX\_DEFAULT\=\"quiet\"/GRUB\_CMDLINE\_LINUX\_DEFAULT\=\"quiet${DISABLE_DISPLAY}${ENABLE_IOMMU}\"/g" > "/tmp/grub.autodeploy" && cat "/tmp/grub.autodeploy" > "/etc/default/grub" && update-grub && rm -rf "/tmp/grub.autodeploy"
             fi
         fi
     }
@@ -486,19 +478,21 @@ function ConfigurePackages() {
         module_list=(
             "ip_conntrack_ftp"
             "kvm"
-            ${NESTED_MODULES[*]}
-            ${INTEL_GVT_MODULES[*]}
             "nfnetlink_queue"
+            ${INTEL_GVT_MODULES[*]}
             ${INTEL_HDMI_AUDIO_MUDULE[*]}
             ${IOMMU_MODULES[*]}
+            ${NESTED_MODULES[*]}
         )
         rm -rf "/tmp/module.autodeploy" && for module_list_task in "${!module_list[@]}"; do
             echo "${module_list[$module_list_task]}" >> "/tmp/module.autodeploy"
-        done && cat "/tmp/module.autodeploy" > "/etc/modules" && rm -rf "/tmp/module.autodeploy"
+        done && cat "/tmp/module.autodeploy" | sort | uniq > "/etc/modules" && rm -rf "/tmp/module.autodeploy"
         echo "options kvm ignore_msrs=1 report_ignored_msrs=0" >> "/etc/modprobe.d/kvm.conf"
-        if [ "${CPU_VENDOR_ID}" == "AuthenticAMD" ]; then
+        if [ "${CPU_VENDOR_ID}" == "AMD" ]; then
             echo "options kvm-amd nested=1" > "/etc/modprobe.d/kvm-amd.conf"
-        elif [ "${CPU_VENDOR_ID}" == "GenuineIntel" ]; then
+        elif [ "${CPU_VENDOR_ID}" == "Intel" ]; then
+            i915_GUC_OPTION="" # 0 | 1 - GuC | 2 - HuC | 3 - GuC / HuC
+            echo "options i915 enable_guc=${i915_GUC_OPTION:-3} enable_gvt=1" > "/etc/modprobe.d/i915.conf"
             echo "options kvm-intel nested=Y" > "/etc/modprobe.d/kvm-intel.conf"
             echo "options snd-hda-intel enable_msi=1" > "/etc/modprobe.d/snd-hda-intel.conf"
         fi
