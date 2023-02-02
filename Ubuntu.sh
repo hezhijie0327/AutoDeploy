@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 4.7.4
+# Current Version: 4.7.5
 
 ## How to get and use?
 # curl "https://source.zhijie.online/AutoDeploy/main/Ubuntu.sh" | sudo bash
@@ -1205,7 +1205,6 @@ function ConfigureSystem() {
                 else
                     nvidia_repo_list=(
                         "# deb [arch=${OSArchitecture} signed-by=/usr/share/keyrings/libnvidia-archive-keyring.gpg] https://nvidia.github.io/libnvidia-container/stable/ubuntu18.04/${OSArchitecture} /"
-                        "# deb [arch=${OSArchitecture} signed-by=/usr/share/keyrings/libnvidia-archive-keyring.gpg] https://nvidia.github.io/nvidia-container-runtime/stable/ubuntu18.04/${OSArchitecture} /"
                         "# deb [arch=${OSArchitecture} signed-by=/usr/share/keyrings/nvidia-archive-keyring.gpg] https://developer.download.nvidia.com/compute/cuda/repos/ubuntu${LSBVersion//./}/sbsa/ /"
                     )
                 fi
