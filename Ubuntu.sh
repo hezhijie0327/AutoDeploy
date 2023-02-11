@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 4.7.5
+# Current Version: 4.7.6
 
 ## How to get and use?
 # curl "https://source.zhijie.online/AutoDeploy/main/Ubuntu.sh" | sudo bash
@@ -1289,7 +1289,7 @@ function ConfigureSystem() {
             if [ -f "/swapfile" ]; then
                 echo "/swapfile none swap sw 0 0" >> "/tmp/fstab.autodeploy"
             fi
-            cat "/tmp/fstab.autodeploy" > "/etc/fstab"
+            cat "/tmp/fstab.autodeploy" > "/etc/fstab" && rm -rf "/tmp/fstab.autodeploy"
         }
         DISABLE_SWAP="false"
         if [ "${container_environment}" != "docker" ] && [ "${container_environment}" != "wsl2" ]; then
