@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 4.7.6
+# Current Version: 4.7.7
 
 ## How to get and use?
 # curl "https://source.zhijie.online/AutoDeploy/main/Ubuntu.sh" | sudo bash
@@ -1272,7 +1272,7 @@ function ConfigureSystem() {
         function CreateSWAP() {
             truncate -s 0 "/swapfile"
             chattr +C "/swapfile"
-            fallocate -l $(( $(free -m | grep -i "mem" | awk '{print $2}') * 2 ))M "/swapfile"
+            fallocate -l ${CUSTOM_SWAP_SIZE:-$(( $(free -m | grep -i "mem" | awk '{print $2}') * 2 ))M} "/swapfile"
             chmod 600 "/swapfile"
             mkswap "/swapfile"
             swapon "/swapfile"
@@ -1298,6 +1298,7 @@ function ConfigureSystem() {
                 RemoveSWAP
                 UpdateFSTAB
             else
+                CUSTOM_SWAP_SIZE="" # 1024M / 1G
                 ClearSWAP
                 RemoveSWAP
                 CreateSWAP
