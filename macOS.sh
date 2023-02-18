@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 2.5.1
+# Current Version: 2.5.2
 
 ## How to get and use?
 # /bin/bash -c "$(curl -fsSL 'https://source.zhijie.online/AutoDeploy/main/macOS.sh')"
@@ -397,7 +397,11 @@ function InstallCustomPackages() {
 }
 # Install Dependency Packages
 function InstallDependencyPackages() {
-    export PATH="/opt/homebrew/sbin:/opt/homebrew/bin:${PATH}" && rm -rf "/opt/homebrew" "/usr/local/Homebrew"
+    export HOMEBREW_API_DOMAIN="https://mirrors.ustc.edu.cn/homebrew-bottles/api"
+    export HOMEBREW_BOTTLE_DOMAIN="https://mirrors.ustc.edu.cn/homebrew-bottles/bottles"
+    export HOMEBREW_BREW_GIT_REMOTE="${GHPROXY_URL}https://github.com/homebrew/brew.git"
+    export PATH="/opt/homebrew/sbin:/opt/homebrew/bin:${PATH}"
+    rm -rf "/opt/homebrew" "/usr/local/Homebrew"
     which "brew" > "/dev/null" 2>&1
     if [ "$?" -eq "1" ]; then
         /bin/bash -c $(curl -fsSL "${GHPROXY_URL}https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh" | sed "s/https\:\/\/github\.com/https\:\/\/${GHPROXY_URL}\/https\:\/\/github\.com/g" | sed "1 a export HOMEBREW_BOTTLE_DOMAIN=\"https://mirrors.ustc.edu.cn/homebrew-bottles/bottles\"")
@@ -461,7 +465,7 @@ function InstallDependencyPackages() {
             "zip"
             "zsh"
         )
-        export HOMEBREW_API_DOMAIN="https://mirrors.ustc.edu.cn/homebrew-bottles/api" && export HOMEBREW_BOTTLE_DOMAIN="https://mirrors.ustc.edu.cn/homebrew-bottles/bottles" && brew update && for app_list_task in "${!app_list[@]}"; do
+        brew update && for app_list_task in "${!app_list[@]}"; do
             brew info --formula ${app_list[$app_list_task]} && if [ "$?" -eq "0" ]; then
                 brew install --formula ${app_list[$app_list_task]}
             else
