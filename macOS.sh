@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 2.5.0
+# Current Version: 2.5.1
 
 ## How to get and use?
 # /bin/bash -c "$(curl -fsSL 'https://source.zhijie.online/AutoDeploy/main/macOS.sh')"
@@ -232,9 +232,9 @@ function ConfigurePackages() {
             omz_list=(
                 "export EDITOR=\"nano\""
                 "export GPG_TTY=\$(tty)"
+                "export HOMEBREW_API_DOMAIN=\"https://mirrors.ustc.edu.cn/homebrew-bottles/api\""
                 "export HOMEBREW_BOTTLE_DOMAIN=\"https://mirrors.ustc.edu.cn/homebrew-bottles/bottles\""
                 "export HOMEBREW_BREW_GIT_REMOTE=\"${GHPROXY_URL}https://github.com/homebrew/brew.git\""
-                "export HOMEBREW_CORE_GIT_REMOTE=\"${GHPROXY_URL}https://github.com/homebrew/homebrew-core.git\""
                 "export HOMEBREW_GITHUB_API_TOKEN=\"${HOMEBREW_GITHUB_API_TOKEN}\""
                 "export HOMEBREW_NO_AUTO_UPDATE=\"1\""
                 "export MANPATH=\"${CUSTOM_MANPATH}:\$MANPATH\""
@@ -265,7 +265,6 @@ function ConfigurePackages() {
                 "ZSH_AUTOSUGGEST_HIGHLIGHT_STYLE=\"bg=250,fg=238,bold,underline\""
                 "ZSH_AUTOSUGGEST_STRATEGY=(match_prev_cmd history completion)"
                 "ZSH_AUTOSUGGEST_USE_ASYNC=\"true\""
-                "source \"\$(brew --repository)/Library/Taps/homebrew/homebrew-command-not-found/handler.sh\""
                 "source \"\$ZSH/oh-my-zsh.sh\""
             )
             which "zsh" > "/dev/null" 2>&1
@@ -398,20 +397,6 @@ function InstallCustomPackages() {
 }
 # Install Dependency Packages
 function InstallDependencyPackages() {
-    tap_list=(
-        "homebrew-aliases"
-        "homebrew-autoupdate"
-        "homebrew-bundle"
-        "homebrew-cask"
-        "homebrew-cask-drivers"
-        "homebrew-cask-fonts"
-        "homebrew-cask-versions"
-        "homebrew-command-not-found"
-        "homebrew-formula-analytics"
-        "homebrew-portable-ruby"
-        "homebrew-services"
-        "homebrew-test-bot"
-    )
     export PATH="/opt/homebrew/sbin:/opt/homebrew/bin:${PATH}" && rm -rf "/opt/homebrew" "/usr/local/Homebrew"
     which "brew" > "/dev/null" 2>&1
     if [ "$?" -eq "1" ]; then
@@ -476,13 +461,7 @@ function InstallDependencyPackages() {
             "zip"
             "zsh"
         )
-        for tap_list_task in "${!tap_list[@]}"; do
-            export HOMEBREW_BREW_GIT_REMOTE="${GHPROXY_URL}https://github.com/homebrew/brew.git" && export HOMEBREW_CORE_GIT_REMOTE="${GHPROXY_URL}https://github.com/homebrew/homebrew-core.git" && if [ -d "$(brew --repo)/Library/Taps/homebrew/${tap_list[$tap_list_task]}" ]; then
-                brew tap --custom-remote --force-auto-update "${tap_list[$tap_list_task]/-/\/}" "${GHPROXY_URL}https://github.com/homebrew/${tap_list[$tap_list_task]}.git"
-            else
-                git clone "${GHPROXY_URL}https://github.com/Homebrew/${tap_list[$tap_list_task]}.git" "$(brew --repo)/Library/Taps/homebrew/${tap_list[$tap_list_task]}"
-            fi
-        done && export HOMEBREW_BOTTLE_DOMAIN="https://mirrors.ustc.edu.cn/homebrew-bottles/bottles" && brew update && for app_list_task in "${!app_list[@]}"; do
+        export HOMEBREW_API_DOMAIN="https://mirrors.ustc.edu.cn/homebrew-bottles/api" && export HOMEBREW_BOTTLE_DOMAIN="https://mirrors.ustc.edu.cn/homebrew-bottles/bottles" && brew update && for app_list_task in "${!app_list[@]}"; do
             brew info --formula ${app_list[$app_list_task]} && if [ "$?" -eq "0" ]; then
                 brew install --formula ${app_list[$app_list_task]}
             else
