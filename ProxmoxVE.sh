@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 3.3.6
+# Current Version: 3.3.7
 
 ## How to get and use?
 # curl "https://source.zhijie.online/AutoDeploy/main/ProxmoxVE.sh" | sudo bash
@@ -1108,7 +1108,7 @@ function ConfigureSystem() {
         function CreateSWAP() {
             truncate -s 0 "/swapfile"
             chattr +C "/swapfile"
-            fallocate -l ${CUSTOM_SWAP_SIZE:-$SWAP_SIZE} "/swapfile"
+            fallocate -l ${CUSTOM_SWAP_SIZE:-${SWAP_SIZE}M} "/swapfile"
             chmod 600 "/swapfile"
             mkswap "/swapfile"
             swapon "/swapfile"
