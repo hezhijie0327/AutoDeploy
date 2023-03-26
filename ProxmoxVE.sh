@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 3.3.5
+# Current Version: 3.3.6
 
 ## How to get and use?
 # curl "https://source.zhijie.online/AutoDeploy/main/ProxmoxVE.sh" | sudo bash
@@ -1108,10 +1108,27 @@ function ConfigureSystem() {
         function CreateSWAP() {
             truncate -s 0 "/swapfile"
             chattr +C "/swapfile"
-            fallocate -l ${CUSTOM_SWAP_SIZE:-$(( $(free -m | grep -i "mem" | awk '{print $2}') * 2 ))M} "/swapfile"
+            fallocate -l ${CUSTOM_SWAP_SIZE:-$SWAP_SIZE} "/swapfile"
             chmod 600 "/swapfile"
             mkswap "/swapfile"
             swapon "/swapfile"
+        }
+        function GenerateSWAPSize() {
+            RAM_SIZE=$(awk "BEGIN{print log($(free -m | grep -i "mem" | awk '{print $2}')) / log(2)}")
+            if [ $(echo "${RAM_SIZE}" | grep "\.") != "" ]; then
+                if [ $(echo "${RAM_SIZE}" | cut -d '.' -f 2 | cut -c 1) -gt 5 ]; then
+                    RAM_SIZE=$(( $(echo "${RAM_SIZE}" | cut -d '.' -f 1 ) + 1 ))
+                fi
+            fi
+            if [ "${RAM_SIZE}" -le 11 ]; then
+                SWAP_SIZE=$(echo "2 ^ ${RAM_SIZE} * 2" | bc)
+            elif [ "${RAM_SIZE}" -gt 11 ] && [ "${RAM_SIZE}" -le 13 ]; then
+                SWAP_SIZE=$(echo "2 ^ ${RAM_SIZE}" | bc)
+            elif [ "${RAM_SIZE}" -gt 13 ] && [ "${RAM_SIZE}" -le 16 ]; then
+                SWAP_SIZE=$(echo "2 ^ 12" | bc)
+            else
+                SWAP_SIZE=$(echo "2 ^ 13" | bc)
+            fi
         }
         function RemoveSWAP() {
             SWAPFILE_NAME=($(cat "/proc/swaps" | grep -v "Filename" | awk '{print $1}'))
@@ -1141,6 +1158,7 @@ function ConfigureSystem() {
             CUSTOM_SWAP_SIZE="" # 1024M / 1G
             ClearSWAP
             RemoveSWAP
+            GenerateSWAPSize
             CreateSWAP
             UpdateFSTAB
         fi
