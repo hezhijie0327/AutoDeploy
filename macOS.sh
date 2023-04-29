@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 2.5.2
+# Current Version: 2.5.3
 
 ## How to get and use?
 # /bin/bash -c "$(curl -fsSL 'https://source.zhijie.online/AutoDeploy/main/macOS.sh')"
@@ -198,6 +198,9 @@ function ConfigurePackages() {
                 ARM_HOMEBREW_BIN="/opt/homebrew/bin"
                 ARM_HOMEBREW_SBIN="/opt/homebrew/sbin"
             fi
+            if [ -d "/Users/${CurrentUsername}/.docker/bin" ]; then
+                DOCKER_HOMEBREW_BIN="/Users/${CurrentUsername}/.docker/bin"
+            fi
             default_path_list=(
                 "/bin"
                 "/sbin"
@@ -207,6 +210,7 @@ function ConfigurePackages() {
                 "/usr/local/sbin"
                 "${ARM_HOMEBREW_BIN}"
                 "${ARM_HOMEBREW_SBIN}"
+                "${DOCKER_HOMEBREW_BIN}"
             )
             DEFAULT_PATH="" && for default_path_list_task in "${!default_path_list[@]}"; do
                 if [ "${default_path_list[$default_path_list_task]}" != "" ]; then
@@ -319,9 +323,9 @@ function InstallCustomPackages() {
             "kekaexternalhelper" # Keka External Helper
             "microsoft-edge" # Microsoft Edge
             "obs" # OBS
-            "parallels" # Parallels Desktop
             "permute" # Permute 3
             "steermouse" # SteerMouse
+            "utm" # UTM
             "visual-studio-code" # Visual Studio Code
         )
         which "brew" > "/dev/null" 2>&1
@@ -349,6 +353,7 @@ function InstallCustomPackages() {
             "462062816" # Microsoft PowerPoint
             "470158793" # Keka
             "497799835" # Xcode
+            "595615424" # QQ音乐
             "634148309" # Logic Pro
             "634159523" # MainStage
             "732710998" # Enpass
