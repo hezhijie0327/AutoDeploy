@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 3.3.9
+# Current Version: 3.4.0
 
 ## How to get and use?
 # curl "https://source.zhijie.online/AutoDeploy/main/ProxmoxVE.sh" | sudo bash
@@ -1176,29 +1176,25 @@ function InstallCustomPackages() {
         app_list=(
             "cloudflared"
         )
-        if [ "${container_environment}" != "docker" ] && [ "${container_environment}" != "wsl2" ]; then
-            rm -rf "/etc/apt/keyrings/cloudflare-archive-keyring.gpg" && curl -fsSL "https://pkg.cloudflare.com/cloudflare-main.gpg" | gpg --dearmor -o "/etc/apt/keyrings/cloudflare-archive-keyring.gpg"
-            echo "deb [arch=${OSArchitecture} signed-by=/etc/apt/keyrings/cloudflare-archive-keyring.gpg] https://pkg.cloudflare.com/cloudflared ${LSBCodename} main" > "/etc/apt/sources.list.d/cloudflare.list"
-            apt update && for app_list_task in "${!app_list[@]}"; do
-                apt-cache show ${app_list[$app_list_task]} && if [ "$?" -eq "0" ]; then
-                    apt install -qy ${app_list[$app_list_task]}
-                fi
-            done
-        fi
+        rm -rf "/etc/apt/keyrings/cloudflare-archive-keyring.gpg" && curl -fsSL "https://pkg.cloudflare.com/cloudflare-main.gpg" | gpg --dearmor -o "/etc/apt/keyrings/cloudflare-archive-keyring.gpg"
+        echo "deb [arch=${OSArchitecture} signed-by=/etc/apt/keyrings/cloudflare-archive-keyring.gpg] https://pkg.cloudflare.com/cloudflared ${LSBCodename} main" > "/etc/apt/sources.list.d/cloudflare.list"
+        apt update && for app_list_task in "${!app_list[@]}"; do
+            apt-cache show ${app_list[$app_list_task]} && if [ "$?" -eq "0" ]; then
+                apt install -qy ${app_list[$app_list_task]}
+            fi
+        done
     }
     function InstallCloudflareWARP() {
         app_list=(
             "cloudflare-warp"
         )
-        if [ "${container_environment}" != "docker" ] && [ "${container_environment}" != "wsl2" ]; then
-            rm -rf "/etc/apt/keyrings/cloudflare-warp-archive-keyring.gpg" && curl -fsSL "https://pkg.cloudflareclient.com/pubkey.gpg" | gpg --dearmor -o "/etc/apt/keyrings/cloudflare-warp-archive-keyring.gpg"
-            echo "deb [arch=${OSArchitecture} signed-by=/etc/apt/keyrings/cloudflare-warp-archive-keyring.gpg] https://pkg.cloudflareclient.com ${LSBCodename} main" > "/etc/apt/sources.list.d/cloudflare-warp.list"
-            apt update && for app_list_task in "${!app_list[@]}"; do
-                apt-cache show ${app_list[$app_list_task]} && if [ "$?" -eq "0" ]; then
-                    apt install -qy ${app_list[$app_list_task]}
-                fi
-            done
-        fi
+        rm -rf "/etc/apt/keyrings/cloudflare-warp-archive-keyring.gpg" && curl -fsSL "https://pkg.cloudflareclient.com/pubkey.gpg" | gpg --dearmor -o "/etc/apt/keyrings/cloudflare-warp-archive-keyring.gpg"
+        echo "deb [arch=${OSArchitecture} signed-by=/etc/apt/keyrings/cloudflare-warp-archive-keyring.gpg] https://pkg.cloudflareclient.com ${LSBCodename} main" > "/etc/apt/sources.list.d/cloudflare-warp.list"
+        apt update && for app_list_task in "${!app_list[@]}"; do
+            apt-cache show ${app_list[$app_list_task]} && if [ "$?" -eq "0" ]; then
+                apt install -qy ${app_list[$app_list_task]}
+            fi
+        done
     }
     function InstallCrowdSec() {
         app_list=(
