@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 4.7.9
+# Current Version: 4.8.0
 
 ## How to get and use?
 # curl "https://source.zhijie.online/AutoDeploy/main/Ubuntu.sh" | sudo bash
@@ -1366,6 +1366,15 @@ function InstallCustomPackages() {
                     apt install -qy ${app_list[$app_list_task]}
                 fi
             done
+            if [ ! -f "/usr/local/share/ca-certificates/managed-warp.pem" ]; then
+                curl -fsSL "https://developers.cloudflare.com/cloudflare-one/static/documentation/connections/Cloudflare_CA.pem" > "/usr/local/share/ca-certificates/Cloudflare_CA.crt"
+            else
+                ln -s "/usr/local/share/ca-certificates/managed-warp.pem" "/usr/local/share/ca-certificates/Cloudflare_CA.crt"
+            fi
+            which "update-ca-certificates" > "/dev/null" 2>&1
+            if [ "$?" -eq "0" ]; then
+                update-ca-certificates
+            fi
         fi
     }
     function InstallCrowdSec() {
