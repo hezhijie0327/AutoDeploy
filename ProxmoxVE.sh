@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 3.4.1
+# Current Version: 3.4.2
 
 ## How to get and use?
 # curl "https://source.zhijie.online/AutoDeploy/main/ProxmoxVE.sh" | sudo bash
@@ -192,6 +192,7 @@ function SetReadonlyFlag() {
         "/etc/apt/preferences"
         "/etc/apt/preferences.d/proxmox.pref"
         "/etc/apt/sources.list"
+        "/etc/apt/sources.list.d/cloudflare.list"
         "/etc/apt/sources.list.d/crowdsec.list"
         "/etc/apt/sources.list.d/docker.list"
         "/etc/apt/sources.list.d/proxmox.list"
@@ -1172,24 +1173,15 @@ function ConfigureSystem() {
 }
 # Install Custom Packages
 function InstallCustomPackages() {
-    function InstallCloudflared() {
-        app_list=(
-            "cloudflared"
-        )
-        rm -rf "/etc/apt/keyrings/cloudflare-archive-keyring.gpg" && curl -fsSL "https://pkg.cloudflare.com/cloudflare-main.gpg" | gpg --dearmor -o "/etc/apt/keyrings/cloudflare-archive-keyring.gpg"
-        echo "deb [arch=${OSArchitecture} signed-by=/etc/apt/keyrings/cloudflare-archive-keyring.gpg] https://pkg.cloudflare.com/cloudflared ${LSBCodename} main" > "/etc/apt/sources.list.d/cloudflare.list"
-        apt update && for app_list_task in "${!app_list[@]}"; do
-            apt-cache show ${app_list[$app_list_task]} && if [ "$?" -eq "0" ]; then
-                apt install -qy ${app_list[$app_list_task]}
-            fi
-        done
-    }
-    function InstallCloudflareWARP() {
+    function InstallCloudflarePackage() {
         app_list=(
             "cloudflare-warp"
+#           "cloudflared"
         )
+        rm -rf "/etc/apt/keyrings/cloudflare-archive-keyring.gpg" && curl -fsSL "https://pkg.cloudflare.com/cloudflare-main.gpg" | gpg --dearmor -o "/etc/apt/keyrings/cloudflare-archive-keyring.gpg"
         rm -rf "/etc/apt/keyrings/cloudflare-warp-archive-keyring.gpg" && curl -fsSL "https://pkg.cloudflareclient.com/pubkey.gpg" | gpg --dearmor -o "/etc/apt/keyrings/cloudflare-warp-archive-keyring.gpg"
-        echo "deb [arch=${OSArchitecture} signed-by=/etc/apt/keyrings/cloudflare-warp-archive-keyring.gpg] https://pkg.cloudflareclient.com ${LSBCodename} main" > "/etc/apt/sources.list.d/cloudflare-warp.list"
+        echo "deb [arch=${OSArchitecture} signed-by=/etc/apt/keyrings/cloudflare-archive-keyring.gpg] https://pkg.cloudflare.com/cloudflared ${LSBCodename} main" > "/etc/apt/sources.list.d/cloudflare.list"
+        echo "deb [arch=${OSArchitecture} signed-by=/etc/apt/keyrings/cloudflare-warp-archive-keyring.gpg] https://pkg.cloudflareclient.com ${LSBCodename} main" >> "/etc/apt/sources.list.d/cloudflare.list"
         apt update && for app_list_task in "${!app_list[@]}"; do
             apt-cache show ${app_list[$app_list_task]} && if [ "$?" -eq "0" ]; then
                 apt install -qy ${app_list[$app_list_task]}
@@ -1269,8 +1261,7 @@ function InstallCustomPackages() {
             echo "${plugin_upgrade_list[$plugin_upgrade_list_task]}" >> "/etc/zsh/oh-my-zsh/oh-my-zsh-plugin.sh"
         done
     }
-#   InstallCloudflared
-#   InstallCloudflareWARP
+#   InstallCloudflarePackage
     InstallCrowdSec
     InstallDockerEngine
     InstallOhMyZsh
