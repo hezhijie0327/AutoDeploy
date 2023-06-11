@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 4.8.1
+# Current Version: 4.8.2
 
 ## How to get and use?
 # curl "https://source.zhijie.online/AutoDeploy/main/Ubuntu.sh" | sudo bash
@@ -310,6 +310,7 @@ function SetReadonlyFlag() {
         "/etc/apt/preferences"
         "/etc/apt/sources.list"
         "/etc/apt/sources.list.d/amd.list"
+        "/etc/apt/sources.list.d/cloudflare.list"
         "/etc/apt/sources.list.d/crowdsec.list"
         "/etc/apt/sources.list.d/docker.list"
         "/etc/apt/sources.list.d/intel.list"
