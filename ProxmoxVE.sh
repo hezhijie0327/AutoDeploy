@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 3.4.2
+# Current Version: 3.4.3
 
 ## How to get and use?
 # curl "https://source.zhijie.online/AutoDeploy/main/ProxmoxVE.sh" | sudo bash
@@ -1261,7 +1261,7 @@ function InstallCustomPackages() {
             echo "${plugin_upgrade_list[$plugin_upgrade_list_task]}" >> "/etc/zsh/oh-my-zsh/oh-my-zsh-plugin.sh"
         done
     }
-#   InstallCloudflarePackage
+    InstallCloudflarePackage
     InstallCrowdSec
     InstallDockerEngine
     InstallOhMyZsh
