@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 3.4.5
+# Current Version: 3.4.6
 
 ## How to get and use?
 # curl "https://source.zhijie.online/AutoDeploy/main/ProxmoxVE.sh" | sudo bash
@@ -141,7 +141,7 @@ function GetSystemInformation() {
     }
     function SetPackageCodename() {
         CephCodename="quincy"
-        LSBCodename="bookworm"
+        LSBCodename="bullseye"
     }
     CheckHypervisorEnvironment
     GenerateDomain
