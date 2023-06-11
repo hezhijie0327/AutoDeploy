@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 4.8.3
+# Current Version: 4.8.4
 
 ## How to get and use?
 # curl "https://source.zhijie.online/AutoDeploy/main/Ubuntu.sh" | sudo bash
@@ -1429,7 +1429,7 @@ function InstallCustomPackages() {
             echo "${plugin_upgrade_list[$plugin_upgrade_list_task]}" >> "/etc/zsh/oh-my-zsh/oh-my-zsh-plugin.sh"
         done
     }
-#   InstallCloudflarePackage
+    InstallCloudflarePackage
     InstallCrowdSec
     InstallDockerEngine
     InstallOhMyZsh
