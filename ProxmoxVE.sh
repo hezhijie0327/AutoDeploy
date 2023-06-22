@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 3.4.9
+# Current Version: 3.5.0
 
 ## How to get and use?
 # curl "https://source.zhijie.online/AutoDeploy/main/ProxmoxVE.sh" | sudo bash
@@ -206,7 +206,6 @@ function SetReadonlyFlag() {
         "/etc/hosts"
         "/etc/modules"
         "/etc/sysctl.conf"
-        "/etc/zsh/oh-my-zsh.zshrc"
     )
     if [ "${read_only}" == "TRUE" ]; then
         for file_list_task in "${!file_list[@]}"; do
