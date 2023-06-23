@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 3.5.4
+# Current Version: 3.5.5
 
 ## How to get and use?
 # curl "https://source.zhijie.online/AutoDeploy/main/ProxmoxVE.sh" | sudo bash
@@ -235,9 +235,9 @@ function ConfigurePackages() {
         )
         pve_repo_preference_list=(
             "pve-no-subscription 990"
-            "pve-enterprise 500"
+            "pve-enterprise 1000"
             "pvetest 100"
-            "main 990"
+            "no-subscription 990"
             "test 100"
         )
         if [ -d "/etc/apt/preferences.d" ]; then
