@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 4.9.0
+# Current Version: 4.9.1
 
 ## How to get and use?
 # curl "https://source.zhijie.online/AutoDeploy/main/Ubuntu.sh" | sudo bash
@@ -1179,22 +1179,22 @@ function ConfigureSystem() {
             PREFER_IPV4_OPTION="precedence ::ffff:0:0/96 10"
         fi
         gai_conf_list=(
-            "label ::1/128 0"
             "label ::/0 1"
+            "label ::1/128 0"
+            "label 2001:0::/32 7"
             "label 2002::/16 2"
             "label ::/96 3"
-            "label ::ffff:0:0/96 4"
-            "label fec0::/10 5"
             "label fc00::/7 6"
-            "label 2001:0::/32 7"
-            "precedence ::1/128 50"
+            "label fec0::/10 5"
+            "label ::ffff:0:0/96 4"
             "precedence ::/0 40"
+            "precedence ::1/128 50"
             "precedence 2002::/16 30"
             "precedence ::/96 20"
             "${PREFER_IPV4_OPTION}"
-            "scopev4 ::ffff:169.254.0.0/112 2"
-            "scopev4 ::ffff:127.0.0.0/104 2"
             "scopev4 ::ffff:0.0.0.0/96 14"
+            "scopev4 ::ffff:127.0.0.0/104 2"
+            "scopev4 ::ffff:169.254.0.0/112 2"
         )
         rm -rf "/tmp/gai.autodeploy" && for gai_conf_list_task in "${!gai_conf_list[@]}"; do
             echo "${gai_conf_list[$gai_conf_list_task]}" >> "/tmp/gai.autodeploy"
