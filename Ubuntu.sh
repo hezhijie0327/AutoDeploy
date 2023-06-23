@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 4.9.3
+# Current Version: 4.9.4
 
 ## How to get and use?
 # curl "https://source.zhijie.online/AutoDeploy/main/Ubuntu.sh" | sudo bash
@@ -210,10 +210,9 @@ function GetSystemInformation() {
         fi
     }
     function GetLSBCodename() {
-        LSBCodename_FORCE=""
+        ALWAYS_LATEST="false"
         LSBCodename_LTS="jammy"
         LSBCodename_NON_LTS="lunar"
-        LSBVersion_FORCE=""
         LSBVersion_LTS="22.04"
         LSBVersion_NON_LTS="23.04"
         which "lsb_release" > "/dev/null" 2>&1
@@ -240,17 +239,23 @@ function GetSystemInformation() {
             LSBCodename="${LSBCodename_CURRENT}"
             LSBVersion="${LSBVersion_CURRENT}"
         else
-            if [ "${WHETHER_LTS_NON_TLS}" == "TRUE" ]; then
-                LSBCodename="${LSBCodename_LTS}"
-                LSBVersion="${LSBVersion_LTS}"
+            if [ "${ALWAYS_LATEST}" == "true" ]; then
+                if [ "$(awk -v NUM1=$LSBVersion_LTS -v NUM2=$LSBVersion_NON_LTS 'BEGIN{print (NUM1 > NUM2) ? 1 : 0}')" -eq "1" ]; then
+                    LSBCodename="${LSBCodename_LTS}"
+                    LSBVersion="${LSBVersion_LTS}"
+                else
+                    LSBCodename="${LSBCodename_NON_LTS}"
+                    LSBVersion="${LSBVersion_NON_LTS}"
+                fi
             else
-                LSBCodename="${LSBCodename_NON_LTS}"
-                LSBVersion="${LSBVersion_NON_LTS}"
+                if [ "${WHETHER_LTS_NON_TLS}" == "TRUE" ]; then
+                    LSBCodename="${LSBCodename_LTS}"
+                    LSBVersion="${LSBVersion_LTS}"
+                else
+                    LSBCodename="${LSBCodename_NON_LTS}"
+                    LSBVersion="${LSBVersion_NON_LTS}"
+                fi
             fi
-        fi
-        if [ "${LSBCodename_FORCE}" != "" ] && [ "${LSBVersion_FORCE}" != "" ]; then
-            LSBCodename="${LSBCodename_FORCE}"
-            LSBVersion="${LSBVersion_FORCE}"
         fi
     }
     function GetOSArchitecture() {
