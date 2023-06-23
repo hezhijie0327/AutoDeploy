@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 4.9.1
+# Current Version: 4.9.2
 
 ## How to get and use?
 # curl "https://source.zhijie.online/AutoDeploy/main/Ubuntu.sh" | sudo bash
@@ -210,8 +210,10 @@ function GetSystemInformation() {
         fi
     }
     function GetLSBCodename() {
+        LSBCodename_FORCE=""
         LSBCodename_LTS="jammy"
         LSBCodename_NON_LTS="lunar"
+        LSBVersion_FORCE=""
         LSBVersion_LTS="22.04"
         LSBVersion_NON_LTS="23.04"
         which "lsb_release" > "/dev/null" 2>&1
@@ -245,6 +247,10 @@ function GetSystemInformation() {
                 LSBCodename="${LSBCodename_NON_LTS}"
                 LSBVersion="${LSBVersion_NON_LTS}"
             fi
+        fi
+        if [ "${LSBCodename_FORCE}" != "" ] && [ "${LSBVersion_FORCE}" != "" ]; then
+            LSBCodename="${LSBCodename_FORCE}"
+            LSBVersion="${LSBVersion_FORCE}"
         fi
     }
     function GetOSArchitecture() {
