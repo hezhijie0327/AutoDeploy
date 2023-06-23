@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 3.5.6
+# Current Version: 3.5.7
 
 ## How to get and use?
 # curl "https://source.zhijie.online/AutoDeploy/main/ProxmoxVE.sh" | sudo bash
@@ -170,7 +170,7 @@ function SetRepositoryMirror() {
         "deb-src ${transport_protocol}://mirrors.ustc.edu.cn/debian ${LSBCodename}-updates contrib main non-free"
     )
     proxmox_mirror_list=(
-        "# deb ${transport_protocol}://enterprise.proxmox.com/debian/ceph-quincy ${LSBCodename} enterprise"
+        "# deb ${transport_protocol}://enterprise.proxmox.com/debian/ceph-${CephCodename} ${LSBCodename} enterprise"
         "# deb ${transport_protocol}://enterprise.proxmox.com/debian/pve ${LSBCodename} pve-enterprise"
         "deb ${transport_protocol}://mirrors.ustc.edu.cn/proxmox/debian ${LSBCodename} pve-no-subscription pvetest"
         "deb ${transport_protocol}://mirrors.ustc.edu.cn/proxmox/debian/ceph-${CephCodename} ${LSBCodename} main no-subscription test"
