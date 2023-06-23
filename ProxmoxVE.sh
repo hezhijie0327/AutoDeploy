@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 3.5.0
+# Current Version: 3.5.1
 
 ## How to get and use?
 # curl "https://source.zhijie.online/AutoDeploy/main/ProxmoxVE.sh" | sudo bash
@@ -202,6 +202,7 @@ function SetReadonlyFlag() {
         "/etc/fail2ban/filter.d/proxmox.conf"
         "/etc/fail2ban/jail.local"
         "/etc/fail2ban/jail.d/fail2ban_default.conf"
+        "/etc/gai.conf"
         "/etc/hostname"
         "/etc/hosts"
         "/etc/modules"
@@ -1042,6 +1043,35 @@ function ConfigureSystem() {
             fi && pveum usermod "root@pam" -comment "Proxmox Root" -firstname "Root" -group "LADM" -lastname "Proxmox"
         fi
     }
+    function ConfigureGAI() {
+        PREFER_IPV4="true"
+        if [ "${PREFER_IPV4}" == "true" ]; then
+            PREFER_IPV4_OPTION="precedence ::ffff:0:0/96 100"
+        else
+            PREFER_IPV4_OPTION="precedence ::ffff:0:0/96 10"
+        fi
+        gai_conf_list=(
+            "label ::1/128 0"
+            "label ::/0 1"
+            "label 2002::/16 2"
+            "label ::/96 3"
+            "label ::ffff:0:0/96 4"
+            "label fec0::/10 5"
+            "label fc00::/7 6"
+            "label 2001:0::/32 7"
+            "precedence ::1/128 50"
+            "precedence ::/0 40"
+            "precedence 2002::/16 30"
+            "precedence ::/96 20"
+            "${PREFER_IPV4_OPTION}"
+            "scopev4 ::ffff:169.254.0.0/112 2"
+            "scopev4 ::ffff:127.0.0.0/104 2"
+            "scopev4 ::ffff:0.0.0.0/96 14"
+        )
+        rm -rf "/tmp/gai.autodeploy" && for gai_conf_list_task in "${!gai_conf_list[@]}"; do
+            echo "${gai_conf_list[$gai_conf_list_task]}" >> "/tmp/gai.autodeploy"
+        done && cat "/tmp/gai.autodeploy" | sort | uniq > "/etc/gai.conf"
+    }
     function ConfigureHostfile() {
         NEW_FULL_DOMAIN="" && for NEW_DOMAIN_TASK in "${!NEW_DOMAIN[@]}"; do
             NEW_FULL_DOMAIN="${NEW_FULL_DOMAIN} ${NEW_HOSTNAME}.${NEW_DOMAIN[$NEW_DOMAIN_TASK]}"
@@ -1165,6 +1195,7 @@ function ConfigureSystem() {
     }
     ConfigureDefaultShell
     ConfigureDefaultUser
+    ConfigureGAI
     ConfigureHostfile
     ConfigureProxmoxVENode
     ConfigureRootUser
