@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 3.6.0
+# Current Version: 3.6.1
 
 ## How to get and use?
 # curl "https://source.zhijie.online/AutoDeploy/main/ProxmoxVE.sh" | sudo bash
@@ -1251,6 +1251,7 @@ function InstallCustomPackages() {
             "docker-ce"
             "docker-ce-cli"
             "docker-compose-plugin"
+            "docker-compose"
         )
         if [ ! -d "/etc/apt/keyrings" ]; then
             mkdir "/etc/apt/keyrings"
