@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 4.9.8
+# Current Version: 4.9.9
 
 ## How to get and use?
 # curl "https://source.zhijie.online/AutoDeploy/main/Ubuntu.sh" | sudo bash
@@ -165,7 +165,7 @@ function GetSystemInformation() {
             fi && hypervisor_environment=$(virt-what) && if [ "${hypervisor_environment}" == "" ]; then
                 hypervisor_environment="none"
             elif [ "${hypervisor_environment}" == "kvm" ]; then
-                HYPERVISOR_AGENT=("qemu-guest-agent")
+                HYPERVISOR_AGENT=("ksmtuned" "qemu-guest-agent")
             elif [ "${hypervisor_environment}" == "vmware" ]; then
                 HYPERVISOR_AGENT=("open-vm-tools")
             elif [ "${hypervisor_environment}" == "virtualbox" ]; then
@@ -1498,8 +1498,9 @@ function InstallDependencyPackages() {
         "zsh"
     )
     hypervisor_agent_list=(
-        "qemu-guest-agent"
+        "ksmtuned"
         "open-vm-tools"
+        "qemu-guest-agent"
         "virtualbox-guest-dkms"
     )
     if [ "${container_environment}" != "docker" ] && [ "${container_environment}" != "wsl2" ]; then
