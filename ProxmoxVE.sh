@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 3.6.1
+# Current Version: 3.6.2
 
 ## How to get and use?
 # curl "https://source.zhijie.online/AutoDeploy/main/ProxmoxVE.sh" | sudo bash
@@ -9,25 +9,6 @@
 ## Function
 # Get System Information
 function GetSystemInformation() {
-    function CheckHypervisorEnvironment() {
-        which "virt-what" > "/dev/null" 2>&1
-        if [ "$?" -eq "1" ]; then
-            rm -rf "/etc/apt/sources.list.d/pve-enterprise.list" && sed -i 's|deb.debian.org|mirrors.ustc.edu.cn|g;s|ftp.[a-z]\{0,\}[.]\{0,\}debian.org|mirrors.ustc.edu.cn|g;s|security.debian.org/debian-security|mirrors.ustc.edu.cn/debian-security|g;s|security.debian.org|mirrors.ustc.edu.cn/debian-security|g' "/etc/apt/sources.list" && apt update && apt install virt-what -qy
-            which "virt-what" > "/dev/null" 2>&1
-            if [ "$?" -eq "1" ]; then
-                echo "virt-what has not been installed!"
-                exit 1
-            fi
-        fi && hypervisor_environment=$(virt-what) && if [ "${hypervisor_environment}" == "" ]; then
-            hypervisor_environment="none"
-        elif [ "${hypervisor_environment}" == "kvm" ]; then
-            HYPERVISOR_AGENT=("qemu-guest-agent")
-        elif [ "${hypervisor_environment}" == "vmware" ]; then
-            HYPERVISOR_AGENT=("open-vm-tools")
-        elif [ "${hypervisor_environment}" == "virtualbox" ]; then
-            HYPERVISOR_AGENT=("virtualbox-guest-dkms")
-        fi
-    }
     function GenerateDomain() {
         RESET_DOMAIN="false"
         if [ -f "/etc/resolv.conf" ]; then
@@ -143,7 +124,6 @@ function GetSystemInformation() {
         CephCodename="quincy"
         LSBCodename="bookworm"
     }
-    CheckHypervisorEnvironment
     GenerateDomain
     GenerateHostname
     GenerateResolv
@@ -1354,21 +1334,10 @@ function InstallDependencyPackages() {
         "zip"
         "zsh"
     )
-    hypervisor_agent_list=(
-        "qemu-guest-agent"
-        "open-vm-tools"
-        "virtualbox-guest-dkms"
-    )
-    app_list=(${app_regular_list[*]} ${HYPERVISOR_AGENT[*]} ${MICROCODE[*]})
+    app_list=(${app_regular_list[*]} ${MICROCODE[*]})
     apt update && for app_list_task in "${!app_list[@]}"; do
         apt-cache show ${app_list[$app_list_task]} && if [ "$?" -eq "0" ]; then
             apt install -qy ${app_list[$app_list_task]}
-        fi
-    done && for hypervisor_agent_list_task in "${!hypervisor_agent_list[@]}"; do
-        if [ "${hypervisor_agent_list[$hypervisor_agent_list_task]}" != "${HYPERVISOR_AGENT[*]}" ]; then
-            if [ "$(apt list --installed | grep ${hypervisor_agent_list[$hypervisor_agent_list_task]})" != "" ]; then
-                apt purge -qy ${hypervisor_agent_list[$hypervisor_agent_list_task]} && apt autoremove -qy
-            fi
         fi
     done
 }
