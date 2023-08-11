@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 3.6.3
+# Current Version: 3.6.4
 
 ## How to get and use?
 # curl "https://source.zhijie.online/AutoDeploy/main/ProxmoxVE.sh" | sudo bash
@@ -492,6 +492,11 @@ function ConfigurePackages() {
             echo "options i915 enable_guc=${i915_GUC_OPTION:-3} enable_gvt=1" > "/etc/modprobe.d/i915.conf"
             echo "options kvm-intel nested=Y" > "/etc/modprobe.d/kvm-intel.conf"
             echo "options snd-hda-intel enable_msi=1" > "/etc/modprobe.d/snd-hda-intel.conf"
+        fi
+
+        modinfo ixgbe > "/dev/null" 2>&1
+        if [ "$?" -eq "0" ]; then
+            echo "options ixgbe allow_unsupported_sfp=1" > "/etc/modprobe.d/ixgbe.conf"
         fi
     }
     function ConfigureNut() {
