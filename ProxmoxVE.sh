@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 3.6.2
+# Current Version: 3.6.3
 
 ## How to get and use?
 # curl "https://source.zhijie.online/AutoDeploy/main/ProxmoxVE.sh" | sudo bash
@@ -1190,7 +1190,7 @@ function InstallCustomPackages() {
             "cloudflare-warp"
         )
         rm -rf "/etc/apt/keyrings/cloudflare-warp-archive-keyring.gpg" && curl -fsSL "https://pkg.cloudflareclient.com/pubkey.gpg" | gpg --dearmor -o "/etc/apt/keyrings/cloudflare-warp-archive-keyring.gpg"
-        echo "deb [arch=${OSArchitecture} signed-by=/etc/apt/keyrings/cloudflare-warp-archive-keyring.gpg] https://pkg.cloudflareclient.com ${LSBCodename} main" > "/etc/apt/sources.list.d/cloudflare.list"
+        echo "deb [arch=amd64 signed-by=/etc/apt/keyrings/cloudflare-warp-archive-keyring.gpg] https://pkg.cloudflareclient.com ${LSBCodename} main" > "/etc/apt/sources.list.d/cloudflare.list"
         apt update && for app_list_task in "${!app_list[@]}"; do
             apt-cache show ${app_list[$app_list_task]} && if [ "$?" -eq "0" ]; then
                 apt install -qy ${app_list[$app_list_task]}
