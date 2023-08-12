@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 3.6.5
+# Current Version: 3.6.6
 
 ## How to get and use?
 # curl "https://source.zhijie.online/AutoDeploy/main/ProxmoxVE.sh" | sudo bash
@@ -559,7 +559,7 @@ function ConfigurePackages() {
                         UPSD_ACTIONS="    actions = ${UPSD_ACTIONS}\n    instcmds = ALL\n"
                     fi
                     echo -e "[${UPSD_USERNAME}]\n${UPSD_ACTIONS}    password = ${UPSD_PASSWORD}\n    upsmon ${UPSD_ROLE}" >> "/tmp/upsd.users.autodeploy"
-                done && cat "/tmp/upsd.users.autodeploy" > "/etc/nut/upsd.users" && chmod 0644 "/etc/nut/upsd.users" && rm -rf "/tmp/upsd.users.autodeploy"
+                done && cat "/tmp/upsd.users.autodeploy" > "/etc/nut/upsd.users" && rm -rf "/tmp/upsd.users.autodeploy"
             }
             function Generate_upsmon_conf() {
                 upsmon_list=(
@@ -577,7 +577,7 @@ function ConfigurePackages() {
                 )
                 rm -rf "/tmp/upsmon.conf.autodeploy" && for upsmon_list_task in "${!upsmon_list[@]}"; do
                     echo "${upsmon_list[$upsmon_list_task]}" >> "/tmp/upsmon.conf.autodeploy"
-                done && cat "/tmp/upsmon.conf.autodeploy" > "/etc/nut/upsmon.conf" && chmod 0644 "/etc/nut/upsmon.conf" && rm -rf "/tmp/upsmon.conf.autodeploy"
+                done && cat "/tmp/upsmon.conf.autodeploy" > "/etc/nut/upsmon.conf" && rm -rf "/tmp/upsmon.conf.autodeploy"
             }
             function Generate_upssched_conf() {
                 upssched_conf=(
@@ -630,7 +630,7 @@ function ConfigurePackages() {
                     )
                     Generate_nut_conf
                     ;;
-            esac
+            esac && chown -R root:nut "/etc/nut" && chmod 640 /etc/nut/*.*
             for nut_service_list_task in "${!nut_service_list[@]}"; do
                 NUT_SERVICE_NAME=$(echo "${nut_service_list[$nut_service_list_task]}" | cut -d ',' -f 1)
                 NUT_SERVICE_STATUS=$(echo "${nut_service_list[$nut_service_list_task]}" | cut -d ',' -f 2)
