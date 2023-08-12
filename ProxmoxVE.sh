@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 3.6.4
+# Current Version: 3.6.5
 
 ## How to get and use?
 # curl "https://source.zhijie.online/AutoDeploy/main/ProxmoxVE.sh" | sudo bash
@@ -502,6 +502,12 @@ function ConfigurePackages() {
     function ConfigureNut() {
         which "upsmon" > "/dev/null" 2>&1
         if [ "$?" -eq "0" ]; then
+            function Create_upsd_users() {
+                upsd_user_list=(
+                    "admin,123456,master,FSD,SET"
+                    "monuser,secret,slave,,"
+                )
+            }
             function Generate_nut_conf() {
                 echo "MODE=${NUT_MODE:-none}" > "/etc/nut/nut.conf"
             }
@@ -525,7 +531,6 @@ function ConfigurePackages() {
             function Generate_upsd_conf() {
                 if [ "${NUT_MODE}" == "standalone" ]; then
                     upsd_config_list=(
-                        "CERTREQUEST 0"
                         "LISTEN 127.0.0.1 3493"
                         "LISTEN ::1 3493"
                         "MAXAGE 15"
@@ -534,9 +539,7 @@ function ConfigurePackages() {
                     )
                 else
                     upsd_config_list=(
-                        "CERTREQUEST 0"
                         "LISTEN 0.0.0.0 3493"
-                        "LISTEN :: 3493"
                         "MAXAGE 15"
                         "MAXCONN 1024"
                         "STATEPATH /var/run/nut"
@@ -547,10 +550,6 @@ function ConfigurePackages() {
                 done && cat "/tmp/upsd.conf.autodeploy" > "/etc/nut/upsd.conf" && rm -rf "/tmp/upsd.conf.autodeploy"
             }
             function Generate_upsd_users() {
-                upsd_user_list=(
-                    "admin,123456,master,FSD,SET"
-                    "monuser,secret,slave,,"
-                )
                 rm -rf "/tmp/upsd.users.autodeploy" && for upsd_user_list_task in "${!upsd_user_list[@]}"; do
                     UPSD_USERNAME=$(echo "${upsd_user_list[$upsd_user_list_task]}" | cut -d ',' -f 1)
                     UPSD_PASSWORD=$(echo "${upsd_user_list[$upsd_user_list_task]}" | cut -d ',' -f 2)
@@ -560,7 +559,7 @@ function ConfigurePackages() {
                         UPSD_ACTIONS="    actions = ${UPSD_ACTIONS}\n    instcmds = ALL\n"
                     fi
                     echo -e "[${UPSD_USERNAME}]\n${UPSD_ACTIONS}    password = ${UPSD_PASSWORD}\n    upsmon ${UPSD_ROLE}" >> "/tmp/upsd.users.autodeploy"
-                done && cat "/tmp/upsd.users.autodeploy" > "/etc/nut/upsd.users" && chmod 0640 "/etc/nut/upsd.users" && rm -rf "/tmp/upsd.users.autodeploy"
+                done && cat "/tmp/upsd.users.autodeploy" > "/etc/nut/upsd.users" && chmod 0644 "/etc/nut/upsd.users" && rm -rf "/tmp/upsd.users.autodeploy"
             }
             function Generate_upsmon_conf() {
                 upsmon_list=(
@@ -578,7 +577,7 @@ function ConfigurePackages() {
                 )
                 rm -rf "/tmp/upsmon.conf.autodeploy" && for upsmon_list_task in "${!upsmon_list[@]}"; do
                     echo "${upsmon_list[$upsmon_list_task]}" >> "/tmp/upsmon.conf.autodeploy"
-                done && cat "/tmp/upsmon.conf.autodeploy" > "/etc/nut/upsmon.conf" && chmod 0640 "/etc/nut/upsmon.conf" && rm -rf "/tmp/upsmon.conf.autodeploy"
+                done && cat "/tmp/upsmon.conf.autodeploy" > "/etc/nut/upsmon.conf" && chmod 0644 "/etc/nut/upsmon.conf" && rm -rf "/tmp/upsmon.conf.autodeploy"
             }
             function Generate_upssched_conf() {
                 upssched_conf=(
@@ -588,6 +587,7 @@ function ConfigurePackages() {
             NUT_MODE="" # netclient | netserver | none | standalone
             rm -rf /etc/nut/*.* && case ${NUT_MODE:-none} in
                 netclient)
+                    Create_upsd_users
                     UPSMON_USERNAME=$(echo "${upsd_user_list[*]}" | cut -d ' ' -f 2 | cut -d ',' -f 1)
                     UPSMON_PASSWORD=$(echo "${upsd_user_list[*]}" | cut -d ' ' -f 2 | cut -d ',' -f 2)
                     UPSMON_ROLE=$(echo "${upsd_user_list[*]}" | cut -d ' ' -f 2 | cut -d ',' -f 3)
@@ -603,6 +603,7 @@ function ConfigurePackages() {
                     Generate_upssched_conf
                     ;;
                 netserver|standalone)
+                    Create_upsd_users
                     UPSMON_USERNAME=$(echo "${upsd_user_list[*]}" | cut -d ' ' -f 1 | cut -d ',' -f 1)
                     UPSMON_PASSWORD=$(echo "${upsd_user_list[*]}" | cut -d ' ' -f 1 | cut -d ',' -f 2)
                     UPSMON_ROLE=$(echo "${upsd_user_list[*]}" | cut -d ' ' -f 1 | cut -d ',' -f 3)
