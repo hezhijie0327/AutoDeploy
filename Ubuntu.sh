@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 5.0.2
+# Current Version: 5.0.3
 
 ## How to get and use?
 # curl "https://source.zhijie.online/AutoDeploy/main/Ubuntu.sh" | sudo bash
@@ -1509,7 +1509,13 @@ function InstallDependencyPackages() {
     else
         app_list=(${app_regular_list[*]} ${HYPERVISOR_AGENT[*]} ${MICROCODE[*]})
     fi
-    apt update && for app_list_task in "${!app_list[@]}"; do
+    for hypervisor_agent_list_task in "${!hypervisor_agent_list[@]}"; do
+        if [ "${hypervisor_agent_list[$hypervisor_agent_list_task]}" != "${HYPERVISOR_AGENT[*]}" ]; then
+            if [ "$(apt list --installed | grep ${hypervisor_agent_list[$hypervisor_agent_list_task]})" != "" ]; then
+                apt purge -qy ${hypervisor_agent_list[$hypervisor_agent_list_task]} && apt autoremove -qy
+            fi
+        fi
+    done && apt update && for app_list_task in "${!app_list[@]}"; do
         apt-cache show ${app_list[$app_list_task]} && if [ "$?" -eq "0" ]; then
             apt install -qy ${app_list[$app_list_task]}
         fi
@@ -1519,13 +1525,7 @@ function InstallDependencyPackages() {
                 apt purge -qy ${app_extended_list[$app_extended_list_task]} && apt autoremove -qy
             fi
         done
-    fi && for hypervisor_agent_list_task in "${!hypervisor_agent_list[@]}"; do
-        if [ "${hypervisor_agent_list[$hypervisor_agent_list_task]}" != "${HYPERVISOR_AGENT[*]}" ]; then
-            if [ "$(apt list --installed | grep ${hypervisor_agent_list[$hypervisor_agent_list_task]})" != "" ]; then
-                apt purge -qy ${hypervisor_agent_list[$hypervisor_agent_list_task]} && apt autoremove -qy
-            fi
-        fi
-    done
+    fi
 }
 # Upgrade Packages
 function UpgradePackages() {
