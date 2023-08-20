@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 5.0.3
+# Current Version: 5.0.4
 
 ## How to get and use?
 # curl "https://source.zhijie.online/AutoDeploy/main/Ubuntu.sh" | sudo bash
@@ -753,13 +753,14 @@ function ConfigurePackages() {
                 )
             }
             NUT_MODE="" # netclient | netserver | none | standalone
+            NUT_HOST="" # localhost
             rm -rf /etc/nut/*.* && case ${NUT_MODE:-none} in
                 netclient)
                     Create_upsd_users
                     UPSMON_USERNAME=$(echo "${upsd_user_list[*]}" | cut -d ' ' -f 2 | cut -d ',' -f 1)
                     UPSMON_PASSWORD=$(echo "${upsd_user_list[*]}" | cut -d ' ' -f 2 | cut -d ',' -f 2)
                     UPSMON_ROLE=$(echo "${upsd_user_list[*]}" | cut -d ' ' -f 2 | cut -d ',' -f 3)
-                    UPSMON_SYSTEM="${UPS_NAME-ups}@localhost"
+                    UPSMON_SYSTEM="${UPS_NAME-ups}@${NUT_HOST:-localhost}"
                     nut_service_list=(
                         "nut-client,enabled"
                         "nut-driver,disabled"
