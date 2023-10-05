@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 5.0.5
+# Current Version: 5.0.6
 
 ## How to get and use?
 # curl "https://source.zhijie.online/AutoDeploy/main/Ubuntu.sh" | sudo bash
@@ -19,7 +19,7 @@ function CallServiceController(){
             exit 1
         fi
     fi
-    if [ "${container_environment}" == "lxc" ] || [ "${container_environment}" == "none" ]; then
+    if [ "${container_environment}" == "lxc" ] || [ "${container_environment}" == "none" ] || [ "${container_environment}" == "wsl2" ]; then
         if [ "${OPRATIONS}" == "daemon-reload" ]; then
             systemctl daemon-reload
         else
@@ -69,86 +69,6 @@ function GetSystemInformation() {
                 container_environment="lxc"
             elif [ "$(uname -r | grep 'WSL')" != "" ]; then
                 container_environment="wsl2"
-                function Create_Startup_Script() {
-                    startup_list=(
-                        '#!/bin/bash'
-                        "service chrony start > \"/dev/null\" 2>&1"
-                        "service cron start > \"/dev/null\" 2>&1"
-                        "service ssh start > \"/dev/null\" 2>&1"
-                    )
-                    rm -rf "/tmp/startup.autodeploy" && for startup_list_task in "${!startup_list[@]}"; do
-                        echo "${startup_list[$startup_list_task]}" >> "/tmp/startup.autodeploy"
-                    done && cat "/tmp/startup.autodeploy" > "/opt/startup.sh" && chmod +x "/opt/startup.sh" && rm -rf "/tmp/startup.autodeploy"
-                    rm -rf "/tmp/startup.sudo.autodeploy" && if [ ! -d "/etc/sudoers.d" ]; then
-                        mkdir "/etc/sudoers.d"
-                    fi && echo "%sudo ALL=NOPASSWD: /opt/startup.sh" > "/etc/sudoers.d/startup" && rm -rf "/tmp/startup.sudo.autodeploy"
-                }
-                function Fix_Resolv_Conf_Issue() {
-                    resolv_conf_list=(
-                        ${CURRENT_DNS[@]}
-                        ${CUSTOM_DNS[@]}
-                    )
-                    wsl_conf_list=(
-                        "[boot]"
-                        "command = bash \"/opt/startup.sh\""
-                        "[interop]"
-                        "appendWindowsPath = true"
-                        "enabled = true"
-                        "[network]"
-                        "generateHosts = false"
-                        "generateResolvConf = false"
-                    )
-                    wslconfig_list=(
-                        "# [wsl2]"
-                        "# memory = 1GB"
-                        "# processors = 4"
-                        "# swap = 2GB"
-                    )
-                    rm -rf "/tmp/resolv.autodeploy" && DNS_COUNT="1" && for resolv_conf_list_task in "${!resolv_conf_list[@]}"; do
-                        if [ "${DNS_COUNT}" -gt "3" ]; then
-                            break
-                        else
-                            echo "nameserver ${resolv_conf_list[$resolv_conf_list_task]}" >> "/tmp/resolv.autodeploy"
-                        fi && DNS_COUNT=$(( ${DNS_COUNT} + 1 ))
-                    done && echo "search ${NEW_DOMAIN[*]}" >> "/tmp/resolv.autodeploy" && if [ -f "/etc/resolv.conf" ]; then
-                        chattr -i "/etc/resolv.conf" > "/dev/null" 2>&1
-                        if [ "$?" -eq "1" ]; then
-                            rm -rf "/etc/resolv.conf"
-                        fi
-                    fi && rm -rf "/etc/resolv.conf" && cat "/tmp/resolv.autodeploy" > "/etc/resolv.conf" && rm -rf "/tmp/resolv.autodeploy" && chattr +i "/etc/resolv.conf"
-                    rm -rf "/tmp/wsl.autodeploy" && for wsl_conf_list_task in "${!wsl_conf_list[@]}"; do
-                        echo "${wsl_conf_list[$wsl_conf_list_task]}" >> "/tmp/wsl.autodeploy"
-                    done && if [ -f "/etc/wsl.conf" ]; then chattr -i "/etc/wsl.conf"; fi && rm -rf "/etc/wsl.conf" && cat "/tmp/wsl.autodeploy" > "/etc/wsl.conf" && rm -rf "/tmp/wsl.autodeploy" && chattr +i "/etc/wsl.conf"
-                    rm -rf "/tmp/wslconfig.autodeploy" && for wslconfig_list_task in "${!wslconfig_list[@]}"; do
-                        echo "${wslconfig_list[$wslconfig_list_task]}" >> "/tmp/wslconfig.autodeploy"
-                    done && cat "/tmp/wslconfig.autodeploy" > "/etc/.wslconfig" && rm -rf "/tmp/wslconfig.autodeploy"
-                }
-                function Fix_Sshd_Server_Issue() {
-                    CURRENT_PATH=$(pwd)
-                    cd "/etc/ssh" && ssh-keygen -A && cd "${CURRENT_PATH}"
-                }
-                function Fix_Ubuntu_Advantage_Tools_Upgrade_Error() {
-                    if [ ! -d "/run/cloud-init" ]; then
-                        mkdir "/run/cloud-init"
-                    fi
-                    if [ ! -f "/run/cloud-init/instance-data.json" ]; then
-                        echo "{}" > "/run/cloud-init/instance-data.json"
-                    fi
-                }
-                function Fix_Unsupport_Udev_Issue() {
-                    policy_rc_d_list=(
-                        "#!/bin/sh"
-                        "exit 101"
-                    )
-                    rm -rf "/tmp/policy-rc.d.autodeploy" && for policy_rc_d_list_task in "${!policy_rc_d_list[@]}"; do
-                        echo "${policy_rc_d_list[$policy_rc_d_list_task]}" >> "/tmp/policy-rc.d.autodeploy"
-                    done && cat "/tmp/policy-rc.d.autodeploy" > "/usr/sbin/policy-rc.d" && chmod +x "/usr/sbin/policy-rc.d" && dpkg-divert --local --rename --add "/sbin/initctl" && rm -rf "/sbin/initctl" && ln -s "/bin/true" "/sbin/initctl" && rm -rf "/tmp/policy-rc.d.autodeploy"
-                }
-                Create_Startup_Script
-                Fix_Resolv_Conf_Issue
-                Fix_Sshd_Server_Issue
-                Fix_Ubuntu_Advantage_Tools_Upgrade_Error
-                Fix_Unsupport_Udev_Issue
             else
                 container_environment="none"
             fi
@@ -426,10 +346,10 @@ function ConfigurePackages() {
         )
         which "cockpit-bridge" > "/dev/null" 2>&1
         if [ "$?" -eq "0" ]; then
-            if [ "${container_environment}" != "docker" ] && [ "${container_environment}" != "wsl2" ]; then
+            if [ "${container_environment}" != "docker" ]; then
                 rm -rf "/tmp/cockpit.autodeploy" && for cockpit_list_task in "${!cockpit_list[@]}"; do
                     echo "${cockpit_list[$cockpit_list_task]}" >> "/tmp/cockpit.autodeploy"
-                done && cat "/tmp/cockpit.autodeploy" > "/etc/cockpit/cockpit.conf" && rm -rf "/tmp/cockpit.autodeploy" && if [ "${container_environment}" != "docker" ] && [ "${container_environment}" != "wsl2" ]; then
+                done && cat "/tmp/cockpit.autodeploy" > "/etc/cockpit/cockpit.conf" && rm -rf "/tmp/cockpit.autodeploy" && if [ "${container_environment}" != "docker" ]; then
                     OPRATIONS="restart" && SERVICE_NAME="cockpit" && CallServiceController
                 fi
             fi
@@ -457,7 +377,7 @@ function ConfigurePackages() {
         )
         which "cscli" > "/dev/null" 2>&1
         if [ "$?" -eq "0" ]; then
-            if [ "${container_environment}" != "docker" ] && [ "${container_environment}" != "wsl2" ]; then
+            if [ "${container_environment}" != "docker" ]; then
                 for crowdsec_hub_list_task in "${!crowdsec_hub_list[@]}"; do
                     cscli collections install ${crowdsec_hub_list[$crowdsec_hub_list_task]}
                 done && OPRATIONS="restart" && SERVICE_NAME="crowdsec" && CallServiceController && cscli hub list
@@ -534,7 +454,7 @@ function ConfigurePackages() {
         )
         which "fail2ban-client" > "/dev/null" 2>&1
         if [ "$?" -eq "0" ]; then
-            if [ "${container_environment}" != "docker" ] && [ "${container_environment}" != "wsl2" ]; then
+            if [ "${container_environment}" != "docker" ]; then
                 if [ -d "/etc/fail2ban/jail.d" ]; then
                     rm -rf /etc/fail2ban/jail.d/*
                 else
@@ -551,7 +471,7 @@ function ConfigurePackages() {
                 done && cat "/tmp/fail2ban.autodeploy" > "/etc/fail2ban/filter.d/cockpit.conf" && rm -rf "/tmp/fail2ban.autodeploy"
                 rm -rf "/tmp/fail2ban.autodeploy" && for fail2ban_list_task in "${!fail2ban_list[@]}"; do
                     echo "${fail2ban_list[$fail2ban_list_task]}" >> "/tmp/fail2ban.autodeploy"
-                done && cat "/tmp/fail2ban.autodeploy" > "/etc/fail2ban/jail.d/fail2ban_default.conf" && rm -rf "/tmp/fail2ban.autodeploy" && if [ "${container_environment}" != "docker" ] && [ "${container_environment}" != "wsl2" ]; then
+                done && cat "/tmp/fail2ban.autodeploy" > "/etc/fail2ban/jail.d/fail2ban_default.conf" && rm -rf "/tmp/fail2ban.autodeploy" && if [ "${container_environment}" != "docker" ]; then
                     OPRATIONS="enable" && SERVICE_NAME="fail2ban" && CallServiceController && fail2ban-client reload && sleep 5s && fail2ban-client status
                 fi
             fi
@@ -582,10 +502,7 @@ function ConfigurePackages() {
         if [ "$?" -eq "0" ]; then
             for gitconfig_list_task in "${!gitconfig_key_list[@]}"; do
                 git config --global --unset ${gitconfig_key_list[$gitconfig_list_task]}
-                if [ "${container_environment}" == "wsl2" ]; then
-                    GIT_COMMIT_GPGSIGN="false"
-                    GIT_USER_SIGNINGKEY=""
-                fi
+
                 if [ "${gitconfig_value_list[$gitconfig_list_task]}" != "" ]; then
                     git config --global ${gitconfig_key_list[$gitconfig_list_task]} "${gitconfig_value_list[$gitconfig_list_task]}"
                 fi
@@ -614,9 +531,6 @@ function ConfigurePackages() {
                     mv "/root/.gnupg" "/home/${DEFAULT_USERNAME}/.gnupg" && chown -R $DEFAULT_USERNAME:$DEFAULT_USERNAME "/home/${DEFAULT_USERNAME}/.gnupg"
                 fi
             fi
-        fi
-        if [ "${container_environment}" == "wsl2" ]; then
-            rm -rf "/home/${DEFAULT_USERNAME}/.gnupg/gpg-agent.conf" "/home/${DEFAULT_USERNAME}/.gnupg/sshcontrol"
         fi
     }
     function ConfigureGrub() {
@@ -648,7 +562,7 @@ function ConfigurePackages() {
         network_interface=($(cat "/proc/net/dev" | grep -v "docker0\|lo\|wg0" | grep "\:" | sed "s/[[:space:]]//g" | cut -d ":" -f 1 | sort | uniq | awk "{print $2}"))
         which "netplan" > "/dev/null" 2>&1
         if [ "$?" -eq "0" ]; then
-            if [ "${container_environment}" != "docker" ] && [ "${container_environment}" != "wsl2" ]; then
+            if [ "${container_environment}" != "docker" ]; then
                 if [ ! -d "/etc/netplan" ]; then
                     mkdir "/etc/netplan"
                 else
@@ -661,7 +575,7 @@ function ConfigurePackages() {
                         echo "${netplan_ethernets_list[$netplan_ethernets_list_task]}" >> "/tmp/netplan.autodeploy"
                     done
                 done && cat "/tmp/netplan.autodeploy" > "/etc/netplan/netplan.yaml" && rm -rf "/tmp/netplan.autodeploy"
-                if [ "${container_environment}" != "docker" ] && [ "${container_environment}" != "wsl2" ]; then
+                if [ "${container_environment}" != "docker" ]; then
                     netplan apply
                 fi
             fi
@@ -866,7 +780,7 @@ function ConfigurePackages() {
         )
         which "resolvectl" > "/dev/null" 2>&1
         if [ "$?" -eq "0" ]; then
-            if [ "${container_environment}" != "docker" ] && [ "${container_environment}" != "wsl2" ]; then
+            if [ "${container_environment}" != "docker" ]; then
                 if [ ! -d "/etc/systemd/resolved.conf.d" ]; then
                     mkdir "/etc/systemd/resolved.conf.d"
                 else
@@ -944,10 +858,8 @@ function ConfigurePackages() {
     }
     function ConfigureSshd() {
         if [ -f "/usr/share/openssh/sshd_config" ]; then
-            SSHD_CONFIG_ADDITIONAL="" && if [ "${container_environment}" != "docker" ] && [ "${container_environment}" != "wsl2" ]; then
-                SSHD_CONFIG_ADDITIONAL="${SSHD_CONFIG_ADDITIONAL}s/\#Port\ 22/Port 9022/g;"
-            fi && if [ "${container_environment}" != "wsl2" ]; then
-                SSHD_CONFIG_ADDITIONAL="${SSHD_CONFIG_ADDITIONAL}s/\#PubkeyAuthentication\ yes/PubkeyAuthentication\ yes/g;"
+            SSHD_CONFIG_ADDITIONAL="" && if [ "${container_environment}" != "docker" ]; then
+                SSHD_CONFIG_ADDITIONAL="${SSHD_CONFIG_ADDITIONAL}s/\#Port\ 22/Port 9022/g;s/\#PubkeyAuthentication\ yes/PubkeyAuthentication\ yes/g;"
             fi && cat "/usr/share/openssh/sshd_config" | sed "s/\#PasswordAuthentication\ yes/PasswordAuthentication\ yes/g;s/\#PermitRootLogin\ prohibit\-password/PermitRootLogin\ yes/g;${SSHD_CONFIG_ADDITIONAL}" > "/tmp/sshd_config.autodeploy" && cat "/tmp/sshd_config.autodeploy" > "/etc/ssh/sshd_config" && rm -rf "/tmp/sshd_config.autodeploy"
         fi
     }
@@ -986,7 +898,7 @@ function ConfigurePackages() {
     function ConfigureTuned() {
         which "tuned-adm" > "/dev/null" 2>&1
         if [ "$?" -eq "0" ]; then
-            if [ "${container_environment}" != "docker" ] && [ "${container_environment}" != "wsl2" ]; then
+            if [ "${container_environment}" != "docker" ]; then
                 tuned-adm profile "$(tuned-adm recommend)" && tuned-adm active
             fi
         fi
@@ -994,9 +906,9 @@ function ConfigurePackages() {
     function ConfigureUfw() {
         which "ufw" > "/dev/null" 2>&1
         if [ "$?" -eq "0" ] && [ -f "/etc/default/ufw" ]; then
-            if [ "${container_environment}" != "docker" ] && [ "${container_environment}" != "wsl2" ]; then
+            if [ "${container_environment}" != "docker" ]; then
                 echo "$(cat '/etc/default/ufw' | sed 's/DEFAULT\_APPLICATION\_POLICY\=\"ACCEPT\"/DEFAULT\_APPLICATION\_POLICY\=\"REJECT\"/g;s/DEFAULT\_APPLICATION\_POLICY\=\"DROP\"/DEFAULT\_APPLICATION\_POLICY\=\"REJECT\"/g;s/DEFAULT\_APPLICATION\_POLICY\=\"SKIP\"/DEFAULT\_APPLICATION\_POLICY\=\"REJECT\"/g;s/DEFAULT\_FORWARD\_POLICY\=\"DROP\"/DEFAULT\_FORWARD\_POLICY\=\"ACCEPT\"/g;s/DEFAULT\_FORWARD\_POLICY\=\"REJECT\"/DEFAULT\_FORWARD\_POLICY\=\"ACCEPT\"/g;s/DEFAULT\_INPUT\_POLICY\=\"ACCEPT\"/DEFAULT\_INPUT\_POLICY\=\"REJECT\"/g;s/DEFAULT\_INPUT\_POLICY\=\"DROP\"/DEFAULT\_INPUT\_POLICY\=\"REJECT\"/g;s/DEFAULT\_OUTPUT\_POLICY\=\"DROP\"/DEFAULT\_OUTPUT\_POLICY\=\"ACCEPT\"/g;s/DEFAULT\_OUTPUT\_POLICY\=\"REJECT\"/DEFAULT\_OUTPUT\_POLICY\=\"ACCEPT\"/g;s/MANAGE\_BUILTINS\=yes/MANAGE\_BUILTINS\=no/g;s/IPV6\=no/IPV6\=yes/g')" > "/tmp/ufw.autodeploy" && cat "/tmp/ufw.autodeploy" > "/etc/default/ufw" && rm -rf "/tmp/ufw.autodeploy"
-                if [ "${container_environment}" != "docker" ] && [ "${container_environment}" != "wsl2" ]; then
+                if [ "${container_environment}" != "docker" ]; then
                     ufw reload && ufw reset && ufw allow 123/udp && ufw allow 161/udp && ufw limit 22/tcp && ufw allow 323/udp && ufw allow 3493/tcp && ufw allow 51820/udp && ufw limit 9022/tcp && ufw allow 9090/tcp && ufw enable && ufw status verbose
                 else
                     ufw disable > "/dev/null" 2>&1
@@ -1028,7 +940,7 @@ function ConfigurePackages() {
         fi
         which "wg" > "/dev/null" 2>&1
         if [ "$?" -eq "0" ]; then
-            if [ "${container_environment}" != "docker" ] && [ "${container_environment}" != "wsl2" ]; then
+            if [ "${container_environment}" != "docker" ]; then
                 wireguard_list=(
                     "[Interface]"
                     "Address = ${TUNNEL_CLIENT_V4}, ${TUNNEL_CLIENT_V6}"
@@ -1048,7 +960,7 @@ function ConfigurePackages() {
                 )
                 rm -rf "/tmp/wireguard.autodeploy" && for wireguard_list_task in "${!wireguard_list[@]}"; do
                     echo "${wireguard_list[$wireguard_list_task]}" | sed "s/\,\ $//g;s/^\,\ //g" >> "/tmp/wireguard.autodeploy"
-                done && cat "/tmp/wireguard.autodeploy" > "/etc/wireguard/wg0.conf" && chown -R ${DEFAULT_USERNAME}:sudo "/etc/wireguard" && chmod -R 775 "/etc/wireguard" && chown -R ${DEFAULT_USERNAME}:${DEFAULT_USERNAME} "/etc/wireguard/wg0.conf" && chmod 600 "/etc/wireguard/wg0.conf" && rm -rf "/tmp/wireguard.autodeploy" && if [ "${container_environment}" != "docker" ] && [ "${container_environment}" != "wsl2" ]; then
+                done && cat "/tmp/wireguard.autodeploy" > "/etc/wireguard/wg0.conf" && chown -R ${DEFAULT_USERNAME}:sudo "/etc/wireguard" && chmod -R 775 "/etc/wireguard" && chown -R ${DEFAULT_USERNAME}:${DEFAULT_USERNAME} "/etc/wireguard/wg0.conf" && chmod 600 "/etc/wireguard/wg0.conf" && rm -rf "/tmp/wireguard.autodeploy" && if [ "${container_environment}" != "docker" ]; then
                     OPRATIONS="enable" && SERVICE_NAME="wg-quick@wg0" && CallServiceController && if [ -f "/lib/systemd/system/wg-quick@.service" ]; then
                         if [ ! -f "/lib/systemd/system/wg-quick@.service.bak" ]; then
                             cp "/lib/systemd/system/wg-quick@.service" "/lib/systemd/system/wg-quick@.service.bak"
@@ -1300,7 +1212,7 @@ function ConfigureSystem() {
             cat "/tmp/fstab.autodeploy" > "/etc/fstab" && rm -rf "/tmp/fstab.autodeploy"
         }
         DISABLE_SWAP="false"
-        if [ "${container_environment}" != "docker" ] && [ "${container_environment}" != "wsl2" ]; then
+        if [ "${container_environment}" != "docker" ]; then
             if [ "${DISABLE_SWAP}" == "true" ]; then
                 ClearSWAP
                 RemoveSWAP
@@ -1335,7 +1247,7 @@ function InstallCustomPackages() {
         app_list=(
             "cloudflare-warp"
         )
-        if [ "${container_environment}" != "docker" ] && [ "${container_environment}" != "wsl2" ]; then
+        if [ "${container_environment}" != "docker" ]; then
             rm -rf "/usr/share/keyrings/cloudflare-warp-archive-keyring.gpg" && curl -fsSL "https://pkg.cloudflareclient.com/pubkey.gpg" | gpg --dearmor -o "/usr/share/keyrings/cloudflare-warp-archive-keyring.gpg"
             echo "deb [arch=${OSArchitecture} signed-by=/usr/share/keyrings/cloudflare-warp-archive-keyring.gpg] https://pkg.cloudflareclient.com ${LSBCodename} main" > "/etc/apt/sources.list.d/cloudflare.list"
             apt update && for app_list_task in "${!app_list[@]}"; do
@@ -1354,7 +1266,7 @@ function InstallCustomPackages() {
             "crowdsec"
             "crowdsec-firewall-bouncer-nftables"
         )
-        if [ "${container_environment}" != "docker" ] && [ "${container_environment}" != "wsl2" ]; then
+        if [ "${container_environment}" != "docker" ]; then
             rm -rf "/usr/share/keyrings/crowdsec-archive-keyring.gpg" && curl -fsSL "https://packagecloud.io/crowdsec/crowdsec/gpgkey" | gpg --dearmor -o "/usr/share/keyrings/crowdsec-archive-keyring.gpg"
             echo "deb [arch=${OSArchitecture} signed-by=/usr/share/keyrings/crowdsec-archive-keyring.gpg] https://packagecloud.io/crowdsec/crowdsec/ubuntu ${LSBCodename} main" > "/etc/apt/sources.list.d/crowdsec.list"
             echo "deb-src [arch=${OSArchitecture} signed-by=/usr/share/keyrings/crowdsec-archive-keyring.gpg] https://packagecloud.io/crowdsec/crowdsec/ubuntu ${LSBCodename} main" >> "/etc/apt/sources.list.d/crowdsec.list"
@@ -1505,8 +1417,8 @@ function InstallDependencyPackages() {
         "qemu-guest-agent"
         "virtualbox-guest-dkms"
     )
-    if [ "${container_environment}" != "docker" ] && [ "${container_environment}" != "wsl2" ]; then
-        app_list=(${app_regular_list[@]} ${app_extended_list[*]} ${HYPERVISOR_AGENT[*]})
+    if [ "${container_environment}" != "docker" ]; then
+        app_list=(${app_regular_list[@]} ${app_extended_list[*]} ${HYPERVISOR_AGENT[*]} ${MICROCODE[*]})
     else
         app_list=(${app_regular_list[*]} ${HYPERVISOR_AGENT[*]} ${MICROCODE[*]})
     fi
@@ -1520,7 +1432,7 @@ function InstallDependencyPackages() {
         apt-cache show ${app_list[$app_list_task]} && if [ "$?" -eq "0" ]; then
             apt install -qy ${app_list[$app_list_task]}
         fi
-    done && if [ "${container_environment}" == "docker" ] || [ "${container_environment}" == "wsl2" ]; then
+    done && if [ "${container_environment}" == "docker" ]; then
         for app_extended_list_task in "${!app_extended_list[@]}"; do
             if [ "$(apt list --installed | grep ${app_extended_list[$app_extended_list_task]})" != "" ]; then
                 apt purge -qy ${app_extended_list[$app_extended_list_task]} && apt autoremove -qy
@@ -1543,7 +1455,7 @@ function CleanupTempFiles() {
         "ufw"
         "wireguard"
     )
-    if [ "${container_environment}" == "docker" ] || [ "${container_environment}" == "wsl2" ]; then
+    if [ "${container_environment}" == "docker" ]; then
         for cleanup_list_task in "${!cleanup_list[@]}"; do
             FILE_LIST=($(find "/" \( -path "/dev" -o -path "/home" -o -path "/mnt" -o -path "/proc" -o -path "/root" -o -path "/sys" \) -prune -o -name "${cleanup_list[$cleanup_list_task]}" -print | awk "{print $2}"))
             for FILE_LIST_TASK in "${!FILE_LIST[@]}"; do
