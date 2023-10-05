@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 5.0.4
+# Current Version: 5.0.5
 
 ## How to get and use?
 # curl "https://source.zhijie.online/AutoDeploy/main/Ubuntu.sh" | sudo bash
@@ -1423,8 +1423,19 @@ function InstallDependencyPackages() {
         "cockpit"
         "cockpit-pcp"
         "fail2ban"
+        "libsnmp-dev"
         "netplan.io"
+        "nut"
+        "nut-i2c"
+        "nut-ipmi"
+        "nut-modbus"
+        "nut-powerman-pdu"
+        "nut-snmp"
+        "nut-xml"
         "resolvconf"
+        "snmp"
+        "snmp-mibs-downloader"
+        "snmpd"
         "systemd"
         "tuned"
         "ufw"
@@ -1448,7 +1459,6 @@ function InstallDependencyPackages() {
         "jq"
         "knot-dnsutils"
         "landscape-common"
-        "libsnmp-dev"
         "lm-sensors"
         "lsb-release"
         "mailutils"
@@ -1459,13 +1469,6 @@ function InstallDependencyPackages() {
         "nfs-common"
         "nmap"
         "ntfs-3g"
-        "nut"
-        "nut-i2c"
-        "nut-ipmi"
-        "nut-modbus"
-        "nut-powerman-pdu"
-        "nut-snmp"
-        "nut-xml"
         "openssh-client"
         "openssh-server"
         "p7zip-full"
@@ -1477,9 +1480,6 @@ function InstallDependencyPackages() {
         "rar"
         "realmd"
         "rsyslog"
-        "snmp"
-        "snmp-mibs-downloader"
-        "snmpd"
         "sudo"
         "tcpdump"
         "tshark"
