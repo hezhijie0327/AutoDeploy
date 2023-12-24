@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 3.6.9
+# Current Version: 3.7.0
 
 ## How to get and use?
 # curl "https://source.zhijie.online/AutoDeploy/main/ProxmoxVE.sh" | sudo bash
@@ -1239,9 +1239,9 @@ function InstallCustomPackages() {
         if [ ! -d "/etc/apt/keyrings" ]; then
             mkdir "/etc/apt/keyrings"
         fi
-        rm -rf "/etc/apt/keyrings/crowdsec.gpg" && curl -fsSL "https://packagecloud.io/crowdsec/crowdsec/gpgkey" | gpg --dearmor -o "/etc/apt/keyrings/crowdsec.gpg"
-        echo "deb [arch=amd64 signed-by=/etc/apt/keyrings/crowdsec.gpg] https://packagecloud.io/crowdsec/crowdsec/debian ${LSBCodename} main" > "/etc/apt/sources.list.d/crowdsec.list"
-        echo "deb-src [arch=amd64 signed-by=/etc/apt/keyrings/crowdsec.gpg] https://packagecloud.io/crowdsec/crowdsec/debian ${LSBCodename} main" >> "/etc/apt/sources.list.d/crowdsec.list"
+        rm -rf "/etc/apt/keyrings/crowdsec-archive-keyring.gpg" && curl -fsSL "https://packagecloud.io/crowdsec/crowdsec/gpgkey" | gpg --dearmor -o "/etc/apt/keyrings/crowdsec-archive-keyring.gpg"
+        echo "deb [arch=amd64 signed-by=/etc/apt/keyrings/crowdsec-archive-keyring.gpg] https://packagecloud.io/crowdsec/crowdsec/debian ${LSBCodename} main" > "/etc/apt/sources.list.d/crowdsec.list"
+        echo "deb-src [arch=amd64 signed-by=/etc/apt/keyrings/crowdsec-archive-keyring.gpg] https://packagecloud.io/crowdsec/crowdsec/debian ${LSBCodename} main" >> "/etc/apt/sources.list.d/crowdsec.list"
         which "cscli" > "/dev/null" 2>&1
         if [ "$?" -eq "0" ]; then
             bouncers_list=($(cscli bouncers list | grep 'FirewallBouncer' | cut -d ' ' -f 2))
@@ -1266,9 +1266,23 @@ function InstallCustomPackages() {
         if [ ! -d "/etc/apt/keyrings" ]; then
             mkdir "/etc/apt/keyrings"
         fi
-        rm -rf "/etc/apt/keyrings/docker.gpg" && curl -fsSL "https://mirrors.ustc.edu.cn/docker-ce/linux/debian/gpg" | gpg --dearmor -o "/etc/apt/keyrings/docker.gpg"
-        echo "deb [arch=amd64 signed-by=/etc/apt/keyrings/docker.gpg] https://mirrors.ustc.edu.cn/docker-ce/linux/debian ${LSBCodename} stable" > "/etc/apt/sources.list.d/docker.list"
+        rm -rf "/etc/apt/keyrings/docker-archive-keyring.gpg" && curl -fsSL "https://mirrors.ustc.edu.cn/docker-ce/linux/debian/gpg" | gpg --dearmor -o "/etc/apt/keyrings/docker-archive-keyring.gpg"
+        echo "deb [arch=amd64 signed-by=/etc/apt/keyrings/docker-archive-keyring.gpg] https://mirrors.ustc.edu.cn/docker-ce/linux/debian ${LSBCodename} stable" > "/etc/apt/sources.list.d/docker.list"
         apt update && apt purge -qy containerd docker docker-engine docker.io runc && for app_list_task in "${!app_list[@]}"; do
+            apt-cache show ${app_list[$app_list_task]} && if [ "$?" -eq "0" ]; then
+                apt install -qy ${app_list[$app_list_task]}
+            fi
+        done
+    }
+    function InstallFRRouting() {
+        apt_list=(
+            "frr"
+            "frr-pythontools"
+            "frr-snmp"
+        )
+        rm -rf "/etc/apt/keyrings/frrouting-archive-keyring.gpg" && curl -fsSL "https://deb.frrouting.org/frr/keys.gpg" | gpg --dearmor -o "/etc/apt/keyrings/frrouting-archive-keyring.gpg"
+        echo "deb [arch=amd64 signed-by=/etc/apt/keyrings/frrouting-archive-keyring.gpg] https://deb.frrouting.org/frr ${LSBCodename} frr-stable" > "/etc/apt/sources.list.d/frrouting.list"
+        apt update && for app_list_task in "${!app_list[@]}"; do
             apt-cache show ${app_list[$app_list_task]} && if [ "$?" -eq "0" ]; then
                 apt install -qy ${app_list[$app_list_task]}
             fi
@@ -1299,6 +1313,7 @@ function InstallCustomPackages() {
     InstallCloudflarePackage
     InstallCrowdSec
     InstallDockerEngine
+    InstallFRRouting
     InstallOhMyZsh
 }
 # Install Dependency Packages
@@ -1313,9 +1328,6 @@ function InstallDependencyPackages() {
         "dnsutils"
         "ethtool"
         "fail2ban"
-        "frr"
-        "frr-pythontools"
-        "frr-snmp"
         "git"
         "git-flow"
         "git-lfs"
