@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 5.0.8
+# Current Version: 5.0.9
 
 ## How to get and use?
 # curl "https://source.zhijie.online/AutoDeploy/main/Ubuntu.sh" | sudo bash
@@ -255,7 +255,6 @@ function SetReadonlyFlag() {
         "/etc/fail2ban/filter.d/cockpit.conf"
         "/etc/fail2ban/jail.local"
         "/etc/fail2ban/jail.d/fail2ban_default.conf"
-        "/etc/frr/frr.conf"
         "/etc/gai.conf"
         "/etc/hostname"
         "/etc/hosts"
@@ -567,8 +566,7 @@ function ConfigurePackages() {
         which "lldpcli" > "/dev/null" 2>&1
         if [ "$?" -eq "0" ]; then
             echo 'DAEMON_ARGS="-c -e -f -s -x"' > "/tmp/lldpd.autodeploy" && cat "/tmp/lldpd.autodeploy" > "/etc/default/lldpd" && rm -rf "/tmp/lldpd.autodeploy"
-            OPRATIONS="restart" && SERVICE_NAME="lldpd" && CallServiceController
-            lldpcli show neighbors detail
+            OPRATIONS="restart" && SERVICE_NAME="lldpd" && CallServiceController && lldpcli show neighbors detail
         fi
     }
     function ConfigureNetplan() {
