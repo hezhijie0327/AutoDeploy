@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 5.0.7
+# Current Version: 5.0.8
 
 ## How to get and use?
 # curl "https://source.zhijie.online/AutoDeploy/main/Ubuntu.sh" | sudo bash
@@ -248,12 +248,14 @@ function SetReadonlyFlag() {
         "/etc/apt/sources.list.d/nvidia.list"
         "/etc/chrony/chrony.conf"
         "/etc/cockpit/cockpit.conf"
+        "/etc/default/lldpd"
         "/etc/default/ufw"
         "/etc/docker/daemon.json"
         "/etc/fail2ban/fail2ban.local"
         "/etc/fail2ban/filter.d/cockpit.conf"
         "/etc/fail2ban/jail.local"
         "/etc/fail2ban/jail.d/fail2ban_default.conf"
+        "/etc/frr/frr.conf"
         "/etc/gai.conf"
         "/etc/hostname"
         "/etc/hosts"
@@ -477,6 +479,19 @@ function ConfigurePackages() {
             fi
         fi
     }
+    function ConfigureFRRouting() {
+        frrouting_list=(
+            "frr defaults datacenter"
+            "log syslog errors"
+        )
+        which "vtysh" > "/dev/null" 2>&1
+        if [ "$?" -eq "0" ]; then
+            rm -rf "/tmp/frrouting.autodeploy" && for frrouting_list_task in "${!frrouting_list[@]}"; do
+                echo "${frrouting_list[$frrouting_list_task]}" >> "/tmp/frrouting.autodeploy"
+            done && cat "/tmp/frrouting.autodeploy" > "/etc/frr/frr.conf" && rm -rf "/tmp/frrouting.autodeploy"
+            OPRATIONS="restart" && SERVICE_NAME="frr" && CallServiceController && sleep 5s && vtysh -c "show running-config" && vtysh -c "show ip route" && vtysh -c "show ipv6 route"
+        fi
+    }
     function ConfigureGit() {
         gitconfig_key_list=(
             "commit.gpgsign"
@@ -546,6 +561,14 @@ function ConfigurePackages() {
     function ConfigureLandscape() {
         if [ -f "/usr/lib/python3/dist-packages/landscape/lib/network.py" ]; then
             cat "/usr/lib/python3/dist-packages/landscape/lib/network.py" | sed "s/tostring/tobytes/g" > "/tmp/landscape.autodeploy" && cat "/tmp/landscape.autodeploy" > "/usr/lib/python3/dist-packages/landscape/lib/network.py" && rm -rf "/tmp/landscape.autodeploy"
+        fi
+    }
+    function ConfigureLLDPD() {
+        which "lldpcli" > "/dev/null" 2>&1
+        if [ "$?" -eq "0" ]; then
+            echo 'DAEMON_ARGS="-c -e -f -s -x"' > "/tmp/lldpd.autodeploy" && cat "/tmp/lldpd.autodeploy" > "/etc/default/lldpd" && rm -rf "/tmp/lldpd.autodeploy"
+            OPRATIONS="restart" && SERVICE_NAME="lldpd" && CallServiceController
+            lldpcli show neighbors detail
         fi
     }
     function ConfigureNetplan() {
@@ -1045,9 +1068,11 @@ function ConfigurePackages() {
     ConfigureCrowdSec
     ConfigureDockerEngine
     ConfigureFail2Ban
+    ConfigureFRRouting
     ConfigureGPG && ConfigureGit
     ConfigureGrub
     ConfigureLandscape
+    ConfigureLLDPD
     ConfigureNetplan
     ConfigureNut
     ConfigureOpenSSH
@@ -1335,7 +1360,12 @@ function InstallDependencyPackages() {
         "cockpit"
         "cockpit-pcp"
         "fail2ban"
+        "frr"
+        "frr-pythontools"
+        "frr-rpki-rtrlib"
+        "frr-snmp"
         "libsnmp-dev"
+        "lldpd"
         "netplan.io"
         "nut"
         "nut-i2c"
