@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 3.6.8
+# Current Version: 3.6.9
 
 ## How to get and use?
 # curl "https://source.zhijie.online/AutoDeploy/main/ProxmoxVE.sh" | sudo bash
@@ -1315,7 +1315,6 @@ function InstallDependencyPackages() {
         "fail2ban"
         "frr"
         "frr-pythontools"
-        "frr-rpki-rtrlib"
         "frr-snmp"
         "git"
         "git-flow"
