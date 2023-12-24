@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 3.7.0
+# Current Version: 3.7.1
 
 ## How to get and use?
 # curl "https://source.zhijie.online/AutoDeploy/main/ProxmoxVE.sh" | sudo bash
@@ -176,6 +176,7 @@ function SetReadonlyFlag() {
         "/etc/apt/sources.list.d/cloudflare.list"
         "/etc/apt/sources.list.d/crowdsec.list"
         "/etc/apt/sources.list.d/docker.list"
+        "/etc/apt/sources.list.d/frrouting.list"
         "/etc/apt/sources.list.d/proxmox.list"
         "/etc/chrony/chrony.conf"
         "/etc/default/lldpd"
