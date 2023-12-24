@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 5.0.9
+# Current Version: 5.1.0
 
 ## How to get and use?
 # curl "https://source.zhijie.online/AutoDeploy/main/Ubuntu.sh" | sudo bash
@@ -240,12 +240,10 @@ function SetReadonlyFlag() {
     file_list=(
         "/etc/apt/preferences"
         "/etc/apt/sources.list"
-        "/etc/apt/sources.list.d/amd.list"
         "/etc/apt/sources.list.d/cloudflare.list"
         "/etc/apt/sources.list.d/crowdsec.list"
         "/etc/apt/sources.list.d/docker.list"
-        "/etc/apt/sources.list.d/intel.list"
-        "/etc/apt/sources.list.d/nvidia.list"
+        "/etc/apt/sources.list.d/frrouting.list"
         "/etc/chrony/chrony.conf"
         "/etc/cockpit/cockpit.conf"
         "/etc/default/lldpd"
@@ -1307,6 +1305,23 @@ function InstallCustomPackages() {
             done
         fi
     }
+    function InstallFRRouting() {
+        apt_list=(
+            "frr"
+            "frr-pythontools"
+            "frr-rpki-rtrlib"
+            "frr-snmp"
+        )
+        if [ "${container_environment}" != "docker" ]; then
+            rm -rf "/usr/share/keyrings/frrouting-archive-keyring.gpg" && curl -fsSL "https://deb.frrouting.org/frr/keys.gpg" | gpg --dearmor -o "/usr/share/keyrings/frrouting-archive-keyring.gpg"
+            echo "deb [arch=${OSArchitecture} signed-by=/usr/share/keyrings/frrouting-archive-keyring.gpg] https://deb.frrouting.org/frr ${LSBCodename} frr-stable" > "/etc/apt/sources.list.d/frrouting.list"
+            apt update && for app_list_task in "${!app_list[@]}"; do
+                apt-cache show ${app_list[$app_list_task]} && if [ "$?" -eq "0" ]; then
+                    apt install -qy ${app_list[$app_list_task]}
+                fi
+            done
+        fi
+    }
     function InstallDockerEngine() {
         app_list=(
             "containerd.io"
@@ -1349,6 +1364,7 @@ function InstallCustomPackages() {
     }
     InstallCloudflarePackage
     InstallCrowdSec
+    InstallFRRouting
     InstallDockerEngine
     InstallOhMyZsh
 }
@@ -1358,10 +1374,6 @@ function InstallDependencyPackages() {
         "cockpit"
         "cockpit-pcp"
         "fail2ban"
-        "frr"
-        "frr-pythontools"
-        "frr-rpki-rtrlib"
-        "frr-snmp"
         "libsnmp-dev"
         "lldpd"
         "netplan.io"
