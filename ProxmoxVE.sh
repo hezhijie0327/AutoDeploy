@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 3.6.7
+# Current Version: 3.6.8
 
 ## How to get and use?
 # curl "https://source.zhijie.online/AutoDeploy/main/ProxmoxVE.sh" | sudo bash
@@ -178,6 +178,7 @@ function SetReadonlyFlag() {
         "/etc/apt/sources.list.d/docker.list"
         "/etc/apt/sources.list.d/proxmox.list"
         "/etc/chrony/chrony.conf"
+        "/etc/default/lldpd"
         "/etc/docker/daemon.json"
         "/etc/fail2ban/fail2ban.local"
         "/etc/fail2ban/filter.d/proxmox.conf"
@@ -392,6 +393,19 @@ function ConfigurePackages() {
             done && cat "/tmp/fail2ban.autodeploy" > "/etc/fail2ban/jail.d/fail2ban_default.conf" && rm -rf "/tmp/fail2ban.autodeploy" && systemctl enable fail2ban && fail2ban-client reload && sleep 5s && fail2ban-client status
         fi
     }
+    function ConfigureFRRouting() {
+        frrouting_list=(
+            "frr defaults datacenter"
+            "log syslog errors"
+        )
+        which "vtysh" > "/dev/null" 2>&1
+        if [ "$?" -eq "0" ]; then
+            rm -rf "/tmp/frrouting.autodeploy" && for frrouting_list_task in "${!frrouting_list[@]}"; do
+                echo "${frrouting_list[$frrouting_list_task]}" >> "/tmp/frrouting.autodeploy"
+            done && cat "/tmp/frrouting.autodeploy" > "/etc/frr/frr.conf" && rm -rf "/tmp/frrouting.autodeploy"
+            systemctl restart frr && sleep 5s && vtysh -c "show running-config" && vtysh -c "show ip route" && vtysh -c "show ipv6 route"
+        fi
+    }
     function ConfigureGit() {
         gitconfig_key_list=(
             "commit.gpgsign"
@@ -459,6 +473,13 @@ function ConfigurePackages() {
             if [ -f "/usr/share/grub/default/grub" ]; then
                 rm -rf "/tmp/grub.autodeploy" && cat "/usr/share/grub/default/grub" | sed "s/GRUB\_CMDLINE\_LINUX\_DEFAULT\=\"quiet\"/GRUB\_CMDLINE\_LINUX\_DEFAULT\=\"quiet${DISABLE_DISPLAY}${ENABLE_IOMMU}\"/g" > "/tmp/grub.autodeploy" && cat "/tmp/grub.autodeploy" > "/etc/default/grub" && update-grub && rm -rf "/tmp/grub.autodeploy"
             fi
+        fi
+    }
+    function ConfigureLLDPD() {
+        which "lldpcli" > "/dev/null" 2>&1
+        if [ "$?" -eq "0" ]; then
+            echo 'DAEMON_ARGS="-c -e -f -s -x"' > "/tmp/lldpd.autodeploy" && cat "/tmp/lldpd.autodeploy" > "/etc/default/lldpd" && rm -rf "/tmp/lldpd.autodeploy"
+            systemctl restart lldpd && lldpcli show neighbors detail
         fi
     }
     function ConfigureModules() {
@@ -965,8 +986,10 @@ function ConfigurePackages() {
     ConfigureCrowdSec
     ConfigureDockerEngine
     ConfigureFail2Ban
+    ConfigureFRRouting
     ConfigureGPG && ConfigureGit
     ConfigureGrub
+    ConfigureLLDPD
     ConfigureModules
     ConfigureNut
     ConfigureOpenSSH
@@ -1290,6 +1313,10 @@ function InstallDependencyPackages() {
         "dnsutils"
         "ethtool"
         "fail2ban"
+        "frr"
+        "frr-pythontools"
+        "frr-rpki-rtrlib"
+        "frr-snmp"
         "git"
         "git-flow"
         "git-lfs"
@@ -1298,6 +1325,7 @@ function InstallDependencyPackages() {
         "jq"
         "knot-dnsutils"
         "libsnmp-dev"
+        "lldpd"
         "lm-sensors"
         "lsb-release"
         "mailutils"
