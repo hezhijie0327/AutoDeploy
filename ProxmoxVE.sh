@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 3.7.1
+# Current Version: 3.7.2
 
 ## How to get and use?
 # curl "https://source.zhijie.online/AutoDeploy/main/ProxmoxVE.sh" | sudo bash
@@ -121,7 +121,7 @@ function GetSystemInformation() {
         fi
     }
     function SetPackageCodename() {
-        CephCodename="quincy"
+        CephCodename="reef"
         LSBCodename="bookworm"
     }
     GenerateDomain
