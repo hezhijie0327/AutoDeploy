@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 5.1.2
+# Current Version: 5.1.3
 
 ## How to get and use?
 # curl "https://source.zhijie.online/AutoDeploy/main/Ubuntu.sh" | sudo bash
@@ -1326,27 +1326,6 @@ function InstallCustomPackages() {
             done
         fi
     }
-    function InstallGPUDriver() {
-        function InstallAMDGPUDriver() {
-            rm -rf "/usr/share/keyrings/amdgpu-archive-keyring.gpg" && curl -fsSL "https://repo.radeon.com/rocm/rocm.gpg.key" | gpg --dearmor -o "/usr/share/keyrings/amdgpu-archive-keyring.gpg"
-            echo "deb [arch=${OSArchitecture} signed-by=/usr/share/keyrings/amd-archive-keyring.gpg] https://repo.radeon.com/amdgpu/latest/ubuntu ${LSBCodename} main proprietary" > "/etc/apt/sources.list.d/amd.list" && echo "deb [arch=${OSArchitecture} signed-by=/usr/share/keyrings/amd-archive-keyring.gpg] https://repo.radeon.com/rocm/apt/latest ${LSBCodename} main proprietary" >> "/etc/apt/sources.list.d/amd.list" && echo "deb-src [arch=${OSArchitecture} signed-by=/usr/share/keyrings/amd-archive-keyring.gpg] https://repo.radeon.com/amdgpu/latest/ubuntu ${LSBCodename} main proprietary" >> "/etc/apt/sources.list.d/amd.list"
-        }
-        function InstallIntelGPUDriver() {
-            rm -rf "/usr/share/keyrings/intel-archive-keyring.gpg" && curl -fsSL "https://repositories.intel.com/gpu/intel.key" | gpg --dearmor -o "/usr/share/keyrings/intel-archive-keyring.gpg"
-            echo "deb [arch=${OSArchitecture} signed-by=/usr/share/keyrings/intel-archive-keyring.gpg] https://repositories.intel.com/gpu/ubuntu ${LSBCodename} client" > "/etc/apt/sources.list.d/intel.list"
-        }
-        function InstallNVIDIAGPUDriver() {
-            rm -rf "/usr/share/keyrings/libnvidia-archive-keyring.gpg" "/usr/share/keyrings/nvidia-archive-keyring.gpg" && curl -fsSL "https://nvidia.github.io/libnvidia-container/gpgkey" | gpg --dearmor -o "/usr/share/keyrings/libnvidia-archive-keyring.gpg" && curl -fsSL "https://developer.download.nvidia.com/compute/cuda/repos/wsl-ubuntu/x86_64/3bf863cc.pub" | gpg --dearmor -o "/usr/share/keyrings/nvidia-archive-keyring.gpg"
-            if [ "${OSArchitecture}" == "arm64" ]; then
-                NVIDIA_URL="sbsa"
-            else
-                NVIDIA_URL="x86_64"
-            fi && echo "deb [arch=${OSArchitecture} signed-by=/usr/share/keyrings/nvidia-archive-keyring.gpg] https://developer.download.nvidia.com/compute/cuda/repos/ubuntu${LSBVersion}/${NVIDIA_URL}/ /" > "/etc/apt/sources.list.d/nvidia.list" && echo "deb [arch=${OSArchitecture} signed-by=/usr/share/keyrings/libnvidia-archive-keyring.gpg] https://nvidia.github.io/libnvidia-container/stable/ubuntu18.04/${OSArchitecture} /" >> "/etc/apt/sources.list.d/nvidia.list"
-        }
-        #InstallAMDGPUDriver
-        #InstallIntelGPUDriver
-        #InstallNVIDIAGPUDriver
-    }
     function InstallFRRouting() {
         apt_list=(
             "frr"
@@ -1390,7 +1369,6 @@ function InstallCustomPackages() {
     InstallCrowdSec
     InstallDockerEngine
     InstallFRRouting
-    InstallGPUDriver
     InstallOhMyZsh
 }
 # Install Dependency Packages
