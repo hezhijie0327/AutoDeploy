@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 5.1.3
+# Current Version: 5.1.4
 
 ## How to get and use?
 # curl "https://source.zhijie.online/AutoDeploy/main/Ubuntu.sh" | sudo bash
@@ -1414,6 +1414,7 @@ function InstallDependencyPackages() {
         "jq"
         "knot-dnsutils"
         "landscape-common"
+        "linux-generic-hwe-${LSBVersion}"
         "lm-sensors"
         "lsb-release"
         "mailutils"
