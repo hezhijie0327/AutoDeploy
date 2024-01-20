@@ -1,23 +1,21 @@
 #!/bin/bash
 
-# Current Version: 1.5.5
+# Current Version: 1.5.6
 
 ## How to get and use?
 # curl "https://source.zhijie.online/AutoDeploy/main/OpenWrt.sh" | sudo bash
 # wget -qO- "https://source.zhijie.online/AutoDeploy/main/OpenWrt.sh" | sudo bash
 
-## How to install OpenWrt on Ubuntu?
-# wget https://mirrors.ustc.edu.cn/openwrt/releases/22.03.2/targets/x86/64/openwrt-22.03.2-x86-64-generic-ext4-combined-efi.img.gz
-# gzip -d openwrt-22.03.2-x86-64-generic-ext4-combined-efi.img.gz
-# dd if=openwrt-*-x86-64-combined-ext4.img of=/dev/sda bs=4M; sync;
-# parted /dev/sda print
-# parted /dev/sda resizepart 2 <MAX SIZE>G
-# resize2fs /dev/sda2
+# How to install OpenWrt on Proxmox VE?
+# wget https://downloads.openwrt.org/releases/23.05.2/targets/x86/64/openwrt-23.05.2-x86-64-generic-ext4-combined-efi.img.gz
+# gunzip openwrt-*.img.gz
+# qm importdisk 102 openwrt-*.img local-btrfs
 
 ## How to resize disk on Proxmox VE?
 # https://openwrt.org/docs/guide-user/installation/openwrt_x86
-# opkg install cfdisk parted losetup resize2fs
-# cfdisk
+# sed -i 's/downloads.openwrt.org/mirrors.ustc.edu.cn\/openwrt/g' /etc/opkg/distfeeds.conf
+# opkg update
+# opkg install parted losetup resize2fs
 # parted -f -s /dev/vda resizepart 2 100%
 # losetup /dev/loop0 /dev/vda2 2 > /dev/null
 # resize2fs -f /dev/loop0
@@ -34,7 +32,7 @@
 # uci set network.lan.proto="static"
 #
 # uci commit network
-# /etc/init.d/network restart
+# service network restart
 
 ## Function
 # Get System Information
@@ -150,7 +148,7 @@ function ConfigurePackages() {
                 else
                     echo "server ${chrony_ntp_list[$chrony_ntp_list_task]} iburst" >> "/tmp/chrony.autodeploy"
                 fi
-            done && cat "/tmp/chrony.autodeploy" > "/etc/chrony/chrony.conf" && rm -rf "/tmp/chrony.autodeploy" && "/etc/init.d/chronyd" restart && sleep 5s && chronyc activity && chronyc tracking && chronyc clients && hwclock -w
+            done && cat "/tmp/chrony.autodeploy" > "/etc/chrony/chrony.conf" && rm -rf "/tmp/chrony.autodeploy" && service chronyd restart && sleep 5s && chronyc activity && chronyc tracking && chronyc clients && hwclock -w
         fi
     }
     function ConfigureCrontab() {
@@ -176,7 +174,7 @@ function ConfigurePackages() {
             for crowdsec_hub_list_task in "${!crowdsec_hub_list[@]}"; do
                 cscli collections install ${crowdsec_hub_list[$crowdsec_hub_list_task]}
             done
-        fi && "/etc/init.d/crowdsec" restart && cscli hub list
+        fi && service crowdsec restart && cscli hub list && cscli lapi status
     }
     function ConfigureDDNS() {
         uci set ddns.global.use_curl="1"
@@ -399,14 +397,6 @@ function ConfigurePackages() {
         uci set nft-qos.default.static_unit_ul="mbytes"
         uci commit nft-qos
     }
-    function ConfigureSshd() {
-        if [ -f "/etc/ssh/sshd_config" ]; then
-            if [ ! -f "/etc/ssh/sshd_config.bak" ]; then
-                cp -rf "/etc/ssh/sshd_config" "/etc/ssh/sshd_config.bak"
-            fi
-            cat "/etc/ssh/sshd_config.bak" | sed "s/\#PasswordAuthentication\ yes/PasswordAuthentication\ yes/g;s/\#PermitRootLogin\ prohibit\-password/PermitRootLogin\ yes/g;s/\#PubkeyAuthentication\ yes/PubkeyAuthentication\ yes/g" > "/tmp/sshd_config.autodeploy" && cat "/tmp/sshd_config.autodeploy" > "/etc/ssh/sshd_config" && rm -rf "/tmp/sshd_config.autodeploy"
-        fi
-    }
     function ConfigureSysctl() {
         sysctl_list=(
             "net.core.default_qdisc = fq"
@@ -546,7 +536,6 @@ function ConfigurePackages() {
     ConfigureNetwork
     ConfigurePythonPyPI
     ConfigureQoS
-    ConfigureSshd
     ConfigureSysctl
     ConfigureuHTTPd
     ConfigureUPnP
@@ -808,6 +797,7 @@ function InstallDependencyPackages() {
         "shadow-vipw"
         "sudo"
         "tcpdump"
+        "uhttpd"
         "uuidgen"
         "vim"
         "wget"
@@ -819,11 +809,13 @@ function InstallDependencyPackages() {
         "kmod-tcp-bbr"
     )
     app_luci_list=(
+        "luci-app-crowdsec-firewall-bouncer"
         "luci-app-ddns"
         "luci-app-dockerman"
         "luci-app-firewall"
         "luci-app-nft-qos"
         "luci-app-opkg"
+        "luci-app-uhttpd"
         "luci-app-upnp"
         "luci-app-wireguard"
         "luci-app-wol"
@@ -880,7 +872,7 @@ function ReloadModules() {
 function RestartServices() {
     services_list=($(ls /etc/init.d/ | cut -d '.' -f 1 | awk "{print $2}"))
     for services_list_task in "${!services_list[@]}"; do
-        /etc/init.d/${services_list[$services_list_task]} restart > "/dev/null" 2>&1
+        service ${services_list[$services_list_task]} restart > "/dev/null" 2>&1
     done
 }
 # Cleanup Temp Files
