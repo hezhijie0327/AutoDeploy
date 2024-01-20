@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 1.5.6
+# Current Version: 1.5.7
 
 ## How to get and use?
 # curl "https://source.zhijie.online/AutoDeploy/main/OpenWrt.sh" | sudo bash
@@ -154,6 +154,7 @@ function ConfigurePackages() {
     function ConfigureCrontab() {
         crontab_list=(
             "0 0 * * 7 opkg update && opkg list-upgradable | cut -f 1 -d ' ' | xargs opkg upgrade > '/dev/null' 2>&1"
+            "# 0 4 * * 7 sudo reboot"
             "@reboot sudo rm -rf /root/.*_history /root/.ssh/known_hosts*"
         )
         which "crontab" > "/dev/null" 2>&1
