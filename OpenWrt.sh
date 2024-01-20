@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 1.6.0
+# Current Version: 1.6.1
 
 ## How to get and use?
 # curl "https://source.zhijie.online/AutoDeploy/main/OpenWrt.sh" | sudo bash
@@ -86,7 +86,13 @@ function SetRepositoryMirror() {
 function SetReadonlyFlag() {
     file_list=(
         "/etc/chrony/chrony.conf"
+        "/etc/default/lldpd"
         "/etc/docker/daemon.json"
+        "/etc/fail2ban/fail2ban.local"
+        "/etc/fail2ban/filter.d/dropbear.conf"
+        "/etc/fail2ban/filter.d/luci.conf"
+        "/etc/fail2ban/jail.local"
+        "/etc/fail2ban/jail.d/fail2ban_default.conf"
         "/etc/hostname"
         "/etc/hosts"
         "/etc/opkg/customfeeds.conf"
