@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 1.5.9
+# Current Version: 1.6.0
 
 ## How to get and use?
 # curl "https://source.zhijie.online/AutoDeploy/main/OpenWrt.sh" | sudo bash
@@ -308,6 +308,65 @@ function ConfigurePackages() {
         uci set dropbear.@dropbear[0]=dropbear
         uci commit dropbear
     }
+    function ConfigureFail2ban() {
+        fail2ban_list=(
+            "[dropbear]"
+            "bantime = 604800"
+            "enabled = true"
+            "filter = dropbear"
+            "findtime = 60"
+            "logpath = /tmp/log/system.log"
+            "maxretry = 5"
+            "port = 22"
+            "[luci]"
+            "bantime = 604800"
+            "enabled = true"
+            "filter = luci"
+            "findtime = 60"
+            "logpath = /tmp/log/system.log"
+            "maxretry = 5"
+            "port = 80,443"
+        )
+        fail2ban_dropbear_list=(
+            "[INCLUDES]"
+            "before = common.conf"
+            "[Definition]"
+            "_daemon = dropbear"
+            "failregex = ^%(__prefix_line)s[Ll]ogin attempt for nonexistent user ('.*' )?from <HOST>:\d+$"
+            "^%(__prefix_line)s[Bb]ad (PAM )?password attempt for .+ from <HOST>(:\d+)?$"
+            "^%(__prefix_line)s[Ee]xit before auth \(user '.+', \d+ fails\): Max auth tries reached - user '.+' from <HOST>:\d+\s*$"
+            "^%(__prefix_line)s[Ee]xit before auth from <<HOST>:\d+>:\s.*$"
+        )
+        fail2ban_luci_list=(
+            "[INCLUDES]"
+            "before = common.conf"
+            "[Definition]"
+            "_daemon = luci"
+            "prefregex = ^%(__prefix_line)s<F-CONTENT>(?:[Ff]ailed).+</F-CONTENT>$"
+            "failregex = ^[Ff]ailed\s+login\s+on\s+/.*\s+for\s+.+\s+from\s+<HOST>(:\d+)?$"
+        )
+        which "fail2ban-client" > "/dev/null" 2>&1
+        if [ "$?" -eq "0" ]; then
+            if [ -d "/etc/fail2ban/jail.d" ]; then
+                rm -rf /etc/fail2ban/jail.d/*
+            else
+                mkdir "/etc/fail2ban/jail.d"
+            fi
+            if [ -f "/etc/fail2ban/fail2ban.conf" ]; then
+                cat "/etc/fail2ban/fail2ban.conf" > "/etc/fail2ban/fail2ban.local"
+            fi
+            rm -rf "/tmp/fail2ban.autodeploy" && for fail2ban_dropbear_list_task in "${!fail2ban_dropbear_list[@]}"; do
+                echo "${fail2ban_dropbear_list[$fail2ban_dropbear_list_task]}" >> "/tmp/fail2ban.autodeploy"
+            done && cat "/tmp/fail2ban.autodeploy" > "/etc/fail2ban/filter.d/dropbear.conf" && rm -rf "/tmp/fail2ban.autodeploy"
+            rm -rf "/tmp/fail2ban.autodeploy" && for fail2ban_luci_list_task in "${!fail2ban_luci_list[@]}"; do
+                echo "${fail2ban_luci_list[$fail2ban_luci_list_task]}" >> "/tmp/fail2ban.autodeploy"
+            done && cat "/tmp/fail2ban.autodeploy" > "/etc/fail2ban/filter.d/luci.conf" && rm -rf "/tmp/fail2ban.autodeploy"
+            rm -rf "/tmp/fail2ban.autodeploy" && for fail2ban_list_task in "${!fail2ban_list[@]}"; do
+                echo "${fail2ban_list[$fail2ban_list_task]}" >> "/tmp/fail2ban.autodeploy"
+            done && cat "/tmp/fail2ban.autodeploy" > "/etc/fail2ban/jail.d/fail2ban_default.conf" && rm -rf "/tmp/fail2ban.autodeploy"
+            fail2ban-client reload && sleep 5s && fail2ban-client status
+        fi
+    }
     function ConfigureFirewall() {
         function ConfigureFirewallDefaults() {
             uci set firewall.@defaults[0].drop_invalid="1"
@@ -331,6 +390,19 @@ function ConfigurePackages() {
         ConfigureFirewallDefaults
         ConfigureFirewallWireGuard
         uci commit firewall
+    }
+    function ConfigureFRRouting() {
+        frrouting_list=(
+            "frr defaults datacenter"
+            "log syslog errors"
+        )
+        which "vtysh" > "/dev/null" 2>&1
+        if [ "$?" -eq "0" ]; then
+            rm -rf "/tmp/frrouting.autodeploy" && for frrouting_list_task in "${!frrouting_list[@]}"; do
+                echo "${frrouting_list[$frrouting_list_task]}" >> "/tmp/frrouting.autodeploy"
+            done && cat "/tmp/frrouting.autodeploy" > "/etc/frr/frr.conf" && rm -rf "/tmp/frrouting.autodeploy"
+            service frr restart && sleep 5s && vtysh -c "show running-config" && vtysh -c "show ip route" && vtysh -c "show ipv6 route"
+        fi
     }
     function ConfigureGit() {
         gitconfig_key_list=(
@@ -359,6 +431,32 @@ function ConfigurePackages() {
             done
         fi
     }
+    function ConfigureGPG() {
+        GPG_PUBKEY=""
+        if [ "${GPG_PUBKEY}" == "" ]; then
+            GPG_PUBKEY="DD982DAAB9C71C78F9563E5207EB56787030D792"
+        fi
+        which "gpg" > "/dev/null" 2>&1
+        if [ "$?" -eq "0" ]; then
+            rm -rf "/root/.gnupg" && gpg --keyserver hkps://keyserver.ubuntu.com:443 --recv ${GPG_PUBKEY} && echo "${GPG_PUBKEY}" | awk 'BEGIN { FS = "\n" }; { print $1":6:" }' | gpg --import-ownertrust && GPG_PUBKEY_ID_A=$(gpg --list-keys --keyid-format LONG | grep "pub\|sub" | awk '{print $2, $4}' | grep "\[A\]" | awk '{print $1}' | awk -F '/' '{print $2}') && GPG_PUBKEY_ID_C=$(gpg --list-keys --keyid-format LONG | grep "pub\|sub" | awk '{print $2, $4}' | grep "\[C\]" | awk '{print $1}' | awk -F '/' '{print $2}')
+            if [ "${GPG_PUBKEY_ID_A}" != "" ]; then
+                gpg_agent_list=(
+                    "enable-ssh-support"
+                    "pinentry-program /usr/bin/pinentry-tty"
+                )
+                rm -rf "/root/.gnupg/gpg-agent.conf" && for gpg_agent_list_task in "${!gpg_agent_list[@]}"; do
+                    echo "${gpg_agent_list[$gpg_agent_list_task]}" >> "/root/.gnupg/gpg-agent.conf"
+                done && echo "${GPG_PUBKEY_ID_A}" > "/root/.gnupg/sshcontrol" && gpg --export-ssh-key ${GPG_PUBKEY_ID_C} > "/root/.gnupg/authorized_keys"
+            fi
+        fi
+    }
+    function ConfigureLLDPD() {
+        which "lldpcli" > "/dev/null" 2>&1
+        if [ "$?" -eq "0" ]; then
+            echo 'DAEMON_ARGS="-c -e -f -s -x"' > "/tmp/lldpd.autodeploy" && cat "/tmp/lldpd.autodeploy" > "/etc/default/lldpd" && rm -rf "/tmp/lldpd.autodeploy"
+            service lldpd restart && lldpcli show neighbors
+        fi
+    }
     function ConfigureLuci() {
         uci set luci.diag.dns="dns.alidns.com"
         uci set luci.diag.ping="dns.alidns.com"
@@ -369,6 +467,146 @@ function ConfigurePackages() {
         uci set network.globals.packet_steering="1"
         uci set network.lan.ip6assign="64"
         uci commit network
+    }
+    function ConfigureNut() {
+        which "upsmon" > "/dev/null" 2>&1
+        if [ "$?" -eq "0" ]; then
+            function Create_upsd_users() {
+                upsd_user_list=(
+                    "admin,123456,master,FSD,SET"
+                    "monuser,secret,slave,,"
+                )
+            }
+            function Generate_nut_conf() {
+                echo "MODE=${NUT_MODE:-none}" > "/etc/nut/nut.conf"
+            }
+            function Generate_ups_conf() {
+                ups_driver_list=(
+                    "ups,usbhid-ups,auto"
+                )
+                ups_conf_list=(
+                    "maxretry = 3"
+                    "retrydelay = 5"
+                )
+                rm -rf "/tmp/ups.conf.autodeploy" && for ups_conf_list_task in "${!ups_conf_list[@]}"; do
+                    echo "${ups_conf_list[$ups_conf_list_task]}" >> "/tmp/ups.conf.autodeploy"
+                done && for ups_driver_list_task in "${!ups_driver_list[@]}"; do
+                    UPS_NAME=$(echo "${ups_driver_list[$ups_driver_list_task]}" | cut -d ',' -f 1)
+                    UPS_DRIVER=$(echo "${ups_driver_list[$ups_driver_list_task]}" | cut -d ',' -f 2)
+                    UPS_PORT=$(echo "${ups_driver_list[$ups_driver_list_task]}" | cut -d ',' -f 3)
+                    echo -e "[${UPS_NAME}]\n    driver = ${UPS_DRIVER}\n    port = ${UPS_PORT}" >> "/tmp/ups.conf.autodeploy"
+                done && cat "/tmp/ups.conf.autodeploy" > "/etc/nut/ups.conf" && rm -rf "/tmp/ups.conf.autodeploy"
+            }
+            function Generate_upsd_conf() {
+                if [ "${NUT_MODE}" == "standalone" ]; then
+                    upsd_config_list=(
+                        "LISTEN 127.0.0.1 3493"
+                        "LISTEN ::1 3493"
+                        "MAXAGE 15"
+                        "MAXCONN 1024"
+                        "STATEPATH /var/run/nut"
+                    )
+                else
+                    upsd_config_list=(
+                        "LISTEN 0.0.0.0 3493"
+                        "MAXAGE 15"
+                        "MAXCONN 1024"
+                        "STATEPATH /var/run/nut"
+                    )
+                fi
+                rm -rf "/tmp/upsd.conf.autodeploy" && for upsd_config_list_task in "${!upsd_config_list[@]}"; do
+                    echo "${upsd_config_list[$upsd_config_list_task]}" >> "/tmp/upsd.conf.autodeploy"
+                done && cat "/tmp/upsd.conf.autodeploy" > "/etc/nut/upsd.conf" && rm -rf "/tmp/upsd.conf.autodeploy"
+            }
+            function Generate_upsd_users() {
+                rm -rf "/tmp/upsd.users.autodeploy" && for upsd_user_list_task in "${!upsd_user_list[@]}"; do
+                    UPSD_USERNAME=$(echo "${upsd_user_list[$upsd_user_list_task]}" | cut -d ',' -f 1)
+                    UPSD_PASSWORD=$(echo "${upsd_user_list[$upsd_user_list_task]}" | cut -d ',' -f 2)
+                    UPSD_ROLE=$(echo "${upsd_user_list[$upsd_user_list_task]}" | cut -d ',' -f 3)
+                    UPSD_ACTIONS=$(echo "${upsd_user_list[$upsd_user_list_task]}" | cut -d ',' -f 4-5 | tr ',' ' ' | sed 's/^ //g')
+                    if [ "${UPSD_ACTIONS}" != "" ]; then
+                        UPSD_ACTIONS="    actions = ${UPSD_ACTIONS}\n    instcmds = ALL\n"
+                    fi
+                    echo -e "[${UPSD_USERNAME}]\n${UPSD_ACTIONS}    password = ${UPSD_PASSWORD}\n    upsmon ${UPSD_ROLE}" >> "/tmp/upsd.users.autodeploy"
+                done && cat "/tmp/upsd.users.autodeploy" > "/etc/nut/upsd.users" && rm -rf "/tmp/upsd.users.autodeploy"
+            }
+            function Generate_upsmon_conf() {
+                upsmon_list=(
+                    "DEADTIME 15"
+                    "FINALDELAY 5"
+                    "HOSTSYNC 15"
+                    "MINSUPPLIES 1"
+                    "NOCOMMWARNTIME 300"
+                    "POLLFREQ 5"
+                    "POLLFREQALERT 5"
+                    "POWERDOWNFLAG /etc/killpower"
+                    "RBWARNTIME 43200"
+                    'SHUTDOWNCMD "/sbin/shutdown -h +0"'
+                    "MONITOR ${UPSMON_SYSTEM} 1 ${UPSMON_USERNAME} ${UPSMON_PASSWORD} ${UPSMON_ROLE}"
+                )
+                rm -rf "/tmp/upsmon.conf.autodeploy" && for upsmon_list_task in "${!upsmon_list[@]}"; do
+                    echo "${upsmon_list[$upsmon_list_task]}" >> "/tmp/upsmon.conf.autodeploy"
+                done && cat "/tmp/upsmon.conf.autodeploy" > "/etc/nut/upsmon.conf" && rm -rf "/tmp/upsmon.conf.autodeploy"
+            }
+            function Generate_upssched_conf() {
+                upssched_conf=(
+                    "CMDSCRIPT /bin/upssched-cmd"
+                )
+            }
+            NUT_MODE="" # netclient | netserver | none | standalone
+            NUT_HOST="" # localhost
+            rm -rf /etc/nut/*.* && case ${NUT_MODE:-none} in
+                netclient)
+                    Create_upsd_users
+                    UPSMON_USERNAME=$(echo "${upsd_user_list[*]}" | cut -d ' ' -f 2 | cut -d ',' -f 1)
+                    UPSMON_PASSWORD=$(echo "${upsd_user_list[*]}" | cut -d ' ' -f 2 | cut -d ',' -f 2)
+                    UPSMON_ROLE=$(echo "${upsd_user_list[*]}" | cut -d ' ' -f 2 | cut -d ',' -f 3)
+                    UPSMON_SYSTEM="${UPS_NAME-ups}@${NUT_HOST:-localhost}"
+                    nut_service_list=(
+                        "nut-client,enabled"
+                        "nut-driver,disabled"
+                        "nut-monitor,enabled"
+                        "nut-server,disabled"
+                    )
+                    Generate_nut_conf
+                    Generate_upsmon_conf
+                    Generate_upssched_conf
+                    ;;
+                netserver|standalone)
+                    Create_upsd_users
+                    UPSMON_USERNAME=$(echo "${upsd_user_list[*]}" | cut -d ' ' -f 1 | cut -d ',' -f 1)
+                    UPSMON_PASSWORD=$(echo "${upsd_user_list[*]}" | cut -d ' ' -f 1 | cut -d ',' -f 2)
+                    UPSMON_ROLE=$(echo "${upsd_user_list[*]}" | cut -d ' ' -f 1 | cut -d ',' -f 3)
+                    UPSMON_SYSTEM="${UPS_NAME-ups}@localhost"
+                    nut_service_list=(
+                        "nut-client,enabled"
+                        "nut-driver,enabled"
+                        "nut-monitor,enabled"
+                        "nut-server,enabled"
+                    )
+                    Generate_nut_conf
+                    Generate_ups_conf
+                    Generate_upsd_conf
+                    Generate_upsd_users
+                    Generate_upsmon_conf
+                    Generate_upssched_conf
+                    ;;
+                none)
+                    nut_service_list=(
+                        "nut-client,disable"
+                        "nut-driver,disable"
+                        "nut-monitor,disable"
+                        "nut-server,disable"
+                    )
+                    Generate_nut_conf
+                    ;;
+            esac && chown -R root:nut "/etc/nut" && chmod 640 /etc/nut/*.*
+            for nut_service_list_task in "${!nut_service_list[@]}"; do
+                NUT_SERVICE_NAME=$(echo "${nut_service_list[$nut_service_list_task]}" | cut -d ',' -f 1)
+                NUT_SERVICE_STATUS=$(echo "${nut_service_list[$nut_service_list_task]}" | cut -d ',' -f 2)
+                service ${NUT_SERVICE_NAME} ${NUT_SERVICE_STATUS} > "/dev/null" 2>&1
+            done
+        fi
     }
     function ConfigurePythonPyPI() {
         which "pip3" > "/dev/null" 2>&1
@@ -398,6 +636,33 @@ function ConfigurePackages() {
         uci set nft-qos.default.static_unit_ul="mbytes"
         uci commit nft-qos
     }
+    function ConfigureSNMP() {
+        SNMP_AUTH_PASS="${DEFAULT_PASSWORD:-$ROOT_PASSWORD}"
+        SNMP_PRIV_PASS="${ROOT_PASSWORD}"
+        SNMP_SYS_CONTACT="${DEFAULT_FULLNAME:-root}"
+        SNMP_SYS_LOCATION="${NEW_HOSTNAME}"
+        SNMP_SYS_NAME="${NEW_FULL_DOMAIN}"
+        SNMP_USER="${DEFAULT_USERNAME:-root}"
+        snmp_list=(
+            "agentaddress udp:161,udp6:161"
+            "master agentx"
+            "rouser ${SNMP_USER}"
+            "sysContact ${SNMP_SYS_CONTACT}"
+            "sysLocation ${SNMP_SYS_LOCATION}"
+            "sysName ${SNMP_SYS_NAME}"
+            "sysServices 76"
+        )
+        which "snmpwalk" > "/dev/null" 2>&1
+        if [ "$?" -eq "0" ]; then
+            OPRATIONS="stop" && SERVICE_NAME="snmpd" && CallServiceController
+            kill $(ps -ef | grep snmp | grep -v 'grep' | cut -d ' ' -f 3) > "/dev/null" 2>&1
+            sed -i 's/^mibs :/# mibs :/g' "/etc/snmp/snmp.conf"
+            echo "createUser ${SNMP_USER} SHA \"${SNMP_AUTH_PASS}\" AES \"${SNMP_PRIV_PASS}\"" > "/var/lib/snmp/snmpd.conf"
+            rm -rf "/tmp/snmp.autodeploy" && for snmp_list_task in "${!snmp_list[@]}"; do
+                echo "${snmp_list[$snmp_list_task]}" >> "/tmp/snmp.autodeploy"
+            done && cat "/tmp/snmp.autodeploy" | sort > "/etc/snmp/snmpd.conf" && rm -rf "/tmp/snmp.autodeploy" && service snmpd restart && snmpwalk -v3 -a SHA -A ${SNMP_AUTH_PASS} -x AES -X ${SNMP_PRIV_PASS} -l authPriv -u ${SNMP_USER} 127.0.0.1 | head
+        fi
+    }
     function ConfigureSysctl() {
         sysctl_list=(
             "net.core.default_qdisc = fq"
@@ -417,14 +682,12 @@ function ConfigurePackages() {
         fi
     }
     function ConfigureuHTTPd() {
-        HTTPS_PORT=""
-        HTTP_PORT=""
         uci del uhttpd.main.listen_http > "/dev/null" 2>&1
-        uci add_list uhttpd.main.listen_http="0.0.0.0:${HTTP_PORT:-80}"
-        uci add_list uhttpd.main.listen_http="[::]:${HTTP_PORT:-80}"
+        uci add_list uhttpd.main.listen_http="0.0.0.0:80"
+        uci add_list uhttpd.main.listen_http="[::]:80"
         uci del uhttpd.main.listen_https > "/dev/null" 2>&1
-        uci add_list uhttpd.main.listen_https="0.0.0.0:${HTTPS_PORT:-443}"
-        uci add_list uhttpd.main.listen_https="[::]:${HTTPS_PORT:-443}"
+        uci add_list uhttpd.main.listen_https="0.0.0.0:443"
+        uci add_list uhttpd.main.listen_https="[::]:443"
         rm -rf "/etc/uhttpd.crt" "/etc/uhttpd.key"
         uci set uhttpd.defaults.days="90"
         uci set uhttpd.defaults.bits="4096"
@@ -531,12 +794,18 @@ function ConfigurePackages() {
     ConfigureDNSMasq
     ConfigureDockerEngine
     ConfigureDropbear
+    ConfigureFail2ban
     ConfigureFirewall
+    ConfigureFRRouting
     ConfigureGit
+    ConfigureGPG
+    ConfigureLLDPD
     ConfigureLuci
     ConfigureNetwork
+    ConfigureNut
     ConfigurePythonPyPI
     ConfigureQoS
+    ConfigureSNMP
     ConfigureSysctl
     ConfigureuHTTPd
     ConfigureUPnP
@@ -949,6 +1218,8 @@ UpgradePackages
 ReloadModules
 # Call InstallCustomPackages
 InstallCustomPackages
+# Call RestartServices
+RestartServices
 # Call ConfigureSystem
 ConfigureSystem
 # Call ConfigurePackages
