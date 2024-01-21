@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 1.6.1
+# Current Version: 1.6.2
 
 ## How to get and use?
 # curl "https://source.zhijie.online/AutoDeploy/main/OpenWrt.sh" | sudo bash
@@ -154,7 +154,7 @@ function ConfigurePackages() {
                 else
                     echo "server ${chrony_ntp_list[$chrony_ntp_list_task]} iburst" >> "/tmp/chrony.autodeploy"
                 fi
-            done && cat "/tmp/chrony.autodeploy" > "/etc/chrony/chrony.conf" && rm -rf "/tmp/chrony.autodeploy" && service chronyd restart && sleep 5s && chronyc activity && chronyc tracking && chronyc clients && hwclock -w
+            done && cat "/tmp/chrony.autodeploy" > "/etc/chrony/chrony.conf" && rm -rf "/tmp/chrony.autodeploy" && service chronyd restart && sleep 5s && chronyc activity && chronyc tracking && chronyc clients && hwclock -w && service chrony enable
         fi
     }
     function ConfigureCrontab() {
@@ -181,7 +181,18 @@ function ConfigurePackages() {
             for crowdsec_hub_list_task in "${!crowdsec_hub_list[@]}"; do
                 cscli collections install ${crowdsec_hub_list[$crowdsec_hub_list_task]}
             done
-        fi && service crowdsec restart && cscli hub list && cscli lapi status
+        fi && service crowdsec restart && cscli hub list && cscli lapi status && service crowdsec enable
+
+        lapi_api_key=$(cscli lapi status 2>&1 | grep "Trying to authenticate with username" | cut -d " " -f 9)
+        if [ "${lapi_api_key}" != "" ]; then
+            uci set crowdsec.@bouncer[0].api_key="${lapi_api_key}"
+            uci set crowdsec.@bouncer[0].enabled="1"
+            uci commit crowdsec
+        else
+            uci -q delete crowdsec.@bouncer[0].api_key > "/dev/null" 2>&1
+            uci set crowdsec.@bouncer[0].enabled="0"
+            uci commit crowdsec
+        fi
     }
     function ConfigureDDNS() {
         uci set ddns.global.use_curl="1"
@@ -321,7 +332,7 @@ function ConfigurePackages() {
             "enabled = true"
             "filter = dropbear"
             "findtime = 60"
-            "logpath = /tmp/log/system.log"
+            "logpath = /tmp/system.log"
             "maxretry = 5"
             "port = 22"
             "[luci]"
@@ -329,27 +340,20 @@ function ConfigurePackages() {
             "enabled = true"
             "filter = luci"
             "findtime = 60"
-            "logpath = /tmp/log/system.log"
+            "logpath = /tmp/system.log"
             "maxretry = 5"
             "port = 80,443"
         )
         fail2ban_dropbear_list=(
-            "[INCLUDES]"
-            "before = common.conf"
             "[Definition]"
-            "_daemon = dropbear"
-            "failregex = ^%(__prefix_line)s[Ll]ogin attempt for nonexistent user ('.*' )?from <HOST>:\d+$"
-            "^%(__prefix_line)s[Bb]ad (PAM )?password attempt for .+ from <HOST>(:\d+)?$"
-            "^%(__prefix_line)s[Ee]xit before auth \(user '.+', \d+ fails\): Max auth tries reached - user '.+' from <HOST>:\d+\s*$"
-            "^%(__prefix_line)s[Ee]xit before auth from <<HOST>:\d+>:\s.*$"
+            "failregex = ^.*dropbear\[[0-9]+\]: Child connection from <HOST>.*$"
+            "            ^.*dropbear\[[0-9]+\]: (Bad password attempt for '[^']+?'|Login attempt for nonexistent user) from <HOST>.*$"
+            "            ^.*dropbear\[[0-9]+\]: Exit before auth from <HOST>.*: (Error reading: Connection reset by peer.*|(\(user '[^']+?', [0-9]+ fails\)): Error reading: Connection reset by peer.*)$"
+
         )
         fail2ban_luci_list=(
-            "[INCLUDES]"
-            "before = common.conf"
             "[Definition]"
-            "_daemon = luci"
-            "prefregex = ^%(__prefix_line)s<F-CONTENT>(?:[Ff]ailed).+</F-CONTENT>$"
-            "failregex = ^[Ff]ailed\s+login\s+on\s+/.*\s+for\s+.+\s+from\s+<HOST>(:\d+)?$"
+            "failregex = ^.*luci: failed login on / for [^']+? from <HOST>.*$"
         )
         which "fail2ban-client" > "/dev/null" 2>&1
         if [ "$?" -eq "0" ]; then
@@ -370,7 +374,7 @@ function ConfigurePackages() {
             rm -rf "/tmp/fail2ban.autodeploy" && for fail2ban_list_task in "${!fail2ban_list[@]}"; do
                 echo "${fail2ban_list[$fail2ban_list_task]}" >> "/tmp/fail2ban.autodeploy"
             done && cat "/tmp/fail2ban.autodeploy" > "/etc/fail2ban/jail.d/fail2ban_default.conf" && rm -rf "/tmp/fail2ban.autodeploy"
-            fail2ban-client reload && sleep 5s && fail2ban-client status
+            fail2ban-client reload && sleep 5s && fail2ban-client status && service fail2ban enable
         fi
     }
     function ConfigureFirewall() {
@@ -407,7 +411,7 @@ function ConfigurePackages() {
             rm -rf "/tmp/frrouting.autodeploy" && for frrouting_list_task in "${!frrouting_list[@]}"; do
                 echo "${frrouting_list[$frrouting_list_task]}" >> "/tmp/frrouting.autodeploy"
             done && cat "/tmp/frrouting.autodeploy" > "/etc/frr/frr.conf" && rm -rf "/tmp/frrouting.autodeploy"
-            service frr restart && sleep 5s && vtysh -c "show running-config" && vtysh -c "show ip route" && vtysh -c "show ipv6 route"
+            service frr restart && sleep 5s && vtysh -c "show running-config" && vtysh -c "show ip route" && vtysh -c "show ipv6 route" && service frr enable
         fi
     }
     function ConfigureGit() {
@@ -437,30 +441,10 @@ function ConfigurePackages() {
             done
         fi
     }
-    function ConfigureGPG() {
-        GPG_PUBKEY=""
-        if [ "${GPG_PUBKEY}" == "" ]; then
-            GPG_PUBKEY="DD982DAAB9C71C78F9563E5207EB56787030D792"
-        fi
-        which "gpg" > "/dev/null" 2>&1
-        if [ "$?" -eq "0" ]; then
-            rm -rf "/root/.gnupg" && gpg --keyserver hkps://keyserver.ubuntu.com:443 --recv ${GPG_PUBKEY} && echo "${GPG_PUBKEY}" | awk 'BEGIN { FS = "\n" }; { print $1":6:" }' | gpg --import-ownertrust && GPG_PUBKEY_ID_A=$(gpg --list-keys --keyid-format LONG | grep "pub\|sub" | awk '{print $2, $4}' | grep "\[A\]" | awk '{print $1}' | awk -F '/' '{print $2}') && GPG_PUBKEY_ID_C=$(gpg --list-keys --keyid-format LONG | grep "pub\|sub" | awk '{print $2, $4}' | grep "\[C\]" | awk '{print $1}' | awk -F '/' '{print $2}')
-            if [ "${GPG_PUBKEY_ID_A}" != "" ]; then
-                gpg_agent_list=(
-                    "enable-ssh-support"
-                    "pinentry-program /usr/bin/pinentry-tty"
-                )
-                rm -rf "/root/.gnupg/gpg-agent.conf" && for gpg_agent_list_task in "${!gpg_agent_list[@]}"; do
-                    echo "${gpg_agent_list[$gpg_agent_list_task]}" >> "/root/.gnupg/gpg-agent.conf"
-                done && echo "${GPG_PUBKEY_ID_A}" > "/root/.gnupg/sshcontrol" && gpg --export-ssh-key ${GPG_PUBKEY_ID_C} > "/root/.gnupg/authorized_keys"
-            fi
-        fi
-    }
     function ConfigureLLDPD() {
         which "lldpcli" > "/dev/null" 2>&1
         if [ "$?" -eq "0" ]; then
-            echo 'DAEMON_ARGS="-c -e -f -s -x"' > "/tmp/lldpd.autodeploy" && cat "/tmp/lldpd.autodeploy" > "/etc/default/lldpd" && rm -rf "/tmp/lldpd.autodeploy"
-            service lldpd restart && lldpcli show neighbors
+            service lldpd restart && lldpcli show neighbors && service lldpd enable
         fi
     }
     function ConfigureLuci() {
@@ -804,7 +788,6 @@ function ConfigurePackages() {
     ConfigureFirewall
     ConfigureFRRouting
     ConfigureGit
-    ConfigureGPG
     ConfigureLLDPD
     ConfigureLuci
     ConfigureNetwork
@@ -848,6 +831,8 @@ function ConfigureSystem() {
     }
     function ConfigureSystemDefaults() {
         uci set system.@system[0].hostname="${NEW_HOSTNAME}"
+        uci set system.@system[0].log_file="/tmp/system.log"
+        uci set system.@system[0].log_size="67108864"
         uci set system.@system[0].timezone="CST-8"
         uci set system.@system[0].zonename="Asia/Shanghai"
         uci set system.ntp.enabled="0"
@@ -934,7 +919,6 @@ function InstallDependencyPackages() {
         "git"
         "git-http"
         "git-lfs"
-        "gnupg"
         "grep"
         "iperf3-ssl"
         "jq"
