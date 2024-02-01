@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 5.1.9
+# Current Version: 5.2.0
 
 ## How to get and use?
 # curl "https://source.zhijie.online/AutoDeploy/main/Ubuntu.sh" | sudo bash
@@ -244,13 +244,11 @@ function SetReadonlyFlag() {
     file_list=(
         "/etc/apt/preferences"
         "/etc/apt/sources.list"
-        "/etc/apt/sources.list.d/amd.list"
         "/etc/apt/sources.list.d/cloudflare.list"
         "/etc/apt/sources.list.d/crowdsec.list"
         "/etc/apt/sources.list.d/docker.list"
         "/etc/apt/sources.list.d/frrouting.list"
-        "/etc/apt/sources.list.d/intel.list"
-        "/etc/apt/sources.list.d/nvidia.list"
+        "/etc/apt/sources.list.d/xanmod.list"
         "/etc/chrony/chrony.conf"
         "/etc/cockpit/cockpit.conf"
         "/etc/default/lldpd"
