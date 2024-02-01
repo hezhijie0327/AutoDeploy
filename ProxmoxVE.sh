@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 3.7.3
+# Current Version: 3.7.4
 
 ## How to get and use?
 # curl "https://source.zhijie.online/AutoDeploy/main/ProxmoxVE.sh" | sudo bash
@@ -878,7 +878,7 @@ function ConfigurePackages() {
             $(cat "/proc/net/dev" | grep -v "docker0\|lo\|wg0" | grep "\:" | sed "s/[[:space:]]//g" | cut -d ":" -f 1 | sort | uniq | grep "vmbr" | awk "{print $2}")
         )
         sysctl_list=(
-            "net.core.default_qdisc = fq"
+            "net.core.default_qdisc = fq_pie"
             "net.core.rmem_max = 2500000"
             "net.core.wmem_max = 2500000"
             "net.ipv4.ip_forward = 1"
