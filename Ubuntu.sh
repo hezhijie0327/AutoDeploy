@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 5.1.7
+# Current Version: 5.1.8
 
 ## How to get and use?
 # curl "https://source.zhijie.online/AutoDeploy/main/Ubuntu.sh" | sudo bash
@@ -1371,6 +1371,7 @@ function InstallCustomPackages() {
         done
     }
     function InstallXanModKernel() {
+        # Fix "modinfo: ERROR: Module tcp_bbr not found." -> depmod && modinfo tcp_bbr
         XANMOD_BRANCH="disable" # disable, edge, lts, rt, <NULL>
         if [ "${XANMOD_BRANCH}" == "" ]; then
             XANMOD_BRANCH=""
