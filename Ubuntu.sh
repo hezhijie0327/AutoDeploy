@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 5.1.8
+# Current Version: 5.1.9
 
 ## How to get and use?
 # curl "https://source.zhijie.online/AutoDeploy/main/Ubuntu.sh" | sudo bash
@@ -1371,16 +1371,13 @@ function InstallCustomPackages() {
         done
     }
     function InstallXanModKernel() {
-        # Fix "modinfo: ERROR: Module tcp_bbr not found." -> depmod && modinfo tcp_bbr
+        # Note: The current NVIDIA, OpenZFS, VirtualBox, VMware Workstation / Player and some other dkms modules may not officially support EDGE and RT branch kernels.
+        # How to fix "modinfo: ERROR: Module tcp_bbr not found." -> depmod && modinfo tcp_bbr
         XANMOD_BRANCH="disable" # disable, edge, lts, rt, <NULL>
         if [ "${XANMOD_BRANCH}" == "" ]; then
             XANMOD_BRANCH=""
-        elif [ "${XANMOD_BRANCH}" == "edge" ]; then
-            XANMOD_BRANCH="edge-"
-        elif [ "${XANMOD_BRANCH}" == "lts" ]; then
-            XANMOD_BRANCH="lts-"
-        elif [ "${XANMOD_BRANCH}" == "rt" ]; then
-            XANMOD_BRANCH="rt-"
+        elif [ "${XANMOD_BRANCH}" == "edge" ] || [ "${XANMOD_BRANCH}" == "lts" ] || [ "${XANMOD_BRANCH}" == "rt" ]; then
+            XANMOD_BRANCH="${XANMOD_BRANCH}-"
         fi
         if [ "${psABILevel}" == "1" ] && { [ "${XANMOD_BRANCH}" == "edge" ] || [ "${XANMOD_BRANCH}" == "rt" ]; }; then
             XANMOD_BRANCH=""
