@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 5.2.2
+# Current Version: 5.2.3
 
 ## How to get and use?
 # curl "https://source.zhijie.online/AutoDeploy/main/Ubuntu.sh" | sudo bash
@@ -1371,7 +1371,8 @@ function InstallCustomPackages() {
     }
     function InstallXanModKernel() {
         # Note: The current NVIDIA, OpenZFS, VirtualBox, VMware Workstation / Player and some other dkms modules may not officially support EDGE and RT branch kernels.
-        # How to fix "modinfo: ERROR: Module tcp_bbr not found." -> depmod && modinfo tcp_bbr
+        # How to fix "modinfo: ERROR: Module tcp_bbr not found." -> sudo depmod && modinfo tcp_bbr
+        # How to remove? -> sudo apt autoremove linux-image-*.*.*-xanmod* linux-headers-*.*.*-xanmod* --purge
         XANMOD_BRANCH="" # disable, edge, lts, rt
         if [ "${XANMOD_BRANCH}" == "" ]; then
             XANMOD_BRANCH=""
