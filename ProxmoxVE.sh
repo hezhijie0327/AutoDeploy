@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 3.7.6
+# Current Version: 3.7.7
 
 ## How to get and use?
 # curl "https://source.zhijie.online/AutoDeploy/main/ProxmoxVE.sh" | sudo bash
@@ -1335,9 +1335,9 @@ function InstallCustomPackages() {
         apt_list=(
             "linux-xanmod-${XANMOD_BRANCH}x64v${psABILevel}"
         )
-        if [ "${container_environment}" != "docker" ] && [ "${OSArchitecture}" == "amd64" ] && [ "${psABILevel}" != "0" ] && [ "${XANMOD_BRANCH}" != "disable" ]; then
+        if [ "${psABILevel}" != "0" ] && [ "${XANMOD_BRANCH}" != "disable" ]; then
             rm -rf "/etc/apt/keyrings/xanmod-archive-keyring.gpg" && curl -fsSL "https://dl.xanmod.org/archive.key" | gpg --dearmor -o "/etc/apt/keyrings/xanmod-archive-keyring.gpg"
-            echo "deb [arch=${OSArchitecture} signed-by=/etc/apt/keyrings/xanmod-archive-keyring.gpg] https://deb.xanmod.org releases main" > "/etc/apt/sources.list.d/xanmod.list"
+            echo "deb [arch=amd64 signed-by=/etc/apt/keyrings/xanmod-archive-keyring.gpg] https://deb.xanmod.org releases main" > "/etc/apt/sources.list.d/xanmod.list"
             apt update && for app_list_task in "${!app_list[@]}"; do
                 apt-cache show ${app_list[$app_list_task]} && if [ "$?" -eq "0" ]; then
                     apt install -qy ${app_list[$app_list_task]}
