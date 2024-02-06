@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 3.7.5
+# Current Version: 3.7.6
 
 ## How to get and use?
 # curl "https://source.zhijie.online/AutoDeploy/main/ProxmoxVE.sh" | sudo bash
@@ -75,6 +75,10 @@ function GetSystemInformation() {
             fi
         fi && rm -rf "/etc/resolv.conf" && cat "/tmp/resolv.autodeploy" > "/etc/resolv.conf" && rm -rf "/tmp/resolv.autodeploy"
     }
+    function GetCPUpsABILevel() {
+        # https://dl.xanmod.org/check_x86-64_psabi.sh
+        psABILevel=$(awk 'BEGIN{while(!/flags/)if(getline<"/proc/cpuinfo"!=1)exit 0;if(/lm/&&/cmov/&&/cx8/&&/fpu/&&/fxsr/&&/mmx/&&/syscall/&&/sse2/)l=1;if(l==1&&/cx16/&&/lahf/&&/popcnt/&&/sse4_1/&&/sse4_2/&&/ssse3/)l=2;if(l==2&&/avx/&&/avx2/&&/bmi1/&&/bmi2/&&/f16c/&&/fma/&&/abm/&&/movbe/&&/xsave/)l=3;if(l==3&&/avx512f/&&/avx512bw/&&/avx512cd/&&/avx512dq/&&/avx512vl/)l=4;print l}')
+    }
     function GetCPUVendorID() {
         CPU_VENDOR_ID=$(cat '/proc/cpuinfo' | grep 'vendor_id' | uniq | awk -F ':' '{print $2}' | awk -F ' ' '{print $1}')
         if [ "${CPU_VENDOR_ID}" == "AuthenticAMD" ]; then
@@ -127,6 +131,7 @@ function GetSystemInformation() {
     GenerateDomain
     GenerateHostname
     GenerateResolv
+    GetCPUpsABILevel
     GetCPUVendorID
     GetHostname
     GetManagementIPAddress
@@ -178,6 +183,7 @@ function SetReadonlyFlag() {
         "/etc/apt/sources.list.d/docker.list"
         "/etc/apt/sources.list.d/frrouting.list"
         "/etc/apt/sources.list.d/proxmox.list"
+        "/etc/apt/sources.list.d/xanmod.list"
         "/etc/chrony/chrony.conf"
         "/etc/default/lldpd"
         "/etc/docker/daemon.json"
@@ -1312,11 +1318,39 @@ function InstallCustomPackages() {
             echo "${plugin_upgrade_list[$plugin_upgrade_list_task]}" >> "/etc/zsh/oh-my-zsh/oh-my-zsh-plugin.sh"
         done
     }
+    function InstallXanModKernel() {
+        # Note: The current NVIDIA, OpenZFS, VirtualBox, VMware Workstation / Player and some other dkms modules may not officially support EDGE and RT branch kernels.
+        # How to fix "modinfo: ERROR: Module tcp_bbr not found." -> sudo depmod && modinfo tcp_bbr
+        # How to remove? -> sudo apt autoremove linux-image-*.*.*-xanmod* linux-headers-*.*.*-xanmod* --purge
+        XANMOD_BRANCH="" # disable, edge, lts, rt
+        if [ "${XANMOD_BRANCH}" == "" ]; then
+            XANMOD_BRANCH=""
+        elif [ "${XANMOD_BRANCH}" == "edge" ] || [ "${XANMOD_BRANCH}" == "lts" ] || [ "${XANMOD_BRANCH}" == "rt" ]; then
+            XANMOD_BRANCH="${XANMOD_BRANCH}-"
+        fi
+        if [ "${psABILevel}" == "1" ] && { [ "${XANMOD_BRANCH}" == "edge" ] || [ "${XANMOD_BRANCH}" == "rt" ]; }; then
+            XANMOD_BRANCH=""
+        fi
+
+        apt_list=(
+            "linux-xanmod-${XANMOD_BRANCH}x64v${psABILevel}"
+        )
+        if [ "${container_environment}" != "docker" ] && [ "${OSArchitecture}" == "amd64" ] && [ "${psABILevel}" != "0" ] && [ "${XANMOD_BRANCH}" != "disable" ]; then
+            rm -rf "/etc/apt/keyrings/xanmod-archive-keyring.gpg" && curl -fsSL "https://dl.xanmod.org/archive.key" | gpg --dearmor -o "/etc/apt/keyrings/xanmod-archive-keyring.gpg"
+            echo "deb [arch=${OSArchitecture} signed-by=/etc/apt/keyrings/xanmod-archive-keyring.gpg] https://deb.xanmod.org releases main" > "/etc/apt/sources.list.d/xanmod.list"
+            apt update && for app_list_task in "${!app_list[@]}"; do
+                apt-cache show ${app_list[$app_list_task]} && if [ "$?" -eq "0" ]; then
+                    apt install -qy ${app_list[$app_list_task]}
+                fi
+            done
+        fi
+    }
     InstallCloudflarePackage
     InstallCrowdSec
     InstallDockerEngine
     InstallFRRouting
     InstallOhMyZsh
+    InstallXanModKernel
 }
 # Install Dependency Packages
 function InstallDependencyPackages() {
