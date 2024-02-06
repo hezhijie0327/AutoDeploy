@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 5.2.4
+# Current Version: 5.2.5
 
 ## How to get and use?
 # curl "https://source.zhijie.online/AutoDeploy/main/Ubuntu.sh" | sudo bash
@@ -1394,8 +1394,6 @@ function InstallCustomPackages() {
                     apt install -qy ${app_list[$app_list_task]}
                 fi
             done
-        else
-            apt update && apt install -qy "linux-generic-hwe-${LSBVersion}"
         fi
     }
     InstallCloudflarePackage
@@ -1448,6 +1446,7 @@ function InstallDependencyPackages() {
         "jq"
         "knot-dnsutils"
         "landscape-common"
+        "linux-generic-hwe-${LSBVersion}"
         "lm-sensors"
         "lsb-release"
         "mailutils"
