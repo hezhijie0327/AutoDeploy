@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 1.0.1
+# Current Version: 1.0.2
 
 ## How to get and use?
 # curl "https://source.zhijie.online/AutoDeploy/main/OMV.sh" | sudo bash
@@ -827,7 +827,7 @@ function ConfigureSystem() {
         fi && for USER_LIST_TASK in "${!USER_LIST[@]}"; do
             userdel -rf "${USER_LIST[$USER_LIST_TASK]}" > "/dev/null" 2>&1
         done
-        useradd -c "${DEFAULT_FULLNAME}" -d "/home/${DEFAULT_USERNAME}" -s "/bin/zsh" -m "${DEFAULT_USERNAME}" && echo $DEFAULT_USERNAME:$DEFAULT_PASSWORD | chpasswd && adduser "${DEFAULT_USERNAME}" "docker" && adduser "${DEFAULT_USERNAME}" "sudo"
+        useradd -c "${DEFAULT_FULLNAME}" -d "/home/${DEFAULT_USERNAME}" -s "/bin/zsh" -m "${DEFAULT_USERNAME}" && echo $DEFAULT_USERNAME:$DEFAULT_PASSWORD | chpasswd && adduser "${DEFAULT_USERNAME}" "docker" && adduser "${DEFAULT_USERNAME}" "openmediavault-admin" && adduser "${DEFAULT_USERNAME}" "sudo"
         which "crontab" > "/dev/null" 2>&1
         if [ "$?" -eq "0" ]; then
             rm -rf "/tmp/crontab.autodeploy" && for crontab_list_task in "${!crontab_list[@]}"; do
