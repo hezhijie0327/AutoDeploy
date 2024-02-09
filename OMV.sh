@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 1.0.5
+# Current Version: 1.0.6
 
 ## How to get and use?
 # curl "https://source.zhijie.online/AutoDeploy/main/OMV.sh" | sudo bash
@@ -57,6 +57,10 @@ function GetSystemInformation() {
         done && CURRENT_DNS_EXCLUDE="$(echo ${DHCP_DNS[*]} ${CUSTOM_DNS_LINE} | sed 's/\ /\\\|/g')\|127.0.0.53"
         if [ -f "/etc/resolv.conf" ]; then
             CURRENT_DNS=(${DHCP_DNS[*]} $(cat "/etc/resolv.conf" | grep "nameserver\ " | sed "s/nameserver\ //g" | grep -v "${CURRENT_DNS_EXCLUDE}" | awk "{print $2}"))
+            CURRENT_DNS_LINE="" && for CURRENT_DNS_TASK in "${!CURRENT_DNS[@]}"; do
+                CURRENT_DNS_LINE="${CURRENT_DNS_LINE} ${CURRENT_DNS[$CURRENT_DNS_TASK]}"
+                CURRENT_DNS_LINE=$(echo "${CURRENT_DNS_LINE}" | sed "s/^\ //g")
+            done && DNS_LINE=$(echo "${CURRENT_DNS_LINE} ${CUSTOM_DNS_LINE}" | cut -d ' ' -f 1-3)
         fi
         resolv_conf_list=(
             ${CURRENT_DNS[@]}
@@ -191,6 +195,7 @@ function SetReadonlyFlag() {
         "/etc/hostname"
         "/etc/hosts"
         "/etc/sysctl.conf"
+        "/etc/systemd/resolved.conf.d/resolved.conf"
     )
     if [ "${read_only}" == "TRUE" ]; then
         for file_list_task in "${!file_list[@]}"; do
@@ -671,6 +676,30 @@ function ConfigurePackages() {
                 mkdir "/home/${DEFAULT_USERNAME}/.config/pip"
             fi
             rm -rf "/home/${DEFAULT_USERNAME}/.config/pip/pip.conf" && cp -rf "/root/.config/pip/pip.conf" "/home/${DEFAULT_USERNAME}/.config/pip/pip.conf" && chown -R $DEFAULT_USERNAME:$DEFAULT_USERNAME "/home/${DEFAULT_USERNAME}/.config" && chown -R $DEFAULT_USERNAME:$DEFAULT_USERNAME "/home/${DEFAULT_USERNAME}/.config/pip" && chown -R $DEFAULT_USERNAME:$DEFAULT_USERNAME "/home/${DEFAULT_USERNAME}/.config/pip/pip.conf"
+        fi
+    }
+    function ConfigureResolved() {
+        resolved_list=(
+            "[Resolve]"
+            "DNS=${DNS_LINE}"
+            "DNSOverTLS=opportunistic"
+            "DNSSEC=allow-downgrade"
+            "DNSStubListener=false"
+            "Domains=${NEW_DOMAIN[*]}"
+        )
+        which "resolvectl" > "/dev/null" 2>&1
+        if [ "$?" -eq "0" ]; then
+            if [ ! -d "/etc/systemd/resolved.conf.d" ]; then
+                mkdir "/etc/systemd/resolved.conf.d"
+            else
+                rm -rf /etc/systemd/resolved.conf.d/*.conf
+            fi
+            rm -rf "/tmp/resolved.autodeploy" && for resolved_list_task in "${!resolved_list[@]}"; do
+                echo "${resolved_list[$resolved_list_task]}" | sed "s/DNS\=\ /DNS\=/g" >> "/tmp/resolved.autodeploy"
+            done && cat "/tmp/resolved.autodeploy" > "/etc/systemd/resolved.conf.d/resolved.conf" && systemctl restart systemd-resolved && rm -rf "/tmp/resolved.autodeploy" && if [ -f "/etc/resolv.conf" ]; then
+                chattr -i "/etc/resolv.conf" > "/dev/null" 2>&1
+                rm -rf "/etc/resolv.conf" && ln -s "/run/systemd/resolve/resolv.conf" "/etc/resolv.conf"
+            fi
         fi
     }
     function ConfigureSNMP() {
