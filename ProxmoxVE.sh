@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 3.7.7
+# Current Version: 3.7.8
 
 ## How to get and use?
 # curl "https://source.zhijie.online/AutoDeploy/main/ProxmoxVE.sh" | sudo bash
@@ -377,7 +377,6 @@ function ConfigurePackages() {
         fail2ban_proxmox_list=(
             "[Definition]"
             "failregex = pvedaemon\[.*authentication failure; rhost=<HOST> user=.* msg=.*"
-            "ignoreregex ="
         )
         which "fail2ban-client" > "/dev/null" 2>&1
         if [ "$?" -eq "0" ]; then
