@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 1.0.2
+# Current Version: 1.0.3
 
 ## How to get and use?
 # curl "https://source.zhijie.online/AutoDeploy/main/OMV.sh" | sudo bash
@@ -948,19 +948,17 @@ function ConfigureSystem() {
             cat "/tmp/fstab.autodeploy" > "/etc/fstab" && rm -rf "/tmp/fstab.autodeploy"
         }
         DISABLE_SWAP="false"
-        if [ "${container_environment}" != "docker" ]; then
-            if [ "${DISABLE_SWAP}" == "true" ]; then
-                ClearSWAP
-                RemoveSWAP
-                UpdateFSTAB
-            else
-                CUSTOM_SWAP_SIZE="" # 1024M / 1G
-                ClearSWAP
-                RemoveSWAP
-                GenerateSWAPSize
-                CreateSWAP
-                UpdateFSTAB
-            fi
+        if [ "${DISABLE_SWAP}" == "true" ]; then
+            ClearSWAP
+            RemoveSWAP
+            UpdateFSTAB
+        else
+            CUSTOM_SWAP_SIZE="" # 1024M / 1G
+            ClearSWAP
+            RemoveSWAP
+            GenerateSWAPSize
+            CreateSWAP
+            UpdateFSTAB
         fi
     }
     ConfigureDefaultShell
