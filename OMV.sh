@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 1.0.3
+# Current Version: 1.0.4
 
 ## How to get and use?
 # curl "https://source.zhijie.online/AutoDeploy/main/OMV.sh" | sudo bash
@@ -100,6 +100,18 @@ function GetSystemInformation() {
             fi
         fi
     }
+    function GetOSArchitecture() {
+        which "dpkg" > "/dev/null" 2>&1
+        if [ "$?" -eq "0" ]; then
+            OSArchitecture=$(dpkg --print-architecture)
+        else
+            if [ "$(uname -m)" == "aarch64" ]; then
+                OSArchitecture="arm64"
+            elif [ "$(uname -m)" == "x86_64" ]; then
+                OSArchitecture="amd64"
+            fi
+        fi
+    }
     function SetGHProxyDomain() {
         GHPROXY_URL=""
         if [ "${GHPROXY_URL}" != "" ]; then
@@ -116,6 +128,7 @@ function GetSystemInformation() {
     GetCPUpsABILevel
     GetCPUVendorID
     GetHostname
+    GetOSArchitecture
     SetGHProxyDomain
     SetPackageCodename
 }
@@ -157,12 +170,14 @@ function SetRepositoryMirror() {
 function SetReadonlyFlag() {
     file_list=(
         "/etc/apt/preferences"
+        "/etc/apt/preferences.d/omvextras.pref"
         "/etc/apt/preferences.d/openmediavault.pref"
         "/etc/apt/sources.list"
         "/etc/apt/sources.list.d/cloudflare.list"
         "/etc/apt/sources.list.d/crowdsec.list"
         "/etc/apt/sources.list.d/docker.list"
         "/etc/apt/sources.list.d/frrouting.list"
+        "/etc/apt/sources.list.d/omvextras.list"
         "/etc/apt/sources.list.d/openmediavault.list"
         "/etc/apt/sources.list.d/xanmod.list"
         "/etc/chrony/chrony.conf"
@@ -975,7 +990,7 @@ function InstallCustomPackages() {
             "cloudflare-warp"
         )
         rm -rf "/etc/apt/keyrings/cloudflare-warp-archive-keyring.gpg" && curl -fsSL "https://pkg.cloudflareclient.com/pubkey.gpg" | gpg --dearmor -o "/etc/apt/keyrings/cloudflare-warp-archive-keyring.gpg"
-        echo "deb [arch=amd64 signed-by=/etc/apt/keyrings/cloudflare-warp-archive-keyring.gpg] https://pkg.cloudflareclient.com ${LSBCodename} main" > "/etc/apt/sources.list.d/cloudflare.list"
+        echo "deb [arch=${OSArchitecture} signed-by=/etc/apt/keyrings/cloudflare-warp-archive-keyring.gpg] https://pkg.cloudflareclient.com ${LSBCodename} main" > "/etc/apt/sources.list.d/cloudflare.list"
         apt update && for app_list_task in "${!app_list[@]}"; do
             apt-cache show ${app_list[$app_list_task]} && if [ "$?" -eq "0" ]; then
                 apt install -qy ${app_list[$app_list_task]}
@@ -995,8 +1010,8 @@ function InstallCustomPackages() {
             mkdir "/etc/apt/keyrings"
         fi
         rm -rf "/etc/apt/keyrings/crowdsec-archive-keyring.gpg" && curl -fsSL "https://packagecloud.io/crowdsec/crowdsec/gpgkey" | gpg --dearmor -o "/etc/apt/keyrings/crowdsec-archive-keyring.gpg"
-        echo "deb [arch=amd64 signed-by=/etc/apt/keyrings/crowdsec-archive-keyring.gpg] https://packagecloud.io/crowdsec/crowdsec/debian ${LSBCodename} main" > "/etc/apt/sources.list.d/crowdsec.list"
-        echo "deb-src [arch=amd64 signed-by=/etc/apt/keyrings/crowdsec-archive-keyring.gpg] https://packagecloud.io/crowdsec/crowdsec/debian ${LSBCodename} main" >> "/etc/apt/sources.list.d/crowdsec.list"
+        echo "deb [arch=${OSArchitecture} signed-by=/etc/apt/keyrings/crowdsec-archive-keyring.gpg] https://packagecloud.io/crowdsec/crowdsec/debian ${LSBCodename} main" > "/etc/apt/sources.list.d/crowdsec.list"
+        echo "deb-src [arch=${OSArchitecture} signed-by=/etc/apt/keyrings/crowdsec-archive-keyring.gpg] https://packagecloud.io/crowdsec/crowdsec/debian ${LSBCodename} main" >> "/etc/apt/sources.list.d/crowdsec.list"
         which "cscli" > "/dev/null" 2>&1
         if [ "$?" -eq "0" ]; then
             bouncers_list=($(cscli bouncers list | grep 'FirewallBouncer' | cut -d ' ' -f 2))
@@ -1022,7 +1037,7 @@ function InstallCustomPackages() {
             mkdir "/etc/apt/keyrings"
         fi
         rm -rf "/etc/apt/keyrings/docker-archive-keyring.gpg" && curl -fsSL "https://mirrors.ustc.edu.cn/docker-ce/linux/debian/gpg" | gpg --dearmor -o "/etc/apt/keyrings/docker-archive-keyring.gpg"
-        echo "deb [arch=amd64 signed-by=/etc/apt/keyrings/docker-archive-keyring.gpg] https://mirrors.ustc.edu.cn/docker-ce/linux/debian ${LSBCodename} stable" > "/etc/apt/sources.list.d/docker.list"
+        echo "deb [arch=${OSArchitecture} signed-by=/etc/apt/keyrings/docker-archive-keyring.gpg] https://mirrors.ustc.edu.cn/docker-ce/linux/debian ${LSBCodename} stable" > "/etc/apt/sources.list.d/docker.list"
         apt update && apt purge -qy containerd docker docker-engine docker.io runc && for app_list_task in "${!app_list[@]}"; do
             apt-cache show ${app_list[$app_list_task]} && if [ "$?" -eq "0" ]; then
                 apt install -qy ${app_list[$app_list_task]}
@@ -1036,7 +1051,7 @@ function InstallCustomPackages() {
             "frr-snmp"
         )
         rm -rf "/etc/apt/keyrings/frrouting-archive-keyring.gpg" && curl -fsSL "https://deb.frrouting.org/frr/keys.gpg" | gpg --dearmor -o "/etc/apt/keyrings/frrouting-archive-keyring.gpg"
-        echo "deb [arch=amd64 signed-by=/etc/apt/keyrings/frrouting-archive-keyring.gpg] https://deb.frrouting.org/frr ${LSBCodename} frr-stable" > "/etc/apt/sources.list.d/frrouting.list"
+        echo "deb [arch=${OSArchitecture} signed-by=/etc/apt/keyrings/frrouting-archive-keyring.gpg] https://deb.frrouting.org/frr ${LSBCodename} frr-stable" > "/etc/apt/sources.list.d/frrouting.list"
         apt update && for app_list_task in "${!app_list[@]}"; do
             apt-cache show ${app_list[$app_list_task]} && if [ "$?" -eq "0" ]; then
                 apt install -qy ${app_list[$app_list_task]}
@@ -1065,6 +1080,33 @@ function InstallCustomPackages() {
             echo "${plugin_upgrade_list[$plugin_upgrade_list_task]}" >> "/etc/zsh/oh-my-zsh/oh-my-zsh-plugin.sh"
         done
     }
+    function InstallOMVExtras() {
+        apt_list=(
+            "openmediavault-omvextrasorg"
+        )
+        rm -rf "/etc/apt/keyrings/omvextras-archive-keyring.gpg" && curl -fsSL "https://mirrors.tuna.tsinghua.edu.cn/OpenMediaVault/openmediavault-plugin-developers/omvextras2026.asc" | gpg --dearmor -o "/etc/apt/keyrings/omvextras-archive-keyring.gpg"
+        echo "deb [arch=${OSArchitecture} signed-by=/etc/apt/keyrings/omvextras-archive-keyring.gpg] https://mirrors.tuna.tsinghua.edu.cn/OpenMediaVault/openmediavault-plugin-developers/${OMVCodename} main binary-${OSArchitecture}" > "/etc/apt/sources.list.d/omvextras.list"
+        echo "deb [arch=${OSArchitecture} signed-by=/etc/apt/keyrings/omvextras-archive-keyring.gpg] https://mirrors.tuna.tsinghua.edu.cn/OpenMediaVault/openmediavault-plugin-developers/${OMVCodename}-beta main binary-${OSArchitecture}" >> "/etc/apt/sources.list.d/omvextras.list"
+        echo "deb [arch=${OSArchitecture} signed-by=/etc/apt/keyrings/omvextras-archive-keyring.gpg] https://mirrors.tuna.tsinghua.edu.cn/OpenMediaVault/openmediavault-plugin-developers/${OMVCodename}-testing main binary-${OSArchitecture}" >> "/etc/apt/sources.list.d/omvextras.list"
+        omv_extras_repo_preference_list=(
+            "${OMVCodename} 990"
+            "${OMVCodename}-beta 100"
+            "${OMVCodename}-testing 100"
+        )
+        rm -rf "/tmp/apt_preference_list.autodeploy" && for omv_extras_repo_preference_list_task in "${!omv_extras_repo_preference_list[@]}"; do
+            OMV_EXTRAS_REPO_PIN_RELEASE=$(echo "${omv_extras_repo_preference_list[$omv_extras_repo_preference_list_task]}" | cut -d " " -f 1)
+            OMV_EXTRAS_REPO_PIN_PRIORITY=$(echo "${omv_extras_repo_preference_list[$omv_extras_repo_preference_list_task]}" | cut -d " " -f 2)
+            if [ ! -z $(echo ${OMV_EXTRAS_REPO_PIN_PRIORITY} | grep "[a-z]\|[A-Z]\|-") ]; then
+                OMV_EXTRAS_REPO_PIN_PRIORITY="500"
+            fi
+            echo -e "Package: *\nPin: release a=${OMV_EXTRAS_REPO_PIN_RELEASE}\nPin-Priority: ${OMV_EXTRAS_REPO_PIN_PRIORITY}\n" >> "/tmp/apt_preference_list.autodeploy"
+        done && cat "/tmp/apt_preference_list.autodeploy" | sed '$d' > "/etc/apt/preferences.d/omvextras.pref"
+        apt update && for app_list_task in "${!app_list[@]}"; do
+            apt-cache show ${app_list[$app_list_task]} && if [ "$?" -eq "0" ]; then
+                apt install -qy ${app_list[$app_list_task]}
+            fi
+        done
+    }
     function InstallXanModKernel() {
         # Note: The current NVIDIA, OpenZFS, VirtualBox, VMware Workstation / Player and some other dkms modules may not officially support EDGE and RT branch kernels.
         # How to fix "modinfo: ERROR: Module tcp_bbr not found." -> sudo depmod && modinfo tcp_bbr
@@ -1082,9 +1124,9 @@ function InstallCustomPackages() {
         apt_list=(
             "linux-xanmod-${XANMOD_BRANCH}x64v${psABILevel}"
         )
-        if [ "${psABILevel}" != "0" ] && [ "${XANMOD_BRANCH}" != "disable" ]; then
+        if [ "${OSArchitecture}" == "amd64" ] && [ "${psABILevel}" != "0" ] && [ "${XANMOD_BRANCH}" != "disable" ]; then
             rm -rf "/etc/apt/keyrings/xanmod-archive-keyring.gpg" && curl -fsSL "https://dl.xanmod.org/archive.key" | gpg --dearmor -o "/etc/apt/keyrings/xanmod-archive-keyring.gpg"
-            echo "deb [arch=amd64 signed-by=/etc/apt/keyrings/xanmod-archive-keyring.gpg] https://deb.xanmod.org releases main" > "/etc/apt/sources.list.d/xanmod.list"
+            echo "deb [arch=${OSArchitecture} signed-by=/etc/apt/keyrings/xanmod-archive-keyring.gpg] https://deb.xanmod.org releases main" > "/etc/apt/sources.list.d/xanmod.list"
             apt update && for app_list_task in "${!app_list[@]}"; do
                 apt-cache show ${app_list[$app_list_task]} && if [ "$?" -eq "0" ]; then
                     apt install -qy ${app_list[$app_list_task]}
@@ -1097,6 +1139,7 @@ function InstallCustomPackages() {
     InstallDockerEngine
     InstallFRRouting
     InstallOhMyZsh
+    InstallOMVExtras
     InstallXanModKernel
 }
 # Install Dependency Packages
