@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 1.1.0
+# Current Version: 1.1.1
 
 ## How to get and use?
 # curl "https://source.zhijie.online/AutoDeploy/main/OMV.sh" | sudo bash
@@ -189,7 +189,6 @@ function SetReadonlyFlag() {
         "/etc/apt/sources.list.d/frrouting.list"
         "/etc/apt/sources.list.d/openmediavault.list"
         "/etc/apt/sources.list.d/xanmod.list"
-        "/etc/chrony/chrony.conf"
         "/etc/default/lldpd"
         "/etc/docker/daemon.json"
         "/etc/fail2ban/fail2ban.local"
@@ -250,46 +249,6 @@ function ConfigurePackages() {
             fi
             echo -e "Package: *\nPin: release a=${OMV_REPO_PIN_RELEASE}\nPin-Priority: ${OMV_REPO_PIN_PRIORITY}\n" >> "/tmp/apt_preference_list.autodeploy"
         done && cat "/tmp/apt_preference_list.autodeploy" | sed '$d' > "/etc/apt/preferences.d/openmediavault.pref"
-    }
-    function ConfigureChrony() {
-        chrony_list=(
-            "allow"
-            "clientloglimit 65536"
-            "driftfile /var/lib/chrony/chrony.drift"
-            "dumpdir /run/chrony"
-            "keyfile /etc/chrony/chrony.keys"
-            "leapsectz right/UTC"
-            "logdir /var/log/chrony"
-            "makestep 1 3"
-            "ratelimit burst 8 interval 3 leak 2"
-            "rtcsync"
-        )
-        DHCP_NTP=()
-        chrony_ntp_list=(
-            "${DHCP_NTP[@]}"
-            "ntp.ntsc.ac.cn"
-            "ntp1.nim.ac.cn"
-            "ntp2.nim.ac.cn"
-            "ntp.aliyun.com"
-            "ntp.tencent.com"
-            "time.apple.com"
-            "time.windows.com"
-            "time.cloudflare.com"
-            "time.nist.gov"
-            "pool.ntp.org"
-        )
-        which "chronyc" > "/dev/null" 2>&1
-        if [ "$?" -eq "0" ]; then
-            rm -rf "/tmp/chrony.autodeploy" && for chrony_list_task in "${!chrony_list[@]}"; do
-                echo "${chrony_list[$chrony_list_task]}" >> "/tmp/chrony.autodeploy"
-            done && for chrony_ntp_list_task in "${!chrony_ntp_list[@]}"; do
-                if [ "${chrony_ntp_list[$chrony_ntp_list_task]}" == "ntp.ntsc.ac.cn" ] || [ "${chrony_ntp_list[$chrony_ntp_list_task]}" == "ntp1.nim.ac.cn" ] || [ "${chrony_ntp_list[$chrony_ntp_list_task]}" == "ntp1.nim.ac.cn" ] || [ "$(echo ${DHCP_NTP[@]} | grep ${chrony_ntp_list[$chrony_ntp_list_task]})" != "" ]; then
-                    echo "server ${chrony_ntp_list[$chrony_ntp_list_task]} iburst prefer" >> "/tmp/chrony.autodeploy"
-                else
-                    echo "server ${chrony_ntp_list[$chrony_ntp_list_task]} iburst" >> "/tmp/chrony.autodeploy"
-                fi
-            done && cat "/tmp/chrony.autodeploy" > "/etc/chrony/chrony.conf" && rm -rf "/tmp/chrony.autodeploy" && systemctl restart chrony.service && sleep 5s && chronyc activity && chronyc tracking && chronyc clients && hwclock -w
-        fi
     }
     function ConfigureCrontab() {
         crontab_list=(
@@ -482,146 +441,6 @@ function ConfigurePackages() {
             systemctl restart lldpd && lldpcli show neighbors detail
         fi
     }
-    function ConfigureNut() {
-        which "upsmon" > "/dev/null" 2>&1
-        if [ "$?" -eq "0" ]; then
-            function Create_upsd_users() {
-                upsd_user_list=(
-                    "admin,123456,master,FSD,SET"
-                    "monuser,secret,slave,,"
-                )
-            }
-            function Generate_nut_conf() {
-                echo "MODE=${NUT_MODE:-none}" > "/etc/nut/nut.conf"
-            }
-            function Generate_ups_conf() {
-                ups_driver_list=(
-                    "ups,usbhid-ups,auto"
-                )
-                ups_conf_list=(
-                    "maxretry = 3"
-                    "retrydelay = 5"
-                )
-                rm -rf "/tmp/ups.conf.autodeploy" && for ups_conf_list_task in "${!ups_conf_list[@]}"; do
-                    echo "${ups_conf_list[$ups_conf_list_task]}" >> "/tmp/ups.conf.autodeploy"
-                done && for ups_driver_list_task in "${!ups_driver_list[@]}"; do
-                    UPS_NAME=$(echo "${ups_driver_list[$ups_driver_list_task]}" | cut -d ',' -f 1)
-                    UPS_DRIVER=$(echo "${ups_driver_list[$ups_driver_list_task]}" | cut -d ',' -f 2)
-                    UPS_PORT=$(echo "${ups_driver_list[$ups_driver_list_task]}" | cut -d ',' -f 3)
-                    echo -e "[${UPS_NAME}]\n    driver = ${UPS_DRIVER}\n    port = ${UPS_PORT}" >> "/tmp/ups.conf.autodeploy"
-                done && cat "/tmp/ups.conf.autodeploy" > "/etc/nut/ups.conf" && rm -rf "/tmp/ups.conf.autodeploy"
-            }
-            function Generate_upsd_conf() {
-                if [ "${NUT_MODE}" == "standalone" ]; then
-                    upsd_config_list=(
-                        "LISTEN 127.0.0.1 3493"
-                        "LISTEN ::1 3493"
-                        "MAXAGE 15"
-                        "MAXCONN 1024"
-                        "STATEPATH /var/run/nut"
-                    )
-                else
-                    upsd_config_list=(
-                        "LISTEN 0.0.0.0 3493"
-                        "MAXAGE 15"
-                        "MAXCONN 1024"
-                        "STATEPATH /var/run/nut"
-                    )
-                fi
-                rm -rf "/tmp/upsd.conf.autodeploy" && for upsd_config_list_task in "${!upsd_config_list[@]}"; do
-                    echo "${upsd_config_list[$upsd_config_list_task]}" >> "/tmp/upsd.conf.autodeploy"
-                done && cat "/tmp/upsd.conf.autodeploy" > "/etc/nut/upsd.conf" && rm -rf "/tmp/upsd.conf.autodeploy"
-            }
-            function Generate_upsd_users() {
-                rm -rf "/tmp/upsd.users.autodeploy" && for upsd_user_list_task in "${!upsd_user_list[@]}"; do
-                    UPSD_USERNAME=$(echo "${upsd_user_list[$upsd_user_list_task]}" | cut -d ',' -f 1)
-                    UPSD_PASSWORD=$(echo "${upsd_user_list[$upsd_user_list_task]}" | cut -d ',' -f 2)
-                    UPSD_ROLE=$(echo "${upsd_user_list[$upsd_user_list_task]}" | cut -d ',' -f 3)
-                    UPSD_ACTIONS=$(echo "${upsd_user_list[$upsd_user_list_task]}" | cut -d ',' -f 4-5 | tr ',' ' ' | sed 's/^ //g')
-                    if [ "${UPSD_ACTIONS}" != "" ]; then
-                        UPSD_ACTIONS="    actions = ${UPSD_ACTIONS}\n    instcmds = ALL\n"
-                    fi
-                    echo -e "[${UPSD_USERNAME}]\n${UPSD_ACTIONS}    password = ${UPSD_PASSWORD}\n    upsmon ${UPSD_ROLE}" >> "/tmp/upsd.users.autodeploy"
-                done && cat "/tmp/upsd.users.autodeploy" > "/etc/nut/upsd.users" && rm -rf "/tmp/upsd.users.autodeploy"
-            }
-            function Generate_upsmon_conf() {
-                upsmon_list=(
-                    "DEADTIME 15"
-                    "FINALDELAY 5"
-                    "HOSTSYNC 15"
-                    "MINSUPPLIES 1"
-                    "NOCOMMWARNTIME 300"
-                    "POLLFREQ 5"
-                    "POLLFREQALERT 5"
-                    "POWERDOWNFLAG /etc/killpower"
-                    "RBWARNTIME 43200"
-                    'SHUTDOWNCMD "/sbin/shutdown -h +0"'
-                    "MONITOR ${UPSMON_SYSTEM} 1 ${UPSMON_USERNAME} ${UPSMON_PASSWORD} ${UPSMON_ROLE}"
-                )
-                rm -rf "/tmp/upsmon.conf.autodeploy" && for upsmon_list_task in "${!upsmon_list[@]}"; do
-                    echo "${upsmon_list[$upsmon_list_task]}" >> "/tmp/upsmon.conf.autodeploy"
-                done && cat "/tmp/upsmon.conf.autodeploy" > "/etc/nut/upsmon.conf" && rm -rf "/tmp/upsmon.conf.autodeploy"
-            }
-            function Generate_upssched_conf() {
-                upssched_conf=(
-                    "CMDSCRIPT /bin/upssched-cmd"
-                )
-            }
-            NUT_MODE="" # netclient | netserver | none | standalone
-            NUT_HOST="" # localhost
-            rm -rf /etc/nut/*.* && case ${NUT_MODE:-none} in
-                netclient)
-                    Create_upsd_users
-                    UPSMON_USERNAME=$(echo "${upsd_user_list[*]}" | cut -d ' ' -f 2 | cut -d ',' -f 1)
-                    UPSMON_PASSWORD=$(echo "${upsd_user_list[*]}" | cut -d ' ' -f 2 | cut -d ',' -f 2)
-                    UPSMON_ROLE=$(echo "${upsd_user_list[*]}" | cut -d ' ' -f 2 | cut -d ',' -f 3)
-                    UPSMON_SYSTEM="${UPS_NAME-ups}@${NUT_HOST:-localhost}"
-                    nut_service_list=(
-                        "nut-client,enabled"
-                        "nut-driver,disabled"
-                        "nut-monitor,enabled"
-                        "nut-server,disabled"
-                    )
-                    Generate_nut_conf
-                    Generate_upsmon_conf
-                    Generate_upssched_conf
-                    ;;
-                netserver|standalone)
-                    Create_upsd_users
-                    UPSMON_USERNAME=$(echo "${upsd_user_list[*]}" | cut -d ' ' -f 1 | cut -d ',' -f 1)
-                    UPSMON_PASSWORD=$(echo "${upsd_user_list[*]}" | cut -d ' ' -f 1 | cut -d ',' -f 2)
-                    UPSMON_ROLE=$(echo "${upsd_user_list[*]}" | cut -d ' ' -f 1 | cut -d ',' -f 3)
-                    UPSMON_SYSTEM="${UPS_NAME-ups}@localhost"
-                    nut_service_list=(
-                        "nut-client,enabled"
-                        "nut-driver,enabled"
-                        "nut-monitor,enabled"
-                        "nut-server,enabled"
-                    )
-                    Generate_nut_conf
-                    Generate_ups_conf
-                    Generate_upsd_conf
-                    Generate_upsd_users
-                    Generate_upsmon_conf
-                    Generate_upssched_conf
-                    ;;
-                none)
-                    nut_service_list=(
-                        "nut-client,disable"
-                        "nut-driver,disable"
-                        "nut-monitor,disable"
-                        "nut-server,disable"
-                    )
-                    Generate_nut_conf
-                    ;;
-            esac && chown -R root:nut "/etc/nut" && chmod 640 /etc/nut/*.*
-            for nut_service_list_task in "${!nut_service_list[@]}"; do
-                NUT_SERVICE_NAME=$(echo "${nut_service_list[$nut_service_list_task]}" | cut -d ',' -f 1)
-                NUT_SERVICE_STATUS=$(echo "${nut_service_list[$nut_service_list_task]}" | cut -d ',' -f 2)
-                systemctl ${NUT_SERVICE_STATUS} ${NUT_SERVICE_NAME} > "/dev/null" 2>&1
-            done
-        fi
-    }
     function ConfigureOpenSSH() {
         OPENSSH_PASSWORD=""
         which "ssh-keygen" > "/dev/null" 2>&1
@@ -692,33 +511,6 @@ function ConfigurePackages() {
                 chattr -i "/etc/resolv.conf" > "/dev/null" 2>&1
                 rm -rf "/etc/resolv.conf" && ln -s "/run/systemd/resolve/resolv.conf" "/etc/resolv.conf"
             fi
-        fi
-    }
-    function ConfigureSNMP() {
-        SNMP_AUTH_PASS="${DEFAULT_PASSWORD}"
-        SNMP_PRIV_PASS="${ROOT_PASSWORD}"
-        SNMP_SYS_CONTACT="${DEFAULT_FULLNAME}"
-        SNMP_SYS_LOCATION="${NEW_HOSTNAME}"
-        SNMP_SYS_NAME="${NEW_FULL_DOMAIN}"
-        SNMP_USER="${DEFAULT_USERNAME}"
-        snmp_list=(
-            "agentaddress udp:161,udp6:161"
-            "master agentx"
-            "rouser ${SNMP_USER}"
-            "sysContact ${SNMP_SYS_CONTACT}"
-            "sysLocation ${SNMP_SYS_LOCATION}"
-            "sysName ${SNMP_SYS_NAME}"
-            "sysServices 76"
-        )
-        which "snmpwalk" > "/dev/null" 2>&1
-        if [ "$?" -eq "0" ]; then
-            systemctl stop snmpd
-            kill $(ps -ef | grep snmp | grep -v 'grep' | cut -d ' ' -f 3) > "/dev/null" 2>&1
-            sed -i 's/^mibs :/# mibs :/g' "/etc/snmp/snmp.conf"
-            echo "createUser ${SNMP_USER} SHA \"${SNMP_AUTH_PASS}\" AES \"${SNMP_PRIV_PASS}\"" > "/var/lib/snmp/snmpd.conf"
-            rm -rf "/tmp/snmp.autodeploy" && for snmp_list_task in "${!snmp_list[@]}"; do
-                echo "${snmp_list[$snmp_list_task]}" >> "/tmp/snmp.autodeploy"
-            done && cat "/tmp/snmp.autodeploy" | sort > "/etc/snmp/snmpd.conf" && rm -rf "/tmp/snmp.autodeploy" && systemctl start snmpd && snmpwalk -v3 -a SHA -A ${SNMP_AUTH_PASS} -x AES -X ${SNMP_PRIV_PASS} -l authPriv -u ${SNMP_USER} 127.0.0.1 | head
         fi
     }
     function ConfigureSshd() {
@@ -833,7 +625,6 @@ function ConfigurePackages() {
         GenerateOMZProfile
     }
     ConfigureAPT
-    ConfigureChrony
     ConfigureCrontab
     ConfigureCrowdSec
     ConfigureDockerEngine
@@ -842,11 +633,9 @@ function ConfigurePackages() {
     ConfigureGPG && ConfigureGit
     ConfigureGrub
     ConfigureLLDPD
-    ConfigureNut
     ConfigureOpenSSH
     ConfigurePostfix
     ConfigurePythonPyPI
-    ConfigureSNMP
     ConfigureSshd
     ConfigureSysctl
     ConfigureTuned
@@ -1088,12 +877,20 @@ function InstallCustomPackages() {
 }
 # Install Dependency Packages
 function InstallDependencyPackages() {
+    app_omv_list=(
+        "openmediavault-diskstats"
+        "openmediavault-ftp"
+        "openmediavault-lvm2"
+        "openmediavault-nut"
+        "openmediavault-onedrive"
+        "openmediavault-snmp"
+        "openmediavault-tftp"
+    )
     app_regular_list=(
         "apt-file"
         "apt-transport-https"
         "bc"
         "ca-certificates"
-        "chrony"
         "curl"
         "dnsutils"
         "ethtool"
@@ -1105,7 +902,6 @@ function InstallDependencyPackages() {
         "iperf3"
         "jq"
         "knot-dnsutils"
-        "libsnmp-dev"
         "lldpd"
         "lm-sensors"
         "lsb-release"
@@ -1116,13 +912,6 @@ function InstallDependencyPackages() {
         "net-tools"
         "nmap"
         "ntfs-3g"
-        "nut"
-        "nut-i2c"
-        "nut-ipmi"
-        "nut-modbus"
-        "nut-powerman-pdu"
-        "nut-snmp"
-        "nut-xml"
         "openssh-client"
         "openssh-server"
         "p7zip-full"
@@ -1132,9 +921,6 @@ function InstallDependencyPackages() {
         "python3-pip"
         "qrencode"
         "rar"
-        "snmp"
-        "snmp-mibs-downloader"
-        "snmpd"
         "sudo"
         "systemd"
         "tcpdump"
