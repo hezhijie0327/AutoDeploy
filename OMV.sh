@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 1.0.8
+# Current Version: 1.0.9
 
 ## How to get and use?
 # curl "https://source.zhijie.online/AutoDeploy/main/OMV.sh" | sudo bash
@@ -183,6 +183,7 @@ function SetReadonlyFlag() {
         "/etc/apt/preferences"
         "/etc/apt/preferences.d/openmediavault.pref"
         "/etc/apt/sources.list"
+        "/etc/apt/sources.list.d"
         "/etc/apt/sources.list.d/cloudflare.list"
         "/etc/apt/sources.list.d/crowdsec.list"
         "/etc/apt/sources.list.d/docker.list"
