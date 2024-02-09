@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 1.0.4
+# Current Version: 1.0.5
 
 ## How to get and use?
 # curl "https://source.zhijie.online/AutoDeploy/main/OMV.sh" | sudo bash
@@ -217,6 +217,11 @@ function ConfigurePackages() {
             "${LSBCodename} 500"
             "${LSBCodename}-proposed-updates 100"
         )
+        omv_extras_repo_preference_list=(
+            "${OMVCodename} 990"
+            "${OMVCodename}-beta 100"
+            "${OMVCodename}-testing 100"
+        )
         omv_repo_preference_list=(
             "${OMVCodename} 990"
             "${OMVCodename}-proposed 100"
@@ -232,6 +237,14 @@ function ConfigurePackages() {
             fi
             echo -e "Package: *\nPin: release a=${APT_PIN_RELEASE}\nPin-Priority: ${APT_PIN_PRIORITY}\n" >> "/tmp/apt_preference_list.autodeploy"
         done && cat "/tmp/apt_preference_list.autodeploy" | sed '$d' > "/etc/apt/preferences"
+        rm -rf "/tmp/apt_preference_list.autodeploy" && for omv_extras_repo_preference_list_task in "${!omv_extras_repo_preference_list[@]}"; do
+            OMV_EXTRAS_REPO_PIN_RELEASE=$(echo "${omv_extras_repo_preference_list[$omv_extras_repo_preference_list_task]}" | cut -d " " -f 1)
+            OMV_EXTRAS_REPO_PIN_PRIORITY=$(echo "${omv_extras_repo_preference_list[$omv_extras_repo_preference_list_task]}" | cut -d " " -f 2)
+            if [ ! -z $(echo ${OMV_EXTRAS_REPO_PIN_PRIORITY} | grep "[a-z]\|[A-Z]\|-") ]; then
+                OMV_EXTRAS_REPO_PIN_PRIORITY="500"
+            fi
+            echo -e "Package: *\nPin: release a=${OMV_EXTRAS_REPO_PIN_RELEASE}\nPin-Priority: ${OMV_EXTRAS_REPO_PIN_PRIORITY}\n" >> "/tmp/apt_preference_list.autodeploy"
+        done && cat "/tmp/apt_preference_list.autodeploy" | sed '$d' > "/etc/apt/preferences.d/omvextras.pref"
         rm -rf "/tmp/apt_preference_list.autodeploy" && for omv_repo_preference_list_task in "${!omv_repo_preference_list[@]}"; do
             OMV_REPO_PIN_RELEASE=$(echo "${omv_repo_preference_list[$omv_repo_preference_list_task]}" | cut -d " " -f 1)
             OMV_REPO_PIN_PRIORITY=$(echo "${omv_repo_preference_list[$omv_repo_preference_list_task]}" | cut -d " " -f 2)
@@ -352,7 +365,7 @@ function ConfigurePackages() {
             "enabled = true"
             "filter = openmediavault"
             "findtime = 60"
-            "logpath = /var/log/daemon.log"
+            "logpath = /var/log/auth.log"
             "maxretry = 5"
             "port = 80,443"
             "[sshd]"
@@ -909,79 +922,11 @@ function ConfigureSystem() {
             passwd -u "root"
         fi
     }
-    function ConfigureSWAP() {
-        function ClearSWAP() {
-            sysctl_swap_list=(
-                "vm.drop_caches=3"
-                "vm.overcommit_memory=0"
-                "vm.swappiness=0"
-            )
-            which "sysctl" > "/dev/null" 2>&1
-            if [ "$?" -eq "0" ]; then
-                sync && for sysctl_swap_list_task in "${!sysctl_swap_list[@]}"; do
-                    sysctl -w "${sysctl_swap_list[$sysctl_swap_list_task]}"
-                done
-            fi
-        }
-        function CreateSWAP() {
-            truncate -s 0 "/swapfile"
-            chattr +C "/swapfile"
-            fallocate -l ${CUSTOM_SWAP_SIZE:-${SWAP_SIZE}M} "/swapfile"
-            chmod 600 "/swapfile"
-            mkswap "/swapfile"
-            swapon "/swapfile"
-        }
-        function GenerateSWAPSize() {
-            RAM_SIZE=$(awk "BEGIN{print log($(free -m | grep -i "mem" | awk '{print $2}')) / log(2)}")
-            if [ $(echo "${RAM_SIZE}" | grep "\.") != "" ]; then
-                if [ $(echo "${RAM_SIZE}" | cut -d '.' -f 2 | cut -c 1) -gt 5 ]; then
-                    RAM_SIZE=$(( $(echo "${RAM_SIZE}" | cut -d '.' -f 1 ) + 1 ))
-                fi
-            fi
-            if [ "${RAM_SIZE}" -le 11 ]; then
-                SWAP_SIZE=$(echo "2 ^ ${RAM_SIZE} * 2" | bc)
-            elif [ "${RAM_SIZE}" -gt 11 ] && [ "${RAM_SIZE}" -le 13 ]; then
-                SWAP_SIZE=$(echo "2 ^ ${RAM_SIZE}" | bc)
-            elif [ "${RAM_SIZE}" -gt 13 ] && [ "${RAM_SIZE}" -le 16 ]; then
-                SWAP_SIZE=$(echo "2 ^ 12" | bc)
-            else
-                SWAP_SIZE=$(echo "2 ^ 13" | bc)
-            fi
-        }
-        function RemoveSWAP() {
-            SWAPFILE_NAME=($(cat "/proc/swaps" | grep -v "Filename" | awk '{print $1}'))
-            for SWAPFILE_NAME_TASK in "${!SWAPFILE_NAME[@]}"; do
-                swapoff "${SWAPFILE_NAME[$SWAPFILE_NAME_TASK]}" > "/dev/null" 2>&1
-                rm -rf "${SWAPFILE_NAME[$SWAPFILE_NAME_TASK]}"
-            done
-        }
-        function UpdateFSTAB() {
-            cat "/etc/fstab" | grep -v "swap" > "/tmp/fstab.autodeploy"
-            if [ -f "/swapfile" ]; then
-                echo "/swapfile none swap sw 0 0" >> "/tmp/fstab.autodeploy"
-            fi
-            cat "/tmp/fstab.autodeploy" > "/etc/fstab" && rm -rf "/tmp/fstab.autodeploy"
-        }
-        DISABLE_SWAP="false"
-        if [ "${DISABLE_SWAP}" == "true" ]; then
-            ClearSWAP
-            RemoveSWAP
-            UpdateFSTAB
-        else
-            CUSTOM_SWAP_SIZE="" # 1024M / 1G
-            ClearSWAP
-            RemoveSWAP
-            GenerateSWAPSize
-            CreateSWAP
-            UpdateFSTAB
-        fi
-    }
     ConfigureDefaultShell
     ConfigureDefaultUser
     ConfigureGAI
     ConfigureHostfile
     ConfigureRootUser
-    ConfigureSWAP
 }
 # Install Custom Packages
 function InstallCustomPackages() {
@@ -1081,31 +1026,20 @@ function InstallCustomPackages() {
         done
     }
     function InstallOMVExtras() {
+        function SetOMVExtrasRepository() {
+            echo "deb [arch=${OSArchitecture} signed-by=/etc/apt/keyrings/omvextras-archive-keyring.gpg] https://mirrors.tuna.tsinghua.edu.cn/OpenMediaVault/openmediavault-plugin-developers ${OMVCodename} main" > "/etc/apt/sources.list.d/omvextras.list"
+            echo "deb [arch=${OSArchitecture} signed-by=/etc/apt/keyrings/omvextras-archive-keyring.gpg] https://mirrors.tuna.tsinghua.edu.cn/OpenMediaVault/openmediavault-plugin-developers ${OMVCodename}-beta main" >> "/etc/apt/sources.list.d/omvextras.list"
+            echo "deb [arch=${OSArchitecture} signed-by=/etc/apt/keyrings/omvextras-archive-keyring.gpg] https://mirrors.tuna.tsinghua.edu.cn/OpenMediaVault/openmediavault-plugin-developers ${OMVCodename}-testing main" >> "/etc/apt/sources.list.d/omvextras.list"
+        }
         apt_list=(
             "openmediavault-omvextrasorg"
         )
-        rm -rf "/etc/apt/keyrings/omvextras-archive-keyring.gpg" && curl -fsSL "https://mirrors.tuna.tsinghua.edu.cn/OpenMediaVault/openmediavault-plugin-developers/omvextras2026.asc" | gpg --dearmor -o "/etc/apt/keyrings/omvextras-archive-keyring.gpg"
-        echo "deb [arch=${OSArchitecture} signed-by=/etc/apt/keyrings/omvextras-archive-keyring.gpg] https://mirrors.tuna.tsinghua.edu.cn/OpenMediaVault/openmediavault-plugin-developers/${OMVCodename} main binary-${OSArchitecture}" > "/etc/apt/sources.list.d/omvextras.list"
-        echo "deb [arch=${OSArchitecture} signed-by=/etc/apt/keyrings/omvextras-archive-keyring.gpg] https://mirrors.tuna.tsinghua.edu.cn/OpenMediaVault/openmediavault-plugin-developers/${OMVCodename}-beta main binary-${OSArchitecture}" >> "/etc/apt/sources.list.d/omvextras.list"
-        echo "deb [arch=${OSArchitecture} signed-by=/etc/apt/keyrings/omvextras-archive-keyring.gpg] https://mirrors.tuna.tsinghua.edu.cn/OpenMediaVault/openmediavault-plugin-developers/${OMVCodename}-testing main binary-${OSArchitecture}" >> "/etc/apt/sources.list.d/omvextras.list"
-        omv_extras_repo_preference_list=(
-            "${OMVCodename} 990"
-            "${OMVCodename}-beta 100"
-            "${OMVCodename}-testing 100"
-        )
-        rm -rf "/tmp/apt_preference_list.autodeploy" && for omv_extras_repo_preference_list_task in "${!omv_extras_repo_preference_list[@]}"; do
-            OMV_EXTRAS_REPO_PIN_RELEASE=$(echo "${omv_extras_repo_preference_list[$omv_extras_repo_preference_list_task]}" | cut -d " " -f 1)
-            OMV_EXTRAS_REPO_PIN_PRIORITY=$(echo "${omv_extras_repo_preference_list[$omv_extras_repo_preference_list_task]}" | cut -d " " -f 2)
-            if [ ! -z $(echo ${OMV_EXTRAS_REPO_PIN_PRIORITY} | grep "[a-z]\|[A-Z]\|-") ]; then
-                OMV_EXTRAS_REPO_PIN_PRIORITY="500"
-            fi
-            echo -e "Package: *\nPin: release a=${OMV_EXTRAS_REPO_PIN_RELEASE}\nPin-Priority: ${OMV_EXTRAS_REPO_PIN_PRIORITY}\n" >> "/tmp/apt_preference_list.autodeploy"
-        done && cat "/tmp/apt_preference_list.autodeploy" | sed '$d' > "/etc/apt/preferences.d/omvextras.pref"
+        rm -rf "/etc/apt/keyrings/omvextras-archive-keyring.gpg" && curl -fsSL "https://mirrors.tuna.tsinghua.edu.cn/OpenMediaVault/openmediavault-plugin-developers/omvextras2026.asc" | gpg --dearmor -o "/etc/apt/keyrings/omvextras-archive-keyring.gpg" && SetOMVExtrasRepository
         apt update && for app_list_task in "${!app_list[@]}"; do
             apt-cache show ${app_list[$app_list_task]} && if [ "$?" -eq "0" ]; then
                 apt install -qy ${app_list[$app_list_task]}
             fi
-        done
+        done && SetOMVExtrasRepository
     }
     function InstallXanModKernel() {
         # Note: The current NVIDIA, OpenZFS, VirtualBox, VMware Workstation / Player and some other dkms modules may not officially support EDGE and RT branch kernels.
@@ -1147,6 +1081,7 @@ function InstallDependencyPackages() {
     app_regular_list=(
         "apt-file"
         "apt-transport-https"
+        "bc"
         "ca-certificates"
         "chrony"
         "curl"
