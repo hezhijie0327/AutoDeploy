@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 1.0.7
+# Current Version: 1.0.8
 
 ## How to get and use?
 # curl "https://source.zhijie.online/AutoDeploy/main/OMV.sh" | sudo bash
@@ -104,12 +104,6 @@ function GetSystemInformation() {
             fi
         fi
     }
-    function GetManagementIPAddress() {
-        MAMAGEMENT_IP=""
-        if [ "${MAMAGEMENT_IP}" == "" ]; then
-            MANAGEMENT_IP=$(ip address | grep "inet" | grep -v "127.0.0.1\|::1\|docker0" | awk '{print $2}' | sort | head -n 1 | sed "s/\/.*//")
-        fi
-    }
     function GetOSArchitecture() {
         which "dpkg" > "/dev/null" 2>&1
         if [ "$?" -eq "0" ]; then
@@ -128,6 +122,12 @@ function GetSystemInformation() {
             export GHPROXY_URL="https://${GHPROXY_URL}/"
         fi
     }
+    function SetManagementIPAddress() {
+        MAMAGEMENT_IP=""
+        if [ "${MAMAGEMENT_IP}" == "" ]; then
+            MANAGEMENT_IP=$(ip address | grep "inet" | grep -v "127.0.0.1\|::1\|docker0" | awk '{print $2}' | sort | head -n 1 | sed "s/\/.*//")
+        fi
+    }
     function SetPackageCodename() {
         OMVCodename="shaitan"
         LSBCodename="bullseye"
@@ -140,6 +140,7 @@ function GetSystemInformation() {
     GetHostname
     GetOSArchitecture
     SetGHProxyDomain
+    SetManagementIPAddress
     SetPackageCodename
 }
 # Set Repository Mirror
@@ -180,14 +181,12 @@ function SetRepositoryMirror() {
 function SetReadonlyFlag() {
     file_list=(
         "/etc/apt/preferences"
-        "/etc/apt/preferences.d/omvextras.pref"
         "/etc/apt/preferences.d/openmediavault.pref"
         "/etc/apt/sources.list"
         "/etc/apt/sources.list.d/cloudflare.list"
         "/etc/apt/sources.list.d/crowdsec.list"
         "/etc/apt/sources.list.d/docker.list"
         "/etc/apt/sources.list.d/frrouting.list"
-        "/etc/apt/sources.list.d/omvextras.list"
         "/etc/apt/sources.list.d/openmediavault.list"
         "/etc/apt/sources.list.d/xanmod.list"
         "/etc/chrony/chrony.conf"
@@ -228,11 +227,6 @@ function ConfigurePackages() {
             "${LSBCodename} 500"
             "${LSBCodename}-proposed-updates 100"
         )
-        omv_extras_repo_preference_list=(
-            "${OMVCodename} 990"
-            "${OMVCodename}-beta 100"
-            "${OMVCodename}-testing 100"
-        )
         omv_repo_preference_list=(
             "${OMVCodename} 990"
             "${OMVCodename}-proposed 100"
@@ -248,14 +242,6 @@ function ConfigurePackages() {
             fi
             echo -e "Package: *\nPin: release a=${APT_PIN_RELEASE}\nPin-Priority: ${APT_PIN_PRIORITY}\n" >> "/tmp/apt_preference_list.autodeploy"
         done && cat "/tmp/apt_preference_list.autodeploy" | sed '$d' > "/etc/apt/preferences"
-        rm -rf "/tmp/apt_preference_list.autodeploy" && for omv_extras_repo_preference_list_task in "${!omv_extras_repo_preference_list[@]}"; do
-            OMV_EXTRAS_REPO_PIN_RELEASE=$(echo "${omv_extras_repo_preference_list[$omv_extras_repo_preference_list_task]}" | cut -d " " -f 1)
-            OMV_EXTRAS_REPO_PIN_PRIORITY=$(echo "${omv_extras_repo_preference_list[$omv_extras_repo_preference_list_task]}" | cut -d " " -f 2)
-            if [ ! -z $(echo ${OMV_EXTRAS_REPO_PIN_PRIORITY} | grep "[a-z]\|[A-Z]\|-") ]; then
-                OMV_EXTRAS_REPO_PIN_PRIORITY="500"
-            fi
-            echo -e "Package: *\nPin: release a=${OMV_EXTRAS_REPO_PIN_RELEASE}\nPin-Priority: ${OMV_EXTRAS_REPO_PIN_PRIORITY}\n" >> "/tmp/apt_preference_list.autodeploy"
-        done && cat "/tmp/apt_preference_list.autodeploy" | sed '$d' > "/etc/apt/preferences.d/omvextras.pref"
         rm -rf "/tmp/apt_preference_list.autodeploy" && for omv_repo_preference_list_task in "${!omv_repo_preference_list[@]}"; do
             OMV_REPO_PIN_RELEASE=$(echo "${omv_repo_preference_list[$omv_repo_preference_list_task]}" | cut -d " " -f 1)
             OMV_REPO_PIN_PRIORITY=$(echo "${omv_repo_preference_list[$omv_repo_preference_list_task]}" | cut -d " " -f 2)
@@ -1066,22 +1052,6 @@ function InstallCustomPackages() {
             echo "${plugin_upgrade_list[$plugin_upgrade_list_task]}" >> "/etc/zsh/oh-my-zsh/oh-my-zsh-plugin.sh"
         done
     }
-    function InstallOMVExtras() {
-        function SetOMVExtrasRepository() {
-            echo "deb [arch=${OSArchitecture} signed-by=/etc/apt/keyrings/omvextras-archive-keyring.gpg] https://mirrors.tuna.tsinghua.edu.cn/OpenMediaVault/openmediavault-plugin-developers ${OMVCodename} main" > "/etc/apt/sources.list.d/omvextras.list"
-            echo "deb [arch=${OSArchitecture} signed-by=/etc/apt/keyrings/omvextras-archive-keyring.gpg] https://mirrors.tuna.tsinghua.edu.cn/OpenMediaVault/openmediavault-plugin-developers ${OMVCodename}-beta main" >> "/etc/apt/sources.list.d/omvextras.list"
-            echo "deb [arch=${OSArchitecture} signed-by=/etc/apt/keyrings/omvextras-archive-keyring.gpg] https://mirrors.tuna.tsinghua.edu.cn/OpenMediaVault/openmediavault-plugin-developers ${OMVCodename}-testing main" >> "/etc/apt/sources.list.d/omvextras.list"
-        }
-        apt_list=(
-            "openmediavault-omvextrasorg"
-        )
-        rm -rf "/etc/apt/keyrings/omvextras-archive-keyring.gpg" && curl -fsSL "https://mirrors.tuna.tsinghua.edu.cn/OpenMediaVault/openmediavault-plugin-developers/omvextras2026.asc" | gpg --dearmor -o "/etc/apt/keyrings/omvextras-archive-keyring.gpg" && SetOMVExtrasRepository
-        apt update && for app_list_task in "${!app_list[@]}"; do
-            apt-cache show ${app_list[$app_list_task]} && if [ "$?" -eq "0" ]; then
-                apt install -qy ${app_list[$app_list_task]}
-            fi
-        done && SetOMVExtrasRepository
-    }
     function InstallXanModKernel() {
         # Note: The current NVIDIA, OpenZFS, VirtualBox, VMware Workstation / Player and some other dkms modules may not officially support EDGE and RT branch kernels.
         # How to fix "modinfo: ERROR: Module tcp_bbr not found." -> sudo depmod && modinfo tcp_bbr
@@ -1114,7 +1084,6 @@ function InstallCustomPackages() {
     InstallDockerEngine
     InstallFRRouting
     InstallOhMyZsh
-    InstallOMVExtras
     InstallXanModKernel
 }
 # Install Dependency Packages
