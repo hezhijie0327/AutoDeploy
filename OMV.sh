@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 1.0.6
+# Current Version: 1.0.7
 
 ## How to get and use?
 # curl "https://source.zhijie.online/AutoDeploy/main/OMV.sh" | sudo bash
@@ -102,6 +102,12 @@ function GetSystemInformation() {
             if [ "$?" -eq "0" ]; then
                 OLD_HOSTNAME=$(hostname)
             fi
+        fi
+    }
+    function GetManagementIPAddress() {
+        MAMAGEMENT_IP=""
+        if [ "${MAMAGEMENT_IP}" == "" ]; then
+            MANAGEMENT_IP=$(ip address | grep "inet" | grep -v "127.0.0.1\|::1\|docker0" | awk '{print $2}' | sort | head -n 1 | sed "s/\/.*//")
         fi
     }
     function GetOSArchitecture() {
@@ -745,7 +751,7 @@ function ConfigurePackages() {
         bridge_interface=(
             "all"
             "default"
-            $(cat "/proc/net/dev" | grep -v "docker0\|lo\|wg0" | grep "\:" | sed "s/[[:space:]]//g" | cut -d ":" -f 1 | sort | uniq | grep "vmbr" | awk "{print $2}")
+            $(cat "/proc/net/dev" | grep -v "docker0\|lo\|wg0" | grep "\:" | sed "s/[[:space:]]//g" | cut -d ":" -f 1 | sort | uniq | awk "{print $2}")
         )
         sysctl_list=(
             "net.core.default_qdisc = fq_pie"
@@ -927,8 +933,8 @@ function ConfigureSystem() {
             NEW_FULL_DOMAIN=$(echo "${NEW_FULL_DOMAIN}" | sed "s/^\ //g;s/^${NEW_HOSTNAME}.$//g")
         done
         host_list=(
+            "${MAMAGEMENT_IP} ${NEW_FULL_DOMAIN} ${NEW_HOSTNAME}"
             "127.0.0.1 localhost"
-            "127.0.1.1 ${NEW_HOSTNAME}"
             "255.255.255.255 broadcasthost"
             "::1 ip6-localhost ip6-loopback localhost"
             "fe00::0 ip6-localnet"
@@ -951,11 +957,17 @@ function ConfigureSystem() {
             passwd -u "root"
         fi
     }
+    function ConfigureTimeZone() {
+        if [ -f "/etc/localtime" ]; then
+            rm -rf "/etc/localtime"
+        fi && ln -s "/usr/share/zoneinfo/Asia/Shanghai" "/etc/localtime"
+    }
     ConfigureDefaultShell
     ConfigureDefaultUser
     ConfigureGAI
     ConfigureHostfile
     ConfigureRootUser
+    ConfigureTimeZone
 }
 # Install Custom Packages
 function InstallCustomPackages() {
