@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 1.0.5
+# Current Version: 1.0.6
 
 ## How to get and use?
 # curl "https://source.zhijie.online/AutoDeploy/main/Debian.sh" | sudo bash
@@ -1072,7 +1072,7 @@ function ConfigureSystem() {
             DEFAULT_LASTNAME="Debian"
             DEFAULT_FULLNAME="${DEFAULT_LASTNAME} ${DEFAULT_FIRSTNAME}"
             DEFAULT_USERNAME="debian"
-            DEFAULT_PASSWORD='*Debain123*'
+            DEFAULT_PASSWORD='*Debian123*'
             crontab_list=(
                 "@reboot rm -rf /home/${DEFAULT_USERNAME}/.*_history /home/${DEFAULT_USERNAME}/.ssh/known_hosts*"
             )
