@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 5.2.6
+# Current Version: 5.2.7
 
 ## How to get and use?
 # curl "https://source.zhijie.online/AutoDeploy/main/Ubuntu.sh" | sudo bash
@@ -268,8 +268,8 @@ function GetSystemInformation() {
             export GHPROXY_URL="https://${GHPROXY_URL}/"
         fi
     }
-    CheckDNSConfiguration && ConfigureResolved
-    GenerateDomain && CheckMachineEnvironment
+    CheckDNSConfiguration
+    GenerateDomain && ConfigureResolved && CheckMachineEnvironment
     GenerateHostname
     GetCPUpsABILevel
     GetCPUVendorID
