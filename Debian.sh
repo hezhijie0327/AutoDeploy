@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 1.0.2
+# Current Version: 1.0.3
 
 ## How to get and use?
 # curl "https://source.zhijie.online/AutoDeploy/main/Debian.sh" | sudo bash
@@ -582,11 +582,12 @@ function ConfigurePackages() {
         fi
     }
     function ConfigureGrub() {
-        which "update-grub" > "/dev/null" 2>&1
-        if [ "$?" -eq "0" ]; then
-            if [ "${container_environment}" != "docker" ] && [ "${container_environment}" != "lxc" ] && [ "${container_environment}" != "wsl2" ]; then
+        if [ "${container_environment}" != "docker" ] && [ "${container_environment}" != "lxc" ] && [ "${container_environment}" != "wsl2" ]; then
+            apt purge -qy grub-efi grub-legacy && apt update && apt install -qy grub-efi grub-legacy
+            which "update-grub" > "/dev/null" 2>&1
+            if [ "$?" -eq "0" ]; then
                 if [ -f "/usr/share/grub/default/grub" ]; then
-                    rm -rf "/tmp/grub.autodeploy" && cat "/usr/share/grub/default/grub" > "/tmp/grub.autodeploy" && cat "/tmp/grub.autodeploy" > "/etc/default/grub" && update-grub && rm -rf "/tmp/grub.autodeploy"
+                    rm -rf "/tmp/grub.autodeploy" && cat "/usr/share/grub/default/grub" > "/tmp/grub.autodeploy" && cat "/tmp/grub.autodeploy" > "/etc/default/grub" && update-grub && grub-install && rm -rf "/tmp/grub.autodeploy"
                 fi
             fi
         fi
@@ -1379,8 +1380,6 @@ function InstallDependencyPackages() {
         "cockpit"
         "cockpit-pcp"
         "fail2ban"
-        "grub-leagacy"
-        "grub-efi"
         "libsnmp-dev"
         "lldpd"
         "netplan.io"
