@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 5.2.7
+# Current Version: 5.2.8
 
 ## How to get and use?
 # curl "https://source.zhijie.online/AutoDeploy/main/Ubuntu.sh" | sudo bash
@@ -94,66 +94,6 @@ function GetSystemInformation() {
         }
         CheckContainerEnvironment
         CheckHypervisorEnvironment
-    }
-    function ConfigureResolved() {
-        resolved_list=(
-            "[Resolve]"
-            "DNS=${DNS_LINE}"
-            "DNSOverTLS=opportunistic"
-            "DNSSEC=allow-downgrade"
-            "DNSStubListener=false"
-            "Domains=${NEW_DOMAIN[*]}"
-        )
-        which "resolvectl" > "/dev/null" 2>&1
-        if [ "$?" -eq "0" ]; then
-            if [ "${container_environment}" != "docker" ]; then
-                if [ ! -d "/etc/systemd/resolved.conf.d" ]; then
-                    mkdir "/etc/systemd/resolved.conf.d"
-                else
-                    rm -rf /etc/systemd/resolved.conf.d/*.conf
-                fi
-                rm -rf "/tmp/resolved.autodeploy" && for resolved_list_task in "${!resolved_list[@]}"; do
-                    echo "${resolved_list[$resolved_list_task]}" | sed "s/DNS\=\ /DNS\=/g" >> "/tmp/resolved.autodeploy"
-                done && cat "/tmp/resolved.autodeploy" > "/etc/systemd/resolved.conf.d/resolved.conf" && OPRATIONS="restart" && SERVICE_NAME="systemd-resolved" && CallServiceController && rm -rf "/tmp/resolved.autodeploy" && if [ -f "/etc/resolv.conf" ]; then
-                    chattr -i "/etc/resolv.conf" > "/dev/null" 2>&1
-                    rm -rf "/etc/resolv.conf" && ln -s "/run/systemd/resolve/resolv.conf" "/etc/resolv.conf"
-                fi
-            else
-                resolv_conf_list=(
-                    ${CURRENT_DNS[@]}
-                    ${CUSTOM_DNS[@]}
-                )
-                rm -rf "/tmp/resolv.autodeploy" && DNS_COUNT="1" && for resolv_conf_list_task in "${!resolv_conf_list[@]}"; do
-                    if [ "${DNS_COUNT}" -gt "3" ]; then
-                        break
-                    else
-                        echo "nameserver ${resolv_conf_list[$resolv_conf_list_task]}" >> "/tmp/resolv.autodeploy"
-                    fi && DNS_COUNT=$(( ${DNS_COUNT} + 1 ))
-                done && echo "search ${NEW_DOMAIN[*]}" >> "/tmp/resolv.autodeploy" && if [ -f "/etc/resolv.conf" ]; then
-                    chattr -i "/etc/resolv.conf" > "/dev/null" 2>&1
-                    if [ "$?" -eq "1" ]; then
-                        rm -rf "/etc/resolv.conf"
-                    fi
-                fi && rm -rf "/etc/resolv.conf" && cat "/tmp/resolv.autodeploy" > "/etc/resolv.conf" && rm -rf "/tmp/resolv.autodeploy" && chattr +i "/etc/resolv.conf"
-            fi
-        else
-            resolv_conf_list=(
-                ${CURRENT_DNS[@]}
-                ${CUSTOM_DNS[@]}
-            )
-            rm -rf "/tmp/resolv.autodeploy" && DNS_COUNT="1" && for resolv_conf_list_task in "${!resolv_conf_list[@]}"; do
-                if [ "${DNS_COUNT}" -gt "3" ]; then
-                    break
-                else
-                    echo "nameserver ${resolv_conf_list[$resolv_conf_list_task]}" >> "/tmp/resolv.autodeploy"
-                fi && DNS_COUNT=$(( ${DNS_COUNT} + 1 ))
-            done && echo "search ${NEW_DOMAIN[*]}" >> "/tmp/resolv.autodeploy" && if [ -f "/etc/resolv.conf" ]; then
-                chattr -i "/etc/resolv.conf" > "/dev/null" 2>&1
-                if [ "$?" -eq "1" ]; then
-                    rm -rf "/etc/resolv.conf"
-                fi
-            fi && rm -rf "/etc/resolv.conf" && cat "/tmp/resolv.autodeploy" > "/etc/resolv.conf" && rm -rf "/tmp/resolv.autodeploy" && chattr +i "/etc/resolv.conf"
-        fi
     }
     function GenerateDomain() {
         RESET_DOMAIN="false"
@@ -269,7 +209,7 @@ function GetSystemInformation() {
         fi
     }
     CheckDNSConfiguration
-    GenerateDomain && ConfigureResolved && CheckMachineEnvironment
+    GenerateDomain && CheckMachineEnvironment
     GenerateHostname
     GetCPUpsABILevel
     GetCPUVendorID
@@ -852,6 +792,66 @@ function ConfigurePackages() {
                 mkdir "/home/${DEFAULT_USERNAME}/.config/pip"
             fi
             rm -rf "/home/${DEFAULT_USERNAME}/.config/pip/pip.conf" && cp -rf "/root/.config/pip/pip.conf" "/home/${DEFAULT_USERNAME}/.config/pip/pip.conf" && chown -R $DEFAULT_USERNAME:$DEFAULT_USERNAME "/home/${DEFAULT_USERNAME}/.config" && chown -R $DEFAULT_USERNAME:$DEFAULT_USERNAME "/home/${DEFAULT_USERNAME}/.config/pip" && chown -R $DEFAULT_USERNAME:$DEFAULT_USERNAME "/home/${DEFAULT_USERNAME}/.config/pip/pip.conf"
+        fi
+    }
+    function ConfigureResolved() {
+        resolved_list=(
+            "[Resolve]"
+            "DNS=${DNS_LINE}"
+            "DNSOverTLS=opportunistic"
+            "DNSSEC=allow-downgrade"
+            "DNSStubListener=false"
+            "Domains=${NEW_DOMAIN[*]}"
+        )
+        which "resolvectl" > "/dev/null" 2>&1
+        if [ "$?" -eq "0" ]; then
+            if [ "${container_environment}" != "docker" ]; then
+                if [ ! -d "/etc/systemd/resolved.conf.d" ]; then
+                    mkdir "/etc/systemd/resolved.conf.d"
+                else
+                    rm -rf /etc/systemd/resolved.conf.d/*.conf
+                fi
+                rm -rf "/tmp/resolved.autodeploy" && for resolved_list_task in "${!resolved_list[@]}"; do
+                    echo "${resolved_list[$resolved_list_task]}" | sed "s/DNS\=\ /DNS\=/g" >> "/tmp/resolved.autodeploy"
+                done && cat "/tmp/resolved.autodeploy" > "/etc/systemd/resolved.conf.d/resolved.conf" && OPRATIONS="restart" && SERVICE_NAME="systemd-resolved" && CallServiceController && rm -rf "/tmp/resolved.autodeploy" && if [ -f "/etc/resolv.conf" ]; then
+                    chattr -i "/etc/resolv.conf" > "/dev/null" 2>&1
+                    rm -rf "/etc/resolv.conf" && ln -s "/run/systemd/resolve/resolv.conf" "/etc/resolv.conf"
+                fi
+            else
+                resolv_conf_list=(
+                    ${CURRENT_DNS[@]}
+                    ${CUSTOM_DNS[@]}
+                )
+                rm -rf "/tmp/resolv.autodeploy" && DNS_COUNT="1" && for resolv_conf_list_task in "${!resolv_conf_list[@]}"; do
+                    if [ "${DNS_COUNT}" -gt "3" ]; then
+                        break
+                    else
+                        echo "nameserver ${resolv_conf_list[$resolv_conf_list_task]}" >> "/tmp/resolv.autodeploy"
+                    fi && DNS_COUNT=$(( ${DNS_COUNT} + 1 ))
+                done && echo "search ${NEW_DOMAIN[*]}" >> "/tmp/resolv.autodeploy" && if [ -f "/etc/resolv.conf" ]; then
+                    chattr -i "/etc/resolv.conf" > "/dev/null" 2>&1
+                    if [ "$?" -eq "1" ]; then
+                        rm -rf "/etc/resolv.conf"
+                    fi
+                fi && rm -rf "/etc/resolv.conf" && cat "/tmp/resolv.autodeploy" > "/etc/resolv.conf" && rm -rf "/tmp/resolv.autodeploy" && chattr +i "/etc/resolv.conf"
+            fi
+        else
+            resolv_conf_list=(
+                ${CURRENT_DNS[@]}
+                ${CUSTOM_DNS[@]}
+            )
+            rm -rf "/tmp/resolv.autodeploy" && DNS_COUNT="1" && for resolv_conf_list_task in "${!resolv_conf_list[@]}"; do
+                if [ "${DNS_COUNT}" -gt "3" ]; then
+                    break
+                else
+                    echo "nameserver ${resolv_conf_list[$resolv_conf_list_task]}" >> "/tmp/resolv.autodeploy"
+                fi && DNS_COUNT=$(( ${DNS_COUNT} + 1 ))
+            done && echo "search ${NEW_DOMAIN[*]}" >> "/tmp/resolv.autodeploy" && if [ -f "/etc/resolv.conf" ]; then
+                chattr -i "/etc/resolv.conf" > "/dev/null" 2>&1
+                if [ "$?" -eq "1" ]; then
+                    rm -rf "/etc/resolv.conf"
+                fi
+            fi && rm -rf "/etc/resolv.conf" && cat "/tmp/resolv.autodeploy" > "/etc/resolv.conf" && rm -rf "/tmp/resolv.autodeploy" && chattr +i "/etc/resolv.conf"
         fi
     }
     function ConfigureSNMP() {
