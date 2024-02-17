@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 3.7.9
+# Current Version: 3.8.0
 
 ## How to get and use?
 # curl "https://source.zhijie.online/AutoDeploy/main/ProxmoxVE.sh" | sudo bash
@@ -463,15 +463,21 @@ function ConfigurePackages() {
     }
     function ConfigureGrub() {
         DISABLE_DISPLAY="false"
+        PATCH_INTEL_82599_SFP="false"
         if [ "${DISABLE_DISPLAY}" == "true" ]; then
             DISABLE_DISPLAY=" video=efifb:off,vesafb:off"
         else
             DISABLE_DISPLAY=""
         fi
+        if [ "${PATCH_INTEL_82599_SFP}" == "true" ]; then
+            PATCH_INTEL_82599_SFP=" ixgbe.allow_unsupported_sfp=1"
+        else
+            PATCH_INTEL_82599_SFP=""
+        fi
         which "update-grub" > "/dev/null" 2>&1
         if [ "$?" -eq "0" ]; then
             if [ -f "/usr/share/grub/default/grub" ]; then
-                rm -rf "/tmp/grub.autodeploy" && cat "/usr/share/grub/default/grub" | sed "s/GRUB\_CMDLINE\_LINUX\_DEFAULT\=\"quiet\"/GRUB\_CMDLINE\_LINUX\_DEFAULT\=\"quiet${DISABLE_DISPLAY}${ENABLE_IOMMU}\"/g" > "/tmp/grub.autodeploy" && cat "/tmp/grub.autodeploy" > "/etc/default/grub" && update-grub && rm -rf "/tmp/grub.autodeploy"
+                rm -rf "/tmp/grub.autodeploy" && cat "/usr/share/grub/default/grub" | sed "s/GRUB\_CMDLINE\_LINUX\_DEFAULT\=\"quiet\"/GRUB\_CMDLINE\_LINUX\_DEFAULT\=\"quiet${PATCH_INTEL_82599_SFP}${DISABLE_DISPLAY}${ENABLE_IOMMU}\"/g" > "/tmp/grub.autodeploy" && cat "/tmp/grub.autodeploy" > "/etc/default/grub" && update-grub && rm -rf "/tmp/grub.autodeploy"
             fi
         fi
     }
