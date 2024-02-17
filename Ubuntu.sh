@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 5.3.1
+# Current Version: 5.3.2
 
 ## How to get and use?
 # curl "https://source.zhijie.online/AutoDeploy/main/Ubuntu.sh" | sudo bash
@@ -921,6 +921,18 @@ function ConfigurePackages() {
             done && cat "/tmp/sysctl.autodeploy" | sort | uniq > "/etc/sysctl.conf" && sysctl -p && rm -rf "/tmp/sysctl.autodeploy"
         fi
     }
+    function CondigureSystemd() {
+        if [ "${container_environment}" != "docker" ]; then
+            systemd_list=(
+                "systemd-networkd-wait-online,disable"
+            )
+            for systemd_list_task in "${!systemd_list[@]}"; do
+                OPERATIONS=$(echo "${systemd_list[$systemd_list_task]}" | cut -d ',' -f 2)
+                SERVICE_NAME=$(echo "${systemd_list[$systemd_list_task]}" | cut -d ',' -f 1)
+                CallServiceController
+            done
+        fi
+    }
     function ConfigureTuned() {
         which "tuned-adm" > "/dev/null" 2>&1
         if [ "$?" -eq "0" ]; then
@@ -1084,6 +1096,8 @@ function ConfigurePackages() {
     ConfigureResolved
     ConfigureSshd
     ConfigureSysctl
+    ConfigureSystemd
+    ConfigureTuned
     ConfigureUfw
     ConfigureWireGuard
     ConfigureZsh
