@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 3.8.0
+# Current Version: 3.8.1
 
 ## How to get and use?
 # curl "https://source.zhijie.online/AutoDeploy/main/ProxmoxVE.sh" | sudo bash
@@ -1402,6 +1402,12 @@ function UpgradePackages() {
 function CleanupTempFiles() {
     apt clean && rm -rf /etc/apt/sources.list.d/pve-enterprise.list* /root/.*_history /tmp/*
 }
+# Cleanup Outage Kernels
+function CleanupOutageKernels() {
+    latest_kernel=$(dpkg -l | awk '/proxmox-kernel-.*-pve/{print $2}' | sort -V | tail -n 1)
+    kernel_list=($(dpkg -l | awk '/proxmox-kernel-.*-pve/{print $2}' | sort -V | grep -v "$latest_pve_kernel"))
+    apt purge -qy $kernel_list && apt autoremove -qy --purge
+}
 
 ## Process
 # Set DEBIAN_FRONTEND to "noninteractive"
@@ -1428,3 +1434,5 @@ ConfigurePackages
 read_only="TRUE" && SetReadonlyFlag
 # Call CleanupTempFiles
 CleanupTempFiles
+# Call CleanupOutageKernels
+CleanupOutageKernels
