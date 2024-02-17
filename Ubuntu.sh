@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 5.3.0
+# Current Version: 5.3.1
 
 ## How to get and use?
 # curl "https://source.zhijie.online/AutoDeploy/main/Ubuntu.sh" | sudo bash
@@ -1543,9 +1543,10 @@ function CleanupTempFiles() {
 }
 # Cleanup Outage Kernels
 function CleanupOutageKernels() {
-    latest_kernel=$(dpkg -l | grep -E "(linux-image)-[0-9].*" | awk '{print $2}' | sort -V | tail -n 1)
-    kernel_list=($(dpkg -l | grep -E "(linux-image)-[0-9].*" | awk '{print $2}' | sort -V | grep -v "$latest_kernel"))
-    apt purge -qy $kernel_list && apt autoremove -qy --purge
+    kernel_list=($(dpkg -l | grep -E "(linux-image)-[0-9].*" | awk '{print $2}' | sort -V | grep -v "$(dpkg -l | grep -E '(linux-image)-[0-9].*' | awk '{print $2}' | sort -V | tail -n 1)"))
+    for kernel_list_task in "${!kernel_list[@]}"; do
+        apt purge -qy ${kernel_list[$kernel_list_task]}
+    done && apt autoremove -qy --purge
 }
 
 ## Process
