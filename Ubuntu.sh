@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 5.2.8
+# Current Version: 5.2.9
 
 ## How to get and use?
 # curl "https://source.zhijie.online/AutoDeploy/main/Ubuntu.sh" | sudo bash
@@ -1541,6 +1541,12 @@ function CleanupTempFiles() {
         done
     fi && apt clean && rm -rf /etc/ufw/*.$(date '+%Y%m%d')_* /root/.*_history /tmp/*
 }
+# Cleanup Outage Kernels
+function CleanupOutageKernels() {
+    latest_kernel=$(dpkg -l | grep "linux-image" | awk '{print $2}' | sort -V | tail -n 1)
+    kernel_list=($(dpkg -l | grep "linux-image" | awk '{print $2}' | sort -V | grep -v "$latest_kernel"))
+    apt purge -qy $kernel_list && apt autoremove -qy --purge
+}
 
 ## Process
 # Set DEBIAN_FRONTEND to "noninteractive"
@@ -1567,3 +1573,5 @@ ConfigurePackages
 read_only="TRUE" && SetReadonlyFlag
 # Call CleanupTempFiles
 CleanupTempFiles
+# Call CleanupOutageKernels
+CleanupOutageKernels
