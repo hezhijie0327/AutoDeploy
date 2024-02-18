@@ -1,34 +1,12 @@
 #!/bin/bash
 
-# Current Version: 5.3.3
+# Current Version: 5.3.4
 
 ## How to get and use?
 # curl "https://source.zhijie.online/AutoDeploy/main/Ubuntu.sh" | sudo bash
 # wget -qO- "https://source.zhijie.online/AutoDeploy/main/Ubuntu.sh" | sudo bash
 
 ## Function
-# Call Service Controller
-function CallServiceController(){
-    if [ "${OPRATIONS}" == "" ]; then
-        echo "An error occurred during processing. Missing (OPRATIONS) value, please check it and try again."
-        exit 1
-    fi
-    if [ "${SERVICE_NAME}" == "" ]; then
-        if [ "${OPRATIONS}" != "daemon-reload" ]; then
-            echo "An error occurred during processing. Missing (SERVICE_NAME) value, please check it and try again."
-            exit 1
-        fi
-    fi
-    if [ "${container_environment}" == "lxc" ] || [ "${container_environment}" == "none" ] || [ "${container_environment}" == "wsl2" ]; then
-        if [ "${OPRATIONS}" == "daemon-reload" ]; then
-            systemctl daemon-reload
-        else
-            systemctl ${OPRATIONS} ${SERVICE_NAME}
-        fi
-    else
-        service ${SERVICE_NAME} ${OPRATIONS}
-    fi
-}
 # Get System Information
 function GetSystemInformation() {
     function CheckDNSConfiguration() {
@@ -62,17 +40,6 @@ function GetSystemInformation() {
         fi
     }
     function CheckMachineEnvironment() {
-        function CheckContainerEnvironment() {
-            if [ -f "/.dockerenv" ]; then
-                container_environment="docker"
-            elif [ "$(cat '/proc/1/environ' | grep -a 'lxc')" != "" ]; then
-                container_environment="lxc"
-            elif [ "$(uname -r | grep 'WSL')" != "" ]; then
-                container_environment="wsl2"
-            else
-                container_environment="none"
-            fi
-        }
         function CheckHypervisorEnvironment() {
             which "virt-what" > "/dev/null" 2>&1
             if [ "$?" -eq "1" ]; then
@@ -92,7 +59,6 @@ function GetSystemInformation() {
                 HYPERVISOR_AGENT=("virtualbox-guest-dkms")
             fi
         }
-        CheckContainerEnvironment
         CheckHypervisorEnvironment
     }
     function GenerateDomain() {
@@ -339,7 +305,7 @@ function ConfigurePackages() {
                 else
                     echo "server ${chrony_ntp_list[$chrony_ntp_list_task]} iburst" >> "/tmp/chrony.autodeploy"
                 fi
-            done && cat "/tmp/chrony.autodeploy" > "/etc/chrony/chrony.conf" && rm -rf "/tmp/chrony.autodeploy" && OPRATIONS="restart" && SERVICE_NAME="chrony" && CallServiceController && sleep 5s && chronyc activity && chronyc tracking && chronyc clients && hwclock -w
+            done && cat "/tmp/chrony.autodeploy" > "/etc/chrony/chrony.conf" && rm -rf "/tmp/chrony.autodeploy" && systemctl restart chrony && sleep 5s && chronyc activity && chronyc tracking && chronyc clients && hwclock -w
         fi
     }
     function ConfigureCockpit() {
@@ -351,13 +317,9 @@ function ConfigurePackages() {
         )
         which "cockpit-bridge" > "/dev/null" 2>&1
         if [ "$?" -eq "0" ]; then
-            if [ "${container_environment}" != "docker" ]; then
-                rm -rf "/tmp/cockpit.autodeploy" && for cockpit_list_task in "${!cockpit_list[@]}"; do
-                    echo "${cockpit_list[$cockpit_list_task]}" >> "/tmp/cockpit.autodeploy"
-                done && cat "/tmp/cockpit.autodeploy" > "/etc/cockpit/cockpit.conf" && rm -rf "/tmp/cockpit.autodeploy" && if [ "${container_environment}" != "docker" ]; then
-                    OPRATIONS="restart" && SERVICE_NAME="cockpit" && CallServiceController
-                fi
-            fi
+            rm -rf "/tmp/cockpit.autodeploy" && for cockpit_list_task in "${!cockpit_list[@]}"; do
+                echo "${cockpit_list[$cockpit_list_task]}" >> "/tmp/cockpit.autodeploy"
+            done && cat "/tmp/cockpit.autodeploy" > "/etc/cockpit/cockpit.conf" && rm -rf "/tmp/cockpit.autodeploy" && systemctl restart cockpit
         fi
     }
     function ConfigureCrontab() {
@@ -382,11 +344,9 @@ function ConfigurePackages() {
         )
         which "cscli" > "/dev/null" 2>&1
         if [ "$?" -eq "0" ]; then
-            if [ "${container_environment}" != "docker" ]; then
-                for crowdsec_hub_list_task in "${!crowdsec_hub_list[@]}"; do
-                    cscli collections install ${crowdsec_hub_list[$crowdsec_hub_list_task]}
-                done && OPRATIONS="restart" && SERVICE_NAME="crowdsec" && CallServiceController && cscli hub list
-            fi
+            for crowdsec_hub_list_task in "${!crowdsec_hub_list[@]}"; do
+                cscli collections install ${crowdsec_hub_list[$crowdsec_hub_list_task]}
+            done && systemctl restart crowdsec && cscli hub list
         fi
     }
     function ConfigureDockerEngine() {
@@ -415,22 +375,15 @@ function ConfigurePackages() {
         )
         which "docker" > "/dev/null" 2>&1
         if [ "$?" -eq "0" ]; then
-            if [ "${container_environment}" != "docker" ] && [ "${container_environment}" != "wsl2" ]; then
-                if [ ! -d "/docker" ]; then
-                    mkdir "/docker"
-                fi && chown -R ${DEFAULT_USERNAME}:docker "/docker" && chmod -R 775 "/docker"
-                if [ ! -d "/etc/docker" ]; then
-                    mkdir "/etc/docker"
-                fi
-                rm -rf "/tmp/docker.autodeploy" && for docker_list_task in "${!docker_list[@]}"; do
-                    echo "${docker_list[$docker_list_task]}" >> "/tmp/docker.autodeploy"
-                done && cat "/tmp/docker.autodeploy" > "/etc/docker/daemon.json" && OPRATIONS="restart" && SERVICE_NAME="docker" && CallServiceController && rm -rf "/tmp/docker.autodeploy"
-            fi
-        fi
-        if [ "${container_environment}" == "wsl2" ]; then
             if [ ! -d "/docker" ]; then
                 mkdir "/docker"
+            fi && chown -R ${DEFAULT_USERNAME}:docker "/docker" && chmod -R 775 "/docker"
+            if [ ! -d "/etc/docker" ]; then
+                mkdir "/etc/docker"
             fi
+            rm -rf "/tmp/docker.autodeploy" && for docker_list_task in "${!docker_list[@]}"; do
+                echo "${docker_list[$docker_list_task]}" >> "/tmp/docker.autodeploy"
+            done && cat "/tmp/docker.autodeploy" > "/etc/docker/daemon.json" && systemctl restart docker && rm -rf "/tmp/docker.autodeploy"
         fi
     }
     function ConfigureFail2Ban() {
@@ -459,27 +412,23 @@ function ConfigurePackages() {
         )
         which "fail2ban-client" > "/dev/null" 2>&1
         if [ "$?" -eq "0" ]; then
-            if [ "${container_environment}" != "docker" ]; then
-                if [ -d "/etc/fail2ban/jail.d" ]; then
-                    rm -rf /etc/fail2ban/jail.d/*
-                else
-                    mkdir "/etc/fail2ban/jail.d"
-                fi
-                if [ -f "/etc/fail2ban/fail2ban.conf" ]; then
-                    cat "/etc/fail2ban/fail2ban.conf" > "/etc/fail2ban/fail2ban.local"
-                fi
-                if [ -f "/etc/fail2ban/jail.conf" ]; then
-                    cat "/etc/fail2ban/jail.conf" | sed "s/action\ \=\ iptables\-allports/action\ \=\ ufw/g;s/banaction\ \=\ iptables\-multiport/banaction\ \=\ ufw/g;s/banaction\ \=\ iptables\-multiport\-log/banaction\ \=\ ufw/g;s/banaction\ \=\ ufw\-log/banaction\ \=\ ufw/g;s/banaction\_allports\ \=\ iptables\-allports/banaction\_allports\ \=\ ufw/g" > "/etc/fail2ban/jail.local"
-                fi
-                rm -rf "/tmp/fail2ban.autodeploy" && for fail2ban_cockpit_list_task in "${!fail2ban_cockpit_list[@]}"; do
-                    echo "${fail2ban_cockpit_list[$fail2ban_cockpit_list_task]}" >> "/tmp/fail2ban.autodeploy"
-                done && cat "/tmp/fail2ban.autodeploy" > "/etc/fail2ban/filter.d/cockpit.conf" && rm -rf "/tmp/fail2ban.autodeploy"
-                rm -rf "/tmp/fail2ban.autodeploy" && for fail2ban_list_task in "${!fail2ban_list[@]}"; do
-                    echo "${fail2ban_list[$fail2ban_list_task]}" >> "/tmp/fail2ban.autodeploy"
-                done && cat "/tmp/fail2ban.autodeploy" > "/etc/fail2ban/jail.d/fail2ban_default.conf" && rm -rf "/tmp/fail2ban.autodeploy" && if [ "${container_environment}" != "docker" ]; then
-                    OPRATIONS="enable" && SERVICE_NAME="fail2ban" && CallServiceController && fail2ban-client reload && sleep 5s && fail2ban-client status
-                fi
+            if [ -d "/etc/fail2ban/jail.d" ]; then
+                rm -rf /etc/fail2ban/jail.d/*
+            else
+                mkdir "/etc/fail2ban/jail.d"
             fi
+            if [ -f "/etc/fail2ban/fail2ban.conf" ]; then
+                cat "/etc/fail2ban/fail2ban.conf" > "/etc/fail2ban/fail2ban.local"
+            fi
+            if [ -f "/etc/fail2ban/jail.conf" ]; then
+                cat "/etc/fail2ban/jail.conf" | sed "s/action\ \=\ iptables\-allports/action\ \=\ ufw/g;s/banaction\ \=\ iptables\-multiport/banaction\ \=\ ufw/g;s/banaction\ \=\ iptables\-multiport\-log/banaction\ \=\ ufw/g;s/banaction\ \=\ ufw\-log/banaction\ \=\ ufw/g;s/banaction\_allports\ \=\ iptables\-allports/banaction\_allports\ \=\ ufw/g" > "/etc/fail2ban/jail.local"
+            fi
+            rm -rf "/tmp/fail2ban.autodeploy" && for fail2ban_cockpit_list_task in "${!fail2ban_cockpit_list[@]}"; do
+                echo "${fail2ban_cockpit_list[$fail2ban_cockpit_list_task]}" >> "/tmp/fail2ban.autodeploy"
+            done && cat "/tmp/fail2ban.autodeploy" > "/etc/fail2ban/filter.d/cockpit.conf" && rm -rf "/tmp/fail2ban.autodeploy"
+            rm -rf "/tmp/fail2ban.autodeploy" && for fail2ban_list_task in "${!fail2ban_list[@]}"; do
+                echo "${fail2ban_list[$fail2ban_list_task]}" >> "/tmp/fail2ban.autodeploy"
+            done && cat "/tmp/fail2ban.autodeploy" > "/etc/fail2ban/jail.d/fail2ban_default.conf" && rm -rf "/tmp/fail2ban.autodeploy" && systemctl enable fail2ban && fail2ban-client reload && sleep 5s && fail2ban-client status
         fi
     }
     function ConfigureFRRouting() {
@@ -492,7 +441,7 @@ function ConfigurePackages() {
             rm -rf "/tmp/frrouting.autodeploy" && for frrouting_list_task in "${!frrouting_list[@]}"; do
                 echo "${frrouting_list[$frrouting_list_task]}" >> "/tmp/frrouting.autodeploy"
             done && cat "/tmp/frrouting.autodeploy" > "/etc/frr/frr.conf" && rm -rf "/tmp/frrouting.autodeploy"
-            OPRATIONS="restart" && SERVICE_NAME="frr" && CallServiceController && sleep 5s && vtysh -c "show running-config" && vtysh -c "show ip route" && vtysh -c "show ipv6 route"
+            systemctl restart frr && sleep 5s && vtysh -c "show running-config" && vtysh -c "show ip route" && vtysh -c "show ipv6 route"
         fi
     }
     function ConfigureGit() {
@@ -554,10 +503,8 @@ function ConfigurePackages() {
     function ConfigureGrub() {
         which "update-grub" > "/dev/null" 2>&1
         if [ "$?" -eq "0" ]; then
-            if [ "${container_environment}" != "docker" ] && [ "${container_environment}" != "lxc" ] && [ "${container_environment}" != "wsl2" ]; then
-                if [ -f "/usr/share/grub/default/grub" ]; then
-                    rm -rf "/tmp/grub.autodeploy" && cat "/usr/share/grub/default/grub" > "/tmp/grub.autodeploy" && cat "/tmp/grub.autodeploy" > "/etc/default/grub" && update-grub && rm -rf "/tmp/grub.autodeploy"
-                fi
+            if [ -f "/usr/share/grub/default/grub" ]; then
+                rm -rf "/tmp/grub.autodeploy" && cat "/usr/share/grub/default/grub" > "/tmp/grub.autodeploy" && cat "/tmp/grub.autodeploy" > "/etc/default/grub" && update-grub && rm -rf "/tmp/grub.autodeploy"
             fi
         fi
     }
@@ -570,7 +517,7 @@ function ConfigurePackages() {
         which "lldpcli" > "/dev/null" 2>&1
         if [ "$?" -eq "0" ]; then
             echo 'DAEMON_ARGS="-c -e -f -s -x"' > "/tmp/lldpd.autodeploy" && cat "/tmp/lldpd.autodeploy" > "/etc/default/lldpd" && rm -rf "/tmp/lldpd.autodeploy"
-            OPRATIONS="restart" && SERVICE_NAME="lldpd" && CallServiceController && lldpcli show neighbors detail
+            systemctl restart lldpd && lldpcli show neighbors detail
         fi
     }
     function ConfigureNetplan() {
@@ -587,23 +534,18 @@ function ConfigurePackages() {
         network_interface=($(cat "/proc/net/dev" | grep -v "docker0\|lo\|wg0" | grep "\:" | sed "s/[[:space:]]//g" | cut -d ":" -f 1 | sort | uniq | awk "{print $2}"))
         which "netplan" > "/dev/null" 2>&1
         if [ "$?" -eq "0" ]; then
-            if [ "${container_environment}" != "docker" ]; then
-                if [ ! -d "/etc/netplan" ]; then
-                    mkdir "/etc/netplan"
-                else
-                    rm -rf /etc/netplan/*.yaml
-                fi
-                rm -rf "/tmp/netplan.autodeploy" && for netplan_list_task in "${!netplan_list[@]}"; do
-                    echo "${netplan_list[$netplan_list_task]}" >> "/tmp/netplan.autodeploy"
-                done && for network_interface_task in "${!network_interface[@]}"; do
-                    echo "    ${network_interface[$network_interface_task]}:" >> "/tmp/netplan.autodeploy" && for netplan_ethernets_list_task in "${!netplan_ethernets_list[@]}"; do
-                        echo "${netplan_ethernets_list[$netplan_ethernets_list_task]}" >> "/tmp/netplan.autodeploy"
-                    done
-                done && cat "/tmp/netplan.autodeploy" > "/etc/netplan/netplan.yaml" && rm -rf "/tmp/netplan.autodeploy"
-                if [ "${container_environment}" != "docker" ]; then
-                    netplan apply
-                fi
+            if [ ! -d "/etc/netplan" ]; then
+                mkdir "/etc/netplan"
+            else
+                rm -rf /etc/netplan/*.yaml
             fi
+            rm -rf "/tmp/netplan.autodeploy" && for netplan_list_task in "${!netplan_list[@]}"; do
+                echo "${netplan_list[$netplan_list_task]}" >> "/tmp/netplan.autodeploy"
+            done && for network_interface_task in "${!network_interface[@]}"; do
+                echo "    ${network_interface[$network_interface_task]}:" >> "/tmp/netplan.autodeploy" && for netplan_ethernets_list_task in "${!netplan_ethernets_list[@]}"; do
+                    echo "${netplan_ethernets_list[$netplan_ethernets_list_task]}" >> "/tmp/netplan.autodeploy"
+                done
+            done && cat "/tmp/netplan.autodeploy" > "/etc/netplan/netplan.yaml" && rm -rf "/tmp/netplan.autodeploy" && netplan apply
         fi
     }
     function ConfigureNut() {
@@ -742,7 +684,7 @@ function ConfigurePackages() {
             for nut_service_list_task in "${!nut_service_list[@]}"; do
                 NUT_SERVICE_NAME=$(echo "${nut_service_list[$nut_service_list_task]}" | cut -d ',' -f 1)
                 NUT_SERVICE_STATUS=$(echo "${nut_service_list[$nut_service_list_task]}" | cut -d ',' -f 2)
-                OPRATIONS="${NUT_SERVICE_STATUS}" && SERVICE_NAME="${NUT_SERVICE_NAME}" && CallServiceController > "/dev/null" 2>&1
+                systemctl ${NUT_SERVICE_STATUS} ${NUT_SERVICE_NAME} > "/dev/null" 2>&1
             done
         fi
     }
@@ -805,35 +747,16 @@ function ConfigurePackages() {
         )
         which "resolvectl" > "/dev/null" 2>&1
         if [ "$?" -eq "0" ]; then
-            if [ "${container_environment}" != "docker" ]; then
-                if [ ! -d "/etc/systemd/resolved.conf.d" ]; then
-                    mkdir "/etc/systemd/resolved.conf.d"
-                else
-                    rm -rf /etc/systemd/resolved.conf.d/*.conf
-                fi
-                rm -rf "/tmp/resolved.autodeploy" && for resolved_list_task in "${!resolved_list[@]}"; do
-                    echo "${resolved_list[$resolved_list_task]}" | sed "s/DNS\=\ /DNS\=/g" >> "/tmp/resolved.autodeploy"
-                done && cat "/tmp/resolved.autodeploy" > "/etc/systemd/resolved.conf.d/resolved.conf" && OPRATIONS="restart" && SERVICE_NAME="systemd-resolved" && CallServiceController && rm -rf "/tmp/resolved.autodeploy" && if [ -f "/etc/resolv.conf" ]; then
-                    chattr -i "/etc/resolv.conf" > "/dev/null" 2>&1
-                    rm -rf "/etc/resolv.conf" && ln -s "/run/systemd/resolve/resolv.conf" "/etc/resolv.conf"
-                fi
+            if [ ! -d "/etc/systemd/resolved.conf.d" ]; then
+                mkdir "/etc/systemd/resolved.conf.d"
             else
-                resolv_conf_list=(
-                    ${CURRENT_DNS[@]}
-                    ${CUSTOM_DNS[@]}
-                )
-                rm -rf "/tmp/resolv.autodeploy" && DNS_COUNT="1" && for resolv_conf_list_task in "${!resolv_conf_list[@]}"; do
-                    if [ "${DNS_COUNT}" -gt "3" ]; then
-                        break
-                    else
-                        echo "nameserver ${resolv_conf_list[$resolv_conf_list_task]}" >> "/tmp/resolv.autodeploy"
-                    fi && DNS_COUNT=$(( ${DNS_COUNT} + 1 ))
-                done && echo "search ${NEW_DOMAIN[*]}" >> "/tmp/resolv.autodeploy" && if [ -f "/etc/resolv.conf" ]; then
-                    chattr -i "/etc/resolv.conf" > "/dev/null" 2>&1
-                    if [ "$?" -eq "1" ]; then
-                        rm -rf "/etc/resolv.conf"
-                    fi
-                fi && rm -rf "/etc/resolv.conf" && cat "/tmp/resolv.autodeploy" > "/etc/resolv.conf" && rm -rf "/tmp/resolv.autodeploy" && chattr +i "/etc/resolv.conf"
+                rm -rf /etc/systemd/resolved.conf.d/*.conf
+            fi
+            rm -rf "/tmp/resolved.autodeploy" && for resolved_list_task in "${!resolved_list[@]}"; do
+                echo "${resolved_list[$resolved_list_task]}" | sed "s/DNS\=\ /DNS\=/g" >> "/tmp/resolved.autodeploy"
+            done && cat "/tmp/resolved.autodeploy" > "/etc/systemd/resolved.conf.d/resolved.conf" && systemctl restart systemd-resolved && rm -rf "/tmp/resolved.autodeploy" && if [ -f "/etc/resolv.conf" ]; then
+                chattr -i "/etc/resolv.conf" > "/dev/null" 2>&1
+                rm -rf "/etc/resolv.conf" && ln -s "/run/systemd/resolve/resolv.conf" "/etc/resolv.conf"
             fi
         else
             resolv_conf_list=(
@@ -872,20 +795,18 @@ function ConfigurePackages() {
         )
         which "snmpwalk" > "/dev/null" 2>&1
         if [ "$?" -eq "0" ]; then
-            OPRATIONS="stop" && SERVICE_NAME="snmpd" && CallServiceController
+            systemctl stop snmpd
             kill $(ps -ef | grep snmp | grep -v 'grep' | cut -d ' ' -f 3) > "/dev/null" 2>&1
             sed -i 's/^mibs :/# mibs :/g' "/etc/snmp/snmp.conf"
             echo "createUser ${SNMP_USER} SHA \"${SNMP_AUTH_PASS}\" AES \"${SNMP_PRIV_PASS}\"" > "/var/lib/snmp/snmpd.conf"
             rm -rf "/tmp/snmp.autodeploy" && for snmp_list_task in "${!snmp_list[@]}"; do
                 echo "${snmp_list[$snmp_list_task]}" >> "/tmp/snmp.autodeploy"
-            done && cat "/tmp/snmp.autodeploy" | sort > "/etc/snmp/snmpd.conf" && rm -rf "/tmp/snmp.autodeploy" && OPRATIONS="start" && SERVICE_NAME="snmpd" && CallServiceController && snmpwalk -v3 -a SHA -A ${SNMP_AUTH_PASS} -x AES -X ${SNMP_PRIV_PASS} -l authPriv -u ${SNMP_USER} 127.0.0.1 | head
+            done && cat "/tmp/snmp.autodeploy" | sort > "/etc/snmp/snmpd.conf" && rm -rf "/tmp/snmp.autodeploy" && systemctl start snmpd && snmpwalk -v3 -a SHA -A ${SNMP_AUTH_PASS} -x AES -X ${SNMP_PRIV_PASS} -l authPriv -u ${SNMP_USER} 127.0.0.1 | head
         fi
     }
     function ConfigureSshd() {
         if [ -f "/usr/share/openssh/sshd_config" ]; then
-            SSHD_CONFIG_ADDITIONAL="" && if [ "${container_environment}" != "docker" ]; then
-                SSHD_CONFIG_ADDITIONAL="${SSHD_CONFIG_ADDITIONAL}s/\#Port\ 22/Port 9022/g;s/\#PubkeyAuthentication\ yes/PubkeyAuthentication\ yes/g;"
-            fi && cat "/usr/share/openssh/sshd_config" | sed "s/\#PasswordAuthentication\ yes/PasswordAuthentication\ yes/g;s/\#PermitRootLogin\ prohibit\-password/PermitRootLogin\ yes/g;${SSHD_CONFIG_ADDITIONAL}" > "/tmp/sshd_config.autodeploy" && cat "/tmp/sshd_config.autodeploy" > "/etc/ssh/sshd_config" && rm -rf "/tmp/sshd_config.autodeploy"
+            cat "/usr/share/openssh/sshd_config" | sed "s/\#PasswordAuthentication\ yes/PasswordAuthentication\ yes/g;s/\#PermitRootLogin\ prohibit\-password/PermitRootLogin\ yes/g;s/\#Port\ 22/Port 9022/g;s/\#PubkeyAuthentication\ yes/PubkeyAuthentication\ yes/g" > "/tmp/sshd_config.autodeploy" && cat "/tmp/sshd_config.autodeploy" > "/etc/ssh/sshd_config" && rm -rf "/tmp/sshd_config.autodeploy"
         fi
     }
     function ConfigureSysctl() {
@@ -922,36 +843,24 @@ function ConfigurePackages() {
         fi
     }
     function ConfigureSystemd() {
-        if [ "${container_environment}" != "docker" ]; then
-            systemd_list=(
-                "systemd-networkd-wait-online,disable"
-            )
-            for systemd_list_task in "${!systemd_list[@]}"; do
-                OPERATIONS=$(echo "${systemd_list[$systemd_list_task]}" | cut -d ',' -f 2)
-                SERVICE_NAME=$(echo "${systemd_list[$systemd_list_task]}" | cut -d ',' -f 1)
-                CallServiceController
-            done
-        fi
+        systemd_list=(
+            "systemd-networkd-wait-online,disable"
+        )
+        for systemd_list_task in "${!systemd_list[@]}"; do
+            systemctl $(echo "${systemd_list[$systemd_list_task]}" | cut -d ',' -f 2) $(echo "${systemd_list[$systemd_list_task]}" | cut -d ',' -f 1)
+        done
     }
     function ConfigureTuned() {
         which "tuned-adm" > "/dev/null" 2>&1
         if [ "$?" -eq "0" ]; then
-            if [ "${container_environment}" != "docker" ]; then
-                tuned-adm profile "$(tuned-adm recommend)" && tuned-adm active
-            fi
+            tuned-adm profile "$(tuned-adm recommend)" && tuned-adm active
         fi
     }
     function ConfigureUfw() {
         which "ufw" > "/dev/null" 2>&1
         if [ "$?" -eq "0" ] && [ -f "/etc/default/ufw" ]; then
-            if [ "${container_environment}" != "docker" ]; then
-                echo "$(cat '/etc/default/ufw' | sed 's/DEFAULT\_APPLICATION\_POLICY\=\"ACCEPT\"/DEFAULT\_APPLICATION\_POLICY\=\"REJECT\"/g;s/DEFAULT\_APPLICATION\_POLICY\=\"DROP\"/DEFAULT\_APPLICATION\_POLICY\=\"REJECT\"/g;s/DEFAULT\_APPLICATION\_POLICY\=\"SKIP\"/DEFAULT\_APPLICATION\_POLICY\=\"REJECT\"/g;s/DEFAULT\_FORWARD\_POLICY\=\"DROP\"/DEFAULT\_FORWARD\_POLICY\=\"ACCEPT\"/g;s/DEFAULT\_FORWARD\_POLICY\=\"REJECT\"/DEFAULT\_FORWARD\_POLICY\=\"ACCEPT\"/g;s/DEFAULT\_INPUT\_POLICY\=\"ACCEPT\"/DEFAULT\_INPUT\_POLICY\=\"REJECT\"/g;s/DEFAULT\_INPUT\_POLICY\=\"DROP\"/DEFAULT\_INPUT\_POLICY\=\"REJECT\"/g;s/DEFAULT\_OUTPUT\_POLICY\=\"DROP\"/DEFAULT\_OUTPUT\_POLICY\=\"ACCEPT\"/g;s/DEFAULT\_OUTPUT\_POLICY\=\"REJECT\"/DEFAULT\_OUTPUT\_POLICY\=\"ACCEPT\"/g;s/MANAGE\_BUILTINS\=yes/MANAGE\_BUILTINS\=no/g;s/IPV6\=no/IPV6\=yes/g')" > "/tmp/ufw.autodeploy" && cat "/tmp/ufw.autodeploy" > "/etc/default/ufw" && rm -rf "/tmp/ufw.autodeploy"
-                if [ "${container_environment}" != "docker" ]; then
-                    ufw reload && ufw reset && ufw allow 123/udp && ufw allow 161/udp && ufw limit 22/tcp && ufw allow 323/udp && ufw allow 3493/tcp && ufw allow 51820/udp && ufw limit 9022/tcp && ufw allow 9090/tcp && ufw enable && ufw status verbose
-                else
-                    ufw disable > "/dev/null" 2>&1
-                fi
-            fi
+            echo "$(cat '/etc/default/ufw' | sed 's/DEFAULT\_APPLICATION\_POLICY\=\"ACCEPT\"/DEFAULT\_APPLICATION\_POLICY\=\"REJECT\"/g;s/DEFAULT\_APPLICATION\_POLICY\=\"DROP\"/DEFAULT\_APPLICATION\_POLICY\=\"REJECT\"/g;s/DEFAULT\_APPLICATION\_POLICY\=\"SKIP\"/DEFAULT\_APPLICATION\_POLICY\=\"REJECT\"/g;s/DEFAULT\_FORWARD\_POLICY\=\"DROP\"/DEFAULT\_FORWARD\_POLICY\=\"ACCEPT\"/g;s/DEFAULT\_FORWARD\_POLICY\=\"REJECT\"/DEFAULT\_FORWARD\_POLICY\=\"ACCEPT\"/g;s/DEFAULT\_INPUT\_POLICY\=\"ACCEPT\"/DEFAULT\_INPUT\_POLICY\=\"REJECT\"/g;s/DEFAULT\_INPUT\_POLICY\=\"DROP\"/DEFAULT\_INPUT\_POLICY\=\"REJECT\"/g;s/DEFAULT\_OUTPUT\_POLICY\=\"DROP\"/DEFAULT\_OUTPUT\_POLICY\=\"ACCEPT\"/g;s/DEFAULT\_OUTPUT\_POLICY\=\"REJECT\"/DEFAULT\_OUTPUT\_POLICY\=\"ACCEPT\"/g;s/MANAGE\_BUILTINS\=yes/MANAGE\_BUILTINS\=no/g;s/IPV6\=no/IPV6\=yes/g')" > "/tmp/ufw.autodeploy" && cat "/tmp/ufw.autodeploy" > "/etc/default/ufw" && rm -rf "/tmp/ufw.autodeploy"
+            ufw reload && ufw reset && ufw allow 123/udp && ufw allow 161/udp && ufw limit 22/tcp && ufw allow 323/udp && ufw allow 3493/tcp && ufw allow 51820/udp && ufw limit 9022/tcp && ufw allow 9090/tcp && ufw enable && ufw status verbose
         fi
     }
     function ConfigureWireGuard() {
@@ -978,35 +887,31 @@ function ConfigurePackages() {
         fi
         which "wg" > "/dev/null" 2>&1
         if [ "$?" -eq "0" ]; then
-            if [ "${container_environment}" != "docker" ]; then
-                wireguard_list=(
-                    "[Interface]"
-                    "Address = ${TUNNEL_CLIENT_V4}, ${TUNNEL_CLIENT_V6}"
-                    "# DNS = 127.0.0.1, ::1"
-                    "ListenPort = 51820"
-                    "PostDown = ufw delete allow from 10.172.0.0/16; ufw route delete allow in on wg0 out on ${WAN_INTERFACE}"
-                    "PostUp = ufw allow from 10.172.0.0/16; ufw route allow in on wg0 out on ${WAN_INTERFACE}"
-                    "PreDown = iptables -t nat -D POSTROUTING -o ${WAN_INTERFACE} -j MASQUERADE; ip6tables -t nat -D POSTROUTING -o ${WAN_INTERFACE} -j MASQUERADE"
-                    "PreUp = iptables -t nat -A POSTROUTING -o ${WAN_INTERFACE} -j MASQUERADE; ip6tables -t nat -A POSTROUTING -o ${WAN_INTERFACE} -j MASQUERADE"
-                    "PrivateKey = $(wg genkey | tee '/tmp/wireguard.autodeploy')"
-                    "# [Peer]"
-                    "# AllowedIPs = ${TUNNEL_CLIENT_V4}, ${TUNNEL_CLIENT_V6}"
-                    "# Endpoint = 127.0.0.1:51820"
-                    "# PersistentKeepalive = 5"
-                    "# PresharedKey = $(wg genpsk)"
-                    "# PublicKey = $(cat '/tmp/wireguard.autodeploy' | wg pubkey)"
-                )
-                rm -rf "/tmp/wireguard.autodeploy" && for wireguard_list_task in "${!wireguard_list[@]}"; do
-                    echo "${wireguard_list[$wireguard_list_task]}" | sed "s/\,\ $//g;s/^\,\ //g" >> "/tmp/wireguard.autodeploy"
-                done && cat "/tmp/wireguard.autodeploy" > "/etc/wireguard/wg0.conf" && chown -R ${DEFAULT_USERNAME}:sudo "/etc/wireguard" && chmod -R 775 "/etc/wireguard" && chown -R ${DEFAULT_USERNAME}:${DEFAULT_USERNAME} "/etc/wireguard/wg0.conf" && chmod 600 "/etc/wireguard/wg0.conf" && rm -rf "/tmp/wireguard.autodeploy" && if [ "${container_environment}" != "docker" ]; then
-                    OPRATIONS="enable" && SERVICE_NAME="wg-quick@wg0" && CallServiceController && if [ -f "/lib/systemd/system/wg-quick@.service" ]; then
-                        if [ ! -f "/lib/systemd/system/wg-quick@.service.bak" ]; then
-                            cp "/lib/systemd/system/wg-quick@.service" "/lib/systemd/system/wg-quick@.service.bak"
-                        fi
-                        cat "/lib/systemd/system/wg-quick@.service.bak" | sed "s/RestartSec\=5\nRestart\=always//g;s/RemainAfterExit\=yes/RemainAfterExit\=yes\nRestartSec\=5\nRestart\=always/g;s/Type\=oneshot/\#Type\=oneshot/g" > "/tmp/wireguard.autodeploy" && cat "/tmp/wireguard.autodeploy" > "/lib/systemd/system/wg-quick@.service" && rm -rf "/tmp/wireguard.autodeploy" && OPRATIONS="daemon-reload" && CallServiceController
-                    fi && OPRATIONS="start" && CallServiceController && wg
+            wireguard_list=(
+                "[Interface]"
+                "Address = ${TUNNEL_CLIENT_V4}, ${TUNNEL_CLIENT_V6}"
+                "# DNS = 127.0.0.1, ::1"
+                "ListenPort = 51820"
+                "PostDown = ufw delete allow from 10.172.0.0/16; ufw route delete allow in on wg0 out on ${WAN_INTERFACE}"
+                "PostUp = ufw allow from 10.172.0.0/16; ufw route allow in on wg0 out on ${WAN_INTERFACE}"
+                "PreDown = iptables -t nat -D POSTROUTING -o ${WAN_INTERFACE} -j MASQUERADE; ip6tables -t nat -D POSTROUTING -o ${WAN_INTERFACE} -j MASQUERADE"
+                "PreUp = iptables -t nat -A POSTROUTING -o ${WAN_INTERFACE} -j MASQUERADE; ip6tables -t nat -A POSTROUTING -o ${WAN_INTERFACE} -j MASQUERADE"
+                "PrivateKey = $(wg genkey | tee '/tmp/wireguard.autodeploy')"
+                "# [Peer]"
+                "# AllowedIPs = ${TUNNEL_CLIENT_V4}, ${TUNNEL_CLIENT_V6}"
+                "# Endpoint = 127.0.0.1:51820"
+                "# PersistentKeepalive = 5"
+                "# PresharedKey = $(wg genpsk)"
+                "# PublicKey = $(cat '/tmp/wireguard.autodeploy' | wg pubkey)"
+            )
+            rm -rf "/tmp/wireguard.autodeploy" && for wireguard_list_task in "${!wireguard_list[@]}"; do
+                echo "${wireguard_list[$wireguard_list_task]}" | sed "s/\,\ $//g;s/^\,\ //g" >> "/tmp/wireguard.autodeploy"
+            done && cat "/tmp/wireguard.autodeploy" > "/etc/wireguard/wg0.conf" && chown -R ${DEFAULT_USERNAME}:sudo "/etc/wireguard" && chmod -R 775 "/etc/wireguard" && chown -R ${DEFAULT_USERNAME}:${DEFAULT_USERNAME} "/etc/wireguard/wg0.conf" && chmod 600 "/etc/wireguard/wg0.conf" && rm -rf "/tmp/wireguard.autodeploy" && systemctl enable wg-quick@wg0 && if [ -f "/lib/systemd/system/wg-quick@.service" ]; then
+                if [ ! -f "/lib/systemd/system/wg-quick@.service.bak" ]; then
+                    cp "/lib/systemd/system/wg-quick@.service" "/lib/systemd/system/wg-quick@.service.bak"
                 fi
-            fi
+                cat "/lib/systemd/system/wg-quick@.service.bak" | sed "s/RestartSec\=5\nRestart\=always//g;s/RemainAfterExit\=yes/RemainAfterExit\=yes\nRestartSec\=5\nRestart\=always/g;s/Type\=oneshot/\#Type\=oneshot/g" > "/tmp/wireguard.autodeploy" && cat "/tmp/wireguard.autodeploy" > "/lib/systemd/system/wg-quick@.service" && rm -rf "/tmp/wireguard.autodeploy" && systemctl daemon-reload wg-quick@wg0
+            fi && systemctl start wg-quick@wg0 && wg
         fi
     }
     function ConfigureZsh() {
@@ -1111,31 +1016,27 @@ function ConfigureSystem() {
         fi
     }
     function ConfigureDefaultUser() {
-        if [ "${container_environment}" != "docker" ]; then
-            DEFAULT_FIRSTNAME="User"
-            DEFAULT_LASTNAME="Ubuntu"
-            DEFAULT_FULLNAME="${DEFAULT_LASTNAME} ${DEFAULT_FIRSTNAME}"
-            DEFAULT_USERNAME="ubuntu"
-            DEFAULT_PASSWORD='*Ubuntu123*'
-            crontab_list=(
-                "@reboot rm -rf /home/${DEFAULT_USERNAME}/.*_history /home/${DEFAULT_USERNAME}/.ssh/known_hosts*"
-            )
-            if [ -d "/home" ]; then
-                USER_LIST=($(ls "/home" | grep -v "${DEFAULT_USERNAME}" | awk "{print $2}") ${DEFAULT_USERNAME})
-            else
-                mkdir "/home" && USER_LIST=(${DEFAULT_USERNAME})
-            fi && for USER_LIST_TASK in "${!USER_LIST[@]}"; do
-                userdel -rf "${USER_LIST[$USER_LIST_TASK]}" > "/dev/null" 2>&1
-            done
-            useradd -c "${DEFAULT_FULLNAME}" -d "/home/${DEFAULT_USERNAME}" -s "/bin/zsh" -m "${DEFAULT_USERNAME}" && echo $DEFAULT_USERNAME:$DEFAULT_PASSWORD | chpasswd && if [ "${container_environment}" != "docker" ] && [ "${container_environment}" != "wsl2" ]; then
-                adduser "${DEFAULT_USERNAME}" "docker"
-            fi && adduser "${DEFAULT_USERNAME}" "sudo"
-            which "crontab" > "/dev/null" 2>&1
-            if [ "$?" -eq "0" ]; then
-                rm -rf "/tmp/crontab.autodeploy" && for crontab_list_task in "${!crontab_list[@]}"; do
-                    echo "${crontab_list[$crontab_list_task]}" >> "/tmp/crontab.autodeploy"
-                done && crontab -u "${DEFAULT_USERNAME}" "/tmp/crontab.autodeploy" && crontab -lu "${DEFAULT_USERNAME}" && rm -rf "/tmp/crontab.autodeploy"
-            fi
+        DEFAULT_FIRSTNAME="User"
+        DEFAULT_LASTNAME="Ubuntu"
+        DEFAULT_FULLNAME="${DEFAULT_LASTNAME} ${DEFAULT_FIRSTNAME}"
+        DEFAULT_USERNAME="ubuntu"
+        DEFAULT_PASSWORD='*Ubuntu123*'
+        crontab_list=(
+            "@reboot rm -rf /home/${DEFAULT_USERNAME}/.*_history /home/${DEFAULT_USERNAME}/.ssh/known_hosts*"
+        )
+        if [ -d "/home" ]; then
+            USER_LIST=($(ls "/home" | grep -v "${DEFAULT_USERNAME}" | awk "{print $2}") ${DEFAULT_USERNAME})
+        else
+            mkdir "/home" && USER_LIST=(${DEFAULT_USERNAME})
+        fi && for USER_LIST_TASK in "${!USER_LIST[@]}"; do
+            userdel -rf "${USER_LIST[$USER_LIST_TASK]}" > "/dev/null" 2>&1
+        done
+        useradd -c "${DEFAULT_FULLNAME}" -d "/home/${DEFAULT_USERNAME}" -s "/bin/zsh" -m "${DEFAULT_USERNAME}" && echo $DEFAULT_USERNAME:$DEFAULT_PASSWORD | chpasswd && adduser "${DEFAULT_USERNAME}" "docker" && adduser "${DEFAULT_USERNAME}" "sudo"
+        which "crontab" > "/dev/null" 2>&1
+        if [ "$?" -eq "0" ]; then
+            rm -rf "/tmp/crontab.autodeploy" && for crontab_list_task in "${!crontab_list[@]}"; do
+                echo "${crontab_list[$crontab_list_task]}" >> "/tmp/crontab.autodeploy"
+            done && crontab -u "${DEFAULT_USERNAME}" "/tmp/crontab.autodeploy" && crontab -lu "${DEFAULT_USERNAME}" && rm -rf "/tmp/crontab.autodeploy"
         fi
     }
     function ConfigureGAI() {
@@ -1254,19 +1155,17 @@ function ConfigureSystem() {
             cat "/tmp/fstab.autodeploy" > "/etc/fstab" && rm -rf "/tmp/fstab.autodeploy"
         }
         DISABLE_SWAP="false"
-        if [ "${container_environment}" != "docker" ]; then
-            if [ "${DISABLE_SWAP}" == "true" ]; then
-                ClearSWAP
-                RemoveSWAP
-                UpdateFSTAB
-            else
-                CUSTOM_SWAP_SIZE="" # 1024M / 1G
-                ClearSWAP
-                RemoveSWAP
-                GenerateSWAPSize
-                CreateSWAP
-                UpdateFSTAB
-            fi
+        if [ "${DISABLE_SWAP}" == "true" ]; then
+            ClearSWAP
+            RemoveSWAP
+            UpdateFSTAB
+        else
+            CUSTOM_SWAP_SIZE="" # 1024M / 1G
+            ClearSWAP
+            RemoveSWAP
+            GenerateSWAPSize
+            CreateSWAP
+            UpdateFSTAB
         fi
     }
     function ConfigureTimeZone() {
@@ -1289,18 +1188,16 @@ function InstallCustomPackages() {
         app_list=(
             "cloudflare-warp"
         )
-        if [ "${container_environment}" != "docker" ]; then
-            rm -rf "/usr/share/keyrings/cloudflare-warp-archive-keyring.gpg" && curl -fsSL "https://pkg.cloudflareclient.com/pubkey.gpg" | gpg --dearmor -o "/usr/share/keyrings/cloudflare-warp-archive-keyring.gpg"
-            echo "deb [arch=${OSArchitecture} signed-by=/usr/share/keyrings/cloudflare-warp-archive-keyring.gpg] https://pkg.cloudflareclient.com ${LSBCodename} main" > "/etc/apt/sources.list.d/cloudflare.list"
-            apt update && for app_list_task in "${!app_list[@]}"; do
-                apt-cache show ${app_list[$app_list_task]} && if [ "$?" -eq "0" ]; then
-                    apt install -qy ${app_list[$app_list_task]}
-                fi
-            done
-            which "update-ca-certificates" > "/dev/null" 2>&1
-            if [ "$?" -eq "0" ]; then
-                rm -rf "/usr/local/share/ca-certificates/Cloudflare_CA.crt" && curl -fsSL "https://developers.cloudflare.com/cloudflare-one/static/documentation/connections/Cloudflare_CA.pem" > "/usr/local/share/ca-certificates/Cloudflare_CA.crt" && update-ca-certificates
+        rm -rf "/usr/share/keyrings/cloudflare-warp-archive-keyring.gpg" && curl -fsSL "https://pkg.cloudflareclient.com/pubkey.gpg" | gpg --dearmor -o "/usr/share/keyrings/cloudflare-warp-archive-keyring.gpg"
+        echo "deb [arch=${OSArchitecture} signed-by=/usr/share/keyrings/cloudflare-warp-archive-keyring.gpg] https://pkg.cloudflareclient.com ${LSBCodename} main" > "/etc/apt/sources.list.d/cloudflare.list"
+        apt update && for app_list_task in "${!app_list[@]}"; do
+            apt-cache show ${app_list[$app_list_task]} && if [ "$?" -eq "0" ]; then
+                apt install -qy ${app_list[$app_list_task]}
             fi
+        done
+        which "update-ca-certificates" > "/dev/null" 2>&1
+        if [ "$?" -eq "0" ]; then
+            rm -rf "/usr/local/share/ca-certificates/Cloudflare_CA.crt" && curl -fsSL "https://developers.cloudflare.com/cloudflare-one/static/documentation/connections/Cloudflare_CA.pem" > "/usr/local/share/ca-certificates/Cloudflare_CA.crt" && update-ca-certificates
         fi
     }
     function InstallCrowdSec() {
@@ -1308,23 +1205,21 @@ function InstallCustomPackages() {
             "crowdsec"
             "crowdsec-firewall-bouncer-nftables"
         )
-        if [ "${container_environment}" != "docker" ]; then
-            rm -rf "/usr/share/keyrings/crowdsec-archive-keyring.gpg" && curl -fsSL "https://packagecloud.io/crowdsec/crowdsec/gpgkey" | gpg --dearmor -o "/usr/share/keyrings/crowdsec-archive-keyring.gpg"
-            echo "deb [arch=${OSArchitecture} signed-by=/usr/share/keyrings/crowdsec-archive-keyring.gpg] https://packagecloud.io/crowdsec/crowdsec/ubuntu ${LSBCodename} main" > "/etc/apt/sources.list.d/crowdsec.list"
-            echo "deb-src [arch=${OSArchitecture} signed-by=/usr/share/keyrings/crowdsec-archive-keyring.gpg] https://packagecloud.io/crowdsec/crowdsec/ubuntu ${LSBCodename} main" >> "/etc/apt/sources.list.d/crowdsec.list"
-            which "cscli" > "/dev/null" 2>&1
-            if [ "$?" -eq "0" ]; then
-                bouncers_list=($(cscli bouncers list | grep 'FirewallBouncer' | cut -d ' ' -f 2))
-                for bouncers_list_task in "${!bouncers_list[@]}"; do
-                    cscli bouncers delete ${bouncers_list[$bouncers_list_task]}
-                done
-            fi
-            apt update && for app_list_task in "${!app_list[@]}"; do
-                apt-cache show ${app_list[$app_list_task]} && if [ "$?" -eq "0" ]; then
-                    apt install -qy ${app_list[$app_list_task]}
-                fi
+        rm -rf "/usr/share/keyrings/crowdsec-archive-keyring.gpg" && curl -fsSL "https://packagecloud.io/crowdsec/crowdsec/gpgkey" | gpg --dearmor -o "/usr/share/keyrings/crowdsec-archive-keyring.gpg"
+        echo "deb [arch=${OSArchitecture} signed-by=/usr/share/keyrings/crowdsec-archive-keyring.gpg] https://packagecloud.io/crowdsec/crowdsec/ubuntu ${LSBCodename} main" > "/etc/apt/sources.list.d/crowdsec.list"
+        echo "deb-src [arch=${OSArchitecture} signed-by=/usr/share/keyrings/crowdsec-archive-keyring.gpg] https://packagecloud.io/crowdsec/crowdsec/ubuntu ${LSBCodename} main" >> "/etc/apt/sources.list.d/crowdsec.list"
+        which "cscli" > "/dev/null" 2>&1
+        if [ "$?" -eq "0" ]; then
+            bouncers_list=($(cscli bouncers list | grep 'FirewallBouncer' | cut -d ' ' -f 2))
+            for bouncers_list_task in "${!bouncers_list[@]}"; do
+                cscli bouncers delete ${bouncers_list[$bouncers_list_task]}
             done
         fi
+        apt update && for app_list_task in "${!app_list[@]}"; do
+            apt-cache show ${app_list[$app_list_task]} && if [ "$?" -eq "0" ]; then
+                apt install -qy ${app_list[$app_list_task]}
+            fi
+        done
     }
     function InstallDockerEngine() {
         app_list=(
@@ -1334,15 +1229,13 @@ function InstallCustomPackages() {
             "docker-compose-plugin"
             "docker-compose"
         )
-        if [ "${container_environment}" != "docker" ] && [ "${container_environment}" != "wsl2" ]; then
-            rm -rf "/usr/share/keyrings/docker-archive-keyring.gpg" && curl -fsSL "https://mirrors.ustc.edu.cn/docker-ce/linux/ubuntu/gpg" | gpg --dearmor -o "/usr/share/keyrings/docker-archive-keyring.gpg"
-            echo "deb [arch=${OSArchitecture} signed-by=/usr/share/keyrings/docker-archive-keyring.gpg] https://mirrors.ustc.edu.cn/docker-ce/linux/ubuntu ${LSBCodename} stable" > "/etc/apt/sources.list.d/docker.list"
-            apt update && apt purge -qy containerd docker docker-engine docker.io runc && for app_list_task in "${!app_list[@]}"; do
-                apt-cache show ${app_list[$app_list_task]} && if [ "$?" -eq "0" ]; then
-                    apt install -qy ${app_list[$app_list_task]}
-                fi
-            done
-        fi
+        rm -rf "/usr/share/keyrings/docker-archive-keyring.gpg" && curl -fsSL "https://mirrors.ustc.edu.cn/docker-ce/linux/ubuntu/gpg" | gpg --dearmor -o "/usr/share/keyrings/docker-archive-keyring.gpg"
+        echo "deb [arch=${OSArchitecture} signed-by=/usr/share/keyrings/docker-archive-keyring.gpg] https://mirrors.ustc.edu.cn/docker-ce/linux/ubuntu ${LSBCodename} stable" > "/etc/apt/sources.list.d/docker.list"
+        apt update && apt purge -qy containerd docker docker-engine docker.io runc && for app_list_task in "${!app_list[@]}"; do
+            apt-cache show ${app_list[$app_list_task]} && if [ "$?" -eq "0" ]; then
+                apt install -qy ${app_list[$app_list_task]}
+            fi
+        done
     }
     function InstallFRRouting() {
         apt_list=(
@@ -1351,15 +1244,13 @@ function InstallCustomPackages() {
             "frr-rpki-rtrlib"
             "frr-snmp"
         )
-        if [ "${container_environment}" != "docker" ]; then
-            rm -rf "/usr/share/keyrings/frrouting-archive-keyring.gpg" && curl -fsSL "https://deb.frrouting.org/frr/keys.gpg" | gpg --dearmor -o "/usr/share/keyrings/frrouting-archive-keyring.gpg"
-            echo "deb [arch=${OSArchitecture} signed-by=/usr/share/keyrings/frrouting-archive-keyring.gpg] https://deb.frrouting.org/frr ${LSBCodename} frr-stable" > "/etc/apt/sources.list.d/frrouting.list"
-            apt update && for app_list_task in "${!app_list[@]}"; do
-                apt-cache show ${app_list[$app_list_task]} && if [ "$?" -eq "0" ]; then
-                    apt install -qy ${app_list[$app_list_task]}
-                fi
-            done
-        fi
+        rm -rf "/usr/share/keyrings/frrouting-archive-keyring.gpg" && curl -fsSL "https://deb.frrouting.org/frr/keys.gpg" | gpg --dearmor -o "/usr/share/keyrings/frrouting-archive-keyring.gpg"
+        echo "deb [arch=${OSArchitecture} signed-by=/usr/share/keyrings/frrouting-archive-keyring.gpg] https://deb.frrouting.org/frr ${LSBCodename} frr-stable" > "/etc/apt/sources.list.d/frrouting.list"
+        apt update && for app_list_task in "${!app_list[@]}"; do
+            apt-cache show ${app_list[$app_list_task]} && if [ "$?" -eq "0" ]; then
+                apt install -qy ${app_list[$app_list_task]}
+            fi
+        done
     }
     function InstallOhMyZsh() {
         plugin_list=(
@@ -1400,7 +1291,7 @@ function InstallCustomPackages() {
         apt_list=(
             "linux-xanmod-${XANMOD_BRANCH}x64v${psABILevel}"
         )
-        if [ "${container_environment}" != "docker" ] && [ "${OSArchitecture}" == "amd64" ] && [ "${psABILevel}" != "0" ] && [ "${XANMOD_BRANCH}" != "disable" ]; then
+        if [ "${OSArchitecture}" == "amd64" ] && [ "${psABILevel}" != "0" ] && [ "${XANMOD_BRANCH}" != "disable" ]; then
             rm -rf "/usr/share/keyrings/xanmod-archive-keyring.gpg" && curl -fsSL "https://dl.xanmod.org/archive.key" | gpg --dearmor -o "/usr/share/keyrings/xanmod-archive-keyring.gpg"
             echo "deb [arch=${OSArchitecture} signed-by=/usr/share/keyrings/xanmod-archive-keyring.gpg] https://deb.xanmod.org releases main" > "/etc/apt/sources.list.d/xanmod.list"
             apt update && for app_list_task in "${!app_list[@]}"; do
@@ -1419,38 +1310,18 @@ function InstallCustomPackages() {
 }
 # Install Dependency Packages
 function InstallDependencyPackages() {
-    app_extended_list=(
-        "cockpit"
-        "cockpit-pcp"
-        "fail2ban"
-        "libsnmp-dev"
-        "lldpd"
-        "netplan.io"
-        "nut"
-        "nut-i2c"
-        "nut-ipmi"
-        "nut-modbus"
-        "nut-powerman-pdu"
-        "nut-snmp"
-        "nut-xml"
-        "resolvconf"
-        "snmp"
-        "snmp-mibs-downloader"
-        "snmpd"
-        "systemd"
-        "tuned"
-        "ufw"
-        "wireguard"
-    )
     app_regular_list=(
         "apt-file"
         "apt-transport-https"
         "ca-certificates"
         "chrony"
+        "cockpit"
+        "cockpit-pcp"
         "cron"
         "curl"
         "dnsutils"
         "ethtool"
+        "fail2ban"
         "git"
         "git-flow"
         "git-lfs"
@@ -1460,17 +1331,27 @@ function InstallDependencyPackages() {
         "jq"
         "knot-dnsutils"
         "landscape-common"
+        "libsnmp-dev"
         "linux-generic-hwe-${LSBVersion}"
+        "lldpd"
         "lm-sensors"
         "lsb-release"
         "mailutils"
         "mtr-tiny"
         "nano"
         "neofetch"
+        "netplan.io"
         "net-tools"
         "nfs-common"
         "nmap"
         "ntfs-3g"
+        "nut"
+        "nut-i2c"
+        "nut-ipmi"
+        "nut-modbus"
+        "nut-powerman-pdu"
+        "nut-snmp"
+        "nut-xml"
         "openssh-client"
         "openssh-server"
         "p7zip-full"
@@ -1481,15 +1362,22 @@ function InstallDependencyPackages() {
         "qrencode"
         "rar"
         "realmd"
+        "resolvconf"
         "rsyslog"
+        "snmp"
+        "snmpd"
+        "snmp-mibs-downloader"
         "sudo"
+        "systemd"
         "tcpdump"
         "tshark"
+        "tuned"
         "udisks2"
         "udisks2-bcache"
         "udisks2-btrfs"
         "udisks2-lvm2"
         "udisks2-zram"
+        "ufw"
         "unrar"
         "unzip"
         "update-notifier-common"
@@ -1498,6 +1386,7 @@ function InstallDependencyPackages() {
         "virt-what"
         "wget"
         "whois"
+        "wireguard"
         "zip"
         "zsh"
     )
@@ -1507,11 +1396,7 @@ function InstallDependencyPackages() {
         "qemu-guest-agent"
         "virtualbox-guest-dkms"
     )
-    if [ "${container_environment}" != "docker" ]; then
-        app_list=(${app_regular_list[@]} ${app_extended_list[*]} ${HYPERVISOR_AGENT[*]} ${MICROCODE[*]})
-    else
-        app_list=(${app_regular_list[*]} ${HYPERVISOR_AGENT[*]} ${MICROCODE[*]})
-    fi
+    app_list=(${app_regular_list[@]} ${HYPERVISOR_AGENT[*]} ${MICROCODE[*]})
     for hypervisor_agent_list_task in "${!hypervisor_agent_list[@]}"; do
         if [ "${hypervisor_agent_list[$hypervisor_agent_list_task]}" != "${HYPERVISOR_AGENT[*]}" ]; then
             if [ "$(apt list --installed | grep ${hypervisor_agent_list[$hypervisor_agent_list_task]})" != "" ]; then
@@ -1522,13 +1407,7 @@ function InstallDependencyPackages() {
         apt-cache show ${app_list[$app_list_task]} && if [ "$?" -eq "0" ]; then
             apt install -qy ${app_list[$app_list_task]}
         fi
-    done && if [ "${container_environment}" == "docker" ]; then
-        for app_extended_list_task in "${!app_extended_list[@]}"; do
-            if [ "$(apt list --installed | grep ${app_extended_list[$app_extended_list_task]})" != "" ]; then
-                apt purge -qy ${app_extended_list[$app_extended_list_task]} && apt autoremove -qy
-            fi
-        done
-    fi
+    done
 }
 # Upgrade Packages
 function UpgradePackages() {
@@ -1536,24 +1415,7 @@ function UpgradePackages() {
 }
 # Cleanup Temp Files
 function CleanupTempFiles() {
-    cleanup_list=(
-        "cockpit"
-        "fail2ban"
-        "netplan"
-        "systemd"
-        "tuned"
-        "ufw"
-        "wireguard"
-    )
-    if [ "${container_environment}" == "docker" ]; then
-        for cleanup_list_task in "${!cleanup_list[@]}"; do
-            FILE_LIST=($(find "/" \( -path "/dev" -o -path "/home" -o -path "/mnt" -o -path "/proc" -o -path "/root" -o -path "/sys" \) -prune -o -name "${cleanup_list[$cleanup_list_task]}" -print | awk "{print $2}"))
-            for FILE_LIST_TASK in "${!FILE_LIST[@]}"; do
-                chattr -Ri "${FILE_LIST[$FILE_LIST_TASK]}" > "/dev/null" 2>&1
-                rm -rf "${FILE_LIST[$FILE_LIST_TASK]}"
-            done
-        done
-    fi && apt clean && rm -rf /etc/ufw/*.$(date '+%Y%m%d')_* /root/.*_history /tmp/*
+    apt clean && rm -rf /etc/ufw/*.$(date '+%Y%m%d')_* /root/.*_history /tmp/*
 }
 # Cleanup Outage Kernels
 function CleanupOutageKernels() {
