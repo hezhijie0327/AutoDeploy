@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 3.8.3
+# Current Version: 3.8.4
 
 ## How to get and use?
 # curl "https://source.zhijie.online/AutoDeploy/main/ProxmoxVE.sh" | sudo bash
@@ -1335,6 +1335,7 @@ function InstallDependencyPackages() {
         "dnsutils"
         "ethtool"
         "fail2ban"
+        "fwupd"
         "git"
         "git-flow"
         "git-lfs"
