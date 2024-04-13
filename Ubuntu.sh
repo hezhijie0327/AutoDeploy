@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 5.3.4
+# Current Version: 5.3.5
 
 ## How to get and use?
 # curl "https://source.zhijie.online/AutoDeploy/main/Ubuntu.sh" | sudo bash
@@ -1322,6 +1322,7 @@ function InstallDependencyPackages() {
         "dnsutils"
         "ethtool"
         "fail2ban"
+        "fwupd"
         "git"
         "git-flow"
         "git-lfs"
