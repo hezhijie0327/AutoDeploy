@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 5.3.7
+# Current Version: 5.3.8
 
 ## How to get and use?
 # curl "https://source.zhijie.online/AutoDeploy/main/Ubuntu.sh" | sudo bash
@@ -1300,9 +1300,9 @@ function InstallCustomPackages() {
 
         rm -rf "/usr/share/keyrings/xanmod-archive-keyring.gpg" && curl -fsSL "https://dl.xanmod.org/archive.key" | gpg --dearmor -o "/usr/share/keyrings/xanmod-archive-keyring.gpg"
         echo "deb [arch=${OSArchitecture} signed-by=/usr/share/keyrings/xanmod-archive-keyring.gpg] https://deb.xanmod.org releases main" > "/etc/apt/sources.list.d/xanmod.list"
-        apt update && for app_list_task in "${!app_list[@]}"; do
-            apt-cache show ${app_list[$app_list_task]} && if [ "$?" -eq "0" ]; then
-                apt install -qy ${app_list[$app_list_task]}
+        apt update && for apt_list_task in "${!apt_list[@]}"; do
+            apt-cache show ${apt_list[$apt_list_task]} && if [ "$?" -eq "0" ]; then
+                apt install -qy ${apt_list[$apt_list_task]}
             fi
         done
     }
