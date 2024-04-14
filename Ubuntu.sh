@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 5.3.8
+# Current Version: 5.3.9
 
 ## How to get and use?
 # curl "https://source.zhijie.online/AutoDeploy/main/Ubuntu.sh" | sudo bash
@@ -545,7 +545,7 @@ function ConfigurePackages() {
                 echo "    ${network_interface[$network_interface_task]}:" >> "/tmp/netplan.autodeploy" && for netplan_ethernets_list_task in "${!netplan_ethernets_list[@]}"; do
                     echo "${netplan_ethernets_list[$netplan_ethernets_list_task]}" >> "/tmp/netplan.autodeploy"
                 done
-            done && cat "/tmp/netplan.autodeploy" > "/etc/netplan/netplan.yaml" && rm -rf "/tmp/netplan.autodeploy" && netplan apply
+            done && cat "/tmp/netplan.autodeploy" > "/etc/netplan/netplan.yaml" && rm -rf "/tmp/netplan.autodeploy" && chmod 600 "/etc/netplan/netplan.yaml" && netplan apply
         fi
     }
     function ConfigureNut() {
