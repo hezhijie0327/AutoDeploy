@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 5.3.5
+# Current Version: 5.3.6
 
 ## How to get and use?
 # curl "https://source.zhijie.online/AutoDeploy/main/Ubuntu.sh" | sudo bash
@@ -1288,18 +1288,24 @@ function InstallCustomPackages() {
             XANMOD_BRANCH=""
         fi
 
-        apt_list=(
-            "linux-xanmod-${XANMOD_BRANCH}x64v${psABILevel}"
-        )
         if [ "${OSArchitecture}" == "amd64" ] && [ "${psABILevel}" != "0" ] && [ "${XANMOD_BRANCH}" != "disable" ]; then
             rm -rf "/usr/share/keyrings/xanmod-archive-keyring.gpg" && curl -fsSL "https://dl.xanmod.org/archive.key" | gpg --dearmor -o "/usr/share/keyrings/xanmod-archive-keyring.gpg"
             echo "deb [arch=${OSArchitecture} signed-by=/usr/share/keyrings/xanmod-archive-keyring.gpg] https://deb.xanmod.org releases main" > "/etc/apt/sources.list.d/xanmod.list"
-            apt update && for app_list_task in "${!app_list[@]}"; do
-                apt-cache show ${app_list[$app_list_task]} && if [ "$?" -eq "0" ]; then
-                    apt install -qy ${app_list[$app_list_task]}
-                fi
-            done
+
+            apt_list=(
+                "linux-xanmod-${XANMOD_BRANCH}x64v${psABILevel}"
+            )
+        else
+            apt_list=(
+                "linux-generic-hwe-${LSBVersion}"
+            )
         fi
+
+        apt update && for app_list_task in "${!app_list[@]}"; do
+            apt-cache show ${app_list[$app_list_task]} && if [ "$?" -eq "0" ]; then
+                apt install -qy ${app_list[$app_list_task]}
+            fi
+        done
     }
     InstallCloudflarePackage
     InstallCrowdSec
@@ -1333,7 +1339,6 @@ function InstallDependencyPackages() {
         "knot-dnsutils"
         "landscape-common"
         "libsnmp-dev"
-        "linux-generic-hwe-${LSBVersion}"
         "lldpd"
         "lm-sensors"
         "lsb-release"
