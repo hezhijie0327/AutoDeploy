@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 5.3.9
+# Current Version: 5.4.0
 
 ## How to get and use?
 # curl "https://source.zhijie.online/AutoDeploy/main/Ubuntu.sh" | sudo bash
@@ -521,17 +521,26 @@ function ConfigurePackages() {
         fi
     }
     function ConfigureNetplan() {
+        STATIC_IP_CONFIG="" # enp6s18,10.192.31.254/19,10.192.0.1
+
         netplan_list=(
             "network:"
             "  version: 2"
             "  renderer: NetworkManager"
-            "  ethernets:"
         )
-        netplan_ethernets_list=(
-            "      dhcp4: true"
-            "      dhcp6: true"
-        )
-        network_interface=($(cat "/proc/net/dev" | grep -v "docker0\|lo\|wg0" | grep "\:" | sed "s/[[:space:]]//g" | cut -d ":" -f 1 | sort | uniq | awk "{print $2}"))
+
+        if [ -n "${STATIC_IP_CONFIG}" ]; then
+            netplan_list+=(
+                    "  ethernets:"
+                    "    $(echo "${STATIC_IP_CONFIG}" | cut -d ',' -f 1):"
+                    "      addresses:"
+                    "        - $(echo "${STATIC_IP_CONFIG}" | cut -d ',' -f 2)"
+                    "      routes:"
+                    "        - to: 0.0.0.0/0"
+                    "          via: $(echo "${STATIC_IP_CONFIG}" | cut -d ',' -f 3)"
+                )
+        fi
+
         which "netplan" > "/dev/null" 2>&1
         if [ "$?" -eq "0" ]; then
             if [ ! -d "/etc/netplan" ]; then
@@ -541,10 +550,6 @@ function ConfigurePackages() {
             fi
             rm -rf "/tmp/netplan.autodeploy" && for netplan_list_task in "${!netplan_list[@]}"; do
                 echo "${netplan_list[$netplan_list_task]}" >> "/tmp/netplan.autodeploy"
-            done && for network_interface_task in "${!network_interface[@]}"; do
-                echo "    ${network_interface[$network_interface_task]}:" >> "/tmp/netplan.autodeploy" && for netplan_ethernets_list_task in "${!netplan_ethernets_list[@]}"; do
-                    echo "${netplan_ethernets_list[$netplan_ethernets_list_task]}" >> "/tmp/netplan.autodeploy"
-                done
             done && cat "/tmp/netplan.autodeploy" > "/etc/netplan/netplan.yaml" && rm -rf "/tmp/netplan.autodeploy" && chmod 600 "/etc/netplan/netplan.yaml" && netplan apply
         fi
     }
