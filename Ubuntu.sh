@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 5.4.0
+# Current Version: 5.4.1
 
 ## How to get and use?
 # curl "https://source.zhijie.online/AutoDeploy/main/Ubuntu.sh" | sudo bash
@@ -161,8 +161,10 @@ function GetSystemInformation() {
         fi
         if [ "${OSArchitecture}" == "arm64" ]; then
             MIRROR_URL="ubuntu-ports"
+            NVIDIA_URL="sbsa"
         elif [ "${OSArchitecture}" == "amd64" ]; then
             MIRROR_URL="ubuntu"
+            NVIDIA_URL="x86_64"
         else
             echo "Unsupported architecture."
             exit 1
@@ -211,10 +213,14 @@ function SetReadonlyFlag() {
     file_list=(
         "/etc/apt/preferences"
         "/etc/apt/sources.list"
+        "/etc/apt/sources.list.d/amd.list"
         "/etc/apt/sources.list.d/cloudflare.list"
         "/etc/apt/sources.list.d/crowdsec.list"
         "/etc/apt/sources.list.d/docker.list"
         "/etc/apt/sources.list.d/frrouting.list"
+        "/etc/apt/sources.list.d/intel.list"
+        "/etc/apt/sources.list.d/microsoft.list"
+        "/etc/apt/sources.list.d/nvidia.list"
         "/etc/apt/sources.list.d/xanmod.list"
         "/etc/chrony/chrony.conf"
         "/etc/cockpit/cockpit.conf"
@@ -1257,6 +1263,97 @@ function InstallCustomPackages() {
             fi
         done
     }
+    function InstallGPUDriver() {
+        GPU_TYPE="" # amd, intel, nvidia
+
+        case $GPU_TYPE in
+            amd)
+                if [ "${OSArchitecture}" == "amd64" ]; then
+                    apt_list=(
+                        "amdgpu"
+                        "rocm-opencl-runtime"
+                    )
+                    rm -rf "/usr/share/keyrings/amd-archive-keyring.gpg" && curl -fsSL "https://repo.radeon.com/rocm/rocm.gpg.key" | gpg --dearmor -o "/usr/share/keyrings/amd-archive-keyring.gpg"
+                    echo "# deb [arch=${OSArchitecture} signed-by=/usr/share/keyrings/amd-archive-keyring.gpg] https://repo.radeon.com/amdgpu/latest/ubuntu ${LSBCodename} main proprietary" > "/etc/apt/sources.list.d/amd.list"
+                    echo "# deb [arch=${OSArchitecture} signed-by=/usr/share/keyrings/amd-archive-keyring.gpg] https://repo.radeon.com/rocm/apt/latest ${LSBCodename} main proprietary" >> "/etc/apt/sources.list.d/amd.list"
+                    echo "# deb-src [arch=${OSArchitecture} signed-by=/usr/share/keyrings/amd-archive-keyring.gpg] https://repo.radeon.com/amdgpu/latest/ubuntu ${LSBCodename} main proprietary" >> "/etc/apt/sources.list.d/amd.list"
+                fi
+            ;;
+            intel)
+                if [ "${OSArchitecture}" == "amd64" ]; then
+                    apt_list=(
+                        "intel-opencl-icd"
+                        "intel-level-zero-gpu"
+                        "level-zero"
+                        "intel-media-va-driver-non-free"
+                        "libmfx1"
+                        "libmfxgen1"
+                        "libvpl2"
+                        "libegl-mesa0"
+                        "libegl1-mesa"
+                        "libegl1-mesa-dev"
+                        "libgbm1"
+                        "libgl1-mesa-dev"
+                        "libgl1-mesa-dri"
+                        "libglapi-mesa"
+                        "libgles2-mesa-dev"
+                        "libglx-mesa0"
+                        "libigdgmm12"
+                        "libxatracker2"
+                        "mesa-va-drivers"
+                        "mesa-vdpau-drivers"
+                        "mesa-vulkan-drivers"
+                        "va-driver-all"
+                        "vainfo"
+                        "hwinfo"
+                        "clinfo"
+                        "libigc-dev"
+                        "intel-igc-cm"
+                        "libigdfcl-dev"
+                        "libigfxcmrt-dev"
+                        "level-zero-dev"
+                    )
+                    rm -rf "/usr/share/keyrings/intel-archive-keyring.gpg" && curl -fsSL "https://repositories.intel.com/graphics/intel-graphics.key" | gpg --dearmor -o "/usr/share/keyrings/intel-archive-keyring.gpg"
+                    echo "# deb [arch=${OSArchitecture} signed-by=/usr/share/keyrings/intel-archive-keyring.gpg] https://repositories.intel.com/graphics/ubuntu ${LSBCodename} arc legacy" > "/etc/apt/sources.list.d/intel.list"
+                fi
+            ;;
+            nvidia)
+                apt_list=(
+                    "cuda-drivers"
+                    "cuda-toolkit"
+                    "libnvidia-decode"
+                    "libnvidia-encode"
+                    "nvidia-driver-550"
+                    "nvidia-gd"
+                    "nvidia-container-toolkit"
+                )
+                rm -rf "/usr/share/keyrings/nvidia-archive-keyring.gpg" && curl -fsSL "https://developer.download.nvidia.com/compute/cuda/repos/wsl-ubuntu/x86_64/3bf863cc.pub" | gpg --dearmor -o "/usr/share/keyrings/nvidia-archive-keyring.gpg"
+                rm -rf "/usr/share/keyrings/libnvidia-archive-keyring.gpg" && curl -fsSL "https://nvidia.github.io/libnvidia-container/gpgkey" | gpg --dearmor -o "/usr/share/keyrings/libnvidia-archive-keyring.gpg"
+                echo "# deb [arch=${OSArchitecture} signed-by=/usr/share/keyrings/libnvidia-archive-keyring.gpg] https://nvidia.github.io/libnvidia-container/stable/ubuntu18.04/${OSArchitecture} /" > "/etc/apt/sources.list.d/nvidia.list"
+                echo "# deb [arch=${OSArchitecture} signed-by=/usr/share/keyrings/nvidia-archive-keyring.gpg] https://developer.download.nvidia.com/compute/cuda/repos/ubuntu${LSBVersion}/${NVIDIA_URL}/ /" >> "/etc/apt/sources.list.d/nvidia.list"
+            ;;
+        esac
+
+        apt update && for app_list_task in "${!app_list[@]}"; do
+            apt-cache show ${app_list[$app_list_task]} && if [ "$?" -eq "0" ]; then
+                apt install -qy ${app_list[$app_list_task]}
+            fi
+        done
+    }
+    function InstallMicrosoft() {
+        apt_list=(
+            "code"
+            "microsoft-edge-stable"
+        )
+        rm -rf "/usr/share/keyrings/microsoft-archive-keyring.gpg" && curl -fsSL "https://packages.microsoft.com/keys/microsoft.asc" | gpg --dearmor -o "/usr/share/keyrings/microsoft-archive-keyring.gpg"
+        echo "deb [arch=${OSArchitecture} signed-by=/usr/share/keyrings/microsoft-archive-keyring.gpg] https://packages.microsoft.com/repos/edge code main" > "/etc/apt/sources.list.d/microsoft.list"
+        echo "deb [arch=${OSArchitecture} signed-by=/usr/share/keyrings/microsoft-archive-keyring.gpg] https://packages.microsoft.com/repos/edge stable main" >> "/etc/apt/sources.list.d/microsoft.list"
+        apt update && for app_list_task in "${!app_list[@]}"; do
+            apt-cache show ${app_list[$app_list_task]} && if [ "$?" -eq "0" ]; then
+                apt install -qy ${app_list[$app_list_task]}
+            fi
+        done
+    }
     function InstallOhMyZsh() {
         plugin_list=(
             "zsh-autosuggestions"
@@ -1315,6 +1412,8 @@ function InstallCustomPackages() {
     InstallCrowdSec
     InstallDockerEngine
     InstallFRRouting
+    InstallGPUDriver
+    #InstallMicrosoft
     InstallOhMyZsh
     InstallXanModKernel
 }
