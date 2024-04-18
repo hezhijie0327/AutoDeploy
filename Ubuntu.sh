@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 5.4.1
+# Current Version: 5.4.2
 
 ## How to get and use?
 # curl "https://source.zhijie.online/AutoDeploy/main/Ubuntu.sh" | sudo bash
@@ -1346,7 +1346,7 @@ function InstallCustomPackages() {
             "microsoft-edge-stable"
         )
         rm -rf "/usr/share/keyrings/microsoft-archive-keyring.gpg" && curl -fsSL "https://packages.microsoft.com/keys/microsoft.asc" | gpg --dearmor -o "/usr/share/keyrings/microsoft-archive-keyring.gpg"
-        echo "deb [arch=${OSArchitecture} signed-by=/usr/share/keyrings/microsoft-archive-keyring.gpg] https://packages.microsoft.com/repos/edge code main" > "/etc/apt/sources.list.d/microsoft.list"
+        echo "deb [arch=${OSArchitecture} signed-by=/usr/share/keyrings/microsoft-archive-keyring.gpg] https://packages.microsoft.com/repos/code stable main" > "/etc/apt/sources.list.d/microsoft.list"
         echo "deb [arch=${OSArchitecture} signed-by=/usr/share/keyrings/microsoft-archive-keyring.gpg] https://packages.microsoft.com/repos/edge stable main" >> "/etc/apt/sources.list.d/microsoft.list"
         apt update && for app_list_task in "${!app_list[@]}"; do
             apt-cache show ${app_list[$app_list_task]} && if [ "$?" -eq "0" ]; then
