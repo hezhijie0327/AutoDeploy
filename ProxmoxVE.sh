@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 3.8.7
+# Current Version: 3.8.8
 
 ## How to get and use?
 # curl "https://source.zhijie.online/AutoDeploy/main/ProxmoxVE.sh" | sudo bash
@@ -293,7 +293,7 @@ function ConfigurePackages() {
     function ConfigureCrontab() {
         crontab_list=(
             "# * * * * * sudo bash \"/usr/bin/pve_watchdog\""
-            "0 0 * * 7 sudo apt update && sudo apt full-upgrade -qy && sudo apt autoremove -qy"
+            "0 0 * * 7 sudo apt update && sudo apt full-upgrade -qy && sudo apt autoremove -qy --purge"
             "# 0 4 * * 7 sudo reboot"
             "@reboot sudo rm -rf /root/.*_history /root/.ssh/known_hosts*"
         )
@@ -1326,7 +1326,7 @@ function InstallCustomPackages() {
     function InstallXanModKernel() {
         # Note: The current NVIDIA, OpenZFS, VirtualBox, VMware Workstation / Player and some other dkms modules may not officially support EDGE and RT branch kernels.
         # How to fix "modinfo: ERROR: Module tcp_bbr not found." -> sudo depmod && modinfo tcp_bbr
-        # How to remove? -> sudo apt autoremove linux-image-*.*.*-xanmod* linux-headers-*.*.*-xanmod* --purge
+        # How to remove? -> sudo apt purge -qy linux-image-*.*.*-xanmod* linux-headers-*.*.*-xanmod* && sudo apt autoremove -qy --purge
         XANMOD_BRANCH="" # disable, edge, lts, rt
         if [ "${XANMOD_BRANCH}" == "" ]; then
             XANMOD_BRANCH=""
@@ -1432,7 +1432,7 @@ function InstallDependencyPackages() {
 }
 # Upgrade Packages
 function UpgradePackages() {
-    apt update && apt full-upgrade -qy && apt autoremove -qy
+    apt update && apt full-upgrade -qy && apt autoremove -qy --purge
 }
 # Cleanup Temp Files
 function CleanupTempFiles() {
