@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 5.4.2
+# Current Version: 5.4.3
 
 ## How to get and use?
 # curl "https://source.zhijie.online/AutoDeploy/main/Ubuntu.sh" | sudo bash
@@ -101,9 +101,9 @@ function GetSystemInformation() {
     }
     function GetLSBCodename() {
         ALWAYS_LATEST="false"
-        LSBCodename_LTS="jammy"
+        LSBCodename_LTS="jammy" # noble
         LSBCodename_NON_LTS="mantic"
-        LSBVersion_LTS="22.04"
+        LSBVersion_LTS="22.04" # 24.04
         LSBVersion_NON_LTS="23.10"
         which "lsb_release" > "/dev/null" 2>&1
         if [ "$?" -eq "0" ]; then
@@ -1196,14 +1196,14 @@ function ConfigureSystem() {
 # Install Custom Packages
 function InstallCustomPackages() {
     function InstallCloudflarePackage() {
-        app_list=(
+        apt_list=(
             "cloudflare-warp"
         )
         rm -rf "/usr/share/keyrings/cloudflare-warp-archive-keyring.gpg" && curl -fsSL "https://pkg.cloudflareclient.com/pubkey.gpg" | gpg --dearmor -o "/usr/share/keyrings/cloudflare-warp-archive-keyring.gpg"
         echo "deb [arch=${OSArchitecture} signed-by=/usr/share/keyrings/cloudflare-warp-archive-keyring.gpg] https://pkg.cloudflareclient.com ${LSBCodename} main" > "/etc/apt/sources.list.d/cloudflare.list"
-        apt update && for app_list_task in "${!app_list[@]}"; do
-            apt-cache show ${app_list[$app_list_task]} && if [ "$?" -eq "0" ]; then
-                apt install -qy ${app_list[$app_list_task]}
+        apt update && for apt_list_task in "${!apt_list[@]}"; do
+            apt-cache show ${apt_list[$apt_list_task]} && if [ "$?" -eq "0" ]; then
+                apt install -qy ${apt_list[$apt_list_task]}
             fi
         done
         which "update-ca-certificates" > "/dev/null" 2>&1
@@ -1212,7 +1212,7 @@ function InstallCustomPackages() {
         fi
     }
     function InstallCrowdSec() {
-        app_list=(
+        apt_list=(
             "crowdsec"
             "crowdsec-firewall-bouncer-nftables"
         )
@@ -1226,14 +1226,14 @@ function InstallCustomPackages() {
                 cscli bouncers delete ${bouncers_list[$bouncers_list_task]}
             done
         fi
-        apt update && for app_list_task in "${!app_list[@]}"; do
-            apt-cache show ${app_list[$app_list_task]} && if [ "$?" -eq "0" ]; then
-                apt install -qy ${app_list[$app_list_task]}
+        apt update && for apt_list_task in "${!apt_list[@]}"; do
+            apt-cache show ${apt_list[$apt_list_task]} && if [ "$?" -eq "0" ]; then
+                apt install -qy ${apt_list[$apt_list_task]}
             fi
         done
     }
     function InstallDockerEngine() {
-        app_list=(
+        apt_list=(
             "containerd.io"
             "docker-ce"
             "docker-ce-cli"
@@ -1242,9 +1242,9 @@ function InstallCustomPackages() {
         )
         rm -rf "/usr/share/keyrings/docker-archive-keyring.gpg" && curl -fsSL "https://mirrors.ustc.edu.cn/docker-ce/linux/ubuntu/gpg" | gpg --dearmor -o "/usr/share/keyrings/docker-archive-keyring.gpg"
         echo "deb [arch=${OSArchitecture} signed-by=/usr/share/keyrings/docker-archive-keyring.gpg] https://mirrors.ustc.edu.cn/docker-ce/linux/ubuntu ${LSBCodename} stable" > "/etc/apt/sources.list.d/docker.list"
-        apt update && apt purge -qy containerd docker docker-engine docker.io runc && for app_list_task in "${!app_list[@]}"; do
-            apt-cache show ${app_list[$app_list_task]} && if [ "$?" -eq "0" ]; then
-                apt install -qy ${app_list[$app_list_task]}
+        apt update && apt purge -qy containerd docker docker-engine docker.io runc && for apt_list_task in "${!apt_list[@]}"; do
+            apt-cache show ${apt_list[$apt_list_task]} && if [ "$?" -eq "0" ]; then
+                apt install -qy ${apt_list[$apt_list_task]}
             fi
         done
     }
@@ -1257,14 +1257,15 @@ function InstallCustomPackages() {
         )
         rm -rf "/usr/share/keyrings/frrouting-archive-keyring.gpg" && curl -fsSL "https://deb.frrouting.org/frr/keys.gpg" | gpg --dearmor -o "/usr/share/keyrings/frrouting-archive-keyring.gpg"
         echo "deb [arch=${OSArchitecture} signed-by=/usr/share/keyrings/frrouting-archive-keyring.gpg] https://deb.frrouting.org/frr ${LSBCodename} frr-stable" > "/etc/apt/sources.list.d/frrouting.list"
-        apt update && for app_list_task in "${!app_list[@]}"; do
-            apt-cache show ${app_list[$app_list_task]} && if [ "$?" -eq "0" ]; then
-                apt install -qy ${app_list[$app_list_task]}
+        apt update && for apt_list_task in "${!apt_list[@]}"; do
+            apt-cache show ${apt_list[$apt_list_task]} && if [ "$?" -eq "0" ]; then
+                apt install -qy ${apt_list[$apt_list_task]}
             fi
         done
     }
     function InstallGPUDriver() {
         GPU_TYPE="" # amd, intel, nvidia
+        INSTALL_GPU_DRIVER="" # false. true
 
         case $GPU_TYPE in
             amd)
@@ -1334,9 +1335,13 @@ function InstallCustomPackages() {
             ;;
         esac
 
-        apt update && for app_list_task in "${!app_list[@]}"; do
-            apt-cache show ${app_list[$app_list_task]} && if [ "$?" -eq "0" ]; then
-                apt install -qy ${app_list[$app_list_task]}
+        if [ "${INSTALL_GPU_DRIVER}" == "true" ]; then
+            sed -i "s/# //g" "/etc/apt/sources.list.d/amd.list" "/etc/apt/sources.list.d/intel.list" "/etc/apt/sources.list.d/nvidia.list"
+        fi
+
+        apt update && for apt_list_task in "${!apt_list[@]}"; do
+            apt-cache show ${apt_list[$apt_list_task]} && if [ "$?" -eq "0" ]; then
+                apt install -qy ${apt_list[$apt_list_task]}
             fi
         done
     }
@@ -1348,9 +1353,9 @@ function InstallCustomPackages() {
         rm -rf "/usr/share/keyrings/microsoft-archive-keyring.gpg" && curl -fsSL "https://packages.microsoft.com/keys/microsoft.asc" | gpg --dearmor -o "/usr/share/keyrings/microsoft-archive-keyring.gpg"
         echo "deb [arch=${OSArchitecture} signed-by=/usr/share/keyrings/microsoft-archive-keyring.gpg] https://packages.microsoft.com/repos/code stable main" > "/etc/apt/sources.list.d/microsoft.list"
         echo "deb [arch=${OSArchitecture} signed-by=/usr/share/keyrings/microsoft-archive-keyring.gpg] https://packages.microsoft.com/repos/edge stable main" >> "/etc/apt/sources.list.d/microsoft.list"
-        apt update && for app_list_task in "${!app_list[@]}"; do
-            apt-cache show ${app_list[$app_list_task]} && if [ "$?" -eq "0" ]; then
-                apt install -qy ${app_list[$app_list_task]}
+        apt update && for apt_list_task in "${!apt_list[@]}"; do
+            apt-cache show ${apt_list[$apt_list_task]} && if [ "$?" -eq "0" ]; then
+                apt install -qy ${apt_list[$apt_list_task]}
             fi
         done
     }
@@ -1419,7 +1424,7 @@ function InstallCustomPackages() {
 }
 # Install Dependency Packages
 function InstallDependencyPackages() {
-    app_regular_list=(
+    apt_list=(
         "apt-file"
         "apt-transport-https"
         "ca-certificates"
@@ -1505,16 +1510,16 @@ function InstallDependencyPackages() {
         "qemu-guest-agent"
         "virtualbox-guest-dkms"
     )
-    app_list=(${app_regular_list[@]} ${HYPERVISOR_AGENT[*]} ${MICROCODE[*]})
+    apt_list=(${apt_list[@]} ${HYPERVISOR_AGENT[*]} ${MICROCODE[*]})
     for hypervisor_agent_list_task in "${!hypervisor_agent_list[@]}"; do
         if [ "${hypervisor_agent_list[$hypervisor_agent_list_task]}" != "${HYPERVISOR_AGENT[*]}" ]; then
             if [ "$(apt list --installed | grep ${hypervisor_agent_list[$hypervisor_agent_list_task]})" != "" ]; then
                 apt purge -qy ${hypervisor_agent_list[$hypervisor_agent_list_task]} && apt autoremove -qy
             fi
         fi
-    done && apt update && for app_list_task in "${!app_list[@]}"; do
-        apt-cache show ${app_list[$app_list_task]} && if [ "$?" -eq "0" ]; then
-            apt install -qy ${app_list[$app_list_task]}
+    done && apt update && for apt_list_task in "${!apt_list[@]}"; do
+        apt-cache show ${apt_list[$apt_list_task]} && if [ "$?" -eq "0" ]; then
+            apt install -qy ${apt_list[$apt_list_task]}
         fi
     done
 }
