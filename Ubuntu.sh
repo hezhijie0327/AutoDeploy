@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 5.4.3
+# Current Version: 5.4.4
 
 ## How to get and use?
 # curl "https://source.zhijie.online/AutoDeploy/main/Ubuntu.sh" | sudo bash
@@ -330,7 +330,7 @@ function ConfigurePackages() {
     }
     function ConfigureCrontab() {
         crontab_list=(
-            "0 0 * * 7 sudo apt update && sudo apt full-upgrade -qy && sudo apt autoremove -qy"
+            "0 0 * * 7 sudo apt update && sudo apt full-upgrade -qy && sudo apt autoremove -qy --purge"
             "# 0 4 * * 7 sudo reboot"
             "@reboot sudo rm -rf /root/.*_history /root/.ssh/known_hosts*"
         )
@@ -1384,7 +1384,7 @@ function InstallCustomPackages() {
     function InstallXanModKernel() {
         # Note: The current NVIDIA, OpenZFS, VirtualBox, VMware Workstation / Player and some other dkms modules may not officially support EDGE and RT branch kernels.
         # How to fix "modinfo: ERROR: Module tcp_bbr not found." -> sudo depmod && modinfo tcp_bbr
-        # How to remove? -> sudo apt autoremove linux-image-*.*.*-xanmod* linux-headers-*.*.*-xanmod* --purge
+        # How to remove? -> sudo apt purge -qy linux-image-*.*.*-xanmod* linux-headers-*.*.*-xanmod* && sudo apt autoremove -qy --purge
         XANMOD_BRANCH="" # disable, edge, lts, rt
         if [ "${XANMOD_BRANCH}" == "" ]; then
             XANMOD_BRANCH=""
@@ -1514,7 +1514,7 @@ function InstallDependencyPackages() {
     for hypervisor_agent_list_task in "${!hypervisor_agent_list[@]}"; do
         if [ "${hypervisor_agent_list[$hypervisor_agent_list_task]}" != "${HYPERVISOR_AGENT[*]}" ]; then
             if [ "$(apt list --installed | grep ${hypervisor_agent_list[$hypervisor_agent_list_task]})" != "" ]; then
-                apt purge -qy ${hypervisor_agent_list[$hypervisor_agent_list_task]} && apt autoremove -qy
+                apt purge -qy ${hypervisor_agent_list[$hypervisor_agent_list_task]} && apt autoremove -qy --purge
             fi
         fi
     done && apt update && for apt_list_task in "${!apt_list[@]}"; do
@@ -1525,7 +1525,7 @@ function InstallDependencyPackages() {
 }
 # Upgrade Packages
 function UpgradePackages() {
-    apt update && apt full-upgrade -qy && apt autoremove -qy
+    apt update && apt full-upgrade -qy && apt autoremove -qy --purge
 }
 # Cleanup Temp Files
 function CleanupTempFiles() {
