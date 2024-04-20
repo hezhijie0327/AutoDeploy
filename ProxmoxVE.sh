@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 3.8.8
+# Current Version: 3.8.9
 
 ## How to get and use?
 # curl "https://source.zhijie.online/AutoDeploy/main/ProxmoxVE.sh" | sudo bash
@@ -1388,7 +1388,6 @@ function InstallDependencyPackages() {
         "neofetch"
         "net-tools"
         "nmap"
-        "ntfs-3g"
         "nut"
         "nut-i2c"
         "nut-ipmi"
