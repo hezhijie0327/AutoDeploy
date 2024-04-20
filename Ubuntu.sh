@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 5.4.5
+# Current Version: 5.4.6
 
 ## How to get and use?
 # curl "https://source.zhijie.online/AutoDeploy/main/Ubuntu.sh" | sudo bash
@@ -1454,7 +1454,6 @@ function InstallDependencyPackages() {
         "net-tools"
         "nfs-common"
         "nmap"
-        "ntfs-3g"
         "nut"
         "nut-i2c"
         "nut-ipmi"
