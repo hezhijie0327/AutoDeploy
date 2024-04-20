@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 5.4.4
+# Current Version: 5.4.5
 
 ## How to get and use?
 # curl "https://source.zhijie.online/AutoDeploy/main/Ubuntu.sh" | sudo bash
@@ -890,7 +890,7 @@ function ConfigurePackages() {
                     TUNNEL_CLIENT_V6=""
                 fi
             fi
-        fi && WAN_INTERFACE=$(cat '/proc/net/dev' | grep -v 'docker0\|lo\|wg0' | grep ':' | sed 's/[[:space:]]//g' | cut -d ':' -f 1 | sort | uniq | head -n 1)
+        fi
         if [ ! -d "/etc/wireguard" ]; then
             mkdir "/etc/wireguard"
         else
@@ -903,10 +903,6 @@ function ConfigurePackages() {
                 "Address = ${TUNNEL_CLIENT_V4}, ${TUNNEL_CLIENT_V6}"
                 "# DNS = 127.0.0.1, ::1"
                 "ListenPort = 51820"
-                "PostDown = ufw delete allow from 10.172.0.0/16; ufw route delete allow in on wg0 out on ${WAN_INTERFACE}"
-                "PostUp = ufw allow from 10.172.0.0/16; ufw route allow in on wg0 out on ${WAN_INTERFACE}"
-                "PreDown = iptables -t nat -D POSTROUTING -o ${WAN_INTERFACE} -j MASQUERADE; ip6tables -t nat -D POSTROUTING -o ${WAN_INTERFACE} -j MASQUERADE"
-                "PreUp = iptables -t nat -A POSTROUTING -o ${WAN_INTERFACE} -j MASQUERADE; ip6tables -t nat -A POSTROUTING -o ${WAN_INTERFACE} -j MASQUERADE"
                 "PrivateKey = $(wg genkey | tee '/tmp/wireguard.autodeploy')"
                 "# [Peer]"
                 "# AllowedIPs = ${TUNNEL_CLIENT_V4}, ${TUNNEL_CLIENT_V6}"
