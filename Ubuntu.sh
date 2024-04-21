@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 5.4.6
+# Current Version: 5.4.7
 
 ## How to get and use?
 # curl "https://source.zhijie.online/AutoDeploy/main/Ubuntu.sh" | sudo bash
@@ -435,6 +435,16 @@ function ConfigurePackages() {
             rm -rf "/tmp/fail2ban.autodeploy" && for fail2ban_list_task in "${!fail2ban_list[@]}"; do
                 echo "${fail2ban_list[$fail2ban_list_task]}" >> "/tmp/fail2ban.autodeploy"
             done && cat "/tmp/fail2ban.autodeploy" > "/etc/fail2ban/jail.d/fail2ban_default.conf" && rm -rf "/tmp/fail2ban.autodeploy" && systemctl enable fail2ban && fail2ban-client reload && sleep 5s && fail2ban-client status
+        fi
+    }
+    function ConfigureFlatpak() {
+        which "flatpak" > "/dev/null" 2>&1
+        if [ "$?" -eq "0" ]; then
+            curl -fsSL "hhttps://mirror.sjtu.edu.cn/flathub/flathub.gpg" | gpg --dearmor -o "/tmp/flathub.gpg.autodeploy"
+
+            flatpak remote-add --if-not-exists flathub https://flathub.org/repo/flathub.flatpakrepo
+            flatpak remote-modify flathub --url=https://mirror.sjtu.edu.cn/flathub
+            flatpak remote-modify --gpg-import=/tmp/flathub.gpg.autodeploy flathub
         fi
     }
     function ConfigureFRRouting() {
@@ -995,6 +1005,7 @@ function ConfigurePackages() {
     ConfigureCrowdSec
     ConfigureDockerEngine
     ConfigureFail2Ban
+    ConfigureFlatpak
     ConfigureFRRouting
     ConfigureGPG && ConfigureGit
     ConfigureGrub
@@ -1341,20 +1352,6 @@ function InstallCustomPackages() {
             fi
         done
     }
-    function InstallMicrosoft() {
-        apt_list=(
-            "code"
-            "microsoft-edge-stable"
-        )
-        rm -rf "/usr/share/keyrings/microsoft-archive-keyring.gpg" && curl -fsSL "https://packages.microsoft.com/keys/microsoft.asc" | gpg --dearmor -o "/usr/share/keyrings/microsoft-archive-keyring.gpg"
-        echo "deb [arch=${OSArchitecture} signed-by=/usr/share/keyrings/microsoft-archive-keyring.gpg] https://packages.microsoft.com/repos/code stable main" > "/etc/apt/sources.list.d/microsoft.list"
-        echo "deb [arch=${OSArchitecture} signed-by=/usr/share/keyrings/microsoft-archive-keyring.gpg] https://packages.microsoft.com/repos/edge stable main" >> "/etc/apt/sources.list.d/microsoft.list"
-        apt update && for apt_list_task in "${!apt_list[@]}"; do
-            apt-cache show ${apt_list[$apt_list_task]} && if [ "$?" -eq "0" ]; then
-                apt install -qy ${apt_list[$apt_list_task]}
-            fi
-        done
-    }
     function InstallOhMyZsh() {
         plugin_list=(
             "zsh-autosuggestions"
@@ -1375,6 +1372,32 @@ function InstallCustomPackages() {
             done
         fi && rm -rf "/etc/zsh/oh-my-zsh/oh-my-zsh-plugin.sh" && for plugin_upgrade_list_task in "${!plugin_upgrade_list[@]}"; do
             echo "${plugin_upgrade_list[$plugin_upgrade_list_task]}" >> "/etc/zsh/oh-my-zsh/oh-my-zsh-plugin.sh"
+        done
+    }
+    function InstallSoftwareStore() {
+        INSTALL_SOFTWARE_STORE="false" # false, true
+        GNOME_SOFTWARE_STORE="false" # false, true
+
+        if [ "${GNOME_SOFTWARE_STORE}" == "true" ]; then
+            apt_list=(
+                "gnome-software"
+                "gnome-software-plugin-flatpak"
+                "gnome-software-plugin-snap"
+            )
+        fi
+
+        if [ "${INSTALL_SOFTWARE_STORE}" == "true" ]; then
+            apt_list=(
+                "flatpak"
+                "snapd"
+                ${apt_list[@]}
+            )
+        fi
+
+        apt update && for apt_list_task in "${!apt_list[@]}"; do
+            apt-cache show ${apt_list[$apt_list_task]} && if [ "$?" -eq "0" ]; then
+                apt install -qy ${apt_list[$apt_list_task]}
+            fi
         done
     }
     function InstallXanModKernel() {
@@ -1414,8 +1437,8 @@ function InstallCustomPackages() {
     InstallDockerEngine
     InstallFRRouting
     InstallGPUDriver
-    #InstallMicrosoft
     InstallOhMyZsh
+    InstallSoftwareStore
     InstallXanModKernel
 }
 # Install Dependency Packages
