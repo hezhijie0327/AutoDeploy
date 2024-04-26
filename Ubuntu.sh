@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 5.5.1
+# Current Version: 5.5.2
 
 ## How to get and use?
 # curl "https://source.zhijie.online/AutoDeploy/main/Ubuntu.sh" | sudo bash
@@ -440,7 +440,7 @@ function ConfigurePackages() {
     function ConfigureFlatpak() {
         which "flatpak" > "/dev/null" 2>&1
         if [ "$?" -eq "0" ]; then
-            curl -fsSL "hhttps://mirror.sjtu.edu.cn/flathub/flathub.gpg" | gpg --dearmor -o "/tmp/flathub.gpg.autodeploy"
+            curl -fsSL "https://mirror.sjtu.edu.cn/flathub/flathub.gpg" | gpg --dearmor -o "/tmp/flathub.gpg.autodeploy"
 
             flatpak remote-add --if-not-exists flathub https://flathub.org/repo/flathub.flatpakrepo
             flatpak remote-modify flathub --url=https://mirror.sjtu.edu.cn/flathub
