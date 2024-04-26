@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 5.5.0
+# Current Version: 5.5.1
 
 ## How to get and use?
 # curl "https://source.zhijie.online/AutoDeploy/main/Ubuntu.sh" | sudo bash
@@ -1375,7 +1375,7 @@ function InstallCustomPackages() {
         done
     }
     function InstallSoftwareStore() {
-        INSTALL_SOFTWARE_STORE="false" # false, true
+        INSTALL_SOFTWARE_STORE="true" # false, true
         GNOME_SOFTWARE_STORE="false" # false, true
 
         if [ "${GNOME_SOFTWARE_STORE}" == "true" ]; then
