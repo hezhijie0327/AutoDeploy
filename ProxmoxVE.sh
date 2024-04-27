@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 3.8.9
+# Current Version: 3.9.0
 
 ## How to get and use?
 # curl "https://source.zhijie.online/AutoDeploy/main/ProxmoxVE.sh" | sudo bash
@@ -844,12 +844,12 @@ function ConfigurePackages() {
         fi
     }
     function ConfigureSNMP() {
-        SNMP_AUTH_PASS="${DEFAULT_PASSWORD}"
-        SNMP_PRIV_PASS="${ROOT_PASSWORD}"
+        SNMP_AUTH_PASS="${ROOT_PASSWORD}"
+        SNMP_PRIV_PASS="${NEW_HOSTNAME}"
         SNMP_SYS_CONTACT="${DEFAULT_FULLNAME}"
         SNMP_SYS_LOCATION="${NEW_HOSTNAME}"
         SNMP_SYS_NAME="${NEW_FULL_DOMAIN}"
-        SNMP_USER="${DEFAULT_USERNAME}"
+        SNMP_USER="proxmox"
         snmp_list=(
             "agentaddress udp:161,udp6:161"
             "master agentx"
