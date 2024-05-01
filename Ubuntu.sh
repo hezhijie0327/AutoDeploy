@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 5.5.5
+# Current Version: 5.5.6
 
 ## How to get and use?
 # curl "https://source.zhijie.online/AutoDeploy/main/Ubuntu.sh" | sudo bash
@@ -1321,8 +1321,14 @@ function InstallCustomPackages() {
                         "libigfxcmrt-dev"
                         "level-zero-dev"
                     )
+                    externel_file=(
+                        "${GHPROXY_URL}https://raw.githubusercontent.com/hezhijie0327/AutoDeploy/main/IntelGPU.sh"
+                    )
                     rm -rf "/usr/share/keyrings/intel-archive-keyring.gpg" && curl -fsSL "https://repositories.intel.com/graphics/intel-graphics.key" | gpg --dearmor -o "/usr/share/keyrings/intel-archive-keyring.gpg"
                     echo "# deb [arch=${OSArchitecture} signed-by=/usr/share/keyrings/intel-archive-keyring.gpg] https://repositories.intel.com/graphics/ubuntu ${LSBCodename} arc legacy" > "/etc/apt/sources.list.d/intel.list"
+                    rm -rf "/opt/intel-patch" && mkdir -p "/opt/intel-patch" && for externel_file_task in "${!externel_file[@]}"; do
+                        wget -P "/opt/intel-patch" "${externel_file[$externel_file_task]}"
+                    done
                 fi
             ;;
             nvidia)
@@ -1335,10 +1341,17 @@ function InstallCustomPackages() {
                     "nvidia-gd"
                     "nvidia-container-toolkit"
                 )
+                externel_file=(
+                    "${GHPROXY_URL}https://raw.githubusercontent.com/keylase/nvidia-patch/master/patch-fbc.sh"
+                    "${GHPROXY_URL}https://raw.githubusercontent.com/keylase/nvidia-patch/master/patch.sh"
+                )
                 rm -rf "/usr/share/keyrings/nvidia-archive-keyring.gpg" && curl -fsSL "https://developer.download.nvidia.com/compute/cuda/repos/wsl-ubuntu/x86_64/3bf863cc.pub" | gpg --dearmor -o "/usr/share/keyrings/nvidia-archive-keyring.gpg"
                 rm -rf "/usr/share/keyrings/libnvidia-archive-keyring.gpg" && curl -fsSL "https://nvidia.github.io/libnvidia-container/gpgkey" | gpg --dearmor -o "/usr/share/keyrings/libnvidia-archive-keyring.gpg"
                 echo "# deb [arch=${OSArchitecture} signed-by=/usr/share/keyrings/libnvidia-archive-keyring.gpg] https://nvidia.github.io/libnvidia-container/stable/ubuntu18.04/${OSArchitecture} /" > "/etc/apt/sources.list.d/nvidia.list"
                 echo "# deb [arch=${OSArchitecture} signed-by=/usr/share/keyrings/nvidia-archive-keyring.gpg] https://developer.download.nvidia.com/compute/cuda/repos/ubuntu${LSBVersion}/${NVIDIA_URL}/ /" >> "/etc/apt/sources.list.d/nvidia.list"
+                rm -rf "/opt/nvidia-patch" && mkdir -p "/opt/nvidia-patch" && for externel_file_task in "${!externel_file[@]}"; do
+                    wget -P "/opt/nvidia-patch" "${externel_file[$externel_file_task]}"
+                done
             ;;
         esac
 
