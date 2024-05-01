@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 5.5.6
+# Current Version: 5.5.7
 
 ## How to get and use?
 # curl "https://source.zhijie.online/AutoDeploy/main/Ubuntu.sh" | sudo bash
@@ -1321,14 +1321,8 @@ function InstallCustomPackages() {
                         "libigfxcmrt-dev"
                         "level-zero-dev"
                     )
-                    externel_file=(
-                        "${GHPROXY_URL}https://raw.githubusercontent.com/hezhijie0327/AutoDeploy/main/IntelGPU.sh"
-                    )
                     rm -rf "/usr/share/keyrings/intel-archive-keyring.gpg" && curl -fsSL "https://repositories.intel.com/graphics/intel-graphics.key" | gpg --dearmor -o "/usr/share/keyrings/intel-archive-keyring.gpg"
                     echo "# deb [arch=${OSArchitecture} signed-by=/usr/share/keyrings/intel-archive-keyring.gpg] https://repositories.intel.com/graphics/ubuntu ${LSBCodename} arc legacy" > "/etc/apt/sources.list.d/intel.list"
-                    rm -rf "/opt/intel-patch" && mkdir -p "/opt/intel-patch" && for externel_file_task in "${!externel_file[@]}"; do
-                        wget -P "/opt/intel-patch" "${externel_file[$externel_file_task]}"
-                    done
                 fi
             ;;
             nvidia)
