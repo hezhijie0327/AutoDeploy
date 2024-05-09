@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 3.9.1
+# Current Version: 3.9.2
 
 ## How to get and use?
 # curl "https://source.zhijie.online/AutoDeploy/main/ProxmoxVE.sh" | sudo bash
@@ -890,8 +890,8 @@ function ConfigurePackages() {
         )
         sysctl_list=(
             "net.core.default_qdisc = fq_pie"
-            "net.core.rmem_max = 2500000"
-            "net.core.wmem_max = 2500000"
+            "net.core.rmem_max = 7500000"
+            "net.core.wmem_max = 7500000"
             "net.ipv4.ip_forward = 1"
             "net.ipv4.tcp_congestion_control = bbr"
             "net.ipv4.tcp_fastopen = 3"
