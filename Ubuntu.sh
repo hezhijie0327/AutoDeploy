@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 5.6.1
+# Current Version: 5.6.2
 
 ## How to get and use?
 # curl "https://source.zhijie.online/AutoDeploy/main/Ubuntu.sh" | sudo bash
@@ -1327,9 +1327,6 @@ function InstallCustomPackages() {
                     rm -rf "/usr/share/keyrings/intel-archive-keyring.gpg" && curl -fsSL "https://repositories.intel.com/graphics/intel-graphics.key" | gpg --dearmor -o "/usr/share/keyrings/intel-archive-keyring.gpg"
                     echo "# deb [arch=${OSArchitecture} signed-by=/usr/share/keyrings/intel-archive-keyring.gpg] https://repositories.intel.com/gpu/ubuntu ${LSBCodename} unified" > "/etc/apt/sources.list.d/intel.list"
                     echo "# deb [arch=${OSArchitecture} signed-by=/usr/share/keyrings/intel-archive-keyring.gpg] https://repositories.intel.com/graphics/ubuntu ${LSBCodename} arc legacy unified" >> "/etc/apt/sources.list.d/intel.list"
-                    rm -rf "/opt/intel-patch" && mkdir -p "/opt/intel-patch" && for externel_file_task in "${!externel_file[@]}"; do
-                        wget -P "/opt/intel-patch" "${externel_file[$externel_file_task]}"
-                    done && cat "/opt/intel-patch/intel.sh" | sed "s|/opt/intel-patch|https://source.zhijie.online/DockerimageBuilder/main/patch/jellyfin|g;s/cat/curl -s/g" > "/opt/intel-patch/patch.sh" && rm -rf "/opt/intel-patch/intel.sh"
                 fi
             ;;
             nvidia)
