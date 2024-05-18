@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 3.9.2
+# Current Version: 3.9.3
 
 ## How to get and use?
 # curl "https://source.zhijie.online/AutoDeploy/main/ProxmoxVE.sh" | sudo bash
@@ -1327,7 +1327,7 @@ function InstallCustomPackages() {
         # Note: The current NVIDIA, OpenZFS, VirtualBox, VMware Workstation / Player and some other dkms modules may not officially support EDGE and RT branch kernels.
         # How to fix "modinfo: ERROR: Module tcp_bbr not found." -> sudo depmod && modinfo tcp_bbr
         # How to remove? -> sudo apt purge -qy linux-image-*.*.*-xanmod* linux-headers-*.*.*-xanmod* && sudo apt autoremove -qy --purge
-        XANMOD_BRANCH="" # disable, edge, lts, rt
+        XANMOD_BRANCH="edge" # disable, edge, lts, rt
         if [ "${XANMOD_BRANCH}" == "" ]; then
             XANMOD_BRANCH=""
         elif [ "${XANMOD_BRANCH}" == "edge" ] || [ "${XANMOD_BRANCH}" == "lts" ] || [ "${XANMOD_BRANCH}" == "rt" ]; then
