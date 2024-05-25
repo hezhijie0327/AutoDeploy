@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 5.6.3
+# Current Version: 5.6.4
 
 ## How to get and use?
 # curl "https://source.zhijie.online/AutoDeploy/main/Ubuntu.sh" | sudo bash
@@ -211,6 +211,7 @@ function SetRepositoryMirror() {
 # Set Readonly Flag
 function SetReadonlyFlag() {
     file_list=(
+        "/etc/apt/apt.conf.d/99autodeploy"
         "/etc/apt/preferences"
         "/etc/apt/sources.list"
         "/etc/apt/sources.list.d/amd.list"
@@ -255,6 +256,13 @@ function SetReadonlyFlag() {
 # Configure Packages
 function ConfigurePackages() {
     function ConfigureAPT() {
+        apt_conf_list=(
+            '# Disable HTTP Pipelining'
+            'Acquire::http::Pipeline-Depth "0";'
+            '# Disable Phased Updates'
+            'APT::Get::Always-Include-Phased-Updates true;'
+            'Update-Manager::Always-Include-Phased-Updates true;'
+        )
         apt_preference_list=(
             "${LSBCodename}-backports 990"
             "${LSBCodename}-security 500"
@@ -262,6 +270,12 @@ function ConfigurePackages() {
             "${LSBCodename} 500"
             "${LSBCodename}-proposed 100"
         )
+        if [ ! -d "/etc/apt/apt.conf.d" ]; then
+            mkdir "/etc/apt/apt.conf.d"
+        fi
+        rm -rf "/tmp/apt_conf_list.autodeploy" && for apt_conf_list_task in "${!apt_conf_list[@]}"; do
+            echo "${apt_conf_list[$apt_conf_list_task]}" >> "/tmp/apt_conf_list.autodeploy"
+        done && cat "/tmp/apt_conf_list.autodeploy" > "/etc/apt/apt.conf.d/99autodeploy" && rm -rf "/tmp/apt_conf_list.autodeploy"
         if [ -d "/etc/apt/preferences.d" ]; then
             rm -rf "/etc/apt/preferences.d"
         fi && mkdir "/etc/apt/preferences.d"
