@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 5.6.5
+# Current Version: 5.6.6
 
 ## How to get and use?
 # curl "https://source.zhijie.online/AutoDeploy/main/Ubuntu.sh" | sudo bash
@@ -1244,8 +1244,8 @@ function InstallCustomPackages() {
             "crowdsec-firewall-bouncer-nftables"
         )
         rm -rf "/usr/share/keyrings/crowdsec-archive-keyring.gpg" && curl -fsSL "https://packagecloud.io/crowdsec/crowdsec/gpgkey" | gpg --dearmor -o "/usr/share/keyrings/crowdsec-archive-keyring.gpg"
-        echo "deb [arch=${OSArchitecture} signed-by=/usr/share/keyrings/crowdsec-archive-keyring.gpg] https://packagecloud.io/crowdsec/crowdsec/ubuntu ${LSBCodename_LTS_OLD} main" > "/etc/apt/sources.list.d/crowdsec.list"
-        echo "deb-src [arch=${OSArchitecture} signed-by=/usr/share/keyrings/crowdsec-archive-keyring.gpg] https://packagecloud.io/crowdsec/crowdsec/ubuntu ${LSBCodename_LTS_OLD} main" >> "/etc/apt/sources.list.d/crowdsec.list"
+        echo "deb [arch=${OSArchitecture} signed-by=/usr/share/keyrings/crowdsec-archive-keyring.gpg] https://packagecloud.io/crowdsec/crowdsec/any any main" > "/etc/apt/sources.list.d/crowdsec.list"
+        echo "deb-src [arch=${OSArchitecture} signed-by=/usr/share/keyrings/crowdsec-archive-keyring.gpg] https://packagecloud.io/crowdsec/crowdsec/any any main" >> "/etc/apt/sources.list.d/crowdsec.list"
         which "cscli" > "/dev/null" 2>&1
         if [ "$?" -eq "0" ]; then
             bouncers_list=($(cscli bouncers list | grep 'FirewallBouncer' | cut -d ' ' -f 2))
