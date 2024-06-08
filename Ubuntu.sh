@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 5.6.6
+# Current Version: 5.6.7
 
 ## How to get and use?
 # curl "https://source.zhijie.online/AutoDeploy/main/Ubuntu.sh" | sudo bash
@@ -1345,7 +1345,7 @@ function InstallCustomPackages() {
                         "https://source.zhijie.online/DockerimageBuilder/main/patch/jellyfin/intel.sh"
                     )
                     rm -rf "/usr/share/keyrings/intel-archive-keyring.gpg" && curl -fsSL "https://repositories.intel.com/graphics/intel-graphics.key" | gpg --dearmor -o "/usr/share/keyrings/intel-archive-keyring.gpg"
-                    echo "# deb [arch=${OSArchitecture} signed-by=/usr/share/keyrings/intel-archive-keyring.gpg] https://repositories.intel.com/gpu/ubuntu ${LSBCodename} unified" > "/etc/apt/sources.list.d/intel.list"
+                    echo "# deb [arch=${OSArchitecture} signed-by=/usr/share/keyrings/intel-archive-keyring.gpg] https://repositories.intel.com/gpu/ubuntu ${LSBCodename} client unified" > "/etc/apt/sources.list.d/intel.list"
                     echo "# deb [arch=${OSArchitecture} signed-by=/usr/share/keyrings/intel-archive-keyring.gpg] https://repositories.intel.com/graphics/ubuntu ${LSBCodename} arc legacy unified" >> "/etc/apt/sources.list.d/intel.list"
                 fi
             ;;
