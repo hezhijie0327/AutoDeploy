@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 3.9.5
+# Current Version: 3.9.6
 
 ## How to get and use?
 # curl "https://source.zhijie.online/AutoDeploy/main/ProxmoxVE.sh" | sudo bash
@@ -1213,12 +1213,15 @@ function ConfigureSystem() {
         }
         function UpdateFSTAB() {
             cat "/etc/fstab" | grep -v "swap" > "/tmp/fstab.autodeploy"
-            if [ -f "/swapfile" ]; then
+            if [ -f "/swapfile" ] && [ "${DISABLE_SWAP}" == "false" ]; then
                 echo "/swapfile none swap sw 0 0" >> "/tmp/fstab.autodeploy"
             fi
             cat "/tmp/fstab.autodeploy" > "/etc/fstab" && rm -rf "/tmp/fstab.autodeploy"
         }
         DISABLE_SWAP="false"
+        if [ $(df -Th | grep "/$" | awk '{print $2}' | grep 'btrfs\|zfs') != "" ]; then
+            DISABLE_SWAP="true"
+        fi
         if [ "${DISABLE_SWAP}" == "true" ]; then
             ClearSWAP
             RemoveSWAP
