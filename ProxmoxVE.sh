@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 3.9.6
+# Current Version: 3.9.7
 
 ## How to get and use?
 # curl "https://source.zhijie.online/AutoDeploy/main/ProxmoxVE.sh" | sudo bash
@@ -925,7 +925,7 @@ function ConfigurePackages() {
     function ConfigureTuned() {
         which "tuned-adm" > "/dev/null" 2>&1
         if [ "$?" -eq "0" ]; then
-            tuned-adm profile "virtual-host" && tuned-adm active
+            tuned-adm profile "$(tuned-adm recommend)" && tuned-adm active
         fi
     }
     function ConfigureWatchdog() {
