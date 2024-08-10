@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 3.9.9
+# Current Version: 4.0.0
 
 ## How to get and use?
 # curl "https://source.zhijie.online/AutoDeploy/main/ProxmoxVE.sh" | sudo bash
@@ -775,7 +775,7 @@ function ConfigurePackages() {
             "nf_conntrack_max: 262144"
             "nf_conntrack_tcp_timeout_established: 432000"
             "nf_conntrack_tcp_timeout_syn_recv: 60"
-            "nftables: 1"
+            "nftables: 0"
             "nosmurfs: 1"
             "protection_synflood: 1"
             "protection_synflood_burst: 1000"
