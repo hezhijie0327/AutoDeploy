@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 5.6.9
+# Current Version: 5.7.0
 
 ## How to get and use?
 # curl "https://source.zhijie.online/AutoDeploy/main/Ubuntu.sh" | sudo bash
@@ -84,10 +84,6 @@ function GetSystemInformation() {
         if [ $(echo "${NEW_HOSTNAME}" | wc -l) -ne 1 ] || [ "${RESET_HOSTNAME}" == "true" ]; then
             NEW_HOSTNAME="Ubuntu-$(date '+%Y%m%d%H%M%S')"
         fi
-    }
-    function GetCPUpsABILevel() {
-        # https://dl.xanmod.org/check_x86-64_psabi.sh
-        psABILevel=$(awk 'BEGIN{while(!/flags/)if(getline<"/proc/cpuinfo"!=1)exit 0;if(/lm/&&/cmov/&&/cx8/&&/fpu/&&/fxsr/&&/mmx/&&/syscall/&&/sse2/)l=1;if(l==1&&/cx16/&&/lahf/&&/popcnt/&&/sse4_1/&&/sse4_2/&&/ssse3/)l=2;if(l==2&&/avx/&&/avx2/&&/bmi1/&&/bmi2/&&/f16c/&&/fma/&&/abm/&&/movbe/&&/xsave/)l=3;if(l==3&&/avx512f/&&/avx512bw/&&/avx512cd/&&/avx512dq/&&/avx512vl/)l=4;print l}')
     }
     function GetCPUVendorID() {
         CPU_VENDOR_ID=$(cat '/proc/cpuinfo' | grep 'vendor_id' | uniq | awk -F ':' '{print $2}' | awk -F ' ' '{print $1}')
@@ -220,15 +216,10 @@ function SetReadonlyFlag() {
         "/etc/apt/apt.conf.d/99autodeploy"
         "/etc/apt/preferences"
         "/etc/apt/sources.list"
-        "/etc/apt/sources.list.d/amd.list"
         "/etc/apt/sources.list.d/cloudflare.list"
         "/etc/apt/sources.list.d/crowdsec.list"
         "/etc/apt/sources.list.d/docker.list"
         "/etc/apt/sources.list.d/frrouting.list"
-        "/etc/apt/sources.list.d/intel.list"
-        "/etc/apt/sources.list.d/microsoft.list"
-        "/etc/apt/sources.list.d/nvidia.list"
-        "/etc/apt/sources.list.d/xanmod.list"
         "/etc/chrony/chrony.conf"
         "/etc/cockpit/cockpit.conf"
         "/etc/default/lldpd"
@@ -1290,97 +1281,6 @@ function InstallCustomPackages() {
             fi
         done
     }
-    function InstallGPUDriver() {
-        GPU_TYPE="" # amd, intel, nvidia
-        INSTALL_GPU_DRIVER="" # false. true
-
-        case $GPU_TYPE in
-            amd)
-                if [ "${OSArchitecture}" == "amd64" ]; then
-                    apt_list=(
-                        "amdgpu"
-                        "rocm-opencl-runtime"
-                    )
-                    rm -rf "/usr/share/keyrings/amd-archive-keyring.gpg" && curl -fsSL "https://repo.radeon.com/rocm/rocm.gpg.key" | gpg --dearmor -o "/usr/share/keyrings/amd-archive-keyring.gpg"
-                    echo "# deb [arch=${OSArchitecture} signed-by=/usr/share/keyrings/amd-archive-keyring.gpg] https://repo.radeon.com/amdgpu/latest/ubuntu ${LSBCodename} main proprietary" > "/etc/apt/sources.list.d/amd.list"
-                    echo "# deb [arch=${OSArchitecture} signed-by=/usr/share/keyrings/amd-archive-keyring.gpg] https://repo.radeon.com/rocm/apt/latest ${LSBCodename} main proprietary" >> "/etc/apt/sources.list.d/amd.list"
-                    echo "# deb-src [arch=${OSArchitecture} signed-by=/usr/share/keyrings/amd-archive-keyring.gpg] https://repo.radeon.com/amdgpu/latest/ubuntu ${LSBCodename} main proprietary" >> "/etc/apt/sources.list.d/amd.list"
-                fi
-            ;;
-            intel)
-                if [ "${OSArchitecture}" == "amd64" ]; then
-                    apt_list=(
-                        "intel-opencl-icd"
-                        "intel-level-zero-gpu"
-                        "level-zero"
-                        "intel-media-va-driver-non-free"
-                        "libmfx1"
-                        "libmfxgen1"
-                        "libvpl2"
-                        "libegl-mesa0"
-                        "libegl1-mesa"
-                        "libegl1-mesa-dev"
-                        "libgbm1"
-                        "libgl1-mesa-dev"
-                        "libgl1-mesa-dri"
-                        "libglapi-mesa"
-                        "libgles2-mesa-dev"
-                        "libglx-mesa0"
-                        "libigdgmm12"
-                        "libxatracker2"
-                        "mesa-va-drivers"
-                        "mesa-vdpau-drivers"
-                        "mesa-vulkan-drivers"
-                        "va-driver-all"
-                        "vainfo"
-                        "hwinfo"
-                        "clinfo"
-                        "libigc-dev"
-                        "intel-igc-cm"
-                        "libigdfcl-dev"
-                        "libigfxcmrt-dev"
-                        "level-zero-dev"
-                    )
-                    rm -rf "/usr/share/keyrings/intel-archive-keyring.gpg" && curl -fsSL "https://repositories.intel.com/graphics/intel-graphics.key" | gpg --dearmor -o "/usr/share/keyrings/intel-archive-keyring.gpg"
-                    rm -rf "/usr/share/keyrings/intel-oneapi-archive-keyring.gpg" && curl -fsSL "https://apt.repos.intel.com/intel-gpg-keys/GPG-PUB-KEY-INTEL-SW-PRODUCTS.PUB" | gpg --dearmor -o "/usr/share/keyrings/intel-oneapi-archive-keyring.gpg"
-                    echo "# deb [arch=${OSArchitecture} signed-by=/usr/share/keyrings/intel-archive-keyring.gpg] https://repositories.intel.com/graphics/ubuntu ${LSBCodename} arc legacy unified" > "/etc/apt/sources.list.d/intel.list"
-                    echo "# deb [arch=${OSArchitecture} signed-by=/usr/share/keyrings/intel-oneapi-archive-keyring.gpg] https://apt.repos.intel.com/oneapi all main" >> "/etc/apt/sources.list.d/intel.list"
-                fi
-            ;;
-            nvidia)
-                apt_list=(
-                    "cuda-drivers"
-                    "cuda-toolkit"
-                    "libnvidia-decode"
-                    "libnvidia-encode"
-                    "nvidia-driver-550"
-                    "nvidia-gd"
-                    "nvidia-container-toolkit"
-                )
-                externel_file=(
-                    "${GHPROXY_URL}https://raw.githubusercontent.com/keylase/nvidia-patch/master/patch-fbc.sh"
-                    "${GHPROXY_URL}https://raw.githubusercontent.com/keylase/nvidia-patch/master/patch.sh"
-                )
-                rm -rf "/usr/share/keyrings/nvidia-archive-keyring.gpg" && curl -fsSL "https://developer.download.nvidia.com/compute/cuda/repos/wsl-ubuntu/x86_64/3bf863cc.pub" | gpg --dearmor -o "/usr/share/keyrings/nvidia-archive-keyring.gpg"
-                rm -rf "/usr/share/keyrings/libnvidia-archive-keyring.gpg" && curl -fsSL "https://nvidia.github.io/libnvidia-container/gpgkey" | gpg --dearmor -o "/usr/share/keyrings/libnvidia-archive-keyring.gpg"
-                echo "# deb [arch=${OSArchitecture} signed-by=/usr/share/keyrings/libnvidia-archive-keyring.gpg] https://nvidia.github.io/libnvidia-container/stable/ubuntu18.04/${OSArchitecture} /" > "/etc/apt/sources.list.d/nvidia.list"
-                echo "# deb [arch=${OSArchitecture} signed-by=/usr/share/keyrings/nvidia-archive-keyring.gpg] https://developer.download.nvidia.com/compute/cuda/repos/ubuntu${LSBVersion}/${NVIDIA_URL}/ /" >> "/etc/apt/sources.list.d/nvidia.list"
-                rm -rf "/opt/nvidia-patch" && mkdir -p "/opt/nvidia-patch" && for externel_file_task in "${!externel_file[@]}"; do
-                    wget -P "/opt/nvidia-patch" "${externel_file[$externel_file_task]}"
-                done
-            ;;
-        esac
-
-        if [ "${INSTALL_GPU_DRIVER}" == "true" ]; then
-            sed -i "s/# //g" "/etc/apt/sources.list.d/amd.list" "/etc/apt/sources.list.d/intel.list" "/etc/apt/sources.list.d/nvidia.list"
-        fi
-
-        apt update && for apt_list_task in "${!apt_list[@]}"; do
-            apt-cache show ${apt_list[$apt_list_task]} && if [ "$?" -eq "0" ]; then
-                apt install -qy ${apt_list[$apt_list_task]}
-            fi
-        done
-    }
     function InstallOhMyZsh() {
         plugin_list=(
             "zsh-autosuggestions"
@@ -1403,72 +1303,11 @@ function InstallCustomPackages() {
             echo "${plugin_upgrade_list[$plugin_upgrade_list_task]}" >> "/etc/zsh/oh-my-zsh/oh-my-zsh-plugin.sh"
         done
     }
-    function InstallSoftwareStore() {
-        INSTALL_SOFTWARE_STORE="true" # false, true
-        GNOME_SOFTWARE_STORE="false" # false, true
-
-        if [ "${GNOME_SOFTWARE_STORE}" == "true" ]; then
-            apt_list=(
-                "gnome-software"
-                "gnome-software-plugin-flatpak"
-                "gnome-software-plugin-snap"
-            )
-        fi
-
-        if [ "${INSTALL_SOFTWARE_STORE}" == "true" ]; then
-            apt_list=(
-                "flatpak"
-                "snapd"
-                ${apt_list[@]}
-            )
-        fi
-
-        apt update && for apt_list_task in "${!apt_list[@]}"; do
-            apt-cache show ${apt_list[$apt_list_task]} && if [ "$?" -eq "0" ]; then
-                apt install -qy ${apt_list[$apt_list_task]}
-            fi
-        done
-    }
-    function InstallXanModKernel() {
-        # Note: The current NVIDIA, OpenZFS, VirtualBox, VMware Workstation / Player and some other dkms modules may not officially support EDGE and RT branch kernels.
-        # How to fix "modinfo: ERROR: Module tcp_bbr not found." -> sudo depmod && modinfo tcp_bbr
-        # How to remove? -> sudo apt purge -qy linux-image-*.*.*-xanmod* linux-headers-*.*.*-xanmod* && sudo apt autoremove -qy --purge
-        XANMOD_BRANCH="edge" # disable, edge, lts, rt
-        if [ "${XANMOD_BRANCH}" == "" ]; then
-            XANMOD_BRANCH=""
-        elif [ "${XANMOD_BRANCH}" == "edge" ] || [ "${XANMOD_BRANCH}" == "lts" ] || [ "${XANMOD_BRANCH}" == "rt" ]; then
-            XANMOD_BRANCH="${XANMOD_BRANCH}-"
-        fi
-        if [ "${psABILevel}" == "1" ] && { [ "${XANMOD_BRANCH}" == "edge" ] || [ "${XANMOD_BRANCH}" == "rt" ]; }; then
-            XANMOD_BRANCH=""
-        fi
-
-        if [ "${OSArchitecture}" == "amd64" ] && [ "${psABILevel}" != "0" ] && [ "${XANMOD_BRANCH}" != "disable" ]; then
-            apt_list=(
-                "linux-xanmod-${XANMOD_BRANCH}x64v${psABILevel}"
-            )
-        else
-            apt_list=(
-                "linux-generic-hwe-${LSBVersion}"
-            )
-        fi
-
-        rm -rf "/usr/share/keyrings/xanmod-archive-keyring.gpg" && curl -fsSL "https://dl.xanmod.org/archive.key" | gpg --dearmor -o "/usr/share/keyrings/xanmod-archive-keyring.gpg"
-        echo "deb [arch=${OSArchitecture} signed-by=/usr/share/keyrings/xanmod-archive-keyring.gpg] https://deb.xanmod.org releases main" > "/etc/apt/sources.list.d/xanmod.list"
-        apt update && for apt_list_task in "${!apt_list[@]}"; do
-            apt-cache show ${apt_list[$apt_list_task]} && if [ "$?" -eq "0" ]; then
-                apt install -qy ${apt_list[$apt_list_task]}
-            fi
-        done
-    }
     InstallCloudflarePackage
     InstallCrowdSec
     InstallDockerEngine
     InstallFRRouting
-    InstallGPUDriver
     InstallOhMyZsh
-    InstallSoftwareStore
-    InstallXanModKernel
 }
 # Install Dependency Packages
 function InstallDependencyPackages() {
@@ -1495,6 +1334,7 @@ function InstallDependencyPackages() {
         "knot-dnsutils"
         "landscape-common"
         "libsnmp-dev"
+        "linux-generic-hwe-${LSBVersion}"
         "lldpd"
         "lm-sensors"
         "lsb-release"
