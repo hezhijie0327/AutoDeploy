@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 4.0.1
+# Current Version: 4.0.2
 
 ## How to get and use?
 # curl "https://source.zhijie.online/AutoDeploy/main/ProxmoxVE.sh" | sudo bash
@@ -736,7 +736,7 @@ function ConfigurePackages() {
         cluster_fw_list=(
             "[OPTIONS]"
             "ebtables: 1"
-            "enable: 1"
+            "enable: 0"
             "log_ratelimit: burst=5,enable=1,rate=1/second"
             "policy_in: REJECT"
             "policy_out: ACCEPT"
@@ -752,27 +752,18 @@ function ConfigurePackages() {
             "IN ACCEPT -p tcp -dport 43 -log nolog"
             "IN ACCEPT -p tcp -dport 445 -log nolog"
             "IN ACCEPT -p udp -dport 445 -log nolog"
-            "IN ACCEPT -p tcp -dport 53 -log nolog"
-            "IN ACCEPT -p udp -dport 53 -log nolog"
-            "IN ACCEPT -p udp -dport 546 -log nolog"
-            "IN ACCEPT -p udp -dport 547 -log nolog"
             "IN ACCEPT -p udp -dport 5405:5412 -log nolog"
             "IN ACCEPT -p tcp -dport 5900:5999 -log nolog"
-            "IN ACCEPT -p udp -dport 67 -log nolog"
-            "IN ACCEPT -p udp -dport 68 -log nolog"
             "IN ACCEPT -p tcp -dport 8006 -log nolog"
-            "IN ACCEPT -p tcp -dport 853 -log nolog"
-            "IN ACCEPT -p udp -dport 853 -log nolog"
         )
         host_fw_list=(
             "[OPTIONS]"
-            "enable: 1"
+            "enable: 0"
             "log_level_in: nolog"
             "log_level_out: nolog"
-            "log_nf_conntrack: 1"
+            "log_nf_conntrack: 0"
             "ndp: 1"
             "nf_conntrack_allow_invalid: 1"
-            "nf_conntrack_helpers: ''"
             "nf_conntrack_max: 262144"
             "nf_conntrack_tcp_timeout_established: 432000"
             "nf_conntrack_tcp_timeout_syn_recv: 60"
@@ -805,7 +796,7 @@ function ConfigurePackages() {
             "ipfilter: 0"
             "log_level_in: nolog"
             "log_level_out: nolog"
-            "macfilter: 1"
+            "macfilter: 0"
             "ndp: 1"
             "policy_in: REJECT"
             "policy_out: ACCEPT"
