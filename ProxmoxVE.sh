@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 4.0.3
+# Current Version: 4.0.4
 
 ## How to get and use?
 # curl "https://source.zhijie.online/AutoDeploy/main/ProxmoxVE.sh" | sudo bash
@@ -731,12 +731,13 @@ function ConfigurePackages() {
         cluster_fw_list=(
             "[OPTIONS]"
             "ebtables: 1"
-            "enable: 0"
+            "enable: 1"
             "log_ratelimit: burst=5,enable=1,rate=1/second"
             "policy_in: REJECT"
             "policy_out: ACCEPT"
             "[RULES]"
             "IN ACCEPT -p icmp -log nolog"
+            "IN ACCEPT -p ipv6-icmp -log nolog"
             "IN ACCEPT -p tcp -dport 135 -log nolog"
             "IN ACCEPT -p udp -dport 135 -log nolog"
             "IN ACCEPT -p udp -dport 137:139 -log nolog"
@@ -753,7 +754,7 @@ function ConfigurePackages() {
         )
         host_fw_list=(
             "[OPTIONS]"
-            "enable: 0"
+            "enable: 1"
             "log_level_in: nolog"
             "log_level_out: nolog"
             "log_nf_conntrack: 0"
@@ -762,7 +763,7 @@ function ConfigurePackages() {
             "nf_conntrack_max: 262144"
             "nf_conntrack_tcp_timeout_established: 432000"
             "nf_conntrack_tcp_timeout_syn_recv: 60"
-            "nftables: 0"
+            "nftables: 1"
             "nosmurfs: 0"
             "protection_synflood: 0"
             "protection_synflood_burst: 1000"
@@ -772,6 +773,7 @@ function ConfigurePackages() {
             "tcpflags: 0"
             "[RULES]"
             "IN ACCEPT -p icmp -log nolog"
+            "IN ACCEPT -p ipv6-icmp -log nolog"
             "IN ACCEPT -p udp -dport 111 -log nolog"
             "IN ACCEPT -p udp -dport 123 -log nolog"
             "IN ACCEPT -p udp -dport 161 -log nolog"
@@ -798,6 +800,7 @@ function ConfigurePackages() {
             "radv: 1"
             "[RULES]"
             "IN ACCEPT -p icmp -log nolog"
+            "IN ACCEPT -p ipv6-icmp -log nolog"
         )
         vm_container_list=(
             $(ls "/etc/pve/lxc" | grep "\.conf" | sed "s/\.conf//g" | awk '{print $1}')
