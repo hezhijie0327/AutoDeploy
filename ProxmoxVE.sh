@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 4.0.6
+# Current Version: 4.0.7
 
 ## How to get and use?
 # curl "https://source.zhijie.online/AutoDeploy/main/ProxmoxVE.sh" | sudo bash
@@ -174,7 +174,6 @@ function SetReadonlyFlag() {
         "/etc/apt/preferences"
         "/etc/apt/preferences.d/proxmox.pref"
         "/etc/apt/sources.list"
-        "/etc/apt/sources.list.d/cloudflare.list"
         "/etc/apt/sources.list.d/crowdsec.list"
         "/etc/apt/sources.list.d/docker.list"
         "/etc/apt/sources.list.d/frrouting.list"
@@ -1239,22 +1238,6 @@ function ConfigureSystem() {
 }
 # Install Custom Packages
 function InstallCustomPackages() {
-    function InstallCloudflarePackage() {
-        apt_list=(
-            "cloudflare-warp"
-        )
-        rm -rf "/etc/apt/keyrings/cloudflare-warp-archive-keyring.gpg" && curl -fsSL "https://pkg.cloudflareclient.com/pubkey.gpg" | gpg --dearmor -o "/etc/apt/keyrings/cloudflare-warp-archive-keyring.gpg"
-        echo "deb [arch=amd64 signed-by=/etc/apt/keyrings/cloudflare-warp-archive-keyring.gpg] https://pkg.cloudflareclient.com ${LSBCodename} main" > "/etc/apt/sources.list.d/cloudflare.list"
-        apt update && for apt_list_task in "${!apt_list[@]}"; do
-            apt-cache show ${apt_list[$apt_list_task]} && if [ "$?" -eq "0" ]; then
-                apt install -qy ${apt_list[$apt_list_task]}
-            fi
-        done
-        which "update-ca-certificates" > "/dev/null" 2>&1
-        if [ "$?" -eq "0" ]; then
-            rm -rf "/usr/local/share/ca-certificates/Cloudflare_CA.crt" && curl -fsSL "https://developers.cloudflare.com/cloudflare-one/static/documentation/connections/Cloudflare_CA.pem" > "/usr/local/share/ca-certificates/Cloudflare_CA.crt" && update-ca-certificates
-        fi
-    }
     function InstallCrowdSec() {
         apt_list=(
             "crowdsec"
@@ -1334,7 +1317,6 @@ function InstallCustomPackages() {
             echo "${plugin_upgrade_list[$plugin_upgrade_list_task]}" >> "/etc/zsh/oh-my-zsh/oh-my-zsh-plugin.sh"
         done
     }
-    InstallCloudflarePackage
     InstallCrowdSec
     InstallDockerEngine
     InstallFRRouting
