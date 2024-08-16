@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 4.0.8
+# Current Version: 4.0.9
 
 ## How to get and use?
 # curl "https://source.zhijie.online/AutoDeploy/main/ProxmoxVE.sh" | sudo bash
@@ -1235,8 +1235,8 @@ function InstallCustomPackages() {
         apt_list=(
             "cloudflare-warp"
         )
-        rm -rf "/etc/apt/keyrings/cloudflare-warp-archive-keyring.gpg" && curl -fsSL "https://pkg.cloudflareclient.com/pubkey.gpg" | gpg --dearmor -o "/etc/apt/keyrings/cloudflare-warp-archive-keyring.gpg"
-        echo "deb [arch=amd64 signed-by=/etc/apt/keyrings/cloudflare-warp-archive-keyring.gpg] https://pkg.cloudflareclient.com ${LSBCodename} main" > "/etc/apt/sources.list.d/cloudflare.list"
+        rm -rf "/usr/share/keyrings/cloudflare-warp-archive-keyring.gpg" && curl -fsSL "https://pkg.cloudflareclient.com/pubkey.gpg" | gpg --dearmor -o "/usr/share/keyrings/cloudflare-warp-archive-keyring.gpg"
+        echo "deb [arch=amd64 signed-by=/usr/share/keyrings/cloudflare-warp-archive-keyring.gpg] https://pkg.cloudflareclient.com ${LSBCodename} main" > "/etc/apt/sources.list.d/cloudflare.list"
         apt update && for apt_list_task in "${!apt_list[@]}"; do
             apt-cache show ${apt_list[$apt_list_task]} && if [ "$?" -eq "0" ]; then
                 apt install -qy ${apt_list[$apt_list_task]}
@@ -1252,12 +1252,9 @@ function InstallCustomPackages() {
             "crowdsec"
             "crowdsec-firewall-bouncer-nftables"
         )
-        if [ ! -d "/etc/apt/keyrings" ]; then
-            mkdir "/etc/apt/keyrings"
-        fi
-        rm -rf "/etc/apt/keyrings/crowdsec-archive-keyring.gpg" && curl -fsSL "https://packagecloud.io/crowdsec/crowdsec/gpgkey" | gpg --dearmor -o "/etc/apt/keyrings/crowdsec-archive-keyring.gpg"
-        echo "deb [arch=amd64 signed-by=/etc/apt/keyrings/crowdsec-archive-keyring.gpg] https://packagecloud.io/crowdsec/crowdsec/any any main" > "/etc/apt/sources.list.d/crowdsec.list"
-        echo "deb-src [arch=amd64 signed-by=/etc/apt/keyrings/crowdsec-archive-keyring.gpg] https://packagecloud.io/crowdsec/crowdsec/any any main" >> "/etc/apt/sources.list.d/crowdsec.list"
+        rm -rf "/usr/share/keyrings/crowdsec-archive-keyring.gpg" && curl -fsSL "https://packagecloud.io/crowdsec/crowdsec/gpgkey" | gpg --dearmor -o "/usr/share/keyrings/crowdsec-archive-keyring.gpg"
+        echo "deb [arch=amd64 signed-by=/usr/share/keyrings/crowdsec-archive-keyring.gpg] https://packagecloud.io/crowdsec/crowdsec/any any main" > "/etc/apt/sources.list.d/crowdsec.list"
+        echo "deb-src [arch=amd64 signed-by=/usr/share/keyrings/crowdsec-archive-keyring.gpg] https://packagecloud.io/crowdsec/crowdsec/any any main" >> "/etc/apt/sources.list.d/crowdsec.list"
         which "cscli" > "/dev/null" 2>&1
         if [ "$?" -eq "0" ]; then
             bouncers_list=($(cscli bouncers list | grep 'FirewallBouncer' | cut -d ' ' -f 2))
@@ -1279,11 +1276,8 @@ function InstallCustomPackages() {
             "docker-compose-plugin"
             "docker-compose"
         )
-        if [ ! -d "/etc/apt/keyrings" ]; then
-            mkdir "/etc/apt/keyrings"
-        fi
-        rm -rf "/etc/apt/keyrings/docker-archive-keyring.gpg" && curl -fsSL "https://mirrors.ustc.edu.cn/docker-ce/linux/debian/gpg" | gpg --dearmor -o "/etc/apt/keyrings/docker-archive-keyring.gpg"
-        echo "deb [arch=amd64 signed-by=/etc/apt/keyrings/docker-archive-keyring.gpg] https://mirrors.ustc.edu.cn/docker-ce/linux/debian ${LSBCodename} stable" > "/etc/apt/sources.list.d/docker.list"
+        rm -rf "/usr/share/keyrings/docker-archive-keyring.gpg" && curl -fsSL "https://mirrors.ustc.edu.cn/docker-ce/linux/debian/gpg" | gpg --dearmor -o "/usr/share/keyrings/docker-archive-keyring.gpg"
+        echo "deb [arch=amd64 signed-by=/usr/share/keyrings/docker-archive-keyring.gpg] https://mirrors.ustc.edu.cn/docker-ce/linux/debian ${LSBCodename} stable" > "/etc/apt/sources.list.d/docker.list"
         apt update && apt purge -qy containerd docker docker-engine docker.io runc && for apt_list_task in "${!apt_list[@]}"; do
             apt-cache show ${apt_list[$apt_list_task]} && if [ "$?" -eq "0" ]; then
                 apt install -qy ${apt_list[$apt_list_task]}
@@ -1296,8 +1290,8 @@ function InstallCustomPackages() {
             "frr-pythontools"
             "frr-snmp"
         )
-        rm -rf "/etc/apt/keyrings/frrouting-archive-keyring.gpg" && curl -fsSL "https://deb.frrouting.org/frr/keys.gpg" | gpg --dearmor -o "/etc/apt/keyrings/frrouting-archive-keyring.gpg"
-        echo "deb [arch=amd64 signed-by=/etc/apt/keyrings/frrouting-archive-keyring.gpg] https://deb.frrouting.org/frr ${LSBCodename} frr-stable" > "/etc/apt/sources.list.d/frrouting.list"
+        rm -rf "/usr/share/keyrings/frrouting-archive-keyring.gpg" && curl -fsSL "https://deb.frrouting.org/frr/keys.gpg" | gpg --dearmor -o "/usr/share/keyrings/frrouting-archive-keyring.gpg"
+        echo "deb [arch=amd64 signed-by=/usr/share/keyrings/frrouting-archive-keyring.gpg] https://deb.frrouting.org/frr ${LSBCodename} frr-stable" > "/etc/apt/sources.list.d/frrouting.list"
         apt update && for apt_list_task in "${!apt_list[@]}"; do
             apt-cache show ${apt_list[$apt_list_task]} && if [ "$?" -eq "0" ]; then
                 apt install -qy ${apt_list[$apt_list_task]}
@@ -1346,8 +1340,8 @@ function InstallCustomPackages() {
             )
         fi
 
-        rm -rf "/etc/apt/keyrings/xanmod-archive-keyring.gpg" && curl -fsSL "https://dl.xanmod.org/archive.key" | gpg --dearmor -o "/etc/apt/keyrings/xanmod-archive-keyring.gpg"
-        echo "deb [arch=amd64 signed-by=/etc/apt/keyrings/xanmod-archive-keyring.gpg] https://deb.xanmod.org releases main" > "/etc/apt/sources.list.d/xanmod.list"
+        rm -rf "/usr/share/keyrings/xanmod-archive-keyring.gpg" && curl -fsSL "https://dl.xanmod.org/archive.key" | gpg --dearmor -o "/usr/share/keyrings/xanmod-archive-keyring.gpg"
+        echo "deb [arch=amd64 signed-by=/usr/share/keyrings/xanmod-archive-keyring.gpg] https://deb.xanmod.org releases main" > "/etc/apt/sources.list.d/xanmod.list"
         apt update && for apt_list_task in "${!apt_list[@]}"; do
             apt-cache show ${apt_list[$apt_list_task]} && if [ "$?" -eq "0" ]; then
                 apt install -qy ${apt_list[$apt_list_task]}
