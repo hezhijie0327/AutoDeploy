@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 4.0.7
+# Current Version: 4.0.8
 
 ## How to get and use?
 # curl "https://source.zhijie.online/AutoDeploy/main/ProxmoxVE.sh" | sudo bash
@@ -75,6 +75,10 @@ function GetSystemInformation() {
             fi
         fi && rm -rf "/etc/resolv.conf" && cat "/tmp/resolv.autodeploy" > "/etc/resolv.conf" && rm -rf "/tmp/resolv.autodeploy"
     }
+    function GetCPUpsABILevel() {
+        # https://dl.xanmod.org/check_x86-64_psabi.sh
+        psABILevel=$(awk 'BEGIN{while(!/flags/)if(getline<"/proc/cpuinfo"!=1)exit 0;if(/lm/&&/cmov/&&/cx8/&&/fpu/&&/fxsr/&&/mmx/&&/syscall/&&/sse2/)l=1;if(l==1&&/cx16/&&/lahf/&&/popcnt/&&/sse4_1/&&/sse4_2/&&/ssse3/)l=2;if(l==2&&/avx/&&/avx2/&&/bmi1/&&/bmi2/&&/f16c/&&/fma/&&/abm/&&/movbe/&&/xsave/)l=3;if(l==3&&/avx512f/&&/avx512bw/&&/avx512cd/&&/avx512dq/&&/avx512vl/)l=4;print l}')
+    }
     function GetCPUVendorID() {
         CPU_VENDOR_ID=$(cat '/proc/cpuinfo' | grep 'vendor_id' | uniq | awk -F ':' '{print $2}' | awk -F ' ' '{print $1}')
         if [ "${CPU_VENDOR_ID}" == "AuthenticAMD" ]; then
@@ -127,6 +131,7 @@ function GetSystemInformation() {
     GenerateDomain
     GenerateHostname
     GenerateResolv
+    GetCPUpsABILevel
     GetCPUVendorID
     GetHostname
     GetManagementIPAddress
@@ -174,10 +179,12 @@ function SetReadonlyFlag() {
         "/etc/apt/preferences"
         "/etc/apt/preferences.d/proxmox.pref"
         "/etc/apt/sources.list"
+        "/etc/apt/sources.list.d/cloudflare.list"
         "/etc/apt/sources.list.d/crowdsec.list"
         "/etc/apt/sources.list.d/docker.list"
         "/etc/apt/sources.list.d/frrouting.list"
         "/etc/apt/sources.list.d/proxmox.list"
+        "/etc/apt/sources.list.d/xanmod.list"
         "/etc/chrony/chrony.conf"
         "/etc/default/lldpd"
         "/etc/docker/daemon.json"
@@ -299,7 +306,6 @@ function ConfigurePackages() {
     }
     function ConfigureCrontab() {
         crontab_list=(
-            "# * * * * * sudo bash \"/usr/bin/pve_watchdog\""
             "0 0 * * 7 sudo apt update && sudo apt full-upgrade -qy && sudo apt autoremove -qy --purge"
             "# 0 4 * * 7 sudo reboot"
             "@reboot sudo rm -rf /root/.*_history /root/.ssh/known_hosts*"
@@ -921,18 +927,6 @@ function ConfigurePackages() {
             tuned-adm profile "$(tuned-adm recommend)" && tuned-adm active
         fi
     }
-    function ConfigureWatchdog() {
-        watchdog_list=(
-            '#!/bin/bash'
-            'export PATH="/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:$PATH"'
-            'CT_VMID_EXCLUDE=()'
-            'CT_VMID=($(ls "/etc/pve/lxc" | grep "\.conf" | sed "s/\.conf//g" | grep -v "$(echo ${CT_VMID_EXCLUDE[*]} 1000000000 | sed "s/ /\\|/g")" | awk "{print $1}") $(ls "/etc/pve/qemu-server" | grep "\.conf" | sed "s/\.conf//g" | grep -v "$(echo ${CT_VMID_EXCLUDE[*]} 1000000000 | sed "s/ /\\|/g")" | awk "{print $1}"))'
-            'for CT_VMID_TASK in "${!CT_VMID[@]}"; do if [ -f "/tmp/pve_watchdog_${CT_VMID[$CT_VMID_TASK]}.log" ]; then HISTORY_STATUS=$(cat "/tmp/pve_watchdog_${CT_VMID[$CT_VMID_TASK]}.log"); else HISTORY_STATUS="0"; fi; if [ -f "/etc/pve/qemu-server/${CT_VMID[$CT_VMID_TASK]}.conf" ]; then if [ $(cat "/etc/pve/qemu-server/${CT_VMID[$CT_VMID_TASK]}.conf" | grep "agent\:" | cut -d " " -f 2) -eq "0" ]; then if [ $(qm status ${CT_VMID[$CT_VMID_TASK]} | grep "status" | cut -d " " -f 2 | grep "running\|stoped") == "" ] && [ $(cat "/etc/pve/qemu-server/${CT_VMID[$CT_VMID_TASK]}.conf" | grep "onboot\:" | cut -d " " -f 2) -eq "1" ]; then echo "0" > "/tmp/pve_watchdog_${CT_VMID[$CT_VMID_TASK]}.log"; else echo "$(( ${HISTORY_STATUS} + 1 ))" > "/tmp/pve_watchdog_${CT_VMID[$CT_VMID_TASK]}.log"; fi; else qm agent ${CT_VMID[$CT_VMID_TASK]} ping > "/dev/null" 2>&1; if [ "$?" -ne "0" ]; then echo "$(( ${HISTORY_STATUS} + 1 ))" > "/tmp/pve_watchdog_${CT_VMID[$CT_VMID_TASK]}.log"; else echo "0" > "/tmp/pve_watchdog_${CT_VMID[$CT_VMID_TASK]}.log"; fi; fi; if [ $(cat "/tmp/pve_watchdog_${CT_VMID[$CT_VMID_TASK]}.log") -gt "5" ]; then qm stop ${CT_VMID[$CT_VMID_TASK]} > "/dev/null" 2>&1; qm start ${CT_VMID[$CT_VMID_TASK]} > "/dev/null" 2>&1; echo "0" > "/tmp/pve_watchdog_${CT_VMID[$CT_VMID_TASK]}.log"; fi; else for CT_VMID_TASK in "${!CT_VMID[@]}"; do if [ $(pct status ${CT_VMID[$CT_VMID_TASK]} | grep "status" | cut -d " " -f 2 | grep "running\|stoped") == "" ] && [ $(cat "/etc/pve/lxc/${CT_VMID[$CT_VMID_TASK]}.conf" | grep "onboot\:" | cut -d " " -f 2) -eq "1" ]; then echo "$(( ${HISTORY_STATUS} + 1 ))" > "/tmp/pve_watchdog_${CT_VMID[$CT_VMID_TASK]}.log"; fi; done; if [ $(cat "/tmp/pve_watchdog_${CT_VMID[$CT_VMID_TASK]}.log") -gt "5" ]; then pct stop ${CT_VMID[$CT_VMID_TASK]} > "/dev/null" 2>&1; pct start ${CT_VMID[$CT_VMID_TASK]} > "/dev/null" 2>&1; echo "0" > "/tmp/pve_watchdog_${CT_VMID[$CT_VMID_TASK]}.log"; fi; fi; done'
-        )
-        rm -rf "/etc/pve/watchdog.sh" && for watchdog_list_task in "${!watchdog_list[@]}"; do
-            echo "${watchdog_list[$watchdog_list_task]}" >> "/tmp/watchdog.autodeploy"
-        done && cat "/tmp/watchdog.autodeploy" > "/usr/bin/pve_watchdog" && chmod +x "/usr/bin/pve_watchdog" && rm -rf "/tmp/watchdog.autodeploy"
-    }
     function ConfigureZsh() {
         function GenerateCommandPath() {
             default_path_list=(
@@ -1024,7 +1018,6 @@ function ConfigurePackages() {
     ConfigureSshd
     ConfigureSysctl
     ConfigureTuned
-    ConfigureWatchdog
     ConfigureZsh
 }
 # Configure System
@@ -1238,6 +1231,22 @@ function ConfigureSystem() {
 }
 # Install Custom Packages
 function InstallCustomPackages() {
+    function InstallCloudflarePackage() {
+        apt_list=(
+            "cloudflare-warp"
+        )
+        rm -rf "/etc/apt/keyrings/cloudflare-warp-archive-keyring.gpg" && curl -fsSL "https://pkg.cloudflareclient.com/pubkey.gpg" | gpg --dearmor -o "/etc/apt/keyrings/cloudflare-warp-archive-keyring.gpg"
+        echo "deb [arch=amd64 signed-by=/etc/apt/keyrings/cloudflare-warp-archive-keyring.gpg] https://pkg.cloudflareclient.com ${LSBCodename} main" > "/etc/apt/sources.list.d/cloudflare.list"
+        apt update && for apt_list_task in "${!apt_list[@]}"; do
+            apt-cache show ${apt_list[$apt_list_task]} && if [ "$?" -eq "0" ]; then
+                apt install -qy ${apt_list[$apt_list_task]}
+            fi
+        done
+        which "update-ca-certificates" > "/dev/null" 2>&1
+        if [ "$?" -eq "0" ]; then
+            rm -rf "/usr/local/share/ca-certificates/Cloudflare_CA.crt" && curl -fsSL "https://developers.cloudflare.com/cloudflare-one/static/documentation/connections/Cloudflare_CA.pem" > "/usr/local/share/ca-certificates/Cloudflare_CA.crt" && update-ca-certificates
+        fi
+    }
     function InstallCrowdSec() {
         apt_list=(
             "crowdsec"
@@ -1317,10 +1326,40 @@ function InstallCustomPackages() {
             echo "${plugin_upgrade_list[$plugin_upgrade_list_task]}" >> "/etc/zsh/oh-my-zsh/oh-my-zsh-plugin.sh"
         done
     }
+    function InstallXanModKernel() {
+        # Note: The current NVIDIA, OpenZFS, VirtualBox, VMware Workstation / Player and some other dkms modules may not officially support EDGE and RT branch kernels.
+        # How to fix "modinfo: ERROR: Module tcp_bbr not found." -> sudo depmod && modinfo tcp_bbr
+        # How to remove? -> sudo apt purge -qy linux-image-*.*.*-xanmod* linux-headers-*.*.*-xanmod* && sudo apt autoremove -qy --purge
+        XANMOD_BRANCH="disable" # disable, edge, lts, rt
+        if [ "${XANMOD_BRANCH}" == "" ]; then
+            XANMOD_BRANCH=""
+        elif [ "${XANMOD_BRANCH}" == "edge" ] || [ "${XANMOD_BRANCH}" == "lts" ] || [ "${XANMOD_BRANCH}" == "rt" ]; then
+            XANMOD_BRANCH="${XANMOD_BRANCH}-"
+        fi
+        if [ "${psABILevel}" == "1" ] && { [ "${XANMOD_BRANCH}" == "edge" ] || [ "${XANMOD_BRANCH}" == "rt" ]; }; then
+            XANMOD_BRANCH=""
+        fi
+
+        if [ "${psABILevel}" != "0" ] && [ "${XANMOD_BRANCH}" != "disable" ]; then
+            apt_list=(
+                "linux-xanmod-${XANMOD_BRANCH}x64v${psABILevel}"
+            )
+        fi
+
+        rm -rf "/etc/apt/keyrings/xanmod-archive-keyring.gpg" && curl -fsSL "https://dl.xanmod.org/archive.key" | gpg --dearmor -o "/etc/apt/keyrings/xanmod-archive-keyring.gpg"
+        echo "deb [arch=amd64 signed-by=/etc/apt/keyrings/xanmod-archive-keyring.gpg] https://deb.xanmod.org releases main" > "/etc/apt/sources.list.d/xanmod.list"
+        apt update && for apt_list_task in "${!apt_list[@]}"; do
+            apt-cache show ${apt_list[$apt_list_task]} && if [ "$?" -eq "0" ]; then
+                apt install -qy ${apt_list[$apt_list_task]}
+            fi
+        done
+    }
+    InstallCloudflarePackage
     InstallCrowdSec
     InstallDockerEngine
     InstallFRRouting
     InstallOhMyZsh
+    InstallXanModKernel
 }
 # Install Dependency Packages
 function InstallDependencyPackages() {
