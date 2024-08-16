@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 4.1.0
+# Current Version: 4.1.1
 
 ## How to get and use?
 # curl "https://source.zhijie.online/AutoDeploy/main/ProxmoxVE.sh" | sudo bash
@@ -1402,6 +1402,7 @@ function InstallDependencyPackages() {
         "python3-pip"
         "qrencode"
         "rar"
+        "rsyslog"
         "snmp"
         "snmp-mibs-downloader"
         "snmpd"
