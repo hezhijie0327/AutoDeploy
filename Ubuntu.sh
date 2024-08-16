@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 5.7.5
+# Current Version: 5.7.6
 
 ## How to get and use?
 # curl "https://source.zhijie.online/AutoDeploy/main/Ubuntu.sh" | sudo bash
@@ -220,6 +220,7 @@ function SetReadonlyFlag() {
         "/etc/apt/apt.conf.d/99autodeploy"
         "/etc/apt/preferences"
         "/etc/apt/sources.list"
+        "/etc/apt/sources.list.d/cloudflare.list"
         "/etc/apt/sources.list.d/crowdsec.list"
         "/etc/apt/sources.list.d/docker.list"
         "/etc/apt/sources.list.d/frrouting.list"
@@ -1206,6 +1207,22 @@ function ConfigureSystem() {
 }
 # Install Custom Packages
 function InstallCustomPackages() {
+    function InstallCloudflarePackage() {
+        apt_list=(
+            "cloudflare-warp"
+        )
+        rm -rf "/usr/share/keyrings/cloudflare-warp-archive-keyring.gpg" && curl -fsSL "https://pkg.cloudflareclient.com/pubkey.gpg" | gpg --dearmor -o "/usr/share/keyrings/cloudflare-warp-archive-keyring.gpg"
+        echo "deb [arch=${OSArchitecture} signed-by=/usr/share/keyrings/cloudflare-warp-archive-keyring.gpg] https://pkg.cloudflareclient.com ${LSBCodename_LTS} main" > "/etc/apt/sources.list.d/cloudflare.list"
+        apt update && for apt_list_task in "${!apt_list[@]}"; do
+            apt-cache show ${apt_list[$apt_list_task]} && if [ "$?" -eq "0" ]; then
+                apt install -qy ${apt_list[$apt_list_task]}
+            fi
+        done
+        which "update-ca-certificates" > "/dev/null" 2>&1
+        if [ "$?" -eq "0" ]; then
+            rm -rf "/usr/local/share/ca-certificates/Cloudflare_CA.crt" && curl -fsSL "https://developers.cloudflare.com/cloudflare-one/static/documentation/connections/Cloudflare_CA.pem" > "/usr/local/share/ca-certificates/Cloudflare_CA.crt" && update-ca-certificates
+        fi
+    }
     function InstallCrowdSec() {
         apt_list=(
             "crowdsec"
@@ -1312,6 +1329,7 @@ function InstallCustomPackages() {
             fi
         done
     }
+    InstallCloudflarePackage
     InstallCrowdSec
     InstallDockerEngine
     InstallFRRouting
