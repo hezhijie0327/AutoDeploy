@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 5.7.1
+# Current Version: 5.7.2
 
 ## How to get and use?
 # curl "https://source.zhijie.online/AutoDeploy/main/Ubuntu.sh" | sudo bash
@@ -451,16 +451,6 @@ function ConfigurePackages() {
             rm -rf "/tmp/fail2ban.autodeploy" && for fail2ban_list_task in "${!fail2ban_list[@]}"; do
                 echo "${fail2ban_list[$fail2ban_list_task]}" >> "/tmp/fail2ban.autodeploy"
             done && cat "/tmp/fail2ban.autodeploy" > "/etc/fail2ban/jail.d/fail2ban_default.conf" && rm -rf "/tmp/fail2ban.autodeploy" && systemctl enable fail2ban && fail2ban-client reload && sleep 5s && fail2ban-client status
-        fi
-    }
-    function ConfigureFlatpak() {
-        which "flatpak" > "/dev/null" 2>&1
-        if [ "$?" -eq "0" ]; then
-            curl -fsSL "https://mirror.sjtu.edu.cn/flathub/flathub.gpg" | gpg --dearmor -o "/tmp/flathub.gpg.autodeploy"
-
-            flatpak remote-add --if-not-exists flathub https://flathub.org/repo/flathub.flatpakrepo
-            flatpak remote-modify flathub --url=https://mirror.sjtu.edu.cn/flathub
-            flatpak remote-modify --gpg-import=/tmp/flathub.gpg.autodeploy flathub
         fi
     }
     function ConfigureFRRouting() {
@@ -1021,7 +1011,6 @@ function ConfigurePackages() {
     ConfigureCrowdSec
     ConfigureDockerEngine
     ConfigureFail2Ban
-    ConfigureFlatpak
     ConfigureFRRouting
     ConfigureGPG && ConfigureGit
     ConfigureGrub
