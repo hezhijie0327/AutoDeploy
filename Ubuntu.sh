@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 5.7.6
+# Current Version: 5.7.7
 
 ## How to get and use?
 # curl "https://source.zhijie.online/AutoDeploy/main/Ubuntu.sh" | sudo bash
@@ -167,10 +167,8 @@ function GetSystemInformation() {
         fi
         if [ "${OSArchitecture}" == "arm64" ]; then
             MIRROR_URL="ubuntu-ports"
-            NVIDIA_URL="sbsa"
         elif [ "${OSArchitecture}" == "amd64" ]; then
             MIRROR_URL="ubuntu"
-            NVIDIA_URL="x86_64"
         else
             echo "Unsupported architecture."
             exit 1
