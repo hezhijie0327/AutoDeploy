@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 4.1.1
+# Current Version: 4.1.2
 
 ## How to get and use?
 # curl "https://source.zhijie.online/AutoDeploy/main/ProxmoxVE.sh" | sudo bash
@@ -508,11 +508,15 @@ function ConfigurePackages() {
         fi
     }
     function ConfigureModules() {
+        ENABLE_IPS_INTEGRATION="false"
         if [ -d "/etc/modprobe.d" ]; then
             rm -rf "/etc/modprobe.d" && mkdir -p "/etc/modprobe.d"
         fi
         if [ -f "/etc/modules" ]; then
             rm -rf "/etc/modules"
+        fi
+        if [ "${ENABLE_IPS_INTEGRATION}" == "true" ]; then
+            IPS_INTEGRATION_MODULES=("nfnetlink_queue")
         fi
         if [ "${ENABLE_IOMMU}" != "" ]; then
             IOMMU_MODULES=("vfio" "vfio_iommu_type1" "vfio_pci" "vfio_virqfd")
@@ -521,7 +525,7 @@ function ConfigurePackages() {
         module_list=(
             "ip_conntrack_ftp"
             "kvm"
-            "nfnetlink_queue"
+            ${IPS_INTEGRATION_MODULES[*]}
             ${INTEL_GVT_MODULES[*]}
             ${INTEL_HDMI_AUDIO_MUDULE[*]}
             ${IOMMU_MODULES[*]}
