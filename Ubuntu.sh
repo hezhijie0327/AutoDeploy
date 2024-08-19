@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 5.7.7
+# Current Version: 5.7.8
 
 ## How to get and use?
 # curl "https://source.zhijie.online/AutoDeploy/main/Ubuntu.sh" | sudo bash
@@ -1175,7 +1175,7 @@ function ConfigureSystem() {
             fi
             cat "/tmp/fstab.autodeploy" > "/etc/fstab" && rm -rf "/tmp/fstab.autodeploy"
         }
-        DISABLE_SWAP="false"
+        DISABLE_SWAP="true"
         if [ "${DISABLE_SWAP}" == "true" ]; then
             ClearSWAP
             RemoveSWAP
