@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 4.1.3
+# Current Version: 4.1.4
 
 ## How to get and use?
 # curl "https://source.zhijie.online/AutoDeploy/main/ProxmoxVE.sh" | sudo bash
@@ -332,29 +332,41 @@ function ConfigurePackages() {
         fi && systemctl restart crowdsec.service && cscli hub list
     }
     function ConfigureDockerEngine() {
-        which "bc" > "/dev/null" 2>&1
-        if [ "$?" -eq "0" ]; then
-            which "sha1sum" > "/dev/null" 2>&1
+        ENABLE_IPV6_ADDRESS="false"
+
+        DOCKER_REGISTRY_MIRRORS="https://docker.mirrors.ustc.edu.cn"
+
+        if [ "${ENABLE_IPV6_ADDRESS:-false}" == "true" ]; then
+            which "bc" > "/dev/null" 2>&1
             if [ "$?" -eq "0" ]; then
-                which "uuidgen" > "/dev/null" 2>&1
+                which "sha1sum" > "/dev/null" 2>&1
                 if [ "$?" -eq "0" ]; then
-                    UNIQUE_PREFIX=$(echo $(date "+%s%N")$(uuidgen | tr -d "-" | tr "A-Z" "a-z") | sha1sum | cut -c 31-)
-                    DOCKER_PREFIX="fd$(echo ${UNIQUE_PREFIX} | cut -c 1-2):$(echo ${UNIQUE_PREFIX} | cut -c 3-6):$(echo ${UNIQUE_PREFIX} | cut -c 7-10)"
-                else
-                    DOCKER_PREFIX="2001:db8:1"
+                    which "uuidgen" > "/dev/null" 2>&1
+                    if [ "$?" -eq "0" ]; then
+                        UNIQUE_PREFIX=$(echo $(date "+%s%N")$(uuidgen | tr -d "-" | tr "A-Z" "a-z") | sha1sum | cut -c 31-)
+                        DOCKER_PREFIX="fd$(echo ${UNIQUE_PREFIX} | cut -c 1-2):$(echo ${UNIQUE_PREFIX} | cut -c 3-6):$(echo ${UNIQUE_PREFIX} | cut -c 7-10)"
+                    else
+                        DOCKER_PREFIX="2001:db8:1"
+                    fi
                 fi
             fi
+
+            DOCKER_IPV6_LIST=(
+                "  \"fixed-cidr-v6\": \"${DOCKER_PREFIX}::/64\","
+                "  \"ipv6\": true,"
+            )
         fi
+
         docker_list=(
             "{"
             "  \"experimental\": true,"
-            "  \"fixed-cidr-v6\": \"${DOCKER_PREFIX}::/64\","
-            "  \"ipv6\": true,"
+            ${DOCKER_IPV6_LIST[*]}
             "  \"registry-mirrors\": ["
-            "    \"https://docker.mirrors.ustc.edu.cn\""
+            "    \"${DOCKER_REGISTRY_MIRRORS}\""
             "  ]"
             "}"
         )
+
         which "docker" > "/dev/null" 2>&1
         if [ "$?" -eq "0" ]; then
             if [ ! -d "/docker" ]; then
@@ -365,7 +377,7 @@ function ConfigurePackages() {
             fi
             rm -rf "/tmp/docker.autodeploy" && for docker_list_task in "${!docker_list[@]}"; do
                 echo "${docker_list[$docker_list_task]}" >> "/tmp/docker.autodeploy"
-            done && cat "/tmp/docker.autodeploy" > "/etc/docker/daemon.json" && systemctl restart docker.service && rm -rf "/tmp/docker.autodeploy"
+            done && cat "/tmp/docker.autodeploy" > "/etc/docker/daemon.json" && systemctl restart docker && rm -rf "/tmp/docker.autodeploy"
         fi
     }
     function ConfigureFail2Ban() {
