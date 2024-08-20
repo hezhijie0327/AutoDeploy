@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 4.1.5
+# Current Version: 4.1.6
 
 ## How to get and use?
 # curl "https://source.zhijie.online/AutoDeploy/main/ProxmoxVE.sh" | sudo bash
@@ -1423,6 +1423,11 @@ function InstallDependencyPackages() {
         "tcpdump"
         "tshark"
         "tuned"
+        "udisks2"
+        "udisks2-bcache"
+        "udisks2-btrfs"
+        "udisks2-lvm2"
+        "udisks2-zram"
         "unrar"
         "unzip"
         "vim"
