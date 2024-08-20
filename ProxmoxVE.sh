@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 4.1.4
+# Current Version: 4.1.5
 
 ## How to get and use?
 # curl "https://source.zhijie.online/AutoDeploy/main/ProxmoxVE.sh" | sudo bash
@@ -779,14 +779,14 @@ function ConfigurePackages() {
             "nf_conntrack_max: 262144"
             "nf_conntrack_tcp_timeout_established: 432000"
             "nf_conntrack_tcp_timeout_syn_recv: 60"
-            "nftables: 1"
-            "nosmurfs: 1"
+            "nftables: 0"
+            "nosmurfs: 0"
             "protection_synflood: 0"
             "protection_synflood_burst: 1000"
             "protection_synflood_rate: 200"
             "smurf_log_level: nolog"
             "tcp_flags_log_level: nolog"
-            "tcpflags: 1"
+            "tcpflags: 0"
             "[RULES]"
             "IN ACCEPT -p icmp -log nolog"
             "IN ACCEPT -p ipv6-icmp -log nolog"
@@ -806,10 +806,10 @@ function ConfigurePackages() {
             "[OPTIONS]"
             "dhcp: 1"
             "enable: 0"
-            "ipfilter: 1"
+            "ipfilter: 0"
             "log_level_in: nolog"
             "log_level_out: nolog"
-            "macfilter: 1"
+            "macfilter: 0"
             "ndp: 1"
             "policy_in: REJECT"
             "policy_out: ACCEPT"
