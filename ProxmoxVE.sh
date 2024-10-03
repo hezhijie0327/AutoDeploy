@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 4.1.7
+# Current Version: 4.1.8
 
 ## How to get and use?
 # curl "https://source.zhijie.online/AutoDeploy/main/ProxmoxVE.sh" | sudo bash
@@ -263,6 +263,12 @@ function ConfigurePackages() {
             fi
             echo -e "Package: *\nPin: release c=${PVE_REPO_PIN_COMPONENT},o=Proxmox\nPin-Priority: ${PVE_REPO_PIN_PRIORITY}\n" >> "/tmp/apt_preference_list.autodeploy"
         done && cat "/tmp/apt_preference_list.autodeploy" | sed '$d' > "/etc/apt/preferences.d/proxmox.pref"
+    }
+    function ConfigureBusybox() {
+        which "busybox" > "/dev/null" 2>&1
+        if [ "$?" -eq "0" ]; then
+            busybox --install -s
+        fi
     }
     function ConfigureChrony() {
         chrony_list=(
@@ -1007,6 +1013,7 @@ function ConfigurePackages() {
         GenerateOMZProfile
     }
     ConfigureAPT
+    ConfigureBusybox
     ConfigureChrony
     ConfigureCrontab
     ConfigureCrowdSec
@@ -1372,6 +1379,7 @@ function InstallDependencyPackages() {
     apt_list=(
         "apt-file"
         "apt-transport-https"
+        "busybox"
         "ca-certificates"
         "ceph"
         "chrony"
