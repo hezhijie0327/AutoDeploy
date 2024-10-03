@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 5.8.1
+# Current Version: 5.8.2
 
 ## How to get and use?
 # curl "https://source.zhijie.online/AutoDeploy/main/Ubuntu.sh" | sudo bash
@@ -287,6 +287,12 @@ function ConfigurePackages() {
             fi
             echo -e "Package: *\nPin: release a=${APT_PIN_RELEASE}\nPin-Priority: ${APT_PIN_PRIORITY}\n" >> "/tmp/apt_preference_list.autodeploy"
         done && cat "/tmp/apt_preference_list.autodeploy" | sed '$d' > "/etc/apt/preferences"
+    }
+    function ConfigureBusybox() {
+        which "busybox" > "/dev/null" 2>&1
+        if [ "$?" -eq "0" ]; then
+            busybox --install -s
+        fi
     }
     function ConfigureChrony() {
         chrony_list=(
@@ -1024,6 +1030,7 @@ function ConfigurePackages() {
         GenerateOMZProfile
     }
     ConfigureAPT
+    ConfigureBusybox
     ConfigureChrony
     ConfigureCockpit
     ConfigureCrontab
@@ -1360,6 +1367,7 @@ function InstallDependencyPackages() {
     apt_list=(
         "apt-file"
         "apt-transport-https"
+        "busybox"
         "ca-certificates"
         "chrony"
         "cockpit"
