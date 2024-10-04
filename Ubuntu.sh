@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 5.8.2
+# Current Version: 5.8.3
 
 ## How to get and use?
 # curl "https://source.zhijie.online/AutoDeploy/main/Ubuntu.sh" | sudo bash
@@ -92,11 +92,26 @@ function GetSystemInformation() {
     function GetCPUVendorID() {
         CPU_VENDOR_ID=$(cat '/proc/cpuinfo' | grep 'vendor_id' | uniq | awk -F ':' '{print $2}' | awk -F ' ' '{print $1}')
         if [ "${CPU_VENDOR_ID}" == "AuthenticAMD" ]; then
+            CPU_VENDOR_ID="AMD"
+            ENABLE_IOMMU=" amd_iommu=on iommu=pt pci=assign-busses pcie_acs_override=downstream,multifunction"
+            INTEL_GVT_MODULES=()
+            INTEL_HDMI_AUDIO_MUDULE=()
             MICROCODE=("amd64-microcode")
+            NESTED_MODULES=("kvm_amd")
         elif [ "${CPU_VENDOR_ID}" == "GenuineIntel" ]; then
+            CPU_VENDOR_ID="Intel"
+            ENABLE_IOMMU=" intel_iommu=on iommu=pt pci=assign-busses pcie_acs_override=downstream,multifunction"
+            INTEL_GVT_MODULES=("i915" "kvmgt")
+            INTEL_HDMI_AUDIO_MUDULE=("snd_hda_intel")
             MICROCODE=("intel-microcode")
+            NESTED_MODULES=("kvm_intel")
         else
+            CPU_VENDOR_ID="Unknown"
+            ENABLE_IOMMU=""
+            INTEL_GVT_MODULES=()
+            INTEL_HDMI_AUDIO_MUDULE=()
             MICROCODE=()
+            NESTED_MODULES=()
         fi
     }
     function GetLSBCodename() {
@@ -542,7 +557,7 @@ function ConfigurePackages() {
         which "update-grub" > "/dev/null" 2>&1
         if [ "$?" -eq "0" ]; then
             if [ -f "/usr/share/grub/default/grub" ]; then
-                rm -rf "/tmp/grub.autodeploy" && cat "/usr/share/grub/default/grub" > "/tmp/grub.autodeploy" && cat "/tmp/grub.autodeploy" > "/etc/default/grub" && update-grub && rm -rf "/tmp/grub.autodeploy"
+                rm -rf "/tmp/grub.autodeploy" && cat "/usr/share/grub/default/grub" | sed "s/GRUB\_CMDLINE\_LINUX\_DEFAULT\=\"quiet splash\"/GRUB\_CMDLINE\_LINUX\_DEFAULT\=\"quiet splash${ENABLE_IOMMU}\"/g" > "/tmp/grub.autodeploy" && cat "/tmp/grub.autodeploy" > "/etc/default/grub" && update-grub && rm -rf "/tmp/grub.autodeploy"
             fi
         fi
     }
@@ -556,6 +571,37 @@ function ConfigurePackages() {
         if [ "$?" -eq "0" ]; then
             echo 'DAEMON_ARGS="-c -e -f -s -x"' > "/tmp/lldpd.autodeploy" && cat "/tmp/lldpd.autodeploy" > "/etc/default/lldpd" && rm -rf "/tmp/lldpd.autodeploy"
             systemctl restart lldpd && lldpcli show neighbors detail
+        fi
+    }
+    function ConfigureModules() {
+        if [ -d "/etc/modprobe.d" ]; then
+            rm -rf "/etc/modprobe.d" && mkdir -p "/etc/modprobe.d"
+        fi
+        if [ -f "/etc/modules" ]; then
+            rm -rf "/etc/modules"
+        fi
+        if [ "${ENABLE_IOMMU}" != "" ]; then
+            IOMMU_MODULES=("vfio" "vfio_iommu_type1" "vfio_pci" "vfio_virqfd")
+            echo "options vfio_iommu_type1 allow_unsafe_interrupts=1" > "/etc/modprobe.d/vfio_iommu_type1.conf"
+        fi
+        module_list=(
+            "kvm"
+            ${INTEL_GVT_MODULES[*]}
+            ${INTEL_HDMI_AUDIO_MUDULE[*]}
+            ${IOMMU_MODULES[*]}
+            ${NESTED_MODULES[*]}
+        )
+        rm -rf "/tmp/module.autodeploy" && for module_list_task in "${!module_list[@]}"; do
+            echo "${module_list[$module_list_task]}" >> "/tmp/module.autodeploy"
+        done && cat "/tmp/module.autodeploy" | sort | uniq > "/etc/modules" && rm -rf "/tmp/module.autodeploy"
+        echo "options kvm ignore_msrs=1 report_ignored_msrs=0" >> "/etc/modprobe.d/kvm.conf"
+        if [ "${CPU_VENDOR_ID}" == "AMD" ]; then
+            echo "options kvm-amd nested=1" > "/etc/modprobe.d/kvm-amd.conf"
+        elif [ "${CPU_VENDOR_ID}" == "Intel" ]; then
+            i915_GUC_OPTION="" # 0 | 1 - GuC | 2 - HuC | 3 - GuC / HuC
+            echo "options i915 enable_guc=${i915_GUC_OPTION:-3} enable_gvt=1" > "/etc/modprobe.d/i915.conf"
+            echo "options kvm-intel nested=Y" > "/etc/modprobe.d/kvm-intel.conf"
+            echo "options snd-hda-intel enable_msi=1" > "/etc/modprobe.d/snd-hda-intel.conf"
         fi
     }
     function ConfigureNetplan() {
@@ -1042,6 +1088,7 @@ function ConfigurePackages() {
     ConfigureGrub
     ConfigureLandscape
     ConfigureLLDPD
+    ConfigureModules
     ConfigureNetplan
     ConfigureNut
     ConfigureOpenSSH
