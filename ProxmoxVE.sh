@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 4.2.0
+# Current Version: 4.2.1
 
 ## How to get and use?
 # curl "https://source.zhijie.online/AutoDeploy/main/ProxmoxVE.sh" | sudo bash
@@ -1334,6 +1334,11 @@ function InstallCustomPackages() {
         fi
         if [ "${psABILevel}" == "1" ] && { [ "${XANMOD_BRANCH}" == "edge" ] || [ "${XANMOD_BRANCH}" == "rt" ]; }; then
             XANMOD_BRANCH=""
+        fi
+
+        # no kernel benefit
+        if [ "${psABILevel}" == "4" ]; then
+            psABILevel="3"
         fi
 
         if [ "${psABILevel}" != "0" ] && [ "${XANMOD_BRANCH}" != "disable" ]; then
