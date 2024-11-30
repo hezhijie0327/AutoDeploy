@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 5.8.5
+# Current Version: 5.8.6
 
 ## How to get and use?
 # curl "https://source.zhijie.online/AutoDeploy/main/Ubuntu.sh" | sudo bash
@@ -1365,6 +1365,11 @@ function InstallCustomPackages() {
         fi
         if [ "${psABILevel}" == "1" ] && { [ "${XANMOD_BRANCH}" == "edge" ] || [ "${XANMOD_BRANCH}" == "rt" ]; }; then
             XANMOD_BRANCH=""
+        fi
+
+        # no kernel benefit
+        if [ "${psABILevel}" == "4" ]; then
+            psABILevel="3"
         fi
 
         if [ "${OSArchitecture}" == "amd64" ] && [ "${psABILevel}" != "0" ] && [ "${XANMOD_BRANCH}" != "disable" ]; then
