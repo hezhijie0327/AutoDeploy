@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 2.6.0
+# Current Version: 2.6.1
 
 ## How to get and use?
 # /bin/bash -c "$(curl -fsSL 'https://source.zhijie.online/AutoDeploy/main/macOS.sh')"
@@ -106,6 +106,7 @@ function ConfigurePackages() {
     function ConfigureOllama() {
         which "ollama" > "/dev/null" 2>&1
         if [ "$?" -eq "0" ]; then
+            launchctl setenv OLLAMA_HOST "0.0.0.0"
             launchctl setenv OLLAMA_ORIGINS "*"
         fi
     }
@@ -157,22 +158,30 @@ function ConfigurePackages() {
         fi
     }
     function ConfigureWireGuard() {
+        ENABLE_IPV6_ADDRESS="false"
+
         TUNNEL_CLIENT_V4="10.172.$(shuf -i '0-255' -n 1).$(shuf -i '0-255' -n 1)/32"
-        which "bc" > "/dev/null" 2>&1
-        if [ "$?" -eq "0" ]; then
-            which "sha1sum" > "/dev/null" 2>&1
+
+        if [ "${ENABLE_IPV6_ADDRESS:-false}" == "true" ]; then
+            which "bc" > "/dev/null" 2>&1
             if [ "$?" -eq "0" ]; then
-                which "uuidgen" > "/dev/null" 2>&1
+                which "sha1sum" > "/dev/null" 2>&1
                 if [ "$?" -eq "0" ]; then
-                    UNIQUE_CLIENT=$(echo "obase=16;$(shuf -i '1-65535' -n 1)" | bc | tr "A-Z" "a-z")
-                    UNIQUE_PREFIX=$(echo $(date "+%s%N")$(uuidgen | tr -d "-" | tr "A-Z" "a-z") | sha1sum | cut -c 31-)
-                    TUNNEL_PREFIX="fd$(echo ${UNIQUE_PREFIX} | cut -c 1-2):$(echo ${UNIQUE_PREFIX} | cut -c 3-6):$(echo ${UNIQUE_PREFIX} | cut -c 7-10)"
-                    TUNNEL_CLIENT_V6="${TUNNEL_PREFIX}::${UNIQUE_CLIENT}/128"
-                else
-                    TUNNEL_CLIENT_V6=""
+                    which "uuidgen" > "/dev/null" 2>&1
+                    if [ "$?" -eq "0" ]; then
+                        UNIQUE_CLIENT=$(echo "obase=16;$(shuf -i '1-65535' -n 1)" | bc | tr "A-Z" "a-z")
+                        UNIQUE_PREFIX=$(echo $(date "+%s%N")$(uuidgen | tr -d "-" | tr "A-Z" "a-z") | sha1sum | cut -c 31-)
+                        TUNNEL_PREFIX="fd$(echo ${UNIQUE_PREFIX} | cut -c 1-2):$(echo ${UNIQUE_PREFIX} | cut -c 3-6):$(echo ${UNIQUE_PREFIX} | cut -c 7-10)"
+                        TUNNEL_CLIENT_V6="${TUNNEL_PREFIX}::${UNIQUE_CLIENT}/128"
+                    else
+                        TUNNEL_CLIENT_V6=""
+                    fi
                 fi
             fi
+
+            TUNNEL_CLIENT_V6=", ${TUNNEL_CLIENT_V6}"
         fi
+
         if [ ! -d "/etc/wireguard" ]; then
             sudo mkdir "/etc/wireguard"
         else
@@ -182,12 +191,12 @@ function ConfigurePackages() {
         if [ "$?" -eq "0" ]; then
             wireguard_list=(
                 "[Interface]"
-                "Address = ${TUNNEL_CLIENT_V4}, ${TUNNEL_CLIENT_V6}"
+                "Address = ${TUNNEL_CLIENT_V4}${TUNNEL_CLIENT_V6}"
                 "# DNS = 127.0.0.1, ::1"
                 "ListenPort = 51820"
                 "PrivateKey = $(wg genkey | tee '/tmp/wireguard.autodeploy')"
                 "# [Peer]"
-                "# AllowedIPs = ${TUNNEL_CLIENT_V4}, ${TUNNEL_CLIENT_V6}"
+                "# AllowedIPs = ${TUNNEL_CLIENT_V4}${TUNNEL_CLIENT_V6}"
                 "# Endpoint = 127.0.0.1:51820"
                 "# PersistentKeepalive = 5"
                 "# PresharedKey = $(wg genpsk)"
@@ -345,7 +354,8 @@ function InstallCustomPackages() {
     function InstallAppFromMAS() {
         app_list=(
             "1136220934" # Infuse
-            "1365531024" # 1Blocker
+            "1289583905" # Pixelmator Pro
+            "1352778147" # Bitwarden
             "409222199" # Cyberduck
             "424389933" # Final Cut Pro
             "424390742" # Compressor
@@ -361,11 +371,10 @@ function InstallCustomPackages() {
             "595615424" # QQ音乐
             "634148309" # Logic Pro
             "634159523" # MainStage
-            "732710998" # Enpass
             "823766827" # OneDrive
-            "824183456" # Affinity Photo
             "836500024" # Wechat
             "937984704" # Amphetamine
+            "985367838" # Microsoft Outlook
             "993841014" # CopyLess 2
         )
         which "mas" > "/dev/null" 2>&1
