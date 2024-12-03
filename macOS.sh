@@ -402,84 +402,89 @@ function InstallCustomPackages() {
 }
 # Install Dependency Packages
 function InstallDependencyPackages() {
+    REINSTALL_BREW="false"
+
     export HOMEBREW_API_DOMAIN="https://mirrors.ustc.edu.cn/homebrew-bottles/api"
     export HOMEBREW_BOTTLE_DOMAIN="https://mirrors.ustc.edu.cn/homebrew-bottles/bottles"
     export HOMEBREW_BREW_GIT_REMOTE="${GHPROXY_URL}https://github.com/homebrew/brew.git"
     export PATH="/opt/homebrew/sbin:/opt/homebrew/bin:${PATH}"
-    rm -rf "/opt/homebrew" "/usr/local/Homebrew"
+    
+    if [ "${REINSTALL_BREW}" == "true" ]; then
+        sudo rm -rf "/opt/homebrew" "/usr/local/Homebrew"
+    fi
+
     which "brew" > "/dev/null" 2>&1
     if [ "$?" -eq "1" ]; then
-        /bin/bash -c $(curl -fsSL "${GHPROXY_URL}https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh" | sed "s|https://github.com|https://${GHPROXY_URL}/https://github.com|g" | sed 's|#!/bin/bash|#!/bin/bash\nexport HOMEBREW_BOTTLE_DOMAIN="https://mirrors.ustc.edu.cn/homebrew-bottles/bottles"|g')
+        curl -fsSL "${GHPROXY_URL}https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh" | sed "s|https://github.com|https://${GHPROXY_URL}/https://github.com|g" | sed 's|#!/bin/bash|#!/bin/bash\nexport HOMEBREW_BOTTLE_DOMAIN="https://mirrors.ustc.edu.cn/homebrew-bottles/bottles"|g' > "/tmp/brew.autodeploy" && bash "/tmp/brew.autodeploy"
     fi
-    if [ -d "$(brew --repo)/Library/Taps/homebrew" ]; then
-        app_list=(
-            "bash"
-            "coreutils"
-            "curl"
-            "ffmpeg"
-            "findutils"
-            "gawk"
-            "git"
-            "git-flow"
-            "git-lfs"
-            "gnu-apl"
-            "gnu-barcode"
-            "gnu-chess"
-            "gnu-cobol"
-            "gnu-complexity"
-            "gnu-getopt"
-            "gnu-go"
-            "gnu-indent"
-            "gnu-prolog"
-            "gnu-scientific-library"
-            "gnu-sed"
-            "gnu-shogi"
-            "gnu-tar"
-            "gnu-time"
-            "gnu-typist"
-            "gnu-units"
-            "gnu-which"
-            "gnupg"
-            "gnutls"
-            "grep"
-            "iperf3"
-            "iproute2mac"
-            "jq"
-            "knot"
-            "mailutils"
-            "mas"
-            "mtr"
-            "nano"
-            "neofetch"
-            "nmap"
-            "openssh"
-            "p7zip"
-            "pinentry"
-            "python3"
-            "qrencode"
-            "rar"
-            "tcpdump"
-            "unzip"
-            "vim"
-            "wget"
-            "whois"
-            "wireguard-tools"
-            "wireshark"
-            "ykman"
-            "youtube-dl"
-            "zip"
-            "zsh"
-        )
-        brew update && for app_list_task in "${!app_list[@]}"; do
-            brew info --formula ${app_list[$app_list_task]} && if [ "$?" -eq "0" ]; then
-                brew install --formula ${app_list[$app_list_task]}
-            else
-                brew info --cask ${app_list[$app_list_task]} && if [ "$?" -eq "0" ]; then
-                    brew install --cask ${app_list[$app_list_task]}
-                fi
+
+    app_list=(
+        "bash"
+        "coreutils"
+        "curl"
+        "ffmpeg"
+        "findutils"
+        "gawk"
+        "git"
+        "git-flow"
+        "git-lfs"
+        "gnu-apl"
+        "gnu-barcode"
+        "gnu-chess"
+        "gnu-cobol"
+        "gnu-complexity"
+        "gnu-getopt"
+        "gnu-go"
+        "gnu-indent"
+        "gnu-prolog"
+        "gnu-scientific-library"
+        "gnu-sed"
+        "gnu-shogi"
+        "gnu-tar"
+        "gnu-time"
+        "gnu-typist"
+        "gnu-units"
+        "gnu-which"
+        "gnupg"
+        "gnutls"
+        "grep"
+        "iperf3"
+        "iproute2mac"
+        "jq"
+        "knot"
+        "mailutils"
+        "mas"
+        "mtr"
+        "nano"
+        "neofetch"
+        "nmap"
+        "openssh"
+        "p7zip"
+        "pinentry"
+        "python3"
+        "qrencode"
+        "rar"
+        "tcpdump"
+        "unzip"
+        "vim"
+        "wget"
+        "whois"
+        "wireguard-tools"
+        "wireshark"
+        "ykman"
+        "youtube-dl"
+        "zip"
+        "zsh"
+    )
+    brew update && for app_list_task in "${!app_list[@]}"; do
+        brew info --formula ${app_list[$app_list_task]} && if [ "$?" -eq "0" ]; then
+            brew install --formula ${app_list[$app_list_task]}
+        else
+            brew info --cask ${app_list[$app_list_task]} && if [ "$?" -eq "0" ]; then
+                brew install --cask ${app_list[$app_list_task]}
             fi
-        done
-    fi
+        fi
+    done
 }
 # Upgrade Packages
 function UpgradePackages() {
