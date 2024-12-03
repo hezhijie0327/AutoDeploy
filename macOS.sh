@@ -103,7 +103,13 @@ function ConfigurePackages() {
             fi
         fi
     }
-    function ConfigureOpenSSH () {
+    function ConfigureOllama() {
+        which "ollama" > "/dev/null" 2>&1
+        if [ "$?" -eq "0" ]; then
+            launchctl setenv OLLAMA_ORIGINS "*"
+        fi
+    }
+    function ConfigureOpenSSH() {
         OPENSSH_PASSWORD=""
         which "ssh-keygen" > "/dev/null" 2>&1
         if [ "$?" -eq "0" ]; then
@@ -284,6 +290,7 @@ function ConfigurePackages() {
     ConfigureCrontab
     ConfigureGit
     ConfigureGPG
+    ConfigureOllama
     ConfigureOpenSSH
     ConfigurePythonPyPI
     ConfigureSshd
@@ -318,14 +325,12 @@ function InstallCustomPackages() {
             "blackhole-64ch" # BlackHole 64ch
             "cursorsense" # CursorSense
             "docker" # Docker
-            "downie" # Downie 4
             "iina" # IINA
             "kekaexternalhelper" # Keka External Helper
             "microsoft-edge" # Microsoft Edge
             "obs" # OBS
-            "permute" # Permute 3
+            "parallels" # Parallels Desktop
             "steermouse" # SteerMouse
-            "utm" # UTM
             "visual-studio-code" # Visual Studio Code
         )
         which "brew" > "/dev/null" 2>&1
