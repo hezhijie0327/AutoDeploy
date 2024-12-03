@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 2.5.9
+# Current Version: 2.6.0
 
 ## How to get and use?
 # /bin/bash -c "$(curl -fsSL 'https://source.zhijie.online/AutoDeploy/main/macOS.sh')"
