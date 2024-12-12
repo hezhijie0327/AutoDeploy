@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 5.8.6
+# Current Version: 5.8.7
 
 ## How to get and use?
 # curl "https://source.zhijie.online/AutoDeploy/main/Ubuntu.sh" | sudo bash
@@ -988,7 +988,7 @@ function ConfigurePackages() {
                 "Address = ${TUNNEL_CLIENT_V4}${TUNNEL_CLIENT_V6}"
                 "# DNS = 127.0.0.1, ::1"
                 "ListenPort = 51820"
-                "MTU = 1420"
+                "MTU = 1280"
                 "PrivateKey = $(wg genkey | tee '/tmp/wireguard.autodeploy')"
                 "# [Peer]"
                 "# AllowedIPs = ${TUNNEL_CLIENT_V4}${TUNNEL_CLIENT_V6}"
