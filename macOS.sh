@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 2.6.6
+# Current Version: 2.6.7
 
 ## How to get and use?
 # /bin/bash -c "$(curl -fsSL 'https://source.zhijie.online/AutoDeploy/main/macOS.sh')"
@@ -38,8 +38,14 @@ function GetSystemInformation() {
 # Configure Packages
 function ConfigurePackages() {
     function ConfigureCrontab() {
+        which "ollama" > "/dev/null" 2>&1
+        if [ "$?" -eq "1" ]; then
+            OLLAMA_ENV_SETUP="@reboot launchctl setenv OLLAMA_HOST '0.0.0.0' && launchctl setenv OLLAMA_ORIGINS '*'"
+        fi
+
         crontab_list=(
             "@reboot rm -rf /Users/${CurrentUsername}/.*_history /Users/${CurrentUsername}/.ssh/known_hosts*"
+            "$OLLAMA_ENV_SETUP"
         )
         which "crontab" > "/dev/null" 2>&1
         if [ "$?" -eq "0" ]; then
@@ -101,13 +107,6 @@ function ConfigurePackages() {
                     echo "${gpg_agent_list[$gpg_agent_list_task]}" >> "/Users/${CurrentUsername}/.gnupg/gpg-agent.conf"
                 done && echo "${GPG_PUBKEY_ID_A}" > "/Users/${CurrentUsername}/.gnupg/sshcontrol"
             fi
-        fi
-    }
-    function ConfigureOllama() {
-        which "ollama" > "/dev/null" 2>&1
-        if [ "$?" -eq "0" ]; then
-            launchctl setenv OLLAMA_HOST "0.0.0.0"
-            launchctl setenv OLLAMA_ORIGINS "*"
         fi
     }
     function ConfigureOpenSSH() {
@@ -300,7 +299,6 @@ function ConfigurePackages() {
     ConfigureCrontab
     ConfigureGit
     ConfigureGPG
-    ConfigureOllama
     ConfigureOpenSSH
     ConfigurePythonPyPI
     ConfigureSshd
