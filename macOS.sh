@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 2.6.4
+# Current Version: 2.6.5
 
 ## How to get and use?
 # /bin/bash -c "$(curl -fsSL 'https://source.zhijie.online/AutoDeploy/main/macOS.sh')"
@@ -325,7 +325,8 @@ function ConfigureSystem() {
         done && sudo chmod -R 666 "/etc/hosts" && sudo cat "/tmp/hosts.autodeploy" > "/etc/hosts" && sudo chmod -R 644 "/etc/hosts" && rm -rf "/tmp/hosts.autodeploy"
     }
     function ConfigureSystemDefault() {
-        defaults write com.apple.desktopservices DSDontWriteNetworkStores true
+        defaults write com.apple.desktopservices DSDontWriteNetworkStores -bool true
+        defaults write com.apple.desktopservices DSDontWriteUSBStores -bool true
     }
     ConfigureHostfile
     ConfigureSystemDefault
