@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 5.8.7
+# Current Version: 5.8.8
 
 ## How to get and use?
 # curl "https://source.zhijie.online/AutoDeploy/main/Ubuntu.sh" | sudo bash
@@ -1308,7 +1308,7 @@ function InstallCustomPackages() {
             "docker-compose-plugin"
             "docker-compose"
         )
-        rm -rf "/usr/share/keyrings/docker-archive-keyring.gpg" && curl -fsSL "https://mirrors.tuna.tsinghua.edu.cn/docker-ce/linux/ubuntu/gpg" | gpg --dearmor -o "/usr/share/keyrings/docker-archive-keyring.gpg"
+        rm -rf "/usr/share/keyrings/docker-archive-keyring.gpg" && curl -fsSL "https://mirrors.ustc.edu.cn/docker-ce/linux/ubuntu/gpg" | gpg --dearmor -o "/usr/share/keyrings/docker-archive-keyring.gpg"
         echo "deb [arch=${OSArchitecture} signed-by=/usr/share/keyrings/docker-archive-keyring.gpg] https://mirrors.ustc.edu.cn/docker-ce/linux/ubuntu ${LSBCodename} stable" > "/etc/apt/sources.list.d/docker.list"
         apt update && apt purge -qy containerd docker docker-engine docker.io runc && for apt_list_task in "${!apt_list[@]}"; do
             apt-cache show ${apt_list[$apt_list_task]} && if [ "$?" -eq "0" ]; then
