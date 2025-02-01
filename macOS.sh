@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 2.6.8
+# Current Version: 2.6.9
 
 ## How to get and use?
 # /bin/bash -c "$(curl -fsSL 'https://source.zhijie.online/AutoDeploy/main/macOS.sh')"
@@ -339,6 +339,7 @@ function InstallCustomPackages() {
             "docker" # Docker
             "drawio" # Draw.io
             "iina" # IINA
+            "jordanbaird-ice" # Ice
             "keka" # Keka
             "kekaexternalhelper" # Keka External Helper
             "maccy" # Maccy
