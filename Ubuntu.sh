@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 5.8.8
+# Current Version: 5.8.9
 
 ## How to get and use?
 # curl "https://source.zhijie.online/AutoDeploy/main/Ubuntu.sh" | sudo bash
@@ -392,7 +392,9 @@ function ConfigurePackages() {
     function ConfigureDockerEngine() {
         ENABLE_IPV6_ADDRESS="false"
 
-        DOCKER_REGISTRY_MIRRORS="https://docker.mirrors.ustc.edu.cn"
+        DOCKER_REGISTRY_MIRRORS=(
+            "https://docker.mirrors.ustc.edu.cn"
+        )
 
         if [ "${ENABLE_IPV6_ADDRESS:-false}" == "true" ]; then
             which "bc" > "/dev/null" 2>&1
@@ -420,7 +422,7 @@ function ConfigurePackages() {
             "  \"experimental\": true,"
             ${DOCKER_IPV6_LIST[*]}
             "  \"registry-mirrors\": ["
-            "    \"${DOCKER_REGISTRY_MIRRORS}\""
+            "$(printf '    "%s",\n' "${DOCKER_REGISTRY_MIRRORS[@]}" | sed '$s/,$//')"
             "  ]"
             "}"
         )
