@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 2.6.9
+# Current Version: 2.7.0
 
 ## How to get and use?
 # /bin/bash -c "$(curl -fsSL 'https://source.zhijie.online/AutoDeploy/main/macOS.sh')"
@@ -479,6 +479,7 @@ function InstallDependencyPackages() {
         "openssh"
         "p7zip"
         "pinentry"
+        "proxychains-ng"
         "python3"
         "qrencode"
         "rar"
