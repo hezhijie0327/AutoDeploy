@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 2.7.0
+# Current Version: 2.7.1
 
 ## How to get and use?
 # /bin/bash -c "$(curl -fsSL 'https://source.zhijie.online/AutoDeploy/main/macOS.sh')"
@@ -131,6 +131,34 @@ function ConfigurePackages() {
                 touch "/Users/${CurrentUsername}/.ssh/authorized_keys"
             fi && touch "/Users/${CurrentUsername}/.ssh/known_hosts" && ssh-keygen -t dsa -b 1024 -f "/Users/${CurrentUsername}/.ssh/id_dsa" -C "${CurrentUsername}@$(hostname)" -N "${OPENSSH_PASSWORD}" && ssh-keygen -t ecdsa -b 384 -f "/Users/${CurrentUsername}/.ssh/id_ecdsa" -C "${CurrentUsername}@$(hostname)" -N "${OPENSSH_PASSWORD}" && ssh-keygen -t ed25519 -f "/Users/${CurrentUsername}/.ssh/id_ed25519" -C "${CurrentUsername}@$(hostname)" -N "${OPENSSH_PASSWORD}" && ssh-keygen -t rsa -b 4096 -f "/Users/${CurrentUsername}/.ssh/id_rsa" -C "${CurrentUsername}@$(hostname)" -N "${OPENSSH_PASSWORD}" && sudo chown -R ${CurrentUsername}:staff "/Users/${CurrentUsername}/.ssh" && sudo chown -R ${CurrentUsername}:staff /Users/${CurrentUsername}/.ssh/* && chmod 400 /Users/${CurrentUsername}/.ssh/id_* && chmod 600 "/Users/${CurrentUsername}/.ssh/authorized_keys" && chmod 644 "/Users/${CurrentUsername}/.ssh/known_hosts" && chmod 644 /Users/${CurrentUsername}/.ssh/id_*.pub && chmod 700 "/Users/${CurrentUsername}/.ssh"
         fi
+    }
+    function ConfigureProxyChains() {
+        PROXY_PROTOCOL=""
+        PROXY_IP=""
+        PROXY_PORT=""
+        PROXY_USERNAME=""
+        PROXY_PASSWORD=""
+
+        proxychains_list=(
+            'localnet 127.0.0.0/255.0.0.0'
+            'localnet 10.0.0.0/255.0.0.0'
+            'localnet 172.16.0.0/255.240.0.0'
+            'localnet 192.168.0.0/255.255.0.0'
+            'localnet ::1/128'
+            'proxy_dns'
+            'remote_dns_subnet 224'
+            'strict_chain'
+            'tcp_connect_time_out 8000'
+            'tcp_read_time_out 15000'
+            '[ProxyList]'
+            "${PROXY_PROTOCOL:-socks5} ${PROXY_IP:-127.0.0.1} ${PROXY_PORT:-7890} ${PROXY_USERNAME} ${PROXY_PASSWORD}"
+        )
+    
+        if [ -f "/opt/homebrew/etc/proxychains.conf" ]; then
+            rm -rf "/opt/homebrew/etc/proxychains.conf"
+        fi && for proxychains_list_task in "${!proxychains_list[@]}"; do
+            echo "${proxychains_list[$proxychains_list_task]}" >> "/opt/homebrew/etc/proxychains.conf"
+        done
     }
     function ConfigurePythonPyPI() {
         which "pip3" > "/dev/null" 2>&1
@@ -300,6 +328,7 @@ function ConfigurePackages() {
     ConfigureGit
     ConfigureGPG
     ConfigureOpenSSH
+    ConfigureProxyChains
     ConfigurePythonPyPI
     ConfigureSshd
     ConfigureWireGuard
