@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 4.2.4
+# Current Version: 4.2.5
 
 ## How to get and use?
 # curl "https://source.zhijie.online/AutoDeploy/main/ProxmoxVE.sh" | sudo bash
@@ -730,6 +730,34 @@ function ConfigurePackages() {
             fi
         fi
     }
+    function ConfigureProxyChains() {
+        PROXY_PROTOCOL=""
+        PROXY_IP=""
+        PROXY_PORT=""
+        PROXY_USERNAME=""
+        PROXY_PASSWORD=""
+
+        proxychains_list=(
+            'localnet 127.0.0.0/255.0.0.0'
+            'localnet 10.0.0.0/255.0.0.0'
+            'localnet 172.16.0.0/255.240.0.0'
+            'localnet 192.168.0.0/255.255.0.0'
+            'localnet ::1/128'
+            'proxy_dns'
+            'remote_dns_subnet 224'
+            'strict_chain'
+            'tcp_connect_time_out 8000'
+            'tcp_read_time_out 15000'
+            '[ProxyList]'
+            "${PROXY_PROTOCOL:-socks5} ${PROXY_IP:-127.0.0.1} ${PROXY_PORT:-7890} ${PROXY_USERNAME} ${PROXY_PASSWORD}"
+        )
+    
+        if [ -f "/etc/proxychains4.conf" ]; then
+            rm -rf "/etc/proxychains4.conf"
+        fi && for proxychains_list_task in "${!proxychains_list[@]}"; do
+            echo "${proxychains_list[$proxychains_list_task]}" >> "/etc/proxychains4.conf"
+        done
+    }
     function ConfigurePVECeph() {
         if [ -f "/etc/systemd/system/ceph-mon.target.wants" ]; then
             ceph_mon_list=($(ls "/etc/systemd/system/ceph-mon.target.wants" | grep "ceph-mon\@"))
@@ -1028,6 +1056,7 @@ function ConfigurePackages() {
     ConfigureNut
     ConfigureOpenSSH
     ConfigurePostfix
+    ConfigureProxyChains
     ConfigurePVECeph
     ConfigurePVECluster
     ConfigurePVEContainer
