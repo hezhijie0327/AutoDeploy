@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 5.9.0
+# Current Version: 5.9.1
 
 ## How to get and use?
 # curl "https://source.zhijie.online/AutoDeploy/main/Ubuntu.sh" | sudo bash
@@ -801,6 +801,34 @@ function ConfigurePackages() {
             fi
         fi
     }
+    function ConfigureProxyChains() {
+        PROXY_PROTOCOL=""
+        PROXY_IP=""
+        PROXY_PORT=""
+        PROXY_USERNAME=""
+        PROXY_PASSWORD=""
+
+        proxychains_list=(
+            'localnet 127.0.0.0/255.0.0.0'
+            'localnet 10.0.0.0/255.0.0.0'
+            'localnet 172.16.0.0/255.240.0.0'
+            'localnet 192.168.0.0/255.255.0.0'
+            'localnet ::1/128'
+            'proxy_dns'
+            'remote_dns_subnet 224'
+            'strict_chain'
+            'tcp_connect_time_out 8000'
+            'tcp_read_time_out 15000'
+            '[ProxyList]'
+            "${PROXY_PROTOCOL:-socks5} ${PROXY_IP:-127.0.0.1} ${PROXY_PORT:-7890} ${PROXY_USERNAME} ${PROXY_PASSWORD}"
+        )
+    
+        if [ -f "/etc/proxychains4.conf" ]; then
+            rm -rf "/etc/proxychains4.conf"
+        fi && for proxychains_list_task in "${!proxychains_list[@]}"; do
+            echo "${proxychains_list[$proxychains_list_task]}" >> "/etc/proxychains4.conf"
+        done
+    }
     function ConfigurePythonPyPI() {
         which "pip3" > "/dev/null" 2>&1
         if [ "$?" -eq "0" ]; then
@@ -1094,6 +1122,7 @@ function ConfigurePackages() {
     ConfigureNut
     ConfigureOpenSSH
     ConfigurePostfix
+    ConfigureProxyChains
     ConfigurePythonPyPI
     ConfigureResolved
     ConfigureSshd
