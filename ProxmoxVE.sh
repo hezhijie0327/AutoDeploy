@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 4.2.6
+# Current Version: 4.2.7
 
 ## How to get and use?
 # curl "https://source.zhijie.online/AutoDeploy/main/ProxmoxVE.sh" | sudo bash
@@ -185,6 +185,7 @@ function SetReadonlyFlag() {
         "/etc/apt/sources.list.d/proxmox.list"
         "/etc/apt/sources.list.d/xanmod.list"
         "/etc/chrony/chrony.conf"
+        "/etc/default/docker"
         "/etc/default/lldpd"
         "/etc/docker/daemon.json"
         "/etc/fail2ban/fail2ban.local"
@@ -382,6 +383,7 @@ function ConfigurePackages() {
             if [ ! -d "/etc/docker" ]; then
                 mkdir "/etc/docker"
             fi
+            rm -rf "/tmp/docker.autodeploy" && echo 'DOCKER_OPTS="--iptables=false"' > "/tmp/docker.autodeploy" && cat "/tmp/docker.autodeploy" > "/etc/default/docker" && rm -rf "/tmp/docker.autodeploy"
             rm -rf "/tmp/docker.autodeploy" && for docker_list_task in "${!docker_list[@]}"; do
                 echo "${docker_list[$docker_list_task]}" >> "/tmp/docker.autodeploy"
             done && cat "/tmp/docker.autodeploy" > "/etc/docker/daemon.json" && systemctl restart docker && rm -rf "/tmp/docker.autodeploy"
