@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 5.9.2
+# Current Version: 5.9.3
 
 ## How to get and use?
 # curl "https://source.zhijie.online/AutoDeploy/main/Ubuntu.sh" | sudo bash
@@ -239,6 +239,7 @@ function SetReadonlyFlag() {
         "/etc/apt/sources.list.d/xanmod.list"
         "/etc/chrony/chrony.conf"
         "/etc/cockpit/cockpit.conf"
+        "/etc/default/docker"
         "/etc/default/lldpd"
         "/etc/default/ufw"
         "/etc/docker/daemon.json"
@@ -435,6 +436,7 @@ function ConfigurePackages() {
             if [ ! -d "/etc/docker" ]; then
                 mkdir "/etc/docker"
             fi
+            rm -rf "/tmp/docker.autodeploy" && echo 'DOCKER_OPTS="--iptables=false"' > "/tmp/docker.autodeploy" && cat "/tmp/docker.autodeploy" > "/etc/default/docker" && rm -rf "/tmp/docker.autodeploy"
             rm -rf "/tmp/docker.autodeploy" && for docker_list_task in "${!docker_list[@]}"; do
                 echo "${docker_list[$docker_list_task]}" >> "/tmp/docker.autodeploy"
             done && cat "/tmp/docker.autodeploy" > "/etc/docker/daemon.json" && systemctl restart docker && rm -rf "/tmp/docker.autodeploy"
