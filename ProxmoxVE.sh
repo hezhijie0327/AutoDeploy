@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 4.2.8
+# Current Version: 4.2.9
 
 ## How to get and use?
 # curl "https://source.zhijie.online/AutoDeploy/main/ProxmoxVE.sh" | sudo bash
@@ -144,20 +144,20 @@ function SetRepositoryMirror() {
         "deb ${transport_protocol}://mirrors.ustc.edu.cn/debian-security ${LSBCodename}-security contrib main non-free non-free-firmware"
         "deb ${transport_protocol}://mirrors.ustc.edu.cn/debian ${LSBCodename} contrib main non-free non-free-firmware"
         "deb ${transport_protocol}://mirrors.ustc.edu.cn/debian ${LSBCodename}-backports contrib main non-free non-free-firmware"
-        "deb ${transport_protocol}://mirrors.ustc.edu.cn/debian ${LSBCodename}-backports-sloppy contrib main non-free non-free-firmware"
+        "# deb ${transport_protocol}://mirrors.ustc.edu.cn/debian ${LSBCodename}-backports-sloppy contrib main non-free non-free-firmware"
         "deb ${transport_protocol}://mirrors.ustc.edu.cn/debian ${LSBCodename}-proposed-updates contrib main non-free non-free-firmware"
         "deb ${transport_protocol}://mirrors.ustc.edu.cn/debian ${LSBCodename}-updates contrib main non-free non-free-firmware"
         "deb-src ${transport_protocol}://mirrors.ustc.edu.cn/debian-security ${LSBCodename}-security contrib main non-free non-free-firmware"
         "deb-src ${transport_protocol}://mirrors.ustc.edu.cn/debian ${LSBCodename} contrib main non-free non-free-firmware"
         "deb-src ${transport_protocol}://mirrors.ustc.edu.cn/debian ${LSBCodename}-backports contrib main non-free non-free-firmware"
-        "deb-src ${transport_protocol}://mirrors.ustc.edu.cn/debian ${LSBCodename}-backports-sloppy contrib main non-free non-free-firmware"
+        "# deb-src ${transport_protocol}://mirrors.ustc.edu.cn/debian ${LSBCodename}-backports-sloppy contrib main non-free non-free-firmware"
         "deb-src ${transport_protocol}://mirrors.ustc.edu.cn/debian ${LSBCodename}-proposed-updates contrib main non-free non-free-firmware"
         "deb-src ${transport_protocol}://mirrors.ustc.edu.cn/debian ${LSBCodename}-updates contrib main non-free non-free-firmware"
     )
     proxmox_mirror_list=(
         "# deb ${transport_protocol}://enterprise.proxmox.com/debian/ceph-${CephCodename} ${LSBCodename} enterprise"
         "# deb ${transport_protocol}://enterprise.proxmox.com/debian/pve ${LSBCodename} pve-enterprise"
-        "deb ${transport_protocol}://mirrors.ustc.edu.cn/proxmox/debian ${LSBCodename} pve-no-subscription pvetest"
+        "deb ${transport_protocol}://mirrors.ustc.edu.cn/proxmox/debian ${LSBCodename} pve-no-subscription pve-test"
         "deb ${transport_protocol}://mirrors.ustc.edu.cn/proxmox/debian/ceph-${CephCodename} ${LSBCodename} no-subscription test"
     )
     if [ ! -d "/etc/apt/sources.list.d" ]; then
@@ -233,7 +233,7 @@ function ConfigurePackages() {
         pve_repo_preference_list=(
             "pve-enterprise 1000"
             "pve-no-subscription 990"
-            "pvetest 100"
+            "pve-test 100"
             "enterprise 1000"
             "no-subscription 990"
             "test 100"
