@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 4.3.3
+# Current Version: 4.3.4
 
 ## How to get and use?
 # curl "https://source.zhijie.online/AutoDeploy/main/ProxmoxVE.sh" | sudo bash
@@ -346,7 +346,7 @@ function ConfigurePackages() {
             rm -rf "/tmp/docker.autodeploy" && echo 'DOCKER_OPTS="--iptables=false"' > "/tmp/docker.autodeploy" && cat "/tmp/docker.autodeploy" > "/etc/default/docker" && rm -rf "/tmp/docker.autodeploy"
             rm -rf "/tmp/docker.autodeploy" && for docker_list_task in "${!docker_list[@]}"; do
                 echo "${docker_list[$docker_list_task]}" >> "/tmp/docker.autodeploy"
-            done && cat "/tmp/docker.autodeploy" > "/etc/docker/daemon.json" && && systemctl enable docker && systemctl restart docker && rm -rf "/tmp/docker.autodeploy"
+            done && cat "/tmp/docker.autodeploy" > "/etc/docker/daemon.json" && systemctl enable docker && systemctl restart docker && rm -rf "/tmp/docker.autodeploy"
         fi
     }
     function ConfigureFail2Ban() {
@@ -713,7 +713,7 @@ function ConfigurePackages() {
             '[ProxyList]'
             "${PROXY_PROTOCOL:-socks5} ${PROXY_IP:-127.0.0.1} ${PROXY_PORT:-7890} ${PROXY_USERNAME} ${PROXY_PASSWORD}"
         )
-    
+
         if [ -f "/etc/proxychains4.conf" ]; then
             rm -rf "/etc/proxychains4.conf"
         fi && for proxychains_list_task in "${!proxychains_list[@]}"; do
