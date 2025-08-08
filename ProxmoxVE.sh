@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 4.2.9
+# Current Version: 4.3.0
 
 ## How to get and use?
 # curl "https://source.zhijie.online/AutoDeploy/main/ProxmoxVE.sh" | sudo bash
@@ -1308,7 +1308,6 @@ function InstallCustomPackages() {
             "containerd.io"
             "docker-ce"
             "docker-ce-cli"
-            "docker-compose-plugin"
             "docker-compose"
         )
         rm -rf "/usr/share/keyrings/docker-archive-keyring.gpg" && curl -fsSL "https://mirrors.ustc.edu.cn/docker-ce/linux/debian/gpg" | gpg --dearmor -o "/usr/share/keyrings/docker-archive-keyring.gpg"
