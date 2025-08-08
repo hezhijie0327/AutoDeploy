@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 4.3.1
+# Current Version: 4.3.2
 
 ## How to get and use?
 # curl "https://source.zhijie.online/AutoDeploy/main/ProxmoxVE.sh" | sudo bash
@@ -171,46 +171,6 @@ function SetRepositoryMirror() {
     rm -rf "/tmp/apt.autodeploy" && for proxmox_mirror_list_task in "${!proxmox_mirror_list[@]}"; do
         echo "${proxmox_mirror_list[$proxmox_mirror_list_task]}" >> "/tmp/apt.autodeploy"
     done && cat "/tmp/apt.autodeploy" > "/etc/apt/sources.list.d/proxmox.list" && rm -rf "/tmp/apt.autodeploy"
-}
-# Set Readonly Flag
-function SetReadonlyFlag() {
-    file_list=(
-        "/etc/apt/apt.conf.d/99autodeploy"
-        "/etc/apt/preferences"
-        "/etc/apt/preferences.d/proxmox.pref"
-        "/etc/apt/sources.list"
-        "/etc/apt/sources.list.d/crowdsec.list"
-        "/etc/apt/sources.list.d/docker.list"
-        "/etc/apt/sources.list.d/frrouting.list"
-        "/etc/apt/sources.list.d/proxmox.list"
-        "/etc/apt/sources.list.d/xanmod.list"
-        "/etc/chrony/chrony.conf"
-        "/etc/default/docker"
-        "/etc/default/lldpd"
-        "/etc/docker/daemon.json"
-        "/etc/fail2ban/fail2ban.local"
-        "/etc/fail2ban/filter.d/proxmox.conf"
-        "/etc/fail2ban/jail.local"
-        "/etc/fail2ban/jail.d/fail2ban_default.conf"
-        "/etc/gai.conf"
-        "/etc/hostname"
-        "/etc/hosts"
-        "/etc/modules"
-        "/etc/sysctl.conf"
-    )
-    if [ "${read_only}" == "TRUE" ]; then
-        for file_list_task in "${!file_list[@]}"; do
-            if [ -d "${file_list[$file_list_task]}" ] || [ -f "${file_list[$file_list_task]}" ]; then
-                chattr +i "${file_list[$file_list_task]}" > "/dev/null" 2>&1
-            fi
-        done
-    elif [ "${read_only}" == "FALSE" ]; then
-        for file_list_task in "${!file_list[@]}"; do
-            if [ -d "${file_list[$file_list_task]}" ] || [ -f "${file_list[$file_list_task]}" ]; then
-                chattr -i "${file_list[$file_list_task]}" > "/dev/null" 2>&1
-            fi
-        done
-    fi
 }
 # Configure Packages
 function ConfigurePackages() {
@@ -1494,8 +1454,6 @@ function CleanupOutageKernels() {
 ## Process
 # Set DEBIAN_FRONTEND to "noninteractive"
 export DEBIAN_FRONTEND="noninteractive"
-# Set read_only="FALSE"; Call SetReadonlyFlag
-read_only="FALSE" && SetReadonlyFlag
 # Call GetSystemInformation
 GetSystemInformation
 # Set transport_protocol="http"; Call SetRepositoryMirror
@@ -1512,8 +1470,6 @@ InstallCustomPackages
 ConfigureSystem
 # Call ConfigurePackages
 ConfigurePackages
-# Set read_only="TRUE"; Call SetReadonlyFlag
-read_only="TRUE" && SetReadonlyFlag
 # Call CleanupTempFiles
 CleanupTempFiles
 # Call CleanupOutageKernels
