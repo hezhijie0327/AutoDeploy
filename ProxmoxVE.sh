@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 4.3.0
+# Current Version: 4.3.1
 
 ## How to get and use?
 # curl "https://source.zhijie.online/AutoDeploy/main/ProxmoxVE.sh" | sudo bash
@@ -1306,13 +1306,14 @@ function InstallCustomPackages() {
     function InstallDockerEngine() {
         apt_list=(
             "containerd.io"
+            "docker-buildx-plugin"
             "docker-ce"
             "docker-ce-cli"
-            "docker-compose"
+            "docker-compose-plugin"
         )
         rm -rf "/usr/share/keyrings/docker-archive-keyring.gpg" && curl -fsSL "https://mirrors.ustc.edu.cn/docker-ce/linux/debian/gpg" | gpg --dearmor -o "/usr/share/keyrings/docker-archive-keyring.gpg"
         echo "deb [arch=amd64 signed-by=/usr/share/keyrings/docker-archive-keyring.gpg] https://mirrors.ustc.edu.cn/docker-ce/linux/debian ${LSBCodename} stable" > "/etc/apt/sources.list.d/docker.list"
-        apt update && apt purge -qy containerd docker docker-engine docker.io runc && for apt_list_task in "${!apt_list[@]}"; do
+        apt update && apt purge -qy containerd docker-compose docker-doc docker.io podman-docker runc && for apt_list_task in "${!apt_list[@]}"; do
             apt-cache show ${apt_list[$apt_list_task]} && if [ "$?" -eq "0" ]; then
                 apt install -qy ${apt_list[$apt_list_task]}
             fi
