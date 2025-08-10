@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 5.9.6
+# Current Version: 5.9.7
 
 ## How to get and use?
 # curl "https://source.zhijie.online/AutoDeploy/main/Ubuntu.sh" | sudo bash
@@ -123,8 +123,8 @@ function GetSystemInformation() {
         LSBCodename_LTS_OLD="jammy"
         LSBVersion_LTS_OLD="22.04"
 
-        LSBCodename_NON_LTS="mantic"
-        LSBVersion_NON_LTS="23.10"
+        LSBCodename_NON_LTS="plucky"
+        LSBVersion_NON_LTS="25.04"
 
         which "lsb_release" > "/dev/null" 2>&1
         if [ "$?" -eq "0" ]; then
@@ -1376,6 +1376,7 @@ function InstallCustomPackages() {
 
         rm -rf "/usr/share/keyrings/xanmod-archive-keyring.gpg" && curl -fsSL "https://dl.xanmod.org/archive.key" | gpg --dearmor -o "/usr/share/keyrings/xanmod-archive-keyring.gpg"
         echo "deb [arch=${OSArchitecture} signed-by=/usr/share/keyrings/xanmod-archive-keyring.gpg] https://deb.xanmod.org releases main" > "/etc/apt/sources.list.d/xanmod.list"
+        echo "deb [arch=${OSArchitecture} signed-by=/usr/share/keyrings/xanmod-archive-keyring.gpg] https://deb.xanmod.org ${LSBCodename} main non-free" >> "/etc/apt/sources.list.d/xanmod.list"
         apt update && for apt_list_task in "${!apt_list[@]}"; do
             apt-cache show ${apt_list[$apt_list_task]} && if [ "$?" -eq "0" ]; then
                 apt install -qy ${apt_list[$apt_list_task]}
