@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 4.3.8
+# Current Version: 4.3.9
 
 ## How to get and use?
 # curl "https://source.zhijie.online/AutoDeploy/main/ProxmoxVE.sh" | sudo bash
@@ -352,11 +352,11 @@ function ConfigurePackages() {
     function ConfigureFail2Ban() {
         fail2ban_list=(
             "[proxmox]"
+            "backend" = systemd
             "bantime = 604800"
             "enabled = true"
             "filter = proxmox"
             "findtime = 60"
-            "logpath = /var/log/daemon.log"
             "maxretry = 5"
             "port = 8006"
             "[sshd]"
@@ -371,6 +371,7 @@ function ConfigurePackages() {
         fail2ban_proxmox_list=(
             "[Definition]"
             "failregex = pvedaemon\[.*authentication failure; rhost=<HOST> user=.* msg=.*"
+            "journalmatch = _SYSTEMD_UNIT=pvedaemon.service"
         )
         which "fail2ban-client" > "/dev/null" 2>&1
         if [ "$?" -eq "0" ]; then
