@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 4.3.9
+# Current Version: 4.4.0
 
 ## How to get and use?
 # curl "https://source.zhijie.online/AutoDeploy/main/ProxmoxVE.sh" | sudo bash
@@ -352,7 +352,7 @@ function ConfigurePackages() {
     function ConfigureFail2Ban() {
         fail2ban_list=(
             "[proxmox]"
-            "backend" = systemd
+            "backend = systemd"
             "bantime = 604800"
             "enabled = true"
             "filter = proxmox"
