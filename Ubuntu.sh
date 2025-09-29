@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 6.0.0
+# Current Version: 6.0.1
 
 ## How to get and use?
 # curl "https://source.zhijie.online/AutoDeploy/main/Ubuntu.sh" | sudo bash
@@ -1451,6 +1451,7 @@ function InstallDependencyPackages() {
         "snmp"
         "snmpd"
         "snmp-mibs-downloader"
+        "socat"
         "sudo"
         "systemd"
         "tcpdump"
