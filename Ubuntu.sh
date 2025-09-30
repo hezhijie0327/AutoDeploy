@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 6.0.1
+# Current Version: 6.0.2
 
 ## How to get and use?
 # curl "https://source.zhijie.online/AutoDeploy/main/Ubuntu.sh" | sudo bash
@@ -783,7 +783,7 @@ function ConfigurePackages() {
             '[ProxyList]'
             "${PROXY_PROTOCOL:-socks5} ${PROXY_IP:-127.0.0.1} ${PROXY_PORT:-7890} ${PROXY_USERNAME} ${PROXY_PASSWORD}"
         )
-    
+
         if [ -f "/etc/proxychains4.conf" ]; then
             rm -rf "/etc/proxychains4.conf"
         fi && for proxychains_list_task in "${!proxychains_list[@]}"; do
@@ -945,6 +945,8 @@ function ConfigurePackages() {
     function ConfigureWireGuard() {
         ENABLE_IPV6_ADDRESS="false"
 
+        TUNNEL_MTU="1420" # 1420, 1412 (PPPoE)
+
         TUNNEL_CLIENT_V4="10.172.$(shuf -i '0-255' -n 1).$(shuf -i '0-255' -n 1)/32"
 
         if [ "${ENABLE_IPV6_ADDRESS:-false}" == "true" ]; then
@@ -979,7 +981,7 @@ function ConfigurePackages() {
                 "Address = ${TUNNEL_CLIENT_V4}${TUNNEL_CLIENT_V6}"
                 "# DNS = 127.0.0.1, ::1"
                 "ListenPort = 51820"
-                "MTU = 1280"
+                "MTU = ${TUNNEL_MTU:-1420}"
                 "PrivateKey = $(wg genkey | tee '/tmp/wireguard.autodeploy')"
                 "# [Peer]"
                 "# AllowedIPs = ${TUNNEL_CLIENT_V4}${TUNNEL_CLIENT_V6}"
