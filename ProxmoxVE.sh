@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 4.4.0
+# Current Version: 4.4.1
 
 ## How to get and use?
 # curl "https://source.zhijie.online/AutoDeploy/main/ProxmoxVE.sh" | sudo bash
@@ -1128,7 +1128,7 @@ function ConfigureSystem() {
         rm -rf "/tmp/hosts.autodeploy" && for host_list_task in "${!host_list[@]}"; do
             echo "${host_list[$host_list_task]}" >> "/tmp/hosts.autodeploy"
         done && cat "/tmp/hosts.autodeploy" > "/etc/hosts" && rm -rf "/tmp/hosts.autodeploy"
-        rm -rf "/tmp/hostname.autodeploy" && echo "${NEW_HOSTNAME}" > "/tmp/hostname.autodeploy" && cat "/tmp/hostname.autodeploy" > "/etc/hostname" && rm -rf "/tmp/hostname.autodeploy"
+        rm -rf "/tmp/hostname.autodeploy" && echo "${NEW_HOSTNAME}" > "/tmp/hostname.autodeploy" && cat "/tmp/hostname.autodeploy" > "/etc/hostname" && rm -rf "/tmp/hostname.autodeploy" && hostnamectl set-hostname "${NEW_HOSTNAME}"
     }
     function ConfigureProxmoxVENode() {
         if [ "${OLD_HOSTNAME}" != "${NEW_HOSTNAME}" ]; then
