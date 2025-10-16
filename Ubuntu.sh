@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 6.0.3
+# Current Version: 6.0.4
 
 ## How to get and use?
 # curl "https://source.zhijie.online/AutoDeploy/main/Ubuntu.sh" | sudo bash
@@ -1174,7 +1174,7 @@ function ConfigureSystem() {
         rm -rf "/tmp/hosts.autodeploy" && for host_list_task in "${!host_list[@]}"; do
             echo "${host_list[$host_list_task]}" >> "/tmp/hosts.autodeploy"
         done && cat "/tmp/hosts.autodeploy" > "/etc/hosts" && rm -rf "/tmp/hosts.autodeploy"
-        rm -rf "/tmp/hostname.autodeploy" && echo "${NEW_HOSTNAME}" > "/tmp/hostname.autodeploy" && cat "/tmp/hostname.autodeploy" > "/etc/hostname" && rm -rf "/tmp/hostname.autodeploy"
+        rm -rf "/tmp/hostname.autodeploy" && echo "${NEW_HOSTNAME}" > "/tmp/hostname.autodeploy" && cat "/tmp/hostname.autodeploy" > "/etc/hostname" && rm -rf "/tmp/hostname.autodeploy" && hostnamectl set-hostname "${NEW_HOSTNAME}"
     }
     function ConfigureLocales() {
         apt purge -qy locales && apt update && apt install -qy locales && locale-gen "en_US.UTF-8" && update-locale "en_US.UTF-8"
