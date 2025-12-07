@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 4.4.2
+# Current Version: 4.4.3
 
 ## How to get and use?
 # curl "https://source.zhijie.online/AutoDeploy/main/ProxmoxVE.sh" | sudo bash
@@ -327,6 +327,7 @@ function ConfigurePackages() {
 
         docker_list=(
             "{"
+            "  \"allow-direct-routing\": true,"
             "  \"experimental\": true,"
             "  \"firewall-backend\": \"nftables\","
             "  \"ip-forward\": true,"
