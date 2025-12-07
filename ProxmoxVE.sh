@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 4.4.1
+# Current Version: 4.4.2
 
 ## How to get and use?
 # curl "https://source.zhijie.online/AutoDeploy/main/ProxmoxVE.sh" | sudo bash
@@ -328,6 +328,8 @@ function ConfigurePackages() {
         docker_list=(
             "{"
             "  \"experimental\": true,"
+            "  \"firewall-backend\": \"nftables\","
+            "  \"ip-forward\": true,"
             ${DOCKER_IPV6_LIST[*]}
             "  \"registry-mirrors\": ["
             "$(printf '    "%s",\n' "${DOCKER_REGISTRY_MIRRORS[@]}" | sed '$s/,$//')"
