@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 6.0.5
+# Current Version: 6.0.6
 
 ## How to get and use?
 # curl "https://source.zhijie.online/AutoDeploy/main/Ubuntu.sh" | sudo bash
@@ -379,6 +379,7 @@ function ConfigurePackages() {
 
         docker_list=(
             "{"
+            "  \"allow-direct-routing\": true,"
             "  \"experimental\": true,"
             "  \"firewall-backend\": \"nftables\","
             "  \"ip-forward\": true,"
