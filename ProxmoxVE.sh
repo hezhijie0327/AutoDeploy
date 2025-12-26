@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 4.4.3
+# Current Version: 4.4.4
 
 ## How to get and use?
 # curl "https://source.zhijie.online/AutoDeploy/main/ProxmoxVE.sh" | sudo bash
@@ -736,13 +736,10 @@ function ConfigurePackages() {
         systemctl stop pve-cluster && systemctl stop corosync && pmxcfs -l && rm -rf "/etc/pve/corosync.conf" && rm -rf /etc/corosync/* /var/log/corosync/* /var/lib/corosync/* && killall pmxcfs && systemctl start pve-cluster
     }
     function ConfigurePVEContainer() {
-        sed -i 's|http://download.proxmox.com|https://mirrors.ustc.edu.cn/proxmox|g' "/usr/share/perl5/PVE/APLInfo.pm" && systemctl restart pvedaemon.service
+        sed -Ezi.bak 's|http://download.proxmox.com|https://mirrors.ustc.edu.cn/proxmox|g' "/usr/share/perl5/PVE/APLInfo.pm" && systemctl restart pvedaemon.service
     }
     function ConfigurePVEDashboard() {
-        DISABLE_SUBSCRIPTION_NOTICE="false"
-        if [ "${DISABLE_SUBSCRIPTION_NOTICE}" == "true" ]; then
-            sed -i "s/(Ext.Msg.show\(\{\s+title: gettext\('No valid sub)/void\(\{ \/\/\1/g" "/usr/share/javascript/proxmox-widget-toolkit/proxmoxlib.js" && systemctl restart pveproxy.service
-        fi
+        sed -Ezi.bak "s/(Ext.Msg.show\(\{\s+title: gettext\('No valid sub)/void\(\{ \/\/\1/g" "/usr/share/javascript/proxmox-widget-toolkit/proxmoxlib.js" && systemctl restart pveproxy.service
     }
     function ConfigurePVEFirewall() {
         cluster_fw_list=(
