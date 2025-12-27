@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 4.4.7
+# Current Version: 4.4.8
 
 ## How to get and use?
 # curl "https://source.zhijie.online/AutoDeploy/main/ProxmoxVE.sh" | sudo bash
@@ -936,7 +936,7 @@ function ConfigurePackages() {
                 echo "${sysctl_list[$sysctl_list_task]}" >> "/tmp/sysctl.autodeploy"
             done && for bridge_interface_task in "${!bridge_interface[@]}"; do
                 echo -e "net.ipv6.conf.${bridge_interface[$bridge_interface_task]}.accept_ra = 2\nnet.ipv6.conf.${bridge_interface[$bridge_interface_task]}.autoconf = 1\nnet.ipv6.conf.${bridge_interface[$bridge_interface_task]}.forwarding = 1" >> "/tmp/sysctl.autodeploy"
-            done && cat "/tmp/sysctl.autodeploy" | sort | uniq > "/etc/sysctl.d/98-autodeploy.conf" && sysctl -p && rm -rf "/tmp/sysctl.autodeploy"
+            done && cat "/tmp/sysctl.autodeploy" | sort | uniq > "/etc/sysctl.d/99-autodeploy.conf" && sysctl -p && rm -rf "/tmp/sysctl.autodeploy"
         fi
     }
     function ConfigureTuned() {
