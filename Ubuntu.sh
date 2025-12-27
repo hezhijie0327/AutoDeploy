@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 6.0.7
+# Current Version: 6.0.8
 
 ## How to get and use?
 # curl "https://source.zhijie.online/AutoDeploy/main/Ubuntu.sh" | sudo bash
@@ -921,15 +921,15 @@ function ConfigurePackages() {
                 mkdir -p "/etc/sysctl.d"
             fi
 
-            if [ ! -e "/etc/sysctl.d/sysctl.conf" ]; then
-                ln -s "/etc/sysctl.conf" "/etc/sysctl.d/sysctl.conf"
+            if [ ! -f "/etc/sysctl.d/99-sysctl.conf" ]; then
+                ln -s "/etc/sysctl.conf" "/etc/sysctl.d/99-sysctl.conf"
             fi
 
             rm -rf "/tmp/sysctl.autodeploy" && for sysctl_list_task in "${!sysctl_list[@]}"; do
                 echo "${sysctl_list[$sysctl_list_task]}" >> "/tmp/sysctl.autodeploy"
             done && for network_interface_task in "${!network_interface[@]}"; do
                 echo -e "net.ipv6.conf.${network_interface[$network_interface_task]}.accept_ra = 2\nnet.ipv6.conf.${network_interface[$network_interface_task]}.autoconf = 1\nnet.ipv6.conf.${network_interface[$network_interface_task]}.forwarding = 1" >> "/tmp/sysctl.autodeploy"
-            done && cat "/tmp/sysctl.autodeploy" | sort | uniq > "/etc/sysctl.d/99-autodeploy.conf" && sysctl -p && rm -rf "/tmp/sysctl.autodeploy"
+            done && cat "/tmp/sysctl.autodeploy" | sort | uniq > "/etc/sysctl.d/98-autodeploy.conf" && sysctl -p && rm -rf "/tmp/sysctl.autodeploy"
         fi
     }
     function ConfigureSystemd() {
