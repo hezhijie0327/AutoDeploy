@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 4.4.5
+# Current Version: 4.4.6
 
 ## How to get and use?
 # curl "https://source.zhijie.online/AutoDeploy/main/ProxmoxVE.sh" | sudo bash
@@ -928,8 +928,8 @@ function ConfigurePackages() {
                 mkdir -p "/etc/sysctl.d"
             fi
 
-            if [ ! -e "/etc/sysctl.d/sysctl.conf" ]; then
-                ln -s "/etc/sysctl.conf" "/etc/sysctl.d/sysctl.conf"
+            if [ ! -f "/etc/sysctl.d/99-sysctl.conf" ]; then
+                ln -s "/etc/sysctl.conf" "/etc/sysctl.d/99-sysctl.conf"
             fi
 
             rm -rf "/tmp/sysctl.autodeploy" && for sysctl_list_task in "${!sysctl_list[@]}"; do
