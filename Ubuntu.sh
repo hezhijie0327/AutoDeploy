@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 6.1.1
+# Current Version: 6.1.2
 
 ## How to get and use?
 # curl "https://source.zhijie.online/AutoDeploy/main/Ubuntu.sh" | sudo bash
@@ -1227,7 +1227,7 @@ function ConfigureSystem() {
 
             rm -rf "/etc/zram.autodeploy" && for zram_conf_list_task in "${!zram_conf_list[@]}"; do
                 echo "${zram_conf_list[$zram_conf_list_task]}" >> "/etc/zram.autodeploy"
-            done && cat "/etc/zram.autodeploy" > "/etc/systemd/zram-generator.conf.d/zram.conf" && systemctl daemon-reexec && systemctl start systemd-zram-setup@zram0.service
+            done && cat "/etc/zram.autodeploy" > "/etc/systemd/zram-generator.conf.d/zram.conf"
         }
         function RemoveSWAP() {
             SWAPFILE_NAME=($(cat "/proc/swaps" | grep -v "Filename" | awk '{print $1}'))
