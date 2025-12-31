@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 4.5.2
+# Current Version: 4.5.3
 
 ## How to get and use?
 # curl "https://source.zhijie.online/AutoDeploy/main/ProxmoxVE.sh" | sudo bash
@@ -1184,7 +1184,7 @@ function ConfigureSystem() {
             zram_conf_list=(
                 "[zram0]"
                 "compression-algorithm = zstd"
-                "zram-size = min(min(ram, 4096) + max(ram - 4096, 0) / 2, 8192)"
+                "zram-size = min(ram / 2, 8192)"
             )
 
             if [ -d "/etc/systemd/zram-generator.conf.d" ]; then
