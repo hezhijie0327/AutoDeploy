@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 4.5.0
+# Current Version: 4.5.1
 
 ## How to get and use?
 # curl "https://source.zhijie.online/AutoDeploy/main/ProxmoxVE.sh" | sudo bash
@@ -1185,7 +1185,7 @@ function ConfigureSystem() {
                 "[zram0]"
                 "compression-algorithm = zstd"
                 "swap-priority = 100"
-                "zram-size = min(ram * 2, 8G)"
+                "zram-size = min(ram * 2, 8192)"
             )
 
             if [ -d "/etc/systemd/zram-generator.conf.d" ]; then
@@ -1194,7 +1194,7 @@ function ConfigureSystem() {
 
             rm -rf "/etc/zram.autodeploy" && for zram_conf_list_task in "${!zram_conf_list[@]}"; do
                 echo "${zram_conf_list[$zram_conf_list_task]}" >> "/etc/zram.autodeploy"
-            done && cat "/etc/zram.autodeploy" > "/etc/systemd/zram-generator.conf.d/zram.conf" && systemctl daemon-reexec && systemctl start systemd-zram-setup@zram0.service
+            done && cat "/etc/zram.autodeploy" > "/etc/systemd/zram-generator.conf.d/zram.conf"
         }
         function RemoveSWAP() {
             SWAPFILE_NAME=($(cat "/proc/swaps" | grep -v "Filename" | awk '{print $1}'))
