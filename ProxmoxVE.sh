@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 4.4.8
+# Current Version: 4.4.9
 
 ## How to get and use?
 # curl "https://source.zhijie.online/AutoDeploy/main/ProxmoxVE.sh" | sudo bash
@@ -1181,29 +1181,20 @@ function ConfigureSystem() {
             fi
         }
         function CreateSWAP() {
-            truncate -s 0 "/swapfile"
-            chattr +C "/swapfile"
-            fallocate -l ${CUSTOM_SWAP_SIZE:-${SWAP_SIZE}M} "/swapfile"
-            chmod 600 "/swapfile"
-            mkswap "/swapfile"
-            swapon "/swapfile"
-        }
-        function GenerateSWAPSize() {
-            RAM_SIZE=$(awk "BEGIN{print log($(free -m | grep -i "mem" | awk '{print $2}')) / log(2)}")
-            if [ $(echo "${RAM_SIZE}" | grep "\.") != "" ]; then
-                if [ $(echo "${RAM_SIZE}" | cut -d '.' -f 2 | cut -c 1) -gt 5 ]; then
-                    RAM_SIZE=$(( $(echo "${RAM_SIZE}" | cut -d '.' -f 1 ) + 1 ))
-                fi
-            fi
-            if [ "${RAM_SIZE}" -le 11 ]; then
-                SWAP_SIZE=$(echo "2 ^ ${RAM_SIZE} * 2" | bc)
-            elif [ "${RAM_SIZE}" -gt 11 ] && [ "${RAM_SIZE}" -le 13 ]; then
-                SWAP_SIZE=$(echo "2 ^ ${RAM_SIZE}" | bc)
-            elif [ "${RAM_SIZE}" -gt 13 ] && [ "${RAM_SIZE}" -le 16 ]; then
-                SWAP_SIZE=$(echo "2 ^ 12" | bc)
-            else
-                SWAP_SIZE=$(echo "2 ^ 13" | bc)
-            fi
+            zram_conf_list=(
+                "[zram0]"
+                "compression-algorithm = zstd"
+                "swap-priority = 100"
+                "zram-size = min(ram * 0.25, 8G)"
+            )
+
+            if [ -d "/etc/systemd/zram-generator.conf.d" ]; then
+                rm -rf "/etc/systemd/zram-generator.conf.d"
+            fi && mkdir -p "/etc/systemd/zram-generator.conf.d"
+
+            rm -rf "/etc/zram.autodeploy" && for zram_conf_list_task in "${!zram_conf_list[@]}"; do
+                echo "${zram_conf_list[$zram_conf_list_task]}" >> "/etc/zram.autodeploy"
+            done && cat "/etc/zram.autodeploy" > "/etc/systemd/zram-generator.conf.d/zram.conf" && systemctl daemon-reexec && systemctl start systemd-zram-setup@zram0.service
         }
         function RemoveSWAP() {
             SWAPFILE_NAME=($(cat "/proc/swaps" | grep -v "Filename" | awk '{print $1}'))
@@ -1212,6 +1203,8 @@ function ConfigureSystem() {
                 if [[ "${SWAPFILE_NAME[$SWAPFILE_NAME_TASK]}" =~ ^/dev/dm-* ]]; then
                     lvremove -f "/dev/mapper/pve-swap" > "/dev/null" 2>&1
                     lvextend -l +100%FREE "/dev/mapper/pve-root"
+                elif [[ "${SWAPFILE_NAME[$SWAPFILE_NAME_TASK]}" =~ ^/dev/zram* ]]; then
+                    rm -rf "/etc/systemd/zram-generator.conf.d" && systemctl daemon-reexec && systemctl restart systemd-zram-setup@zram0.service
                 else
                     rm -rf "${SWAPFILE_NAME[$SWAPFILE_NAME_TASK]}"
                 fi
@@ -1219,27 +1212,13 @@ function ConfigureSystem() {
         }
         function UpdateFSTAB() {
             cat "/etc/fstab" | grep -v "swap" > "/tmp/fstab.autodeploy"
-            if [ -f "/swapfile" ] && [ "${DISABLE_SWAP}" == "false" ]; then
-                echo "/swapfile none swap sw 0 0" >> "/tmp/fstab.autodeploy"
-            fi
             cat "/tmp/fstab.autodeploy" > "/etc/fstab" && rm -rf "/tmp/fstab.autodeploy"
         }
-        DISABLE_SWAP="true"
-        if [ $(df -Th | grep "/$" | awk '{print $2}' | grep 'btrfs\|zfs') != "" ]; then
-            DISABLE_SWAP="true"
-        fi
-        if [ "${DISABLE_SWAP}" == "true" ]; then
-            ClearSWAP
-            RemoveSWAP
-            UpdateFSTAB
-        else
-            CUSTOM_SWAP_SIZE="" # 1024M / 1G
-            ClearSWAP
-            RemoveSWAP
-            GenerateSWAPSize
-            CreateSWAP
-            UpdateFSTAB
-        fi
+
+        ClearSWAP
+        RemoveSWAP
+        CreateSWAP
+        UpdateFSTAB
     }
     ConfigureDefaultShell
     ConfigureDefaultUser
@@ -1420,6 +1399,7 @@ function InstallDependencyPackages() {
         "snmpd"
         "sudo"
         "systemd"
+        "systemd-zram-generator"
         "tcpdump"
         "tshark"
         "tuned"
