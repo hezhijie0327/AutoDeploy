@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 6.1.0
+# Current Version: 6.1.1
 
 ## How to get and use?
 # curl "https://source.zhijie.online/AutoDeploy/main/Ubuntu.sh" | sudo bash
@@ -1218,7 +1218,7 @@ function ConfigureSystem() {
                 "[zram0]"
                 "compression-algorithm = zstd"
                 "swap-priority = 100"
-                "zram-size = min(ram * 2, 8G)"
+                "zram-size = min(ram * 2, 8192)"
             )
 
             if [ -d "/etc/systemd/zram-generator.conf.d" ]; then
