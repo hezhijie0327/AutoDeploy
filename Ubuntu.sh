@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 6.0.9
+# Current Version: 6.1.0
 
 ## How to get and use?
 # curl "https://source.zhijie.online/AutoDeploy/main/Ubuntu.sh" | sudo bash
@@ -1214,29 +1214,20 @@ function ConfigureSystem() {
             fi
         }
         function CreateSWAP() {
-            truncate -s 0 "/swapfile"
-            chattr +C "/swapfile"
-            fallocate -l ${CUSTOM_SWAP_SIZE:-${SWAP_SIZE}M} "/swapfile"
-            chmod 600 "/swapfile"
-            mkswap "/swapfile"
-            swapon "/swapfile"
-        }
-        function GenerateSWAPSize() {
-            RAM_SIZE=$(awk "BEGIN{print log($(free -m | grep -i "mem" | awk '{print $2}')) / log(2)}")
-            if [ $(echo "${RAM_SIZE}" | grep "\.") != "" ]; then
-                if [ $(echo "${RAM_SIZE}" | cut -d '.' -f 2 | cut -c 1) -gt 5 ]; then
-                    RAM_SIZE=$(( $(echo "${RAM_SIZE}" | cut -d '.' -f 1 ) + 1 ))
-                fi
-            fi
-            if [ "${RAM_SIZE}" -le 11 ]; then
-                SWAP_SIZE=$(echo "2 ^ ${RAM_SIZE} * 2" | bc)
-            elif [ "${RAM_SIZE}" -gt 11 ] && [ "${RAM_SIZE}" -le 13 ]; then
-                SWAP_SIZE=$(echo "2 ^ ${RAM_SIZE}" | bc)
-            elif [ "${RAM_SIZE}" -gt 13 ] && [ "${RAM_SIZE}" -le 16 ]; then
-                SWAP_SIZE=$(echo "2 ^ 12" | bc)
-            else
-                SWAP_SIZE=$(echo "2 ^ 13" | bc)
-            fi
+            zram_conf_list=(
+                "[zram0]"
+                "compression-algorithm = zstd"
+                "swap-priority = 100"
+                "zram-size = min(ram * 2, 8G)"
+            )
+
+            if [ -d "/etc/systemd/zram-generator.conf.d" ]; then
+                rm -rf "/etc/systemd/zram-generator.conf.d"
+            fi && mkdir -p "/etc/systemd/zram-generator.conf.d"
+
+            rm -rf "/etc/zram.autodeploy" && for zram_conf_list_task in "${!zram_conf_list[@]}"; do
+                echo "${zram_conf_list[$zram_conf_list_task]}" >> "/etc/zram.autodeploy"
+            done && cat "/etc/zram.autodeploy" > "/etc/systemd/zram-generator.conf.d/zram.conf" && systemctl daemon-reexec && systemctl start systemd-zram-setup@zram0.service
         }
         function RemoveSWAP() {
             SWAPFILE_NAME=($(cat "/proc/swaps" | grep -v "Filename" | awk '{print $1}'))
@@ -1247,24 +1238,13 @@ function ConfigureSystem() {
         }
         function UpdateFSTAB() {
             cat "/etc/fstab" | grep -v "swap" > "/tmp/fstab.autodeploy"
-            if [ -f "/swapfile" ] && [ "${DISABLE_SWAP}" == "false" ]; then
-                echo "/swapfile none swap sw 0 0" >> "/tmp/fstab.autodeploy"
-            fi
             cat "/tmp/fstab.autodeploy" > "/etc/fstab" && rm -rf "/tmp/fstab.autodeploy"
         }
-        DISABLE_SWAP="true"
-        if [ "${DISABLE_SWAP}" == "true" ]; then
-            ClearSWAP
-            RemoveSWAP
-            UpdateFSTAB
-        else
-            CUSTOM_SWAP_SIZE="" # 1024M / 1G
-            ClearSWAP
-            RemoveSWAP
-            GenerateSWAPSize
-            CreateSWAP
-            UpdateFSTAB
-        fi
+
+        ClearSWAP
+        RemoveSWAP
+        CreateSWAP
+        UpdateFSTAB
     }
     function ConfigureTimeZone() {
         if [ -f "/etc/localtime" ]; then
@@ -1465,6 +1445,7 @@ function InstallDependencyPackages() {
         "socat"
         "sudo"
         "systemd"
+        "systemd-zram-generator"
         "tcpdump"
         "tshark"
         "tuned"
