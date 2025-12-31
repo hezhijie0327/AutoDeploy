@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 4.4.9
+# Current Version: 4.5.0
 
 ## How to get and use?
 # curl "https://source.zhijie.online/AutoDeploy/main/ProxmoxVE.sh" | sudo bash
@@ -1185,7 +1185,7 @@ function ConfigureSystem() {
                 "[zram0]"
                 "compression-algorithm = zstd"
                 "swap-priority = 100"
-                "zram-size = min(ram * 0.25, 8G)"
+                "zram-size = min(ram * 2, 8G)"
             )
 
             if [ -d "/etc/systemd/zram-generator.conf.d" ]; then
@@ -1203,8 +1203,6 @@ function ConfigureSystem() {
                 if [[ "${SWAPFILE_NAME[$SWAPFILE_NAME_TASK]}" =~ ^/dev/dm-* ]]; then
                     lvremove -f "/dev/mapper/pve-swap" > "/dev/null" 2>&1
                     lvextend -l +100%FREE "/dev/mapper/pve-root"
-                elif [[ "${SWAPFILE_NAME[$SWAPFILE_NAME_TASK]}" =~ ^/dev/zram* ]]; then
-                    rm -rf "/etc/systemd/zram-generator.conf.d" && systemctl daemon-reexec && systemctl restart systemd-zram-setup@zram0.service
                 else
                     rm -rf "${SWAPFILE_NAME[$SWAPFILE_NAME_TASK]}"
                 fi
