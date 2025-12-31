@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 4.5.3
+# Current Version: 4.5.4
 
 ## How to get and use?
 # curl "https://source.zhijie.online/AutoDeploy/main/ProxmoxVE.sh" | sudo bash
@@ -918,8 +918,11 @@ function ConfigurePackages() {
             "net.ipv4.ip_forward = 1"
             "net.ipv4.tcp_congestion_control = bbr"
             "net.ipv4.tcp_fastopen = 3"
+            "vm.dirty_background_ratio = 5"
+            "vm.dirty_ratio = 15"
             "vm.overcommit_memory = 1"
-            "vm.swappiness = 10"
+            "vm.page-cluster = 0"
+            "vm.swappiness = 150"
             ${icmp_echo[@]}
         )
         which "sysctl" > "/dev/null" 2>&1
