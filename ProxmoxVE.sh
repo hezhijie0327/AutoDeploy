@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 4.5.6
+# Current Version: 4.5.7
 
 ## How to get and use?
 # curl "https://source.zhijie.online/AutoDeploy/main/ProxmoxVE.sh" | sudo bash
@@ -1398,6 +1398,7 @@ function InstallDependencyPackages() {
         "p7zip-full"
         "pinentry-tty"
         "postfix"
+        "proxmox-secure-boot-support"
         "proxychains-ng"
         "python3"
         "python3-pip"
