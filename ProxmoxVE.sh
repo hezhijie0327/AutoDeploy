@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 4.5.5
+# Current Version: 4.5.6
 
 ## How to get and use?
 # curl "https://source.zhijie.online/AutoDeploy/main/ProxmoxVE.sh" | sudo bash
@@ -478,10 +478,20 @@ function ConfigurePackages() {
         else
             PATCH_INTEL_82599_SFP=""
         fi
+
         which "update-grub" > "/dev/null" 2>&1
         if [ "$?" -eq "0" ]; then
             if [ -f "/usr/share/grub/default/grub" ]; then
                 rm -rf "/tmp/grub.autodeploy" && cat "/usr/share/grub/default/grub" | sed "s/GRUB\_CMDLINE\_LINUX\_DEFAULT\=\"quiet\"/GRUB\_CMDLINE\_LINUX\_DEFAULT\=\"quiet${PATCH_INTEL_82599_SFP}${DISABLE_DISPLAY}${ENABLE_IOMMU}\"/g" > "/tmp/grub.autodeploy" && cat "/tmp/grub.autodeploy" > "/etc/default/grub" && update-grub && rm -rf "/tmp/grub.autodeploy"
+            fi
+        fi
+
+        which "proxmox-boot-tool" > "/dev/null" 2>&1
+        if [ "$?" -eq "0" ]; then
+            if [ -f "/etc/kernel/cmdline" ]; then
+                if [ ! -f "/etc/kernel/cmdline.bak" ]; then
+                    cp -rf "/etc/kernel/cmdline" "/etc/kernel/cmdline.bak"
+                fi && cat "/etc/kernel/cmdline.bak" | sed "s/boot=zfs/boot=zfs${PATCH_INTEL_82599_SFP}${DISABLE_DISPLAY}${ENABLE_IOMMU}/g" > "/etc/kernel/cmdline" && proxmox-boot-tool refresh
             fi
         fi
     }
