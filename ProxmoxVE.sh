@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 4.5.7
+# Current Version: 4.5.8
 
 ## How to get and use?
 # curl "https://source.zhijie.online/AutoDeploy/main/ProxmoxVE.sh" | sudo bash
@@ -74,10 +74,6 @@ function GetSystemInformation() {
                 rm -rf "/etc/resolv.conf"
             fi
         fi && rm -rf "/etc/resolv.conf" && cat "/tmp/resolv.autodeploy" > "/etc/resolv.conf" && rm -rf "/tmp/resolv.autodeploy"
-    }
-    function GetCPUpsABILevel() {
-        # https://dl.xanmod.org/check_x86-64_psabi.sh
-        psABILevel=$(awk 'BEGIN{while(!/flags/)if(getline<"/proc/cpuinfo"!=1)exit 0;if(/lm/&&/cmov/&&/cx8/&&/fpu/&&/fxsr/&&/mmx/&&/syscall/&&/sse2/)l=1;if(l==1&&/cx16/&&/lahf/&&/popcnt/&&/sse4_1/&&/sse4_2/&&/ssse3/)l=2;if(l==2&&/avx/&&/avx2/&&/bmi1/&&/bmi2/&&/f16c/&&/fma/&&/abm/&&/movbe/&&/xsave/)l=3;if(l==3&&/avx512f/&&/avx512bw/&&/avx512cd/&&/avx512dq/&&/avx512vl/)l=4;print l}')
     }
     function GetCPUVendorID() {
         CPU_VENDOR_ID=$(cat '/proc/cpuinfo' | grep 'vendor_id' | uniq | awk -F ':' '{print $2}' | awk -F ' ' '{print $1}')
@@ -1313,44 +1309,10 @@ function InstallCustomPackages() {
             echo "${plugin_upgrade_list[$plugin_upgrade_list_task]}" >> "/etc/zsh/oh-my-zsh/oh-my-zsh-plugin.sh"
         done
     }
-    function InstallXanModKernel() {
-        # Note: The current NVIDIA, OpenZFS, VirtualBox, VMware Workstation / Player and some other dkms modules may not officially support EDGE and RT branch kernels.
-        # How to fix "modinfo: ERROR: Module tcp_bbr not found." -> sudo depmod && modinfo tcp_bbr
-        # How to remove? -> sudo apt purge -qy linux-image-*.*.*-xanmod* linux-headers-*.*.*-xanmod* && sudo apt autoremove -qy --purge
-        XANMOD_BRANCH="edge" # disable, edge, lts, rt
-        if [ "${XANMOD_BRANCH}" == "" ]; then
-            XANMOD_BRANCH=""
-        elif [ "${XANMOD_BRANCH}" == "edge" ] || [ "${XANMOD_BRANCH}" == "lts" ] || [ "${XANMOD_BRANCH}" == "rt" ]; then
-            XANMOD_BRANCH="${XANMOD_BRANCH}-"
-        fi
-        if [ "${psABILevel}" == "1" ] && { [ "${XANMOD_BRANCH}" == "edge" ] || [ "${XANMOD_BRANCH}" == "rt" ]; }; then
-            XANMOD_BRANCH=""
-        fi
-
-        # no kernel benefit
-        if [ "${psABILevel}" == "4" ]; then
-            psABILevel="3"
-        fi
-
-        if [ "${psABILevel}" != "0" ] && [ "${XANMOD_BRANCH}" != "disable" ]; then
-            apt_list=(
-                "linux-xanmod-${XANMOD_BRANCH}x64v${psABILevel}"
-            )
-        fi
-
-        rm -rf "/usr/share/keyrings/xanmod-archive-keyring.gpg" && curl -fsSL "https://dl.xanmod.org/archive.key" | gpg --dearmor -o "/usr/share/keyrings/xanmod-archive-keyring.gpg"
-        echo "deb [arch=amd64 signed-by=/usr/share/keyrings/xanmod-archive-keyring.gpg] https://deb.xanmod.org ${LSBCodename:-releases} main non-free" > "/etc/apt/sources.list.d/xanmod.list"
-        apt update && for apt_list_task in "${!apt_list[@]}"; do
-            apt-cache show ${apt_list[$apt_list_task]} && if [ "$?" -eq "0" ]; then
-                apt install -qy ${apt_list[$apt_list_task]}
-            fi
-        done
-    }
     InstallCrowdSec
     InstallDockerEngine
     InstallFRRouting
     InstallOhMyZsh
-    InstallXanModKernel
 }
 # Install Dependency Packages
 function InstallDependencyPackages() {
