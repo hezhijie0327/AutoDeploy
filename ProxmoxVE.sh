@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 4.5.8
+# Current Version: 4.5.9
 
 ## How to get and use?
 # curl "https://source.zhijie.online/AutoDeploy/main/ProxmoxVE.sh" | sudo bash
@@ -127,7 +127,6 @@ function GetSystemInformation() {
     GenerateDomain
     GenerateHostname
     GenerateResolv
-    GetCPUpsABILevel
     GetCPUVendorID
     GetHostname
     GetManagementIPAddress
