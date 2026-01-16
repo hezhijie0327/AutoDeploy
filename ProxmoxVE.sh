@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 4.6.1
+# Current Version: 4.6.2
 
 ## How to get and use?
 # curl "https://source.zhijie.online/AutoDeploy/main/ProxmoxVE.sh" | sudo bash
@@ -532,8 +532,10 @@ function ConfigurePackages() {
 
         which "zpool" > "/dev/null" 2>&1
         if [ "$?" -eq "0" ]; then
-            ZFS_ARC_MAX="" # 1073741824 -> 1G
-            echo "options zfs zfs_arc_max = ${ZFS_ARC_MAX:-1073741824}" > "/etc/modprobe.d/zfs.conf"
+            ZFS_ARC_MAX=""
+            echo "options zfs zfs_arc_max = $[${ZFS_ARC_MAX:-1} * 1024*1024*1024]" > "/etc/modprobe.d/zfs.conf"
+
+            update-initramfs -u -k all
         fi
 
         modinfo ixgbe > "/dev/null" 2>&1
@@ -933,7 +935,7 @@ function ConfigurePackages() {
             "vm.dirty_ratio = 15"
             "vm.overcommit_memory = 1"
             "vm.page-cluster = 0"
-            "vm.swappiness = 150"
+            "vm.swappiness = 10"
             ${icmp_echo[@]}
         )
         which "sysctl" > "/dev/null" 2>&1
@@ -962,7 +964,11 @@ function ConfigurePackages() {
     function ConfigureZfs() {
         which "zpool" > "/dev/null" 2>&1
         if [ "$?" -eq "0" ]; then
-            systemctl enable --now zfs-trim-weekly@rpool.timer
+            zpool_list=($(zpool list -H -o name))
+            for zpool_list_task in "${!zpool_list[@]}"; do
+                zpool set autotrim=on "${zpool_list[$zpool_list_task]}"
+                systemctl enable --now zfs-trim-weekly@${zpool_list[$zpool_list_task]}.timer
+            done
         fi
     }
     function ConfigureZsh() {
