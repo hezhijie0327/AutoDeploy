@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 4.6.2
+# Current Version: 4.6.3
 
 ## How to get and use?
 # curl "https://source.zhijie.online/AutoDeploy/main/ProxmoxVE.sh" | sudo bash
@@ -530,7 +530,7 @@ function ConfigurePackages() {
             echo "options snd-hda-intel enable_msi=1" > "/etc/modprobe.d/snd-hda-intel.conf"
         fi
 
-        which "zpool" > "/dev/null" 2>&1
+        which "arcstat" > "/dev/null" 2>&1
         if [ "$?" -eq "0" ]; then
             ZFS_ARC_MAX=""
             echo "options zfs zfs_arc_max = $[${ZFS_ARC_MAX:-1} * 1024*1024*1024]" > "/etc/modprobe.d/zfs.conf"
