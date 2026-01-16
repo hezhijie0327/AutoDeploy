@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 4.6.5
+# Current Version: 4.6.6
 
 ## How to get and use?
 # curl "https://source.zhijie.online/AutoDeploy/main/ProxmoxVE.sh" | sudo bash
@@ -964,7 +964,7 @@ function ConfigurePackages() {
     function ConfigureZfs() {
         which "zpool" > "/dev/null" 2>&1
         if [ "$?" -eq "0" ]; then
-            zpool_list=($(zpool list -H -o name))
+            zpool_list=($(zpool list -H -o name | awk '{print $1}'))
             for zpool_list_task in "${!zpool_list[@]}"; do
                 zfs set compression=zstd "${zpool_list[$zpool_list_task]}"
 
@@ -1196,6 +1196,14 @@ function ConfigureSystem() {
             passwd -u "root"
         fi
     }
+    function ConfigureSecureBoot() {
+        if [[ "$(findmnt -n -o FSTYPE /)" == "zfs" ]]; then
+            esp_list=($(lsblk -nr -o NAME,FSTYPE,SIZE | grep -v '^zd' | awk '$2=="vfat" {print "/dev/"$1}' | awk '{print $1}'))
+            for esp_list_task in "${!esp_list[@]}"; do
+                proxmox-boot-tool init ${esp_list[$esp_list_task]} grub
+            done
+        fi
+    }
     function ConfigureSWAP() {
         function ClearSWAP() {
             sysctl_swap_list=(
@@ -1253,6 +1261,7 @@ function ConfigureSystem() {
     ConfigureHostfile
     ConfigureProxmoxVENode
     ConfigureRootUser
+    ConfigureSecureBoot
     ConfigureSWAP
 }
 # Install Custom Packages
@@ -1346,6 +1355,8 @@ function InstallDependencyPackages() {
         "chrony"
         "curl"
         "dnsutils"
+        "efibootmgr"
+        "efitools"
         "ethtool"
         "fail2ban"
         "fonts-noto-cjk"
@@ -1355,6 +1366,7 @@ function InstallDependencyPackages() {
         "git-flow"
         "git-lfs"
         "gnupg"
+        "grub-efi-amd64-signed"
         "iperf3"
         "jq"
         "knot-dnsutils"
@@ -1363,6 +1375,7 @@ function InstallDependencyPackages() {
         "lm-sensors"
         "lsb-release"
         "mailutils"
+        "mokutil"
         "mtr-tiny"
         "nano"
         "neofetch"
@@ -1388,6 +1401,8 @@ function InstallDependencyPackages() {
         "qrencode"
         "rar"
         "rsyslog"
+        "sbsigntool"
+        "shim-signed"
         "snmp"
         "snmp-mibs-downloader"
         "snmpd"
@@ -1404,6 +1419,7 @@ function InstallDependencyPackages() {
         "udisks2-zram"
         "unrar"
         "unzip"
+        "uuid-runtime"
         "vim"
         "virt-what"
         "wget"
