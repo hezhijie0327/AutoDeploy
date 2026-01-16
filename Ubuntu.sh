@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 6.1.7
+# Current Version: 6.1.8
 
 ## How to get and use?
 # curl "https://source.zhijie.online/AutoDeploy/main/Ubuntu.sh" | sudo bash
@@ -915,7 +915,7 @@ function ConfigurePackages() {
             "vm.dirty_ratio = 15"
             "vm.overcommit_memory = 1"
             "vm.page-cluster = 0"
-            "vm.swappiness = 150"
+            "vm.swappiness = 10"
             ${icmp_echo[@]}
         )
         which "sysctl" > "/dev/null" 2>&1
