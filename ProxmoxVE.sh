@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 4.6.0
+# Current Version: 4.6.1
 
 ## How to get and use?
 # curl "https://source.zhijie.online/AutoDeploy/main/ProxmoxVE.sh" | sudo bash
@@ -530,6 +530,12 @@ function ConfigurePackages() {
             echo "options snd-hda-intel enable_msi=1" > "/etc/modprobe.d/snd-hda-intel.conf"
         fi
 
+        which "zpool" > "/dev/null" 2>&1
+        if [ "$?" -eq "0" ]; then
+            ZFS_ARC_MAX="" # 1073741824 -> 1G
+            echo "options zfs zfs_arc_max = ${ZFS_ARC_MAX:-1073741824}" > "/etc/modprobe.d/zfs.conf"
+        fi
+
         modinfo ixgbe > "/dev/null" 2>&1
         if [ "$?" -eq "0" ]; then
             echo "options ixgbe allow_unsupported_sfp=1" > "/etc/modprobe.d/ixgbe.conf"
@@ -953,6 +959,12 @@ function ConfigurePackages() {
             tuned-adm profile "$(tuned-adm recommend)" && tuned-adm active
         fi
     }
+    function ConfigureZfs() {
+        which "zpool" > "/dev/null" 2>&1
+        if [ "$?" -eq "0" ]; then
+            systemctl enable --now zfs-trim-weekly@rpool.timer
+        fi
+    }
     function ConfigureZsh() {
         function GenerateCommandPath() {
             default_path_list=(
@@ -1046,6 +1058,7 @@ function ConfigurePackages() {
     ConfigureSshd
     ConfigureSysctl
     ConfigureTuned
+    ConfigureZfs
     ConfigureZsh
 }
 # Configure System
