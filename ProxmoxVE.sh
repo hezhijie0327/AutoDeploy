@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 4.6.3
+# Current Version: 4.6.4
 
 ## How to get and use?
 # curl "https://source.zhijie.online/AutoDeploy/main/ProxmoxVE.sh" | sudo bash
@@ -966,7 +966,10 @@ function ConfigurePackages() {
         if [ "$?" -eq "0" ]; then
             zpool_list=($(zpool list -H -o name))
             for zpool_list_task in "${!zpool_list[@]}"; do
+                zfs set compression=zstd "${zpool_list[$zpool_list_task]}"
+
                 zpool set autotrim=on "${zpool_list[$zpool_list_task]}"
+
                 systemctl enable --now zfs-trim-weekly@${zpool_list[$zpool_list_task]}.timer
             done
         fi
