@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 1.0.0
+# Current Version: 1.0.1
 
 ## How to get and use?
 # curl "https://source.zhijie.online/AutoDeploy/main/DSM.sh" | sudo bash
@@ -12,14 +12,12 @@ function GetSystemInformation() {
     function GetCurrentUsername() {
         CurrentUsername=$(whoami)
     }
-
     function SetGHProxyDomain() {
         GHPROXY_URL="proxy.zhijie.online"
         if [ "${GHPROXY_URL}" != "" ]; then
             export GHPROXY_URL="https://${GHPROXY_URL}/"
         fi
     }
-
     GetCurrentUsername
     SetGHProxyDomain
 }
@@ -31,7 +29,6 @@ function ConfigurePackages() {
         sudo chown root:docker /var/run/docker.sock
         sudo synogroup --member docker ${CurrentUsername}
     }
-
     function ConfigureGit() {
         gitconfig_key_list=(
             "commit.gpgsign"
@@ -63,7 +60,6 @@ function ConfigurePackages() {
             done
         fi
     }
-
     function ConfigureGPG() {
         GPG_PUBKEY=""
         if [ "${GPG_PUBKEY}" == "" ]; then
@@ -90,7 +86,6 @@ function ConfigurePackages() {
             chmod 700 /var/services/homes/hezhijie/.gnupg && chmod 600 /var/services/homes/hezhijie/.gnupg/*
         fi
     }
-
     function ConfigureOpenSSH() {
         OPENSSH_PASSWORD=""
         which "ssh-keygen" > "/dev/null" 2>&1
@@ -107,7 +102,9 @@ function ConfigurePackages() {
             fi && touch "/var/services/homes/${CurrentUsername}/.ssh/known_hosts" && ssh-keygen -t dsa -b 1024 -f "/var/services/homes/${CurrentUsername}/.ssh/id_dsa" -C "${CurrentUsername}@$(hostname)" -N "${OPENSSH_PASSWORD}" && ssh-keygen -t ecdsa -b 384 -f "/var/services/homes/${CurrentUsername}/.ssh/id_ecdsa" -C "${CurrentUsername}@$(hostname)" -N "${OPENSSH_PASSWORD}" && ssh-keygen -t ed25519 -f "/var/services/homes/${CurrentUsername}/.ssh/id_ed25519" -C "${CurrentUsername}@$(hostname)" -N "${OPENSSH_PASSWORD}" && ssh-keygen -t rsa -b 4096 -f "/var/services/homes/${CurrentUsername}/.ssh/id_rsa" -C "${CurrentUsername}@$(hostname)" -N "${OPENSSH_PASSWORD}" && sudo chown -R ${CurrentUsername}:users "/var/services/homes/${CurrentUsername}/.ssh" && sudo chown -R ${CurrentUsername}:users /var/services/homes/${CurrentUsername}/.ssh/* && chmod 400 /var/services/homes/${CurrentUsername}/.ssh/id_* && chmod 600 "/var/services/homes/${CurrentUsername}/.ssh/authorized_keys" && chmod 644 "/var/services/homes/${CurrentUsername}/.ssh/known_hosts" && chmod 644 /var/services/homes/${CurrentUsername}/.ssh/id_*.pub && chmod 700 "/var/services/homes/${CurrentUsername}/.ssh"
         fi
     }
-
+    function ConfigurePing() {
+        sudo setcap 'cap_net_raw+ep' "$(which ping)"
+    }
     function ConfigureZsh() {
         function GenerateCommandPath() {
             default_path_list=(
@@ -171,6 +168,12 @@ function ConfigurePackages() {
         GenerateCommandPath
         GenerateOMZProfile
     }
+    ConfigureDocker
+    ConfigureGit
+    ConfigureGPG
+    ConfigureOpenSSH
+    ConfigurePing
+    ConfigureZsh
 }
 
 function ConfigureSystem() {
@@ -189,7 +192,6 @@ function ConfigureSystem() {
             done
         fi
     }
-
     ConfigureDefaultShell
 }
 
@@ -217,6 +219,7 @@ function InstallCustomPackages() {
             echo "${plugin_upgrade_list[$plugin_upgrade_list_task]}" >> "/var/services/homes/${CurrentUsername}/.oh-my-zsh/oh-my-zsh-plugin.sh"
         done
     }
+    InstallOhMyZsh
 }
 
 ## Process
