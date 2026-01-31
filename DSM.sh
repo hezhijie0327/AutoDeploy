@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 1.0.1
+# Current Version: 1.0.2
 
 ## How to get and use?
 # curl "https://source.zhijie.online/AutoDeploy/main/DSM.sh" | sudo bash
@@ -69,14 +69,8 @@ function ConfigurePackages() {
         if [ "$?" -eq "0" ]; then
             rm -rf "/var/services/homes/${CurrentUsername}/.gnupg" && gpg --keyserver hkp://keyserver.ubuntu.com --recv ${GPG_PUBKEY} && echo "${GPG_PUBKEY}" | awk 'BEGIN { FS = "\n" }; { print $1":6:" }' | gpg --import-ownertrust && GPG_PUBKEY_ID_A=$(gpg --list-keys --keyid-format LONG | grep "pub\|sub" | awk '{print $2, $4}' | grep "\[A\]" | awk '{print $1}' | awk -F '/' '{print $2}') && GPG_PUBKEY_ID_C=$(gpg --list-keys --keyid-format LONG | grep "pub\|sub" | awk '{print $2, $4}' | grep "\[C\]" | awk '{print $1}' | awk -F '/' '{print $2}')
             if [ "${GPG_PUBKEY_ID_A}" != "" ]; then
-                if [ "${ARM_ARCHITECTURE}" == "TRUE" ]; then
-                    PINENTRY_PROGRAM_PATH="/opt/homebrew/bin"
-                else
-                    PINENTRY_PROGRAM_PATH="/usr/local/bin"
-                fi
                 gpg_agent_list=(
                     "enable-ssh-support"
-                    "pinentry-program ${PINENTRY_PROGRAM_PATH}/pinentry"
                 )
                 rm -rf "/var/services/homes/${CurrentUsername}/.gnupg/gpg-agent.conf" && for gpg_agent_list_task in "${!gpg_agent_list[@]}"; do
                     echo "${gpg_agent_list[$gpg_agent_list_task]}" >> "/var/services/homes/${CurrentUsername}/.gnupg/gpg-agent.conf"
