@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Current Version: 4.6.8
+# Current Version: 4.6.9
 
 ## How to get and use?
 # curl "https://source.zhijie.online/AutoDeploy/main/ProxmoxVE.sh" | sudo bash
@@ -992,7 +992,7 @@ function ConfigurePackages() {
             done
         }
         function GenerateOMZProfile() {
-            proxy_pass=""
+            PROXY_AUTH=""
             omz_list=(
                 "export DEBIAN_FRONTEND=\"noninteractive\""
                 "export EDITOR=\"nano\""
@@ -1001,7 +1001,7 @@ function ConfigurePackages() {
                 "# export SSH_AUTH_SOCK=\"\$(gpgconf --list-dirs agent-ssh-socket)\" && gpgconf --launch gpg-agent && gpg-connect-agent updatestartuptty /bye > \"/dev/null\" 2>&1"
                 "export ZSH=\"\$HOME/.oh-my-zsh\""
                 "function proxy_off(){ unset all_proxy; unset ftp_proxy; unset http_proxy; unset https_proxy; unset rsync_proxy }"
-                "function proxy_on(){ export all_proxy=\"socks5://${proxy_pass:+${proxy_pass}@}vpn.zhijie.online:7890\"; export ftp_proxy=\"http://${proxy_pass:+${proxy_pass}@}vpn.zhijie.online:7890\"; export http_proxy=\"http://${proxy_pass:+${proxy_pass}@}vpn.zhijie.online:7890\"; export https_proxy=\"http://${proxy_pass:+${proxy_pass}@}vpn.zhijie.online:7890\"; export rsync_proxy=\"http://${proxy_pass:+${proxy_pass}@}vpn.zhijie.online:7890\" }"
+                "function proxy_on(){ export all_proxy=\"socks5://${PROXY_AUTH:+${PROXY_AUTH}@}vpn.zhijie.online:7890\"; export ftp_proxy=\"http://${PROXY_AUTH:+${PROXY_AUTH}@}vpn.zhijie.online:7890\"; export http_proxy=\"http://${PROXY_AUTH:+${PROXY_AUTH}@}vpn.zhijie.online:7890\"; export https_proxy=\"http://${PROXY_AUTH:+${PROXY_AUTH}@}vpn.zhijie.online:7890\"; export rsync_proxy=\"http://${PROXY_AUTH:+${PROXY_AUTH}@}vpn.zhijie.online:7890\" }"
                 "plugins=(zsh-autosuggestions zsh-completions zsh-history-substring-search zsh-syntax-highlighting)"
                 "ZSH_CACHE_DIR=\"\$ZSH/cache\""
                 "ZSH_CUSTOM=\"\$ZSH/custom\""
