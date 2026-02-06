@@ -782,7 +782,7 @@ function ConfigurePackages() {
             'tcp_connect_time_out 8000'
             'tcp_read_time_out 15000'
             '[ProxyList]'
-            "${PROXY_PROTOCOL:-socks5} ${PROXY_IP:-127.0.0.1} ${PROXY_PORT:-7890} ${PROXY_USERNAME} ${PROXY_PASSWORD}"
+            "${PROXY_PROTOCOL:-http} ${PROXY_IP:-127.0.0.1} ${PROXY_PORT:-7890} ${PROXY_USERNAME} ${PROXY_PASSWORD}"
         )
 
         if [ -f "/etc/proxychains4.conf" ]; then
@@ -1029,6 +1029,7 @@ function ConfigurePackages() {
         }
         function GenerateOMZProfile() {
             PROXY_URL='http://vpn.zhijie.online:7890' # http://username:password@ip:port
+            NO_PROXY='localhost,127.0.0.1,::1'
 
             omz_list=(
                 "export DEBIAN_FRONTEND=\"noninteractive\""
@@ -1037,8 +1038,8 @@ function ConfigurePackages() {
                 "export PATH=\"${DEFAULT_PATH}:\$PATH\""
                 "# export SSH_AUTH_SOCK=\"\$(gpgconf --list-dirs agent-ssh-socket)\" && gpgconf --launch gpg-agent && gpg-connect-agent updatestartuptty /bye > \"/dev/null\" 2>&1"
                 "export ZSH=\"\$HOME/.oh-my-zsh\""
-                "function proxy_off(){ unset all_proxy; unset ftp_proxy; unset http_proxy; unset https_proxy; unset rsync_proxy }"
-                "function proxy_on(){ export all_proxy=\"${PROXY_URL}\"; export ftp_proxy=\"${PROXY_URL}\"; export http_proxy=\"${PROXY_URL}\"; export https_proxy=\"${PROXY_URL}\"; export rsync_proxy=\"${PROXY_URL}\" }"
+                "function proxy_off(){ unset all_proxy; unset ftp_proxy; unset http_proxy; unset https_proxy; unset rsync_proxy; unset no_proxy }"
+                "function proxy_on(){ export all_proxy=\"${PROXY_URL}\"; export ftp_proxy=\"${PROXY_URL}\"; export http_proxy=\"${PROXY_URL}\"; export https_proxy=\"${PROXY_URL}\"; export rsync_proxy=\"${PROXY_URL}\"; export no_proxy=\"${NO_PROXY}\" }"
                 "plugins=(zsh-autosuggestions zsh-completions zsh-history-substring-search zsh-syntax-highlighting)"
                 "ZSH_CACHE_DIR=\"\$ZSH/cache\""
                 "ZSH_CUSTOM=\"\$ZSH/custom\""
