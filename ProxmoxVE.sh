@@ -990,7 +990,7 @@ function ConfigurePackages() {
             done
         }
         function GenerateOMZProfile() {
-            PROXY_URL="http://vpn.zhijie.online:7890" # http://username:password@ip:port
+            PROXY_URL='http://vpn.zhijie.online:7890' # http://username:password@ip:port
 
             omz_list=(
                 "export DEBIAN_FRONTEND=\"noninteractive\""
