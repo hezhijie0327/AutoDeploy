@@ -1,7 +1,5 @@
 #!/bin/bash
 
-# Current Version: 1.0.3
-
 ## How to get and use?
 # curl "https://source.zhijie.online/AutoDeploy/main/DSM.sh" | sudo bash
 # wget -qO- "https://source.zhijie.online/AutoDeploy/main/DSM.sh" | sudo bash
@@ -119,7 +117,9 @@ function ConfigurePackages() {
             done
         }
         function GenerateOMZProfile() {
-            PROXY_AUTH=""
+            PROXY_URL='http://vpn.zhijie.online:7890' # http://username:password@ip:port
+            NO_PROXY='localhost,127.0.0.1,::1'
+
             omz_list=(
                 "export DEBIAN_FRONTEND=\"noninteractive\""
                 "export EDITOR=\"nano\""
@@ -127,8 +127,8 @@ function ConfigurePackages() {
                 "export PATH=\"${DEFAULT_PATH}:\$PATH\""
                 "# export SSH_AUTH_SOCK=\"\$(gpgconf --list-dirs agent-ssh-socket)\" && gpgconf --launch gpg-agent && gpg-connect-agent updatestartuptty /bye > \"/dev/null\" 2>&1"
                 "export ZSH=\"\$HOME/.oh-my-zsh\""
-                "function proxy_off(){ unset all_proxy; unset ftp_proxy; unset http_proxy; unset https_proxy; unset rsync_proxy }"
-                "function proxy_on(){ export all_proxy=\"socks5://${PROXY_AUTH:+${PROXY_AUTH}@}vpn.zhijie.online:7890\"; export ftp_proxy=\"http://${PROXY_AUTH:+${PROXY_AUTH}@}vpn.zhijie.online:7890\"; export http_proxy=\"http://${PROXY_AUTH:+${PROXY_AUTH}@}vpn.zhijie.online:7890\"; export https_proxy=\"http://${PROXY_AUTH:+${PROXY_AUTH}@}vpn.zhijie.online:7890\"; export rsync_proxy=\"http://${PROXY_AUTH:+${PROXY_AUTH}@}vpn.zhijie.online:7890\" }"
+                "function proxy_off(){ unset all_proxy; unset ftp_proxy; unset http_proxy; unset https_proxy; unset rsync_proxy; unset no_proxy }"
+                "function proxy_on(){ export all_proxy=\"${PROXY_URL}\"; export ftp_proxy=\"${PROXY_URL}\"; export http_proxy=\"${PROXY_URL}\"; export https_proxy=\"${PROXY_URL}\"; export rsync_proxy=\"${PROXY_URL}\"; export no_proxy=\"${NO_PROXY}\" }"
                 "plugins=(zsh-autosuggestions zsh-completions zsh-history-substring-search zsh-syntax-highlighting)"
                 "ZSH_CACHE_DIR=\"\$ZSH/cache\""
                 "ZSH_CUSTOM=\"\$ZSH/custom\""
