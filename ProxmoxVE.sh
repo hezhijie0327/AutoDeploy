@@ -726,7 +726,7 @@ function ConfigurePackages() {
             'tcp_connect_time_out 8000'
             'tcp_read_time_out 15000'
             '[ProxyList]'
-            "${PROXY_PROTOCOL:-http} ${PROXY_IP:-127.0.0.1} ${PROXY_PORT:-7890} ${PROXY_USERNAME} ${PROXY_PASSWORD}"
+            "${PROXY_PROTOCOL:-socks5} ${PROXY_IP:-127.0.0.1} ${PROXY_PORT:-7891} ${PROXY_USERNAME} ${PROXY_PASSWORD}"
         )
 
         if [ -f "/etc/proxychains4.conf" ]; then
