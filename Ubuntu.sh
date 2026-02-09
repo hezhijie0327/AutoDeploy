@@ -1276,14 +1276,6 @@ function InstallCustomPackages() {
                 apt install -qy ${apt_list[$apt_list_task]}
             fi
         done
-
-        which "warp-cli" > "/dev/null" 2>&1
-        if [ "$?" -eq "0" ]; then
-            which "ufw" > "/dev/null" 2>&1
-            if [ "$?" -eq "0" ] && [ -f "/etc/default/ufw" ]; then
-                ufw allow in on CloudflareWARP
-            fi
-        fi
     }
     function InstallCrowdSec() {
         apt_list=(
