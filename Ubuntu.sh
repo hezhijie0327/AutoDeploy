@@ -1351,6 +1351,18 @@ function InstallCustomPackages() {
             echo "${plugin_upgrade_list[$plugin_upgrade_list_task]}" >> "/etc/zsh/oh-my-zsh/oh-my-zsh-plugin.sh"
         done
     }
+    function InstallTor() {
+        apt_list=(
+            "tor"
+        )
+        rm -rf "/usr/share/keyrings/tor-archive-keyring.gpg" && curl -fsSL "https://deb.torproject.org/torproject.org/A3C4F0F979CAA22CDBA8F512EE8CBC9E886DDD89.asc" | gpg --dearmor -o "/usr/share/keyrings/tor-archive-keyring.gpg"
+        echo "deb [arch=${OSArchitecture} signed-by=/usr/share/keyrings/tor-archive-keyring.gpg] https://deb.torproject.org/torproject.org ${LSBCodename} main" > "/etc/apt/sources.list.d/tor.list"
+        apt update && for apt_list_task in "${!apt_list[@]}"; do
+            apt-cache show ${apt_list[$apt_list_task]} && if [ "$?" -eq "0" ]; then
+                apt install -qy ${apt_list[$apt_list_task]}
+            fi
+        done
+    }
     function InstallXanModKernel() {
         # Note: The current NVIDIA, OpenZFS, VirtualBox, VMware Workstation / Player and some other dkms modules may not officially support EDGE and RT branch kernels.
         # How to fix "modinfo: ERROR: Module tcp_bbr not found." -> sudo depmod && modinfo tcp_bbr
@@ -1393,6 +1405,7 @@ function InstallCustomPackages() {
     InstallDockerEngine
     InstallFRRouting
     InstallOhMyZsh
+    #InstallTor
     InstallXanModKernel
 }
 # Install Dependency Packages
