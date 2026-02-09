@@ -1265,6 +1265,26 @@ function ConfigureSystem() {
 }
 # Install Custom Packages
 function InstallCustomPackages() {
+    function InstallCloudflareWarp() {
+        apt_list=(
+            "cloudflare-warp"
+        )
+        rm -rf "/usr/share/keyrings/cloudflare-warp-archive-keyring.gpg" && curl -fsSL "https://pkg.cloudflareclient.com/pubkey.gpg" | gpg --dearmor -o "/usr/share/keyrings/cloudflare-warp-archive-keyring.gpg"
+        echo "deb [arch=${OSArchitecture} signed-by=/usr/share/keyrings/cloudflare-warp-archive-keyring.gpg] https://pkg.cloudflareclient.com ${LSBCodename} main" > "/etc/apt/sources.list.d/cloudflare-warp.list"
+        apt update && for apt_list_task in "${!apt_list[@]}"; do
+            apt-cache show ${apt_list[$apt_list_task]} && if [ "$?" -eq "0" ]; then
+                apt install -qy ${apt_list[$apt_list_task]}
+            fi
+        done
+
+        which "warp-cli" > "/dev/null" 2>&1
+        if [ "$?" -eq "0" ]; then
+            which "ufw" > "/dev/null" 2>&1
+            if [ "$?" -eq "0" ] && [ -f "/etc/default/ufw" ]; then
+                ufw allow in on CloudflareWARP
+            fi
+        fi
+    }
     function InstallCrowdSec() {
         apt_list=(
             "crowdsec"
@@ -1376,6 +1396,7 @@ function InstallCustomPackages() {
             fi
         done
     }
+    #InstallCloudflareWarp
     InstallCrowdSec
     InstallDockerEngine
     InstallFRRouting
