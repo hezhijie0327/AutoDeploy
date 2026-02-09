@@ -445,8 +445,8 @@ function InstallCustomPackages() {
             echo "${plugin_upgrade_list[$plugin_upgrade_list_task]}" >> "/Users/${CurrentUsername}/.oh-my-zsh/oh-my-zsh-plugin.sh"
         done
     }
-    InstallAppFromCask
-    InstallAppFromMAS
+    #InstallAppFromCask
+    #InstallAppFromMAS
     InstallOhMyZsh
 }
 # Install Dependency Packages
@@ -469,6 +469,7 @@ function InstallDependencyPackages() {
 
     app_list=(
         "bash"
+        "cloudflared"
         "coreutils"
         "curl"
         "ffmpeg"
