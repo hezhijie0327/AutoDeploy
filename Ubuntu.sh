@@ -348,32 +348,9 @@ function ConfigurePackages() {
         fi
     }
     function ConfigureDockerEngine() {
-        ENABLE_IPV6_ADDRESS="false"
-
         DOCKER_REGISTRY_MIRRORS=(
             "https://docker.mirrors.ustc.edu.cn"
         )
-
-        if [ "${ENABLE_IPV6_ADDRESS:-false}" == "true" ]; then
-            which "bc" > "/dev/null" 2>&1
-            if [ "$?" -eq "0" ]; then
-                which "sha1sum" > "/dev/null" 2>&1
-                if [ "$?" -eq "0" ]; then
-                    which "uuidgen" > "/dev/null" 2>&1
-                    if [ "$?" -eq "0" ]; then
-                        UNIQUE_PREFIX=$(echo $(date "+%s%N")$(uuidgen | tr -d "-" | tr "A-Z" "a-z") | sha1sum | cut -c 31-)
-                        DOCKER_PREFIX="fd$(echo ${UNIQUE_PREFIX} | cut -c 1-2):$(echo ${UNIQUE_PREFIX} | cut -c 3-6):$(echo ${UNIQUE_PREFIX} | cut -c 7-10)"
-                    else
-                        DOCKER_PREFIX="2001:db8:1"
-                    fi
-                fi
-            fi
-
-            DOCKER_IPV6_LIST=(
-                "  \"fixed-cidr-v6\": \"${DOCKER_PREFIX}::/64\","
-                "  \"ipv6\": true,"
-            )
-        fi
 
         docker_list=(
             "{"
@@ -381,7 +358,6 @@ function ConfigurePackages() {
             "  \"experimental\": true,"
             "  \"firewall-backend\": \"nftables\","
             "  \"ip-forward\": true,"
-            ${DOCKER_IPV6_LIST[*]}
             "  \"registry-mirrors\": ["
             "$(printf '    "%s",\n' "${DOCKER_REGISTRY_MIRRORS[@]}" | sed '$s/,$//')"
             "  ]"
@@ -955,29 +931,7 @@ function ConfigurePackages() {
         fi
     }
     function ConfigureWireGuard() {
-        ENABLE_IPV6_ADDRESS="false"
-
-        TUNNEL_CLIENT_V4="10.172.$(shuf -i '0-255' -n 1).$(shuf -i '0-255' -n 1)/32"
-
-        if [ "${ENABLE_IPV6_ADDRESS:-false}" == "true" ]; then
-            which "bc" > "/dev/null" 2>&1
-            if [ "$?" -eq "0" ]; then
-                which "sha1sum" > "/dev/null" 2>&1
-                if [ "$?" -eq "0" ]; then
-                    which "uuidgen" > "/dev/null" 2>&1
-                    if [ "$?" -eq "0" ]; then
-                        UNIQUE_CLIENT=$(echo "obase=16;$(shuf -i '1-65535' -n 1)" | bc | tr "A-Z" "a-z")
-                        UNIQUE_PREFIX=$(echo $(date "+%s%N")$(uuidgen | tr -d "-" | tr "A-Z" "a-z") | sha1sum | cut -c 31-)
-                        TUNNEL_PREFIX="fd$(echo ${UNIQUE_PREFIX} | cut -c 1-2):$(echo ${UNIQUE_PREFIX} | cut -c 3-6):$(echo ${UNIQUE_PREFIX} | cut -c 7-10)"
-                        TUNNEL_CLIENT_V6="${TUNNEL_PREFIX}::${UNIQUE_CLIENT}/128"
-                    else
-                        TUNNEL_CLIENT_V6=""
-                    fi
-                fi
-            fi
-
-            TUNNEL_CLIENT_V6=", ${TUNNEL_CLIENT_V6}"
-        fi
+        TUNNEL_CLIENT_IPADDR="10.172.$(shuf -i '0-255' -n 1).$(shuf -i '0-255' -n 1)/32"
 
         if [ ! -d "/etc/wireguard" ]; then
             mkdir "/etc/wireguard"
@@ -988,13 +942,13 @@ function ConfigurePackages() {
         if [ "$?" -eq "0" ]; then
             wireguard_list=(
                 "[Interface]"
-                "Address = ${TUNNEL_CLIENT_V4}${TUNNEL_CLIENT_V6}"
+                "Address = ${TUNNEL_CLIENT_IPADDR}"
                 "# DNS = 127.0.0.1, ::1"
                 "ListenPort = 51820"
                 "MTU = 1420"
                 "PrivateKey = $(wg genkey | tee '/tmp/wireguard.autodeploy')"
                 "# [Peer]"
-                "# AllowedIPs = ${TUNNEL_CLIENT_V4}${TUNNEL_CLIENT_V6}"
+                "# AllowedIPs = ${TUNNEL_CLIENT_IPADDR}"
                 "# Endpoint = 127.0.0.1:51820"
                 "# PersistentKeepalive = 5"
                 "# PresharedKey = $(wg genpsk)"

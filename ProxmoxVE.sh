@@ -291,32 +291,9 @@ function ConfigurePackages() {
         fi && systemctl restart crowdsec.service && cscli hub list
     }
     function ConfigureDockerEngine() {
-        ENABLE_IPV6_ADDRESS="false"
-
         DOCKER_REGISTRY_MIRRORS=(
             "https://docker.mirrors.ustc.edu.cn"
         )
-
-        if [ "${ENABLE_IPV6_ADDRESS:-false}" == "true" ]; then
-            which "bc" > "/dev/null" 2>&1
-            if [ "$?" -eq "0" ]; then
-                which "sha1sum" > "/dev/null" 2>&1
-                if [ "$?" -eq "0" ]; then
-                    which "uuidgen" > "/dev/null" 2>&1
-                    if [ "$?" -eq "0" ]; then
-                        UNIQUE_PREFIX=$(echo $(date "+%s%N")$(uuidgen | tr -d "-" | tr "A-Z" "a-z") | sha1sum | cut -c 31-)
-                        DOCKER_PREFIX="fd$(echo ${UNIQUE_PREFIX} | cut -c 1-2):$(echo ${UNIQUE_PREFIX} | cut -c 3-6):$(echo ${UNIQUE_PREFIX} | cut -c 7-10)"
-                    else
-                        DOCKER_PREFIX="2001:db8:1"
-                    fi
-                fi
-            fi
-
-            DOCKER_IPV6_LIST=(
-                "  \"fixed-cidr-v6\": \"${DOCKER_PREFIX}::/64\","
-                "  \"ipv6\": true,"
-            )
-        fi
 
         docker_list=(
             "{"
@@ -324,7 +301,6 @@ function ConfigurePackages() {
             "  \"experimental\": true,"
             "  \"firewall-backend\": \"nftables\","
             "  \"ip-forward\": true,"
-            ${DOCKER_IPV6_LIST[*]}
             "  \"registry-mirrors\": ["
             "$(printf '    "%s",\n' "${DOCKER_REGISTRY_MIRRORS[@]}" | sed '$s/,$//')"
             "  ]"

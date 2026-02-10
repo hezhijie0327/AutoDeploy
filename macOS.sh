@@ -151,7 +151,7 @@ function ConfigurePackages() {
             '[ProxyList]'
             "${PROXY_PROTOCOL:-socks5} ${PROXY_IP:-127.0.0.1} ${PROXY_PORT:-7891}${PROXY_USERNAME:+ $PROXY_USERNAME $PROXY_PASSWORD}"
         )
-    
+
         if [ -f "/opt/homebrew/etc/proxychains.conf" ]; then
             rm -rf "/opt/homebrew/etc/proxychains.conf"
         fi && for proxychains_list_task in "${!proxychains_list[@]}"; do
@@ -183,29 +183,7 @@ function ConfigurePackages() {
         fi
     }
     function ConfigureWireGuard() {
-        ENABLE_IPV6_ADDRESS="false"
-
-        TUNNEL_CLIENT_V4="10.172.$(shuf -i '0-255' -n 1).$(shuf -i '0-255' -n 1)/32"
-
-        if [ "${ENABLE_IPV6_ADDRESS:-false}" == "true" ]; then
-            which "bc" > "/dev/null" 2>&1
-            if [ "$?" -eq "0" ]; then
-                which "sha1sum" > "/dev/null" 2>&1
-                if [ "$?" -eq "0" ]; then
-                    which "uuidgen" > "/dev/null" 2>&1
-                    if [ "$?" -eq "0" ]; then
-                        UNIQUE_CLIENT=$(echo "obase=16;$(shuf -i '1-65535' -n 1)" | bc | tr "A-Z" "a-z")
-                        UNIQUE_PREFIX=$(echo $(date "+%s%N")$(uuidgen | tr -d "-" | tr "A-Z" "a-z") | sha1sum | cut -c 31-)
-                        TUNNEL_PREFIX="fd$(echo ${UNIQUE_PREFIX} | cut -c 1-2):$(echo ${UNIQUE_PREFIX} | cut -c 3-6):$(echo ${UNIQUE_PREFIX} | cut -c 7-10)"
-                        TUNNEL_CLIENT_V6="${TUNNEL_PREFIX}::${UNIQUE_CLIENT}/128"
-                    else
-                        TUNNEL_CLIENT_V6=""
-                    fi
-                fi
-            fi
-
-            TUNNEL_CLIENT_V6=", ${TUNNEL_CLIENT_V6}"
-        fi
+        TUNNEL_CLIENT_IPADDR="10.172.$(shuf -i '0-255' -n 1).$(shuf -i '0-255' -n 1)/32"
 
         if [ ! -d "/etc/wireguard" ]; then
             sudo mkdir "/etc/wireguard"
@@ -216,13 +194,13 @@ function ConfigurePackages() {
         if [ "$?" -eq "0" ]; then
             wireguard_list=(
                 "[Interface]"
-                "Address = ${TUNNEL_CLIENT_V4}${TUNNEL_CLIENT_V6}"
+                "Address = ${TUNNEL_CLIENT_IPADDR}"
                 "# DNS = 127.0.0.1, ::1"
                 "ListenPort = 51820"
                 "MTU = 1420"
                 "PrivateKey = $(wg genkey | tee '/tmp/wireguard.autodeploy')"
                 "# [Peer]"
-                "# AllowedIPs = ${TUNNEL_CLIENT_V4}${TUNNEL_CLIENT_V6}"
+                "# AllowedIPs = ${TUNNEL_CLIENT_IPADDR}"
                 "# Endpoint = 127.0.0.1:51820"
                 "# PersistentKeepalive = 5"
                 "# PresharedKey = $(wg genpsk)"
@@ -457,7 +435,7 @@ function InstallDependencyPackages() {
     export HOMEBREW_BOTTLE_DOMAIN="https://mirrors.ustc.edu.cn/homebrew-bottles/bottles"
     export HOMEBREW_BREW_GIT_REMOTE="${GHPROXY_URL}https://github.com/homebrew/brew.git"
     export PATH="/opt/homebrew/sbin:/opt/homebrew/bin:${PATH}"
-    
+
     if [ "${REINSTALL_BREW}" == "true" ]; then
         sudo rm -rf "/opt/homebrew" "/usr/local/Homebrew"
     fi
