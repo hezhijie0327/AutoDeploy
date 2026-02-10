@@ -348,21 +348,30 @@ function ConfigurePackages() {
         fi
     }
     function ConfigureDockerEngine() {
-        DOCKER_REGISTRY_MIRRORS=(
-            "https://docker.mirrors.ustc.edu.cn"
-        )
+        DOCKER_REGISTRY_MIRRORS=()
 
-        docker_list=(
-            "{"
-            "  \"allow-direct-routing\": true,"
-            "  \"experimental\": true,"
-            "  \"firewall-backend\": \"nftables\","
-            "  \"ip-forward\": true,"
-            "  \"registry-mirrors\": ["
-            "$(printf '    "%s",\n' "${DOCKER_REGISTRY_MIRRORS[@]}" | sed '$s/,$//')"
-            "  ]"
-            "}"
-        )
+        if [ ${#DOCKER_REGISTRY_MIRRORS[@]} -gt 0 ]; then
+            docker_list=(
+                "{"
+                "  \"allow-direct-routing\": true,"
+                "  \"experimental\": true,"
+                "  \"firewall-backend\": \"nftables\","
+                "  \"ip-forward\": true,"
+                "  \"registry-mirrors\": ["
+                "$(printf '    "%s",\n' "${DOCKER_REGISTRY_MIRRORS[@]}" | sed '$s/,$//')"
+                "  ]"
+                "}"
+            )
+        else
+            docker_list=(
+                "{"
+                "  \"allow-direct-routing\": true,"
+                "  \"experimental\": true,"
+                "  \"firewall-backend\": \"nftables\","
+                "  \"ip-forward\": true"
+                "}"
+            )
+        fi
 
         which "docker" > "/dev/null" 2>&1
         if [ "$?" -eq "0" ]; then
