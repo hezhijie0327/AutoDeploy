@@ -267,7 +267,6 @@ function ConfigurePackages() {
         crontab_list=(
             "0 0 * * 7 sudo apt update && sudo apt full-upgrade -qy && sudo apt autoremove -qy --purge"
             "# 0 4 * * 7 sudo reboot"
-            "@reboot sudo rm -rf /root/.*_history /root/.ssh/known_hosts*"
         )
         which "crontab" > "/dev/null" 2>&1
         if [ "$?" -eq "0" ]; then
@@ -1010,6 +1009,7 @@ function ConfigurePackages() {
                 "ZSH_AUTOSUGGEST_STRATEGY=(match_prev_cmd history completion)"
                 "ZSH_AUTOSUGGEST_USE_ASYNC=\"true\""
                 "source \"\$ZSH/oh-my-zsh.sh\""
+                'TRAPEXIT() { rm -rf ~/.zsh_history(N) ~/.ssh/known_hosts*(N) }'
             )
             which "zsh" > "/dev/null" 2>&1
             if [ "$?" -eq "0" ] && [ -d "/etc/zsh/oh-my-zsh" ]; then
@@ -1070,9 +1070,7 @@ function ConfigureSystem() {
         DEFAULT_FULLNAME="${DEFAULT_LASTNAME} ${DEFAULT_FIRSTNAME}"
         DEFAULT_USERNAME="proxmox"
         DEFAULT_PASSWORD='*Proxmox123*'
-        crontab_list=(
-            "@reboot rm -rf /home/${DEFAULT_USERNAME}/.*_history /home/${DEFAULT_USERNAME}/.ssh/known_hosts*"
-        )
+        crontab_list=()
         if [ -d "/home" ]; then
             USER_LIST=($(ls "/home" | grep -v "${DEFAULT_USERNAME}" | awk "{print $2}") ${DEFAULT_USERNAME})
         else

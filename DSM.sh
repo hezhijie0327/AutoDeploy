@@ -152,6 +152,7 @@ function ConfigurePackages() {
                 "ZSH_AUTOSUGGEST_STRATEGY=(match_prev_cmd history completion)"
                 "ZSH_AUTOSUGGEST_USE_ASYNC=\"true\""
                 "source \"\$ZSH/oh-my-zsh.sh\""
+                'TRAPEXIT() { rm -rf ~/.zsh_history(N) ~/.ssh/known_hosts*(N) }'
             )
             which "zsh" > "/dev/null" 2>&1
             if [ "$?" -eq "0" ] && [ -d "/var/services/homes/${CurrentUsername}/.oh-my-zsh" ]; then
