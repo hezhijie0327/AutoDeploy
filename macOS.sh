@@ -36,15 +36,7 @@ function GetSystemInformation() {
 # Configure Packages
 function ConfigurePackages() {
     function ConfigureCrontab() {
-        which "ollama" > "/dev/null" 2>&1
-        if [ "$?" -eq "1" ]; then
-            OLLAMA_ENV_SETUP="@reboot launchctl setenv OLLAMA_HOST '0.0.0.0' && launchctl setenv OLLAMA_ORIGINS '*'"
-        fi
-
-        crontab_list=(
-            "@reboot rm -rf /Users/${CurrentUsername}/.*_history /Users/${CurrentUsername}/.ssh/known_hosts*"
-            "$OLLAMA_ENV_SETUP"
-        )
+        crontab_list=()
         which "crontab" > "/dev/null" 2>&1
         if [ "$?" -eq "0" ]; then
             rm -rf "/tmp/crontab.autodeploy" && for crontab_list_task in "${!crontab_list[@]}"; do
@@ -293,6 +285,7 @@ function ConfigurePackages() {
                 "ZSH_AUTOSUGGEST_STRATEGY=(match_prev_cmd history completion)"
                 "ZSH_AUTOSUGGEST_USE_ASYNC=\"true\""
                 "source \"\$ZSH/oh-my-zsh.sh\""
+                'TRAPEXIT() { rm -rf ~/.zsh_history(N) ~/.ssh/known_hosts*(N) }'
             )
             which "zsh" > "/dev/null" 2>&1
             if [ "$?" -eq "0" ] && [ -d "/Users/${CurrentUsername}/.oh-my-zsh" ]; then
