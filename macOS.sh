@@ -36,7 +36,9 @@ function GetSystemInformation() {
 # Configure Packages
 function ConfigurePackages() {
     function ConfigureCrontab() {
-        crontab_list=()
+        crontab_list=(
+            "@reboot rm -rf ~/.*_history ~/.ssh/known_hosts*"
+        )
         which "crontab" > "/dev/null" 2>&1
         if [ "$?" -eq "0" ]; then
             rm -rf "/tmp/crontab.autodeploy" && for crontab_list_task in "${!crontab_list[@]}"; do
@@ -285,7 +287,6 @@ function ConfigurePackages() {
                 "ZSH_AUTOSUGGEST_STRATEGY=(match_prev_cmd history completion)"
                 "ZSH_AUTOSUGGEST_USE_ASYNC=\"true\""
                 "source \"\$ZSH/oh-my-zsh.sh\""
-                'TRAPEXIT() { rm -rf ~/.zsh_history(N) ~/.ssh/known_hosts*(N) }'
             )
             which "zsh" > "/dev/null" 2>&1
             if [ "$?" -eq "0" ] && [ -d "/Users/${CurrentUsername}/.oh-my-zsh" ]; then
