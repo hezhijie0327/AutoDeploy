@@ -10,19 +10,6 @@ function GetSystemInformation() {
     function GetCurrentUsername() {
         CurrentUsername=$(whoami)
     }
-    function IsArmArchitecture() {
-        if [ "$(uname -m)" == "arm64" ]; then
-            ARM_ARCHITECTURE="TRUE"
-            softwareupdate --install-rosetta
-        else
-            if [ "$(uname -m)" != "x86_64" ]; then
-                echo "Unsupported architecture."
-                exit 1
-            else
-                ARM_ARCHITECTURE="FALSE"
-            fi
-        fi
-    }
     function SetGHProxyDomain() {
         GHPROXY_URL=""
         if [ "${GHPROXY_URL}" != "" ]; then
@@ -30,7 +17,6 @@ function GetSystemInformation() {
         fi
     }
     GetCurrentUsername
-    IsArmArchitecture
     SetGHProxyDomain
 }
 # Configure Packages
@@ -86,14 +72,9 @@ function ConfigurePackages() {
         if [ "$?" -eq "0" ]; then
             rm -rf "/Users/${CurrentUsername}/.gnupg" && gpg --keyserver hkps://keyserver.ubuntu.com:443 --recv ${GPG_PUBKEY} && echo "${GPG_PUBKEY}" | awk 'BEGIN { FS = "\n" }; { print $1":6:" }' | gpg --import-ownertrust && GPG_PUBKEY_ID_A=$(gpg --list-keys --keyid-format LONG | grep "pub\|sub" | awk '{print $2, $4}' | grep "\[A\]" | awk '{print $1}' | awk -F '/' '{print $2}') && GPG_PUBKEY_ID_C=$(gpg --list-keys --keyid-format LONG | grep "pub\|sub" | awk '{print $2, $4}' | grep "\[C\]" | awk '{print $1}' | awk -F '/' '{print $2}')
             if [ "${GPG_PUBKEY_ID_A}" != "" ]; then
-                if [ "${ARM_ARCHITECTURE}" == "TRUE" ]; then
-                    PINENTRY_PROGRAM_PATH="/opt/homebrew/bin"
-                else
-                    PINENTRY_PROGRAM_PATH="/usr/local/bin"
-                fi
                 gpg_agent_list=(
                     "enable-ssh-support"
-                    "pinentry-program ${PINENTRY_PROGRAM_PATH}/pinentry"
+                    "pinentry-program /opt/homebrew/bin/pinentry"
                 )
                 rm -rf "/Users/${CurrentUsername}/.gnupg/gpg-agent.conf" && for gpg_agent_list_task in "${!gpg_agent_list[@]}"; do
                     echo "${gpg_agent_list[$gpg_agent_list_task]}" >> "/Users/${CurrentUsername}/.gnupg/gpg-agent.conf"
@@ -207,13 +188,6 @@ function ConfigurePackages() {
     }
     function ConfigureZsh() {
         function GenerateCommandPath() {
-            if [ "${ARM_ARCHITECTURE}" == "TRUE" ]; then
-                ARM_HOMEBREW_BIN="/opt/homebrew/bin"
-                ARM_HOMEBREW_SBIN="/opt/homebrew/sbin"
-            fi
-            if [ -d "/Users/${CurrentUsername}/.docker/bin" ]; then
-                DOCKER_HOMEBREW_BIN="/Users/${CurrentUsername}/.docker/bin"
-            fi
             default_path_list=(
                 "/bin"
                 "/sbin"
@@ -221,27 +195,14 @@ function ConfigurePackages() {
                 "/usr/sbin"
                 "/usr/local/bin"
                 "/usr/local/sbin"
-                "${ARM_HOMEBREW_BIN}"
-                "${ARM_HOMEBREW_SBIN}"
-                "${DOCKER_HOMEBREW_BIN}"
+                "/opt/homebrew/bin"
+                "/opt/homebrew/sbin"
             )
             DEFAULT_PATH="" && for default_path_list_task in "${!default_path_list[@]}"; do
                 if [ "${default_path_list[$default_path_list_task]}" != "" ]; then
                     DEFAULT_PATH="${default_path_list[$default_path_list_task]}:${DEFAULT_PATH}"
                     DEFAULT_PATH=$(echo "${DEFAULT_PATH}" | sed "s/\:$//g")
                 fi
-            done
-            export PATH="${DEFAULT_PATH}" && BREW_PATH="$(brew --prefix)/opt" && custom_path_list=($(ls "${BREW_PATH}" | grep -v "@" | sort | awk "{ print $2 }")) && CUSTOM_PATH="" && for custom_path_list_task in "${!custom_path_list[@]}"; do
-                if [ -d "${BREW_PATH}/${custom_path_list[$custom_path_list_task]}/libexec/gnubin" ]; then
-                    CUSTOM_PATH="${BREW_PATH}/${custom_path_list[$custom_path_list_task]}/libexec/gnubin:${CUSTOM_PATH}"
-                elif [ -d "${BREW_PATH}/${custom_path_list[$custom_path_list_task]}/bin" ]; then
-                    CUSTOM_PATH="${BREW_PATH}/${custom_path_list[$custom_path_list_task]}/bin:${CUSTOM_PATH}"
-                fi && CUSTOM_PATH=$(echo "${CUSTOM_PATH}" | sed "s/\:$//g")
-                if [ -d "${BREW_PATH}/${custom_path_list[$custom_path_list_task]}/libexec/gnuman" ]; then
-                    CUSTOM_MANPATH="${BREW_PATH}/${custom_path_list[$custom_path_list_task]}/libexec/gnuman:${CUSTOM_MANPATH}"
-                elif [ -d "${BREW_PATH}/${custom_path_list[$custom_path_list_task]}/share/man" ]; then
-                    CUSTOM_MANPATH="${BREW_PATH}/${custom_path_list[$custom_path_list_task]}/share/man:${CUSTOM_MANPATH}"
-                fi && CUSTOM_MANPATH=$(echo "${CUSTOM_MANPATH}" | sed "s/\:$//g")
             done
         }
         function GenerateOMZProfile() {
@@ -258,8 +219,7 @@ function ConfigurePackages() {
                 "export HOMEBREW_BREW_GIT_REMOTE=\"${GHPROXY_URL}https://github.com/homebrew/brew.git\""
                 "export HOMEBREW_GITHUB_API_TOKEN=\"${HOMEBREW_GITHUB_API_TOKEN}\""
                 "export HOMEBREW_NO_AUTO_UPDATE=\"1\""
-                "export MANPATH=\"${CUSTOM_MANPATH}:\$MANPATH\""
-                "export PATH=\"${CUSTOM_PATH}:${DEFAULT_PATH}:\$PATH\""
+                "export PATH=\"${DEFAULT_PATH}:\$PATH\""
                 "# export SSH_AUTH_SOCK=\"\$(gpgconf --list-dirs agent-ssh-socket)\" && gpgconf --launch gpg-agent && gpg-connect-agent updatestartuptty /bye > \"/dev/null\" 2>&1"
                 "export ZSH=\"\$HOME/.oh-my-zsh\""
                 "function proxy_off(){ unset all_proxy; unset ftp_proxy; unset http_proxy; unset https_proxy; unset rsync_proxy; unset no_proxy }"
