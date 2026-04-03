@@ -1028,16 +1028,10 @@ function ConfigurePackages() {
                 "source \"\$ZSH/oh-my-zsh.sh\""
             )
             which "zsh" > "/dev/null" 2>&1
-            if [ "$?" -eq "0" ] && [ -d "/etc/zsh/oh-my-zsh" ]; then
+            if [ "$?" -eq "0" ] && [ -d "/home/${DEFAULT_USERNAME}/.oh-my-zsh" ]; then
                 rm -rf "/tmp/omz.autodeploy" && for omz_list_task in "${!omz_list[@]}"; do
                     echo "${omz_list[$omz_list_task]}" >> "/tmp/omz.autodeploy"
-                done && cat "/tmp/omz.autodeploy" > "/etc/zsh/oh-my-zsh.zshrc" && rm -rf "/tmp/omz.autodeploy" && rm -rf "/root/.oh-my-zsh" "/root/.zshrc" && ln -s "/etc/zsh/oh-my-zsh" "/root/.oh-my-zsh" && ln -s "/etc/zsh/oh-my-zsh.zshrc" "/root/.zshrc"
-            fi
-            if [ -d "/etc/zsh/oh-my-zsh" ]; then
-                cp -rf "/etc/zsh/oh-my-zsh" "/home/${DEFAULT_USERNAME}/.oh-my-zsh" && chown -R $DEFAULT_USERNAME:$DEFAULT_USERNAME "/home/${DEFAULT_USERNAME}/.oh-my-zsh"
-                if [ -f "/etc/zsh/oh-my-zsh.zshrc" ]; then
-                    cp -rf "/etc/zsh/oh-my-zsh.zshrc" "/home/${DEFAULT_USERNAME}/.zshrc" && chown -R $DEFAULT_USERNAME:$DEFAULT_USERNAME "/home/${DEFAULT_USERNAME}/.zshrc"
-                fi
+                done && cat "/tmp/omz.autodeploy" > "/home/${DEFAULT_USERNAME}/.zshrc" && chown -R $DEFAULT_USERNAME:$DEFAULT_USERNAME "/home/${DEFAULT_USERNAME}/.zshrc" && rm -rf "/tmp/omz.autodeploy"
             fi
         }
         GenerateCommandPath
@@ -1079,6 +1073,8 @@ function ConfigureSystem() {
             echo "$(cat '/etc/passwd' | sed 's/\/bin\/bash/\/bin\/zsh/g;s/\/bin\/sh/\/bin\/zsh/g')" > "/tmp/shell.autodeploy"
             cat "/tmp/shell.autodeploy" > "/etc/passwd" && rm -rf "/tmp/shell.autodeploy"
         fi
+
+        usermod -s /bin/bash root > "/dev/null" 2>&1
     }
     function ConfigureDefaultUser() {
         DEFAULT_FIRSTNAME="User"
@@ -1306,13 +1302,13 @@ function InstallCustomPackages() {
             "    rm -rf \"\$HOME/.oh-my-zsh/custom/plugins/\${plugin_list[\$plugin_list_task]}\" && git clone --depth=1 \"${GHPROXY_URL}https://github.com/zsh-users/\${plugin_list[\$plugin_list_task]}.git\" \"\$HOME/.oh-my-zsh/custom/plugins/\${plugin_list[\$plugin_list_task]}\""
             'done'
         )
-        rm -rf "/etc/zsh/oh-my-zsh" && git clone --depth=1 "${GHPROXY_URL}https://github.com/ohmyzsh/ohmyzsh.git" "/etc/zsh/oh-my-zsh" && if [ -d "/etc/zsh/oh-my-zsh/custom/plugins" ]; then
+        rm -rf "/home/${DEFAULT_USERNAME}/.oh-my-zsh" && git clone --depth=1 "${GHPROXY_URL}https://github.com/ohmyzsh/ohmyzsh.git" "/home/${DEFAULT_USERNAME}/.oh-my-zsh" && if [ -d "/home/${DEFAULT_USERNAME}/.oh-my-zsh/custom/plugins" ]; then
             for plugin_list_task in "${!plugin_list[@]}"; do
-                rm -rf "/etc/zsh/oh-my-zsh/custom/plugins/${plugin_list[$plugin_list_task]}" && git clone --depth=1 "${GHPROXY_URL}https://github.com/zsh-users/${plugin_list[$plugin_list_task]}.git" "/etc/zsh/oh-my-zsh/custom/plugins/${plugin_list[$plugin_list_task]}"
+                rm -rf "/home/${DEFAULT_USERNAME}/.oh-my-zsh/custom/plugins/${plugin_list[$plugin_list_task]}" && git clone --depth=1 "${GHPROXY_URL}https://github.com/zsh-users/${plugin_list[$plugin_list_task]}.git" "/home/${DEFAULT_USERNAME}/.oh-my-zsh/custom/plugins/${plugin_list[$plugin_list_task]}"
             done
-        fi && rm -rf "/etc/zsh/oh-my-zsh/oh-my-zsh-plugin.sh" && for plugin_upgrade_list_task in "${!plugin_upgrade_list[@]}"; do
-            echo "${plugin_upgrade_list[$plugin_upgrade_list_task]}" >> "/etc/zsh/oh-my-zsh/oh-my-zsh-plugin.sh"
-        done
+        fi && rm -rf "/home/${DEFAULT_USERNAME}/.oh-my-zsh/oh-my-zsh-plugin.sh" && for plugin_upgrade_list_task in "${!plugin_upgrade_list[@]}"; do
+            echo "${plugin_upgrade_list[$plugin_upgrade_list_task]}" >> "/home/${DEFAULT_USERNAME}/.oh-my-zsh/oh-my-zsh-plugin.sh"
+        done && chown -R $DEFAULT_USERNAME:$DEFAULT_USERNAME "/home/${DEFAULT_USERNAME}/.oh-my-zsh"
     }
     function InstallTor() {
         apt_list=(
