@@ -978,21 +978,24 @@ function ConfigurePackages() {
             PROXY_URL='http://vpn.zhijie.online:7890' # http://username:password@ip:port
             NO_PROXY='localhost,127.0.0.1,::1'
 
+            BUILD_IN_PLUGINS="aliases colored-man-pages command-not-found common-aliases debian docker docker-compose extract git history ssh sudo systemd"
+            EXTERNAL_PLUGINS="zsh-autosuggestions zsh-completions zsh-history-substring-search zsh-syntax-highlighting"
+
             omz_list=(
                 "export DEBIAN_FRONTEND=\"noninteractive\""
                 "export EDITOR=\"nano\""
                 "export GPG_TTY=\$(tty)"
                 "export PATH=\"${DEFAULT_PATH}:\$PATH\""
-                "# export SSH_AUTH_SOCK=\"\$(gpgconf --list-dirs agent-ssh-socket)\" && gpgconf --launch gpg-agent && gpg-connect-agent updatestartuptty /bye > \"/dev/null\" 2>&1"
+                "export SSH_AUTH_SOCK=\"\$(gpgconf --list-dirs agent-ssh-socket)\" && gpgconf --launch gpg-agent && gpg-connect-agent updatestartuptty /bye > \"/dev/null\" 2>&1"
                 "export ZSH=\"\$HOME/.oh-my-zsh\""
                 "function proxy_off(){ unset all_proxy; unset ftp_proxy; unset http_proxy; unset https_proxy; unset rsync_proxy; unset no_proxy }"
                 "function proxy_on(){ export all_proxy=\"${PROXY_URL}\"; export ftp_proxy=\"${PROXY_URL}\"; export http_proxy=\"${PROXY_URL}\"; export https_proxy=\"${PROXY_URL}\"; export rsync_proxy=\"${PROXY_URL}\"; export no_proxy=\"${NO_PROXY}\" }"
-                "plugins=(zsh-autosuggestions zsh-completions zsh-history-substring-search zsh-syntax-highlighting)"
+                "plugins=(${BUILD_IN_PLUGINS} ${EXTERNAL_PLUGINS})"
                 "ZSH_CACHE_DIR=\"\$ZSH/cache\""
                 "ZSH_CUSTOM=\"\$ZSH/custom\""
                 "ZSH_THEME=\"ys\""
-                "DISABLE_AUTO_UPDATE=\"false\""
-                "DISABLE_UPDATE_PROMPT=\"false\""
+                "DISABLE_AUTO_UPDATE=\"true\""
+                "DISABLE_UPDATE_PROMPT=\"true\""
                 "UPDATE_ZSH_DAYS=\"7\""
                 "ZSH_COMPDUMP=\"\$ZSH_CACHE_DIR/.zcompdump\""
                 "ZSH_DISABLE_COMPFIX=\"false\""
@@ -1000,7 +1003,7 @@ function ConfigurePackages() {
                 "COMPLETION_WAITING_DOTS=\"true\""
                 "DISABLE_AUTO_TITLE=\"false\""
                 "DISABLE_LS_COLORS=\"false\""
-                "DISABLE_MAGIC_FUNCTIONS=\"false\""
+                "DISABLE_MAGIC_FUNCTIONS=\"true\""
                 "DISABLE_UNTRACKED_FILES_DIRTY=\"false\""
                 "ENABLE_CORRECTION=\"true\""
                 "HIST_STAMPS=\"yyyy-mm-dd\""
