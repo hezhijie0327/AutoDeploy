@@ -23,6 +23,7 @@ function GetSystemInformation() {
 function ConfigurePackages() {
     function ConfigureCrontab() {
         crontab_list=(
+            "0 0 * * 7 /opt/homebrew/bin/brew update && /opt/homebrew/bin/brew upgrade && /opt/homebrew/bin/brew cleanup"
             "@reboot rm -rf ~/.*_history ~/.ssh/known_hosts*"
         )
         which "crontab" > "/dev/null" 2>&1
