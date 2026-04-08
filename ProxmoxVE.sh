@@ -934,7 +934,7 @@ function ConfigurePackages() {
             rm -rf "/tmp/sysctl.autodeploy" && for sysctl_list_task in "${!sysctl_list[@]}"; do
                 echo "${sysctl_list[$sysctl_list_task]}" >> "/tmp/sysctl.autodeploy"
             done && for bridge_interface_task in "${!bridge_interface[@]}"; do
-                echo -e "net.ipv6.conf.${bridge_interface[$bridge_interface_task]}.accept_ra = 2\nnet.ipv6.conf.${bridge_interface[$bridge_interface_task]}.autoconf = 1\nnet.ipv6.conf.${bridge_interface[$bridge_interface_task]}.forwarding = 1" >> "/tmp/sysctl.autodeploy"
+                echo -e "net.ipv6.conf.${bridge_interface[$bridge_interface_task]}.accept_ra = 2\nnet.ipv6.conf.${bridge_interface[$bridge_interface_task]}.addr_gen_mode = 0\nnet.ipv6.conf.${bridge_interface[$bridge_interface_task]}.autoconf = 1\nnet.ipv6.conf.${bridge_interface[$bridge_interface_task]}.forwarding = 1\nnet.ipv6.conf.${bridge_interface[$bridge_interface_task]}.use_tempaddr = 0" >> "/tmp/sysctl.autodeploy"
             done && cat "/tmp/sysctl.autodeploy" | sort | uniq > "/etc/sysctl.d/99-autodeploy.conf" && sysctl -p && rm -rf "/tmp/sysctl.autodeploy"
         fi
     }
