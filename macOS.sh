@@ -75,7 +75,7 @@ function ConfigurePackages() {
             if [ "${GPG_PUBKEY_ID_A}" != "" ]; then
                 gpg_agent_list=(
                     "enable-ssh-support"
-                    "pinentry-program /opt/homebrew/bin/pinentry"
+                    "pinentry-program /opt/homebrew/bin/pinentry-tty"
                 )
                 rm -rf "/Users/${CurrentUsername}/.gnupg/gpg-agent.conf" && for gpg_agent_list_task in "${!gpg_agent_list[@]}"; do
                     echo "${gpg_agent_list[$gpg_agent_list_task]}" >> "/Users/${CurrentUsername}/.gnupg/gpg-agent.conf"
