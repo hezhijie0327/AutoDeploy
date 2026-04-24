@@ -112,61 +112,6 @@ function GetSystemInformation() {
             NESTED_MODULES=()
         fi
     }
-    function GetLSBCodename() {
-        ALWAYS_LATEST="false"
-
-        LSBCodename_LTS="noble"
-        LSBVersion_LTS="24.04"
-
-        LSBCodename_LTS_OLD="jammy"
-        LSBVersion_LTS_OLD="22.04"
-
-        LSBCodename_NON_LTS="plucky"
-        LSBVersion_NON_LTS="25.04"
-
-        which "lsb_release" > "/dev/null" 2>&1
-        if [ "$?" -eq "0" ]; then
-            LSBCodename_CURRENT=$(lsb_release -cs)
-            LSBVersion_CURRENT=$(lsb_release -rs)
-            if [ "$(lsb_release -ds | grep 'LTS')" == "" ]; then
-                WHETHER_LTS_NON_TLS="FALSE"
-            else
-                WHETHER_LTS_NON_TLS="TRUE"
-            fi
-        else
-            if [ -f '/etc/os-release' ]; then
-                LSBCodename_CURRENT=$(cat "/etc/os-release" | grep "UBUNTU\_CODENAME\=" | sed "s/UBUNTU\_CODENAME\=//g")
-                LSBVersion_CURRENT=$(cat "/etc/os-release" | grep "VERSION_ID\=" | sed "s/VERSION_ID\=//g" | tr -d "\"")
-                if [ "$(cat '/etc/os-release' | grep "VERSION\=" | grep 'LTS')" == "" ]; then
-                    WHETHER_LTS_NON_TLS="FALSE"
-                else
-                    WHETHER_LTS_NON_TLS="TRUE"
-                fi
-            fi
-        fi
-        if [ "$(awk -v NUM1=$LSBVersion_CURRENT -v NUM2=$LSBVersion_LTS 'BEGIN{print (NUM1 > NUM2) ? 1 : 0}')" -eq "1" ] && [ "$(awk -v NUM1=$LSBVersion_CURRENT -v NUM2=$LSBVersion_NON_LTS 'BEGIN{print (NUM1 > NUM2) ? 1 : 0}')" -eq "1" ]; then
-            LSBCodename="${LSBCodename_CURRENT}"
-            LSBVersion="${LSBVersion_CURRENT}"
-        else
-            if [ "${ALWAYS_LATEST}" == "true" ]; then
-                if [ "$(awk -v NUM1=$LSBVersion_LTS -v NUM2=$LSBVersion_NON_LTS 'BEGIN{print (NUM1 > NUM2) ? 1 : 0}')" -eq "1" ]; then
-                    LSBCodename="${LSBCodename_LTS}"
-                    LSBVersion="${LSBVersion_LTS}"
-                else
-                    LSBCodename="${LSBCodename_NON_LTS}"
-                    LSBVersion="${LSBVersion_NON_LTS}"
-                fi
-            else
-                if [ "${WHETHER_LTS_NON_TLS}" == "TRUE" ]; then
-                    LSBCodename="${LSBCodename_LTS}"
-                    LSBVersion="${LSBVersion_LTS}"
-                else
-                    LSBCodename="${LSBCodename_NON_LTS}"
-                    LSBVersion="${LSBVersion_NON_LTS}"
-                fi
-            fi
-        fi
-    }
     function GetOSArchitecture() {
         which "dpkg" > "/dev/null" 2>&1
         if [ "$?" -eq "0" ]; then
@@ -187,6 +132,10 @@ function GetSystemInformation() {
             exit 1
         fi
     }
+    function SetLSBCodename() {
+        LSBCodename="resolute"
+        LSBVersion="26.04"
+    }
     function SetGHProxyDomain() {
         GHPROXY_URL=""
         if [ "${GHPROXY_URL}" != "" ]; then
@@ -198,8 +147,8 @@ function GetSystemInformation() {
     GenerateHostname
     GetCPUpsABILevel
     GetCPUVendorID
-    GetLSBCodename
     GetOSArchitecture
+    SetLSBCodename
     SetGHProxyDomain
 }
 # Set Repository Mirror
@@ -555,22 +504,25 @@ function ConfigurePackages() {
     function ConfigureNetplan() {
         STATIC_IP_CONFIG="" # enp6s18,10.192.31.254/19,10.192.0.1
 
-        netplan_list=(
-            "network:"
-            "  version: 2"
-            "  renderer: NetworkManager"
-        )
-
         if [ -n "${STATIC_IP_CONFIG}" ]; then
-            netplan_list+=(
-                    "  ethernets:"
-                    "    $(echo "${STATIC_IP_CONFIG}" | cut -d ',' -f 1):"
-                    "      addresses:"
-                    "        - $(echo "${STATIC_IP_CONFIG}" | cut -d ',' -f 2)"
-                    "      routes:"
-                    "        - to: 0.0.0.0/0"
-                    "          via: $(echo "${STATIC_IP_CONFIG}" | cut -d ',' -f 3)"
-                )
+            netplan_list=(
+                "network:"
+                "  version: 2"
+                "  renderer: networkd"
+                "  ethernets:"
+                "    $(echo "${STATIC_IP_CONFIG}" | cut -d ',' -f 1):"
+                "      addresses:"
+                "        - $(echo "${STATIC_IP_CONFIG}" | cut -d ',' -f 2)"
+                "      routes:"
+                "        - to: 0.0.0.0/0"
+                "          via: $(echo "${STATIC_IP_CONFIG}" | cut -d ',' -f 3)"
+            )
+        else
+            netplan_list=(
+                "network:"
+                "  version: 2"
+                "  renderer: NetworkManager"
+            )
         fi
 
         which "netplan" > "/dev/null" 2>&1
@@ -1284,7 +1236,7 @@ function InstallCustomPackages() {
             "frr-snmp"
         )
         rm -rf "/usr/share/keyrings/frrouting-archive-keyring.gpg" && curl -fsSL "https://deb.frrouting.org/frr/keys.gpg" | gpg --dearmor -o "/usr/share/keyrings/frrouting-archive-keyring.gpg"
-        echo "deb [arch=${OSArchitecture} signed-by=/usr/share/keyrings/frrouting-archive-keyring.gpg] https://deb.frrouting.org/frr ${LSBCodename} frr-stable" > "/etc/apt/sources.list.d/frrouting.list"
+        echo "deb [arch=${OSArchitecture} signed-by=/usr/share/keyrings/frrouting-archive-keyring.gpg] https://deb.frrouting.org/frr stable frr-stable" > "/etc/apt/sources.list.d/frrouting.list"
         apt update && for apt_list_task in "${!apt_list[@]}"; do
             apt-cache show ${apt_list[$apt_list_task]} && if [ "$?" -eq "0" ]; then
                 apt install -qy ${apt_list[$apt_list_task]}
@@ -1318,7 +1270,7 @@ function InstallCustomPackages() {
             "tor"
         )
         rm -rf "/usr/share/keyrings/tor-archive-keyring.gpg" && curl -fsSL "https://deb.torproject.org/torproject.org/A3C4F0F979CAA22CDBA8F512EE8CBC9E886DDD89.asc" | gpg --dearmor -o "/usr/share/keyrings/tor-archive-keyring.gpg"
-        echo "deb [arch=${OSArchitecture} signed-by=/usr/share/keyrings/tor-archive-keyring.gpg] https://deb.torproject.org/torproject.org ${LSBCodename} main" > "/etc/apt/sources.list.d/tor.list"
+        echo "deb [arch=${OSArchitecture} signed-by=/usr/share/keyrings/tor-archive-keyring.gpg] https://deb.torproject.org/torproject.org stable main" > "/etc/apt/sources.list.d/tor.list"
         apt update && for apt_list_task in "${!apt_list[@]}"; do
             apt-cache show ${apt_list[$apt_list_task]} && if [ "$?" -eq "0" ]; then
                 apt install -qy ${apt_list[$apt_list_task]}
@@ -1355,7 +1307,7 @@ function InstallCustomPackages() {
         fi
 
         rm -rf "/usr/share/keyrings/xanmod-archive-keyring.gpg" && curl -fsSL "https://dl.xanmod.org/archive.key" | gpg --dearmor -o "/usr/share/keyrings/xanmod-archive-keyring.gpg"
-        echo "deb [arch=${OSArchitecture} signed-by=/usr/share/keyrings/xanmod-archive-keyring.gpg] https://deb.xanmod.org ${LSBCodename:-releases} main non-free" > "/etc/apt/sources.list.d/xanmod.list"
+        echo "deb [arch=${OSArchitecture} signed-by=/usr/share/keyrings/xanmod-archive-keyring.gpg] https://deb.xanmod.org ${LSBCodename} main non-free" > "/etc/apt/sources.list.d/xanmod.list"
         apt update && for apt_list_task in "${!apt_list[@]}"; do
             apt-cache show ${apt_list[$apt_list_task]} && if [ "$?" -eq "0" ]; then
                 apt install -qy ${apt_list[$apt_list_task]}
