@@ -208,6 +208,7 @@ function ConfigurePackages() {
             fi
             echo -e "Package: *\nPin: release a=${APT_PIN_RELEASE}\nPin-Priority: ${APT_PIN_PRIORITY}\n" >> "/tmp/apt_preference_list.autodeploy"
         done && cat "/tmp/apt_preference_list.autodeploy" | sed '$d' > "/etc/apt/preferences"
+        apt modernize-sources -qy && rm -rf /etc/apt/sources.list.bak /etc/apt/sources.list.d/*.bak
     }
     function ConfigureBusybox() {
         which "busybox" > "/dev/null" 2>&1

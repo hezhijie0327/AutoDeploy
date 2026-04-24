@@ -216,6 +216,10 @@ function ConfigurePackages() {
             fi
             echo -e "Package: *\nPin: release c=${PVE_REPO_PIN_COMPONENT},o=Proxmox\nPin-Priority: ${PVE_REPO_PIN_PRIORITY}\n" >> "/tmp/apt_preference_list.autodeploy"
         done && cat "/tmp/apt_preference_list.autodeploy" | sed '$d' > "/etc/apt/preferences.d/proxmox.pref"
+        apt modernize-sources -qy && rm -rf /etc/apt/sources.list.bak /etc/apt/sources.list.d/*.bak
+        if [ -f "/etc/apt/sources.list.d/debian-backports.sources" ]; then
+            sed -i "s/Signed-By:.*/Signed-By: \/usr\/share\/keyrings\/debian-archive-keyring.gpg/g" "/etc/apt/sources.list.d/debian-backports.sources"
+        fi
     }
     function ConfigureBusybox() {
         which "busybox" > "/dev/null" 2>&1
