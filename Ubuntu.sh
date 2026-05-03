@@ -1122,6 +1122,23 @@ function ConfigureSystem() {
         fi
     }
     function ConfigureSWAP() {
+        function GenerateSWAPSize() {
+            RAM_SIZE=$(awk "BEGIN{print log($(free -m | grep -i "mem" | awk '{print $2}')) / log(2)}")
+            if [[ "${RAM_SIZE}" == *.* ]]; then
+                if [ $(echo "${RAM_SIZE}" | cut -d '.' -f 2 | cut -c 1) -gt 5 ]; then
+                    RAM_SIZE=$(( $(echo "${RAM_SIZE}" | cut -d '.' -f 1 ) + 1 ))
+                fi
+            fi
+            if [ "${RAM_SIZE}" -le 11 ]; then
+                SWAP_SIZE=$(echo "2 ^ ${RAM_SIZE} * 2" | bc)
+            elif [ "${RAM_SIZE}" -gt 11 ] && [ "${RAM_SIZE}" -le 13 ]; then
+                SWAP_SIZE=$(echo "2 ^ ${RAM_SIZE}" | bc)
+            elif [ "${RAM_SIZE}" -gt 13 ] && [ "${RAM_SIZE}" -le 16 ]; then
+                SWAP_SIZE=$(echo "2 ^ 12" | bc)
+            else
+                SWAP_SIZE=$(echo "2 ^ 13" | bc)
+            fi
+        }
         function ClearSWAP() {
             sysctl_swap_list=(
                 "vm.drop_caches=3"
@@ -1136,6 +1153,18 @@ function ConfigureSystem() {
             fi
         }
         function CreateSWAP() {
+            GenerateSWAPSize
+
+            truncate -s 0 "/swapfile"
+            if [ "$(stat -f -c %T "/swapfile" 2>/dev/null)" = "btrfs" ]; then
+                chattr +C "/swapfile"
+            fi
+            fallocate -l ${SWAP_SIZE}M "/swapfile"
+            chmod 600 "/swapfile"
+            mkswap "/swapfile"
+            swapon "/swapfile"
+        }
+        function CreateZRamSWAP() {
             zram_conf_list=(
                 "[zram0]"
                 "compression-algorithm = zstd"
@@ -1159,12 +1188,19 @@ function ConfigureSystem() {
         }
         function UpdateFSTAB() {
             cat "/etc/fstab" | grep -v "swap" > "/tmp/fstab.autodeploy"
+            if [ -f "/swapfile" ] && [ "${DISABLE_SWAP}" == "false" ]; then
+                echo "/swapfile none swap sw 0 0" >> "/tmp/fstab.autodeploy"
+            fi
             cat "/tmp/fstab.autodeploy" > "/etc/fstab" && rm -rf "/tmp/fstab.autodeploy"
         }
 
+        DISABLE_SWAP="false"
         ClearSWAP
         RemoveSWAP
-        CreateSWAP
+        if [ "${DISABLE_SWAP:-true}" == "false" ]; then
+            CreateSWAP
+        fi
+        CreateZRamSWAP
         UpdateFSTAB
     }
     function ConfigureTimeZone() {
