@@ -41,7 +41,11 @@ function GetSystemInformation() {
         function CheckHypervisorEnvironment() {
             which "virt-what" > "/dev/null" 2>&1
             if [ "$?" -eq "1" ]; then
-                sed -i "s/[a-z]\{0,\}[.]\{0,\}archive.ubuntu.com/mirrors.ustc.edu.cn/g;s/[a-z]\{0,\}[.]\{0,\}ports.ubuntu.com/mirrors.ustc.edu.cn/g;s/[a-z]\{0,\}[.]\{0,\}security.ubuntu.com/mirrors.ustc.edu.cn/g" "/etc/apt/sources.list" && apt update && apt install virt-what -qy
+                if [ -f "/etc/apt/sources.list" ]; then
+                    APT_SOURCES_FILE="/etc/apt/sources.list"
+                else
+                    APT_SOURCES_FILE="/etc/apt/sources.list.d/ubuntu.sources"
+                fi && sed -i "s/[a-z]\{0,\}[.]\{0,\}archive.ubuntu.com/mirrors.ustc.edu.cn/g;s/[a-z]\{0,\}[.]\{0,\}ports.ubuntu.com/mirrors.ustc.edu.cn/g;s/[a-z]\{0,\}[.]\{0,\}security.ubuntu.com/mirrors.ustc.edu.cn/g" "${APT_SOURCES_FILE}" && apt update && apt install virt-what -qy
                 which "virt-what" > "/dev/null" 2>&1
                 if [ "$?" -eq "1" ]; then
                     echo "virt-what has not been installed!"
