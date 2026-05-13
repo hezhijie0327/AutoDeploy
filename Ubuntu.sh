@@ -510,7 +510,12 @@ function ConfigurePackages() {
         fi
     }
     function ConfigureNetplan() {
-        STATIC_IP_CONFIG="" # enp6s18,10.192.31.254/19,10.192.0.1
+        NIC_NAME="" # enp6s18
+        STATIC_IP_CONFIG="" # 10.192.31.254/19,10.192.0.1
+
+        if [ ! -n "${NIC_NAME}" ]; then
+            NIC_NAME=$(ls /sys/class/net | grep -v "docker0\|lo\|wg0" | head -n 1)
+        fi
 
         if [ -n "${STATIC_IP_CONFIG}" ]; then
             netplan_list=(
@@ -518,18 +523,22 @@ function ConfigurePackages() {
                 "  version: 2"
                 "  renderer: networkd"
                 "  ethernets:"
-                "    $(echo "${STATIC_IP_CONFIG}" | cut -d ',' -f 1):"
+                "    ${NIC_NAME}:"
                 "      addresses:"
-                "        - $(echo "${STATIC_IP_CONFIG}" | cut -d ',' -f 2)"
+                "        - $(echo "${STATIC_IP_CONFIG}" | cut -d ',' -f 1)"
                 "      routes:"
                 "        - to: 0.0.0.0/0"
-                "          via: $(echo "${STATIC_IP_CONFIG}" | cut -d ',' -f 3)"
+                "          via: $(echo "${STATIC_IP_CONFIG}" | cut -d ',' -f 2)"
             )
         else
             netplan_list=(
                 "network:"
                 "  version: 2"
-                "  renderer: NetworkManager"
+                "  renderer: networkd"
+                "  ethernets:"
+                "    ${NIC_NAME}:"
+                "      dhcp4: true"
+                "      dhcp6: true"
             )
         fi
 
