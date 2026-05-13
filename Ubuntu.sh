@@ -1394,7 +1394,6 @@ function InstallDependencyPackages() {
         "knot-dnsutils"
         "landscape-common"
         "libsnmp-dev"
-        "linux-generic-hwe-${LSBVersion}"
         "lldpd"
         "lm-sensors"
         "lsb-release"
