@@ -510,7 +510,7 @@ function ConfigurePackages() {
         fi
     }
     function ConfigureNetplan() {
-        NIC_NAME="" # enp6s18
+        NIC_NAME="" # enp6s18 / ens18
         STATIC_IP_CONFIG="" # 10.192.31.254/19,10.192.0.1
 
         if [ ! -n "${NIC_NAME}" ]; then
@@ -521,7 +521,7 @@ function ConfigurePackages() {
             netplan_list=(
                 "network:"
                 "  version: 2"
-                "  renderer: networkd"
+                "  renderer: NetworkManager"
                 "  ethernets:"
                 "    ${NIC_NAME}:"
                 "      addresses:"
@@ -534,7 +534,7 @@ function ConfigurePackages() {
             netplan_list=(
                 "network:"
                 "  version: 2"
-                "  renderer: networkd"
+                "  renderer: NetworkManager"
                 "  ethernets:"
                 "    ${NIC_NAME}:"
                 "      dhcp4: true"
