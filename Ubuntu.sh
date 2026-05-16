@@ -511,35 +511,62 @@ function ConfigurePackages() {
     }
     function ConfigureNetplan() {
         NIC_NAME="" # enp6s18 / ens18
-        STATIC_IP_CONFIG="" # 10.192.31.254/19,10.192.0.1
+        STATIC_IPV4_CONFIG="" # 10.192.31.254/19,10.192.0.1
+        STATIC_IPV6_CONFIG="" # 2409:8a20:8800::254/64,2409:8a20:8800::1
+
+        STATIC_IPV4_ADDR=$(echo "${STATIC_IPV4_CONFIG}" | cut -d ',' -f 1)
+        STATIC_IPV4_GATEWAY=$(echo "${STATIC_IPV4_CONFIG}" | cut -d ',' -f 2)
+        STATIC_IPV6_ADDR=$(echo "${STATIC_IPV6_CONFIG}" | cut -d ',' -f 1)
+        STATIC_IPV6_GATEWAY=$(echo "${STATIC_IPV6_CONFIG}" | cut -d ',' -f 2)
 
         if [ ! -n "${NIC_NAME}" ]; then
             NIC_NAME=$(ls /sys/class/net | grep -v "docker0\|lo\|wg0" | head -n 1)
         fi
 
-        if [ -n "${STATIC_IP_CONFIG}" ]; then
-            netplan_list=(
-                "network:"
-                "  version: 2"
-                "  renderer: NetworkManager"
-                "  ethernets:"
-                "    ${NIC_NAME}:"
-                "      addresses:"
-                "        - $(echo "${STATIC_IP_CONFIG}" | cut -d ',' -f 1)"
-                "      routes:"
-                "        - to: 0.0.0.0/0"
-                "          via: $(echo "${STATIC_IP_CONFIG}" | cut -d ',' -f 2)"
-            )
+        netplan_list=(
+            "network:"
+            "  version: 2"
+            "  renderer: NetworkManager"
+            "  ethernets:"
+            "    ${NIC_NAME}:"
+        )
+
+        if [ -n "${STATIC_IPV4_ADDR}" ]; then
+            netplan_list+=("      dhcp4: false")
         else
-            netplan_list=(
-                "network:"
-                "  version: 2"
-                "  renderer: NetworkManager"
-                "  ethernets:"
-                "    ${NIC_NAME}:"
-                "      dhcp4: true"
-                "      dhcp6: true"
-            )
+            netplan_list+=("      dhcp4: true")
+        fi
+
+        if [ -n "${STATIC_IPV6_ADDR}" ]; then
+            netplan_list+=("      dhcp6: false")
+        else
+            netplan_list+=("      dhcp6: true")
+        fi
+
+        if [ -n "${STATIC_IPV4_ADDR}" ] || [ -n "${STATIC_IPV6_ADDR}" ]; then
+            netplan_list+=("      addresses:")
+
+            if [ -n "${STATIC_IPV4_ADDR}" ]; then
+                netplan_list+=("        - ${STATIC_IPV4_ADDR}")
+            fi
+
+            if [ -n "${STATIC_IPV6_ADDR}" ]; then
+                netplan_list+=("        - ${STATIC_IPV6_ADDR}")
+            fi
+        fi
+
+        if [ -n "${STATIC_IPV4_GATEWAY}" ] || [ -n "${STATIC_IPV6_GATEWAY}" ]; then
+            netplan_list+=("      routes:")
+
+            if [ -n "${STATIC_IPV4_GATEWAY}" ]; then
+                netplan_list+=("        - to: 0.0.0.0/0")
+                netplan_list+=("          via: ${STATIC_IPV4_GATEWAY}")
+            fi
+
+            if [ -n "${STATIC_IPV6_GATEWAY}" ]; then
+                netplan_list+=("        - to: ::/0")
+                netplan_list+=("          via: ${STATIC_IPV6_GATEWAY}")
+            fi
         fi
 
         which "netplan" > "/dev/null" 2>&1
