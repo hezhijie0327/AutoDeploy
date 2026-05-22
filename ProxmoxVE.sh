@@ -1398,6 +1398,7 @@ function InstallDependencyPackages() {
         "snmp-mibs-downloader"
         "snmpd"
         "sudo"
+        "sudo-rs"
         "systemd"
         "systemd-zram-generator"
         "tcpdump"
