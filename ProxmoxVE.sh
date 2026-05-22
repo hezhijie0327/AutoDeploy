@@ -777,7 +777,7 @@ function ConfigurePackages() {
             "nf_conntrack_max: 262144"
             "nf_conntrack_tcp_timeout_established: 432000"
             "nf_conntrack_tcp_timeout_syn_recv: 60"
-            "nftables: 0"
+            "nftables: 1"
             "nosmurfs: 0"
             "protection_synflood: 0"
             "protection_synflood_burst: 1000"
