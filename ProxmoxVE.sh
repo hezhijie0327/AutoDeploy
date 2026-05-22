@@ -119,7 +119,7 @@ function GetSystemInformation() {
         fi
     }
     function SetPackageCodename() {
-        CephCodename="squid"
+        CephCodename="tentacle"
         LSBCodename="trixie"
     }
     GenerateDomain
