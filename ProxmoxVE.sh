@@ -970,6 +970,7 @@ function ConfigurePackages() {
                 "/usr/sbin"
                 "/usr/local/bin"
                 "/usr/local/sbin"
+                "/usr/lib/cargo/bin"
             )
             DEFAULT_PATH="" && for default_path_list_task in "${!default_path_list[@]}"; do
                 if [ "${default_path_list[$default_path_list_task]}" != "" ]; then
