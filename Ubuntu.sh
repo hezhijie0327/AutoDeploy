@@ -462,7 +462,7 @@ function ConfigurePackages() {
                 rm -rf "/etc/default/grub.d/50-cloudimg-settings.cfg"
             fi
             if [ -f "/usr/share/grub/default/grub" ]; then
-                rm -rf "/tmp/grub.autodeploy" && cat "/usr/share/grub/default/grub" | sed "s/GRUB\_CMDLINE\_LINUX\_DEFAULT\=\"quiet splash\"/GRUB\_CMDLINE\_LINUX\_DEFAULT\=\"quiet mitigations=auto,nosmt${ENABLE_IOMMU}\"/g;s/#GRUB_DISABLE_OS_PROBER=false/GRUB_DISABLE_OS_PROBER=true/g;s/GRUB_TIMEOUT=.*/GRUB_TIMEOUT=5/g;/GRUB_TIMEOUT_STYLE=/d" > "/tmp/grub.autodeploy" && cat "/tmp/grub.autodeploy" > "/etc/default/grub" && update-grub && rm -rf "/tmp/grub.autodeploy"
+                rm -rf "/tmp/grub.autodeploy" && cat "/usr/share/grub/default/grub" | sed "s/GRUB\_CMDLINE\_LINUX\_DEFAULT\=\"quiet splash\"/GRUB\_CMDLINE\_LINUX\_DEFAULT\=\"quiet security=apparmor mitigations=auto,nosmt${ENABLE_IOMMU}\"/g;s/#GRUB_DISABLE_OS_PROBER=false/GRUB_DISABLE_OS_PROBER=true/g;s/GRUB_TIMEOUT=.*/GRUB_TIMEOUT=5/g;/GRUB_TIMEOUT_STYLE=/d" > "/tmp/grub.autodeploy" && cat "/tmp/grub.autodeploy" > "/etc/default/grub" && update-grub && rm -rf "/tmp/grub.autodeploy"
             fi
         fi
     }
@@ -1405,6 +1405,10 @@ function InstallCustomPackages() {
 # Install Dependency Packages
 function InstallDependencyPackages() {
     apt_list=(
+        "apparmor"
+        "apparmor-profiles"
+        "apparmor-profiles-extra"
+        "apparmor-utils"
         "apt-file"
         "apt-transport-https"
         "busybox"

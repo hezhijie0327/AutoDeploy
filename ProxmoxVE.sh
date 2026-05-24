@@ -464,7 +464,7 @@ function ConfigurePackages() {
         which "update-grub" > "/dev/null" 2>&1
         if [ "$?" -eq "0" ]; then
             if [ -f "/usr/share/grub/default/grub" ]; then
-                rm -rf "/tmp/grub.autodeploy" && cat "/usr/share/grub/default/grub" | sed "s/GRUB\_CMDLINE\_LINUX\_DEFAULT\=\"quiet\"/GRUB\_CMDLINE\_LINUX\_DEFAULT\=\"quiet mitigations=auto,nosmt${PATCH_INTEL_82599_SFP}${DISABLE_DISPLAY}${ENABLE_IOMMU}\"/g;s/#GRUB_DISABLE_OS_PROBER=false/GRUB_DISABLE_OS_PROBER=true/g;s/GRUB_TIMEOUT=.*/GRUB_TIMEOUT=5/g;/GRUB_TIMEOUT_STYLE=/d" > "/tmp/grub.autodeploy" && cat "/tmp/grub.autodeploy" > "/etc/default/grub" && update-grub && rm -rf "/tmp/grub.autodeploy"
+                rm -rf "/tmp/grub.autodeploy" && cat "/usr/share/grub/default/grub" | sed "s/GRUB\_CMDLINE\_LINUX\_DEFAULT\=\"quiet\"/GRUB\_CMDLINE\_LINUX\_DEFAULT\=\"quiet security=apparmor mitigations=auto,nosmt${PATCH_INTEL_82599_SFP}${DISABLE_DISPLAY}${ENABLE_IOMMU}\"/g;s/#GRUB_DISABLE_OS_PROBER=false/GRUB_DISABLE_OS_PROBER=true/g;s/GRUB_TIMEOUT=.*/GRUB_TIMEOUT=5/g;/GRUB_TIMEOUT_STYLE=/d" > "/tmp/grub.autodeploy" && cat "/tmp/grub.autodeploy" > "/etc/default/grub" && update-grub && rm -rf "/tmp/grub.autodeploy"
             fi
         fi
 
@@ -473,7 +473,7 @@ function ConfigurePackages() {
             if [ -f "/etc/kernel/cmdline" ]; then
                 if [ ! -f "/etc/kernel/cmdline.bak" ]; then
                     cp -rf "/etc/kernel/cmdline" "/etc/kernel/cmdline.bak"
-                fi && cat "/etc/kernel/cmdline.bak" | sed "s/boot=zfs/boot=zfs mitigations=auto,nosmt${PATCH_INTEL_82599_SFP}${DISABLE_DISPLAY}${ENABLE_IOMMU}/g" > "/etc/kernel/cmdline" && proxmox-boot-tool refresh
+                fi && cat "/etc/kernel/cmdline.bak" | sed "s/boot=zfs/boot=zfs quiet security=apparmor mitigations=auto,nosmt${PATCH_INTEL_82599_SFP}${DISABLE_DISPLAY}${ENABLE_IOMMU}/g" > "/etc/kernel/cmdline" && proxmox-boot-tool refresh
             fi
         fi
     }
@@ -1337,6 +1337,10 @@ function InstallCustomPackages() {
 # Install Dependency Packages
 function InstallDependencyPackages() {
     apt_list=(
+        "apparmor"
+        "apparmor-profiles"
+        "apparmor-profiles-extra"
+        "apparmor-utils"
         "apt-file"
         "apt-transport-https"
         "busybox"
