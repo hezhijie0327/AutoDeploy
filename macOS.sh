@@ -466,7 +466,7 @@ function InstallDependencyPackages() {
         "zip"
         "zsh"
     )
-    brew update && for app_list_task in "${!app_list[@]}"; do
+    brew developer on && brew update && for app_list_task in "${!app_list[@]}"; do
         brew info --formula ${app_list[$app_list_task]} && if [ "$?" -eq "0" ]; then
             brew install --formula ${app_list[$app_list_task]}
         else
