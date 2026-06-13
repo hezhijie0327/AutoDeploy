@@ -309,11 +309,10 @@ function InstallCustomPackages() {
             "jordanbaird-ice" # Ice
             "keka" # Keka
             "kekaexternalhelper" # Keka External Helper
-            "maccy" # Maccy
+            "lm-studio" # LM Studio
             "microsoft-edge" # Microsoft Edge
             "obs" # OBS
             "onyx" # OnyX
-            "parallels" # Parallels Desktop
             "rectangle" # Rectangle
             "stats" # Stats
             "visual-studio-code" # Visual Studio Code
@@ -408,30 +407,13 @@ function InstallDependencyPackages() {
         "cloudflared"
         "coreutils"
         "curl"
+        "fastfetch"
         "fd"
         "ffmpeg"
         "findutils"
         "gawk"
         "git"
-        "git-flow"
         "git-lfs"
-        "gnu-apl"
-        "gnu-barcode"
-        "gnu-chess"
-        "gnu-cobol"
-        "gnu-complexity"
-        "gnu-getopt"
-        "gnu-go"
-        "gnu-indent"
-        "gnu-prolog"
-        "gnu-scientific-library"
-        "gnu-sed"
-        "gnu-shogi"
-        "gnu-tar"
-        "gnu-time"
-        "gnu-typist"
-        "gnu-units"
-        "gnu-which"
         "gnupg"
         "gnutls"
         "grep"
@@ -443,7 +425,6 @@ function InstallDependencyPackages() {
         "mas"
         "mtr"
         "nano"
-        "neofetch"
         "nmap"
         "openssh"
         "p7zip"
