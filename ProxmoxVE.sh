@@ -499,6 +499,7 @@ function ConfigurePackages() {
             "ip_conntrack_ftp"
             "kvm"
             "nfnetlink_queue"
+            "tls"
             ${INTEL_GVT_MODULES[*]}
             ${INTEL_HDMI_AUDIO_MUDULE[*]}
             ${IOMMU_MODULES[*]}

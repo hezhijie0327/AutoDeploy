@@ -491,6 +491,7 @@ function ConfigurePackages() {
         fi
         module_list=(
             "kvm"
+            "tls"
             ${INTEL_GVT_MODULES[*]}
             ${INTEL_HDMI_AUDIO_MUDULE[*]}
             ${IOMMU_MODULES[*]}
