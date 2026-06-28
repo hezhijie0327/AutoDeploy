@@ -23,7 +23,8 @@ function GetSystemInformation() {
 function ConfigurePackages() {
     function ConfigureCrontab() {
         crontab_list=(
-            "0 0 * * 7 /opt/homebrew/bin/brew update && /opt/homebrew/bin/brew upgrade && /opt/homebrew/bin/brew cleanup"
+            "PATH=\"${DEFAULT_PATH}:\$PATH\""
+            "0 0 * * 7 brew update && brew upgrade -g && brew cleanup"
             "@reboot rm -rf ~/.*_history ~/.ssh/known_hosts*"
         )
         which "crontab" > "/dev/null" 2>&1
@@ -259,7 +260,6 @@ function ConfigurePackages() {
         GenerateCommandPath
         GenerateOMZProfile
     }
-    ConfigureCrontab
     ConfigureGit
     ConfigureGPG
     ConfigureOpenSSH
@@ -267,7 +267,7 @@ function ConfigurePackages() {
     ConfigurePythonPyPI
     ConfigureSshd
     ConfigureWireGuard
-    ConfigureZsh
+    ConfigureZsh && ConfigureCrontab
 }
 # Configure System
 function ConfigureSystem() {
