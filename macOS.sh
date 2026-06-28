@@ -210,8 +210,6 @@ function ConfigurePackages() {
             PROXY_URL='http://vpn.zhijie.online:7890' # http://username:password@ip:port
             NO_PROXY='localhost,127.0.0.1,::1'
 
-            HOMEBREW_GITHUB_API_TOKEN=""
-
             BUILD_IN_PLUGINS="aliases brew colored-man-pages command-not-found common-aliases docker docker-compose extract git history macos ssh sudo"
             EXTERNAL_PLUGINS="zsh-autosuggestions zsh-completions zsh-history-substring-search zsh-syntax-highlighting"
 
@@ -220,8 +218,7 @@ function ConfigurePackages() {
                 "export GPG_TTY=\$(tty)"
                 "export HOMEBREW_API_DOMAIN=\"https://mirrors.ustc.edu.cn/homebrew-bottles/api\""
                 "export HOMEBREW_BOTTLE_DOMAIN=\"https://mirrors.ustc.edu.cn/homebrew-bottles/bottles\""
-                "export HOMEBREW_BREW_GIT_REMOTE=\"${GHPROXY_URL}https://github.com/homebrew/brew.git\""
-                "export HOMEBREW_GITHUB_API_TOKEN=\"${HOMEBREW_GITHUB_API_TOKEN}\""
+                "export HOMEBREW_BREW_GIT_REMOTE=\"https://mirrors.ustc.edu.cn/brew.git\""
                 "export HOMEBREW_NO_AUTO_UPDATE=\"1\""
                 "export PATH=\"${DEFAULT_PATH}:\$PATH\""
                 "export SSH_AUTH_SOCK=\"\$(gpgconf --list-dirs agent-ssh-socket)\" && gpgconf --launch gpg-agent && gpg-connect-agent updatestartuptty /bye > \"/dev/null\" 2>&1"
@@ -390,7 +387,7 @@ function InstallDependencyPackages() {
 
     export HOMEBREW_API_DOMAIN="https://mirrors.ustc.edu.cn/homebrew-bottles/api"
     export HOMEBREW_BOTTLE_DOMAIN="https://mirrors.ustc.edu.cn/homebrew-bottles/bottles"
-    export HOMEBREW_BREW_GIT_REMOTE="${GHPROXY_URL}https://github.com/homebrew/brew.git"
+    export HOMEBREW_BREW_GIT_REMOTE="https://mirrors.ustc.edu.cn/brew.git"
     export PATH="/opt/homebrew/sbin:/opt/homebrew/bin:${PATH}"
 
     if [ "${REINSTALL_BREW}" == "true" ]; then
@@ -399,7 +396,7 @@ function InstallDependencyPackages() {
 
     which "brew" > "/dev/null" 2>&1
     if [ "$?" -eq "1" ]; then
-        curl -fsSL "${GHPROXY_URL}https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh" | sed "s|https://github.com|https://${GHPROXY_URL}/https://github.com|g" | sed 's|#!/bin/bash|#!/bin/bash\nexport HOMEBREW_BOTTLE_DOMAIN="https://mirrors.ustc.edu.cn/homebrew-bottles/bottles"|g' > "/tmp/brew.autodeploy" && bash "/tmp/brew.autodeploy"
+        /bin/bash -c "$(curl -fsSL https://mirrors.ustc.edu.cn/misc/brew-install.sh)"
     fi
 
     app_list=(
