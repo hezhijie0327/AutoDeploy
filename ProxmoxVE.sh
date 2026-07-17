@@ -134,24 +134,24 @@ function GetSystemInformation() {
 # Set Repository Mirror
 function SetRepositoryMirror() {
     mirror_list=(
-        "deb ${transport_protocol}://mirrors.ustc.edu.cn/debian-security ${LSBCodename}-security contrib main non-free non-free-firmware"
-        "deb ${transport_protocol}://mirrors.ustc.edu.cn/debian ${LSBCodename} contrib main non-free non-free-firmware"
-        "deb ${transport_protocol}://mirrors.ustc.edu.cn/debian ${LSBCodename}-backports contrib main non-free non-free-firmware"
-        "# deb ${transport_protocol}://mirrors.ustc.edu.cn/debian ${LSBCodename}-backports-sloppy contrib main non-free non-free-firmware"
-        "deb ${transport_protocol}://mirrors.ustc.edu.cn/debian ${LSBCodename}-proposed-updates contrib main non-free non-free-firmware"
-        "deb ${transport_protocol}://mirrors.ustc.edu.cn/debian ${LSBCodename}-updates contrib main non-free non-free-firmware"
-        "deb-src ${transport_protocol}://mirrors.ustc.edu.cn/debian-security ${LSBCodename}-security contrib main non-free non-free-firmware"
-        "deb-src ${transport_protocol}://mirrors.ustc.edu.cn/debian ${LSBCodename} contrib main non-free non-free-firmware"
-        "deb-src ${transport_protocol}://mirrors.ustc.edu.cn/debian ${LSBCodename}-backports contrib main non-free non-free-firmware"
-        "# deb-src ${transport_protocol}://mirrors.ustc.edu.cn/debian ${LSBCodename}-backports-sloppy contrib main non-free non-free-firmware"
-        "deb-src ${transport_protocol}://mirrors.ustc.edu.cn/debian ${LSBCodename}-proposed-updates contrib main non-free non-free-firmware"
-        "deb-src ${transport_protocol}://mirrors.ustc.edu.cn/debian ${LSBCodename}-updates contrib main non-free non-free-firmware"
+        "deb ${transport_protocol}://mirrors.cernet.edu.cn/debian-security ${LSBCodename}-security contrib main non-free non-free-firmware"
+        "deb ${transport_protocol}://mirrors.cernet.edu.cn/debian ${LSBCodename} contrib main non-free non-free-firmware"
+        "deb ${transport_protocol}://mirrors.cernet.edu.cn/debian ${LSBCodename}-backports contrib main non-free non-free-firmware"
+        "# deb ${transport_protocol}://mirrors.cernet.edu.cn/debian ${LSBCodename}-backports-sloppy contrib main non-free non-free-firmware"
+        "deb ${transport_protocol}://mirrors.cernet.edu.cn/debian ${LSBCodename}-proposed-updates contrib main non-free non-free-firmware"
+        "deb ${transport_protocol}://mirrors.cernet.edu.cn/debian ${LSBCodename}-updates contrib main non-free non-free-firmware"
+        "deb-src ${transport_protocol}://mirrors.cernet.edu.cn/debian-security ${LSBCodename}-security contrib main non-free non-free-firmware"
+        "deb-src ${transport_protocol}://mirrors.cernet.edu.cn/debian ${LSBCodename} contrib main non-free non-free-firmware"
+        "deb-src ${transport_protocol}://mirrors.cernet.edu.cn/debian ${LSBCodename}-backports contrib main non-free non-free-firmware"
+        "# deb-src ${transport_protocol}://mirrors.cernet.edu.cn/debian ${LSBCodename}-backports-sloppy contrib main non-free non-free-firmware"
+        "deb-src ${transport_protocol}://mirrors.cernet.edu.cn/debian ${LSBCodename}-proposed-updates contrib main non-free non-free-firmware"
+        "deb-src ${transport_protocol}://mirrors.cernet.edu.cn/debian ${LSBCodename}-updates contrib main non-free non-free-firmware"
     )
     proxmox_mirror_list=(
         "# deb ${transport_protocol}://enterprise.proxmox.com/debian/ceph-${CephCodename} ${LSBCodename} enterprise"
         "# deb ${transport_protocol}://enterprise.proxmox.com/debian/pve ${LSBCodename} pve-enterprise"
-        "deb ${transport_protocol}://mirrors.ustc.edu.cn/proxmox/debian ${LSBCodename} pve-no-subscription pve-test"
-        "deb ${transport_protocol}://mirrors.ustc.edu.cn/proxmox/debian/ceph-${CephCodename} ${LSBCodename} no-subscription test"
+        "deb ${transport_protocol}://mirrors.cernet.edu.cn/proxmox/debian ${LSBCodename} pve-no-subscription pve-test"
+        "deb ${transport_protocol}://mirrors.cernet.edu.cn/proxmox/debian/ceph-${CephCodename} ${LSBCodename} no-subscription test"
     )
     if [ ! -d "/etc/apt/sources.list.d" ]; then
         mkdir "/etc/apt/sources.list.d"
@@ -741,7 +741,7 @@ function ConfigurePackages() {
         systemctl stop pve-cluster && systemctl stop corosync && pmxcfs -l && rm -rf "/etc/pve/corosync.conf" && rm -rf /etc/corosync/* /var/log/corosync/* /var/lib/corosync/* && killall pmxcfs && systemctl start pve-cluster
     }
     function ConfigurePVEContainer() {
-        sed -Ezi.bak 's|http://download.proxmox.com|https://mirrors.ustc.edu.cn/proxmox|g' "/usr/share/perl5/PVE/APLInfo.pm" && systemctl restart pvedaemon.service
+        sed -Ezi.bak 's|http://download.proxmox.com|https://mirrors.cernet.edu.cn/proxmox|g' "/usr/share/perl5/PVE/APLInfo.pm" && systemctl restart pvedaemon.service
     }
     function ConfigurePVEDashboard() {
         sed -Ezi.bak "s/(Ext.Msg.show\(\{\s+title: gettext\('No valid sub)/void\(\{ \/\/\1/g" "/usr/share/javascript/proxmox-widget-toolkit/proxmoxlib.js" && systemctl restart pveproxy.service
@@ -859,7 +859,7 @@ function ConfigurePackages() {
             fi
         fi
         if [ "${WHICH_PIP}" != "null" ]; then
-            ${WHICH_PIP} config set global.index-url "https://mirrors.ustc.edu.cn/pypi/web/simple"
+            ${WHICH_PIP} config set global.index-url "https://mirrors.cernet.edu.cn/pypi/web/simple"
         fi
         if [ -f "/root/.config/pip/pip.conf" ]; then
             if [ ! -d "/home/${DEFAULT_USERNAME}/.config" ]; then
@@ -1290,8 +1290,8 @@ function InstallCustomPackages() {
             "docker-ce-cli"
             "docker-compose-plugin"
         )
-        rm -rf "/usr/share/keyrings/docker-archive-keyring.gpg" && curl -fsSL "https://mirrors.ustc.edu.cn/docker-ce/linux/debian/gpg" | gpg --dearmor -o "/usr/share/keyrings/docker-archive-keyring.gpg"
-        echo "deb [arch=amd64 signed-by=/usr/share/keyrings/docker-archive-keyring.gpg] https://mirrors.ustc.edu.cn/docker-ce/linux/debian ${LSBCodename} stable" > "/etc/apt/sources.list.d/docker.list"
+        rm -rf "/usr/share/keyrings/docker-archive-keyring.gpg" && curl -fsSL "https://mirrors.cernet.edu.cn/docker-ce/linux/debian/gpg" | gpg --dearmor -o "/usr/share/keyrings/docker-archive-keyring.gpg"
+        echo "deb [arch=amd64 signed-by=/usr/share/keyrings/docker-archive-keyring.gpg] https://mirrors.cernet.edu.cn/docker-ce/linux/debian ${LSBCodename} stable" > "/etc/apt/sources.list.d/docker.list"
         apt update && apt purge -qy containerd docker-compose docker-doc docker.io podman-docker runc && for apt_list_task in "${!apt_list[@]}"; do
             apt-cache show ${apt_list[$apt_list_task]} && if [ "$?" -eq "0" ]; then
                 apt install -qy ${apt_list[$apt_list_task]}

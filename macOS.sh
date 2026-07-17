@@ -148,7 +148,7 @@ function ConfigurePackages() {
             fi
         fi
         if [ "${WHICH_PIP}" != "null" ]; then
-            ${WHICH_PIP} config set global.index-url "https://mirrors.ustc.edu.cn/pypi/web/simple"
+            ${WHICH_PIP} config set global.index-url "https://mirrors.cernet.edu.cn/pypi/web/simple"
         fi
     }
     function ConfigureSshd() {
@@ -217,9 +217,9 @@ function ConfigurePackages() {
             omz_list=(
                 "export EDITOR=\"nano\""
                 "export GPG_TTY=\$(tty)"
-                "export HOMEBREW_API_DOMAIN=\"https://mirrors.ustc.edu.cn/homebrew-bottles/api\""
-                "export HOMEBREW_BOTTLE_DOMAIN=\"https://mirrors.ustc.edu.cn/homebrew-bottles/bottles\""
-                "export HOMEBREW_BREW_GIT_REMOTE=\"https://mirrors.ustc.edu.cn/brew.git\""
+                "export HOMEBREW_API_DOMAIN=\"https://mirrors.cernet.edu.cn/homebrew-bottles/api\""
+                "export HOMEBREW_BOTTLE_DOMAIN=\"https://mirrors.cernet.edu.cn/homebrew-bottles/bottles\""
+                "export HOMEBREW_BREW_GIT_REMOTE=\"https://mirrors.cernet.edu.cn/brew.git\""
                 "export HOMEBREW_NO_AUTO_UPDATE=\"1\""
                 "export PATH=\"${DEFAULT_PATH}:\$PATH\""
                 "export SSH_AUTH_SOCK=\"\$(gpgconf --list-dirs agent-ssh-socket)\" && gpgconf --launch gpg-agent && gpg-connect-agent updatestartuptty /bye > \"/dev/null\" 2>&1"
@@ -385,9 +385,9 @@ function InstallCustomPackages() {
 function InstallDependencyPackages() {
     REINSTALL_BREW="false"
 
-    export HOMEBREW_API_DOMAIN="https://mirrors.ustc.edu.cn/homebrew-bottles/api"
-    export HOMEBREW_BOTTLE_DOMAIN="https://mirrors.ustc.edu.cn/homebrew-bottles/bottles"
-    export HOMEBREW_BREW_GIT_REMOTE="https://mirrors.ustc.edu.cn/brew.git"
+    export HOMEBREW_API_DOMAIN="https://mirrors.cernet.edu.cn/homebrew-bottles/api"
+    export HOMEBREW_BOTTLE_DOMAIN="https://mirrors.cernet.edu.cn/homebrew-bottles/bottles"
+    export HOMEBREW_BREW_GIT_REMOTE="https://mirrors.cernet.edu.cn/brew.git"
     export PATH="/opt/homebrew/sbin:/opt/homebrew/bin:${PATH}"
 
     if [ "${REINSTALL_BREW}" == "true" ]; then
@@ -396,7 +396,7 @@ function InstallDependencyPackages() {
 
     which "brew" > "/dev/null" 2>&1
     if [ "$?" -eq "1" ]; then
-        /bin/bash -c "$(curl -fsSL https://mirrors.ustc.edu.cn/misc/brew-install.sh)"
+        /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
     fi
 
     app_list=(

@@ -45,7 +45,7 @@ function GetSystemInformation() {
                     APT_SOURCES_FILE="/etc/apt/sources.list"
                 else
                     APT_SOURCES_FILE="/etc/apt/sources.list.d/ubuntu.sources"
-                fi && sed -i "s/[a-z]\{0,\}[.]\{0,\}archive.ubuntu.com/mirrors.ustc.edu.cn/g;s/[a-z]\{0,\}[.]\{0,\}ports.ubuntu.com/mirrors.ustc.edu.cn/g;s/[a-z]\{0,\}[.]\{0,\}security.ubuntu.com/mirrors.ustc.edu.cn/g" "${APT_SOURCES_FILE}" && apt update && apt install virt-what -qy
+                fi && sed -i "s/[a-z]\{0,\}[.]\{0,\}archive.ubuntu.com/mirrors.cernet.edu.cn/g;s/[a-z]\{0,\}[.]\{0,\}ports.ubuntu.com/mirrors.cernet.edu.cn/g;s/[a-z]\{0,\}[.]\{0,\}security.ubuntu.com/mirrors.cernet.edu.cn/g" "${APT_SOURCES_FILE}" && apt update && apt install virt-what -qy
                 which "virt-what" > "/dev/null" 2>&1
                 if [ "$?" -eq "1" ]; then
                     echo "virt-what has not been installed!"
@@ -158,16 +158,16 @@ function GetSystemInformation() {
 # Set Repository Mirror
 function SetRepositoryMirror() {
     mirror_list=(
-        "deb ${transport_protocol}://mirrors.ustc.edu.cn/${MIRROR_URL} ${LSBCodename} main multiverse restricted universe"
-        "deb ${transport_protocol}://mirrors.ustc.edu.cn/${MIRROR_URL} ${LSBCodename}-backports main multiverse restricted universe"
-        "deb ${transport_protocol}://mirrors.ustc.edu.cn/${MIRROR_URL} ${LSBCodename}-proposed main multiverse restricted universe"
-        "deb ${transport_protocol}://mirrors.ustc.edu.cn/${MIRROR_URL} ${LSBCodename}-security main multiverse restricted universe"
-        "deb ${transport_protocol}://mirrors.ustc.edu.cn/${MIRROR_URL} ${LSBCodename}-updates main multiverse restricted universe"
-        "deb-src ${transport_protocol}://mirrors.ustc.edu.cn/${MIRROR_URL} ${LSBCodename} main multiverse restricted universe"
-        "deb-src ${transport_protocol}://mirrors.ustc.edu.cn/${MIRROR_URL} ${LSBCodename}-backports main multiverse restricted universe"
-        "deb-src ${transport_protocol}://mirrors.ustc.edu.cn/${MIRROR_URL} ${LSBCodename}-proposed main multiverse restricted universe"
-        "deb-src ${transport_protocol}://mirrors.ustc.edu.cn/${MIRROR_URL} ${LSBCodename}-security main multiverse restricted universe"
-        "deb-src ${transport_protocol}://mirrors.ustc.edu.cn/${MIRROR_URL} ${LSBCodename}-updates main multiverse restricted universe"
+        "deb ${transport_protocol}://mirrors.cernet.edu.cn/${MIRROR_URL} ${LSBCodename} main multiverse restricted universe"
+        "deb ${transport_protocol}://mirrors.cernet.edu.cn/${MIRROR_URL} ${LSBCodename}-backports main multiverse restricted universe"
+        "deb ${transport_protocol}://mirrors.cernet.edu.cn/${MIRROR_URL} ${LSBCodename}-proposed main multiverse restricted universe"
+        "deb ${transport_protocol}://mirrors.cernet.edu.cn/${MIRROR_URL} ${LSBCodename}-security main multiverse restricted universe"
+        "deb ${transport_protocol}://mirrors.cernet.edu.cn/${MIRROR_URL} ${LSBCodename}-updates main multiverse restricted universe"
+        "deb-src ${transport_protocol}://mirrors.cernet.edu.cn/${MIRROR_URL} ${LSBCodename} main multiverse restricted universe"
+        "deb-src ${transport_protocol}://mirrors.cernet.edu.cn/${MIRROR_URL} ${LSBCodename}-backports main multiverse restricted universe"
+        "deb-src ${transport_protocol}://mirrors.cernet.edu.cn/${MIRROR_URL} ${LSBCodename}-proposed main multiverse restricted universe"
+        "deb-src ${transport_protocol}://mirrors.cernet.edu.cn/${MIRROR_URL} ${LSBCodename}-security main multiverse restricted universe"
+        "deb-src ${transport_protocol}://mirrors.cernet.edu.cn/${MIRROR_URL} ${LSBCodename}-updates main multiverse restricted universe"
     )
     if [ ! -d "/etc/apt/sources.list.d" ]; then
         mkdir "/etc/apt/sources.list.d"
@@ -786,7 +786,7 @@ function ConfigurePackages() {
             fi
         fi
         if [ "${WHICH_PIP}" != "null" ]; then
-            ${WHICH_PIP} config set global.index-url "https://mirrors.ustc.edu.cn/pypi/web/simple"
+            ${WHICH_PIP} config set global.index-url "https://mirrors.cernet.edu.cn/pypi/web/simple"
         fi
         if [ -f "/root/.config/pip/pip.conf" ]; then
             if [ ! -d "/home/${DEFAULT_USERNAME}/.config" ]; then
@@ -1301,8 +1301,8 @@ function InstallCustomPackages() {
             "docker-ce-cli"
             "docker-compose-plugin"
         )
-        rm -rf "/usr/share/keyrings/docker-archive-keyring.gpg" && curl -fsSL "https://mirrors.ustc.edu.cn/docker-ce/linux/ubuntu/gpg" | gpg --dearmor -o "/usr/share/keyrings/docker-archive-keyring.gpg"
-        echo "deb [arch=${OSArchitecture} signed-by=/usr/share/keyrings/docker-archive-keyring.gpg] https://mirrors.ustc.edu.cn/docker-ce/linux/ubuntu ${LSBCodename} stable" > "/etc/apt/sources.list.d/docker.list"
+        rm -rf "/usr/share/keyrings/docker-archive-keyring.gpg" && curl -fsSL "https://mirrors.cernet.edu.cn/docker-ce/linux/ubuntu/gpg" | gpg --dearmor -o "/usr/share/keyrings/docker-archive-keyring.gpg"
+        echo "deb [arch=${OSArchitecture} signed-by=/usr/share/keyrings/docker-archive-keyring.gpg] https://mirrors.cernet.edu.cn/docker-ce/linux/ubuntu ${LSBCodename} stable" > "/etc/apt/sources.list.d/docker.list"
         apt update && apt purge -qy containerd docker-compose docker-doc docker.io podman-docker runc && for apt_list_task in "${!apt_list[@]}"; do
             apt-cache show ${apt_list[$apt_list_task]} && if [ "$?" -eq "0" ]; then
                 apt install -qy ${apt_list[$apt_list_task]}
