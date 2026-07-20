@@ -260,20 +260,6 @@ function ConfigurePackages() {
             done && cat "/tmp/chrony.autodeploy" > "/etc/chrony/chrony.conf" && rm -rf "/tmp/chrony.autodeploy" && systemctl restart chrony && sleep 5s && chronyc activity && chronyc tracking && chronyc clients && hwclock -w
         fi
     }
-    function ConfigureCockpit() {
-        cockpit_list=(
-            "[Session]"
-            "IdleTimeout = 60"
-            "[WebService]"
-            "MaxStartups = 3:75:5"
-        )
-        which "cockpit-bridge" > "/dev/null" 2>&1
-        if [ "$?" -eq "0" ]; then
-            rm -rf "/tmp/cockpit.autodeploy" && for cockpit_list_task in "${!cockpit_list[@]}"; do
-                echo "${cockpit_list[$cockpit_list_task]}" >> "/tmp/cockpit.autodeploy"
-            done && cat "/tmp/cockpit.autodeploy" > "/etc/cockpit/cockpit.conf" && rm -rf "/tmp/cockpit.autodeploy" && systemctl restart cockpit
-        fi
-    }
     function ConfigureCrontab() {
         crontab_list=(
             "0 0 * * 7 sudo apt update && sudo apt full-upgrade -qy && sudo apt autoremove -qy --purge"
@@ -343,14 +329,6 @@ function ConfigurePackages() {
     }
     function ConfigureFail2Ban() {
         fail2ban_list=(
-            "[cockpit]"
-            "bantime = 604800"
-            "enabled = true"
-            "filter = cockpit"
-            "findtime = 60"
-            "logpath = /var/log/auth.log"
-            "maxretry = 5"
-            "port = 9090"
             "[sshd]"
             "bantime = 604800"
             "enabled = true"
@@ -358,12 +336,7 @@ function ConfigurePackages() {
             "findtime = 60"
             "logpath = /var/log/auth.log"
             "maxretry = 5"
-            "port = 9022"
-        )
-        fail2ban_cockpit_list=(
-            "[Definition]"
-            "failregex = pam_unix\(cockpit:auth\): authentication failure; logname=.* uid=.* euid=.* tty=.* ruser=.* rhost=<HOST>"
-            "journalmatch = SYSLOG_FACILITY=10 PRIORITY=5"
+            "port = 22"
         )
         which "fail2ban-client" > "/dev/null" 2>&1
         if [ "$?" -eq "0" ]; then
@@ -378,9 +351,6 @@ function ConfigurePackages() {
             if [ -f "/etc/fail2ban/jail.conf" ]; then
                 cat "/etc/fail2ban/jail.conf" | sed "s/action\ \=\ iptables\-allports/action\ \=\ ufw/g;s/banaction\ \=\ iptables\-multiport/banaction\ \=\ ufw/g;s/banaction\ \=\ iptables\-multiport\-log/banaction\ \=\ ufw/g;s/banaction\ \=\ ufw\-log/banaction\ \=\ ufw/g;s/banaction\_allports\ \=\ iptables\-allports/banaction\_allports\ \=\ ufw/g" > "/etc/fail2ban/jail.local"
             fi
-            rm -rf "/tmp/fail2ban.autodeploy" && for fail2ban_cockpit_list_task in "${!fail2ban_cockpit_list[@]}"; do
-                echo "${fail2ban_cockpit_list[$fail2ban_cockpit_list_task]}" >> "/tmp/fail2ban.autodeploy"
-            done && cat "/tmp/fail2ban.autodeploy" > "/etc/fail2ban/filter.d/cockpit.conf" && rm -rf "/tmp/fail2ban.autodeploy"
             rm -rf "/tmp/fail2ban.autodeploy" && for fail2ban_list_task in "${!fail2ban_list[@]}"; do
                 echo "${fail2ban_list[$fail2ban_list_task]}" >> "/tmp/fail2ban.autodeploy"
             done && cat "/tmp/fail2ban.autodeploy" > "/etc/fail2ban/jail.d/fail2ban_default.conf" && rm -rf "/tmp/fail2ban.autodeploy" && systemctl enable fail2ban && fail2ban-client reload && sleep 5s && fail2ban-client status
@@ -868,7 +838,7 @@ function ConfigurePackages() {
     }
     function ConfigureSshd() {
         if [ -f "/usr/share/openssh/sshd_config" ]; then
-            cat "/usr/share/openssh/sshd_config" | sed "s/\#PasswordAuthentication\ yes/PasswordAuthentication\ yes/g;s/\#PermitRootLogin\ prohibit\-password/PermitRootLogin\ yes/g;s/\#Port\ 22/Port 9022/g;s/\#PubkeyAuthentication\ yes/PubkeyAuthentication\ yes/g" > "/tmp/sshd_config.autodeploy" && cat "/tmp/sshd_config.autodeploy" > "/etc/ssh/sshd_config" && rm -rf "/tmp/sshd_config.autodeploy" /etc/ssh/sshd_config.d/*
+            cat "/usr/share/openssh/sshd_config" | sed "s/\#PasswordAuthentication\ yes/PasswordAuthentication\ yes/g;s/\#PermitRootLogin\ prohibit\-password/PermitRootLogin\ yes/g;s/\#PubkeyAuthentication\ yes/PubkeyAuthentication\ yes/g" > "/tmp/sshd_config.autodeploy" && cat "/tmp/sshd_config.autodeploy" > "/etc/ssh/sshd_config" && rm -rf "/tmp/sshd_config.autodeploy" /etc/ssh/sshd_config.d/*
         fi
     }
     function ConfigureSysctl() {
@@ -933,7 +903,7 @@ function ConfigurePackages() {
         which "ufw" > "/dev/null" 2>&1
         if [ "$?" -eq "0" ] && [ -f "/etc/default/ufw" ]; then
             echo "$(cat '/etc/default/ufw' | sed 's/DEFAULT\_APPLICATION\_POLICY\=\"ACCEPT\"/DEFAULT\_APPLICATION\_POLICY\=\"REJECT\"/g;s/DEFAULT\_APPLICATION\_POLICY\=\"DROP\"/DEFAULT\_APPLICATION\_POLICY\=\"REJECT\"/g;s/DEFAULT\_APPLICATION\_POLICY\=\"SKIP\"/DEFAULT\_APPLICATION\_POLICY\=\"REJECT\"/g;s/DEFAULT\_FORWARD\_POLICY\=\"DROP\"/DEFAULT\_FORWARD\_POLICY\=\"ACCEPT\"/g;s/DEFAULT\_FORWARD\_POLICY\=\"REJECT\"/DEFAULT\_FORWARD\_POLICY\=\"ACCEPT\"/g;s/DEFAULT\_INPUT\_POLICY\=\"ACCEPT\"/DEFAULT\_INPUT\_POLICY\=\"REJECT\"/g;s/DEFAULT\_INPUT\_POLICY\=\"DROP\"/DEFAULT\_INPUT\_POLICY\=\"REJECT\"/g;s/DEFAULT\_OUTPUT\_POLICY\=\"DROP\"/DEFAULT\_OUTPUT\_POLICY\=\"ACCEPT\"/g;s/DEFAULT\_OUTPUT\_POLICY\=\"REJECT\"/DEFAULT\_OUTPUT\_POLICY\=\"ACCEPT\"/g;s/MANAGE\_BUILTINS\=yes/MANAGE\_BUILTINS\=no/g;s/IPV6\=no/IPV6\=yes/g')" > "/tmp/ufw.autodeploy" && cat "/tmp/ufw.autodeploy" > "/etc/default/ufw" && rm -rf "/tmp/ufw.autodeploy"
-            ufw reload && ufw reset && ufw allow 123/udp && ufw allow 161/udp && ufw limit 22/tcp && ufw allow 323/udp && ufw allow 3493/tcp && ufw allow 51820/udp && ufw limit 9022/tcp && ufw allow 9090/tcp && ufw allow in on wg0 && ufw enable && ufw status verbose
+            ufw reload && ufw reset && ufw allow 123/udp && ufw allow 161/udp && ufw limit 22/tcp && ufw allow 323/udp && ufw allow 3493/tcp && ufw allow 51820/udp && ufw allow in on wg0 && ufw enable && ufw status verbose
         fi
     }
     function ConfigureWireGuard() {
@@ -1040,7 +1010,6 @@ function ConfigurePackages() {
     ConfigureAPT
     ConfigureBusybox
     ConfigureChrony
-    ConfigureCockpit
     ConfigureCrontab
     ConfigureCrowdSec
     ConfigureDockerEngine
@@ -1415,8 +1384,6 @@ function InstallDependencyPackages() {
         "busybox"
         "ca-certificates"
         "chrony"
-        "cockpit"
-        "cockpit-pcp"
         "cron"
         "curl"
         "dnsutils"
