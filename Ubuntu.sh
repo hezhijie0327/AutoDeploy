@@ -260,6 +260,12 @@ function ConfigurePackages() {
             done && cat "/tmp/chrony.autodeploy" > "/etc/chrony/chrony.conf" && rm -rf "/tmp/chrony.autodeploy" && systemctl restart chrony && sleep 5s && chronyc activity && chronyc tracking && chronyc clients && hwclock -w
         fi
     }
+    function ConfigureCloudflareWARP() {
+        which "warp-cli" > "/dev/null" 2>&1
+        if [ "$?" -eq "0" ]; then
+            ufw allow in on CloudflareWARP
+        fi
+    }
     function ConfigureCrontab() {
         crontab_list=(
             "0 0 * * 7 sudo apt update && sudo apt full-upgrade -qy && sudo apt autoremove -qy --purge"
@@ -1010,6 +1016,7 @@ function ConfigurePackages() {
     ConfigureAPT
     ConfigureBusybox
     ConfigureChrony
+    ConfigureCloudflareWARP
     ConfigureCrontab
     ConfigureCrowdSec
     ConfigureDockerEngine
@@ -1229,7 +1236,7 @@ function ConfigureSystem() {
 }
 # Install Custom Packages
 function InstallCustomPackages() {
-    function InstallCloudflareWarp() {
+    function InstallCloudflareWARP() {
         apt_list=(
             "cloudflare-warp"
         )
@@ -1364,7 +1371,7 @@ function InstallCustomPackages() {
             fi
         done
     }
-    #InstallCloudflareWarp
+    #InstallCloudflareWARP
     InstallCrowdSec
     InstallDockerEngine
     InstallFRRouting
