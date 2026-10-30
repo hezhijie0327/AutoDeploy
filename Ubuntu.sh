@@ -261,6 +261,8 @@ function ConfigurePackages() {
         fi
     }
     function ConfigureCloudflareWARP() {
+        # Get token from `https://<YOUR_TEAM_NAME>.cloudflareaccess.com/warp`
+        # Login via `warp-cli registration token 'com.cloudflare.warp://<your-team-name>.cloudflareaccess.com/auth?token=<your-token>'`
         which "warp-cli" > "/dev/null" 2>&1
         if [ "$?" -eq "0" ]; then
             ufw allow in on CloudflareWARP
