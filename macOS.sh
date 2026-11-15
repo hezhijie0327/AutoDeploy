@@ -679,14 +679,17 @@ function InstallCustomPackages() {
     function InstallAppFromCask() {
         local app_list=("${CASK_APPS[@]}")
         HaveCommand brew || return 0
-        local app
+        local app available=()
         for app in "${app_list[@]}"; do
             if brew info --cask "$app" > /dev/null 2>&1; then
-                brew install --cask "$app"
+                available+=("$app")
             else
                 LogWarn "cask not found, skipped: ${app}"
             fi
         done
+        if [ "${#available[@]}" -gt 0 ]; then
+            brew install --cask "${available[@]}"
+        fi
     }
     function InstallAppFromMAS() {
         local app_list=("${MAS_APPS[@]}")
@@ -723,16 +726,24 @@ function InstallDependencyPackages() {
     local app_list=("${BREW_PACKAGES[@]}")
     brew developer on
     brew update
-    local app
+    # Classify first, then batch-install: brew pays a Ruby startup + dependency
+    # pass per invocation, so one call per kind beats one call per package.
+    local app formulae=() casks=()
     for app in "${app_list[@]}"; do
         if brew info --formula "$app" > /dev/null 2>&1; then
-            brew install --formula "$app"
+            formulae+=("$app")
         elif brew info --cask "$app" > /dev/null 2>&1; then
-            brew install --cask "$app"
+            casks+=("$app")
         else
             LogWarn "formula/cask not found, skipped: ${app}"
         fi
     done
+    if [ "${#formulae[@]}" -gt 0 ]; then
+        brew install --formula "${formulae[@]}"
+    fi
+    if [ "${#casks[@]}" -gt 0 ]; then
+        brew install --cask "${casks[@]}"
+    fi
 }
 
 # Upgrade Packages

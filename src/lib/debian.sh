@@ -703,14 +703,19 @@ InstallAptRepo() {
 
 InstallAptPackages() {
     apt update
-    local pkg
+    # Filter available packages, then install them in a single apt invocation:
+    # one dependency-resolution / dpkg-trigger pass instead of one per package.
+    local pkg available=()
     for pkg in "$@"; do
         if apt-cache show "$pkg" > /dev/null 2>&1; then
-            apt install -qy "$pkg"
+            available+=("$pkg")
         else
             LogWarn "package not available, skipped: ${pkg}"
         fi
     done
+    if [ "${#available[@]}" -gt 0 ]; then
+        apt install -qy "${available[@]}"
+    fi
 }
 
 UpgradePackages() {

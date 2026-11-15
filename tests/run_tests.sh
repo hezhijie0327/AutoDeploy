@@ -186,6 +186,17 @@ AUTODEPLOY_FORCE="true" InitRun > /dev/null
 AssertEq "AUTODEPLOY_FORCE clears state" "0" "$(StepsCompleted)"
 AUTODEPLOY_FORCE="false"
 
+printf '== InstallAptPackages batching ==\n'
+# Mock apt tools so this runs without a real apt (e.g. on macOS).
+MOCK_APT_LOG="${TMPDIR_TESTS}/apt.log"
+: > "$MOCK_APT_LOG"
+apt() { printf 'apt %s\n' "$*" >> "$MOCK_APT_LOG"; }
+apt-cache() { [ "$2" != "bad" ]; }
+InstallAptPackages good1 good2 bad good3 > /dev/null 2>&1
+AssertEq "single batched install of available packages" "apt install -qy good1 good2 good3" "$(grep '^apt install' "$MOCK_APT_LOG")"
+AssertEq "unavailable package skipped" "0" "$(grep -c 'bad' "$MOCK_APT_LOG" || true)"
+unset -f apt apt-cache
+
 printf '\n'
 if [ "$FAILURES" -eq 0 ]; then
     printf 'all tests passed\n'
