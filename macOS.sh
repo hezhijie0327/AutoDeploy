@@ -37,7 +37,7 @@ GIT_HTTPS_PROXY="${GIT_HTTPS_PROXY:-}"
 REINSTALL_BREW="${REINSTALL_BREW:-false}" # true wipes and reinstalls Homebrew
 
 ## Proxy / mirrors
-GHPROXY_URL="${GHPROXY_URL:-}" # GitHub proxy domain, no scheme
+GHPROXY_URL="${GHPROXY_URL:-}" # GitHub proxy: bare domain or full URL (scheme optional)
 PROXY_URL="${PROXY_URL:-http://vpn.zhijie.online:7890}" # zsh proxy_on helper
 PROXY_PROTOCOL="${PROXY_PROTOCOL:-socks5}" # proxychains upstream
 PROXY_IP="${PROXY_IP:-127.0.0.1}"
@@ -268,7 +268,17 @@ GetCurrentUsername() {
 SetGHProxyDomain() {
     GHPROXY_URL="${GHPROXY_URL:-}"
     if [ -n "$GHPROXY_URL" ]; then
-        export GHPROXY_URL="https://${GHPROXY_URL}/"
+        # Accept a bare domain (proxy.example.com) or a full URL
+        # (https://proxy.example.com[/]); keep any given scheme.
+        case "$GHPROXY_URL" in
+            *://*) ;;
+            *) GHPROXY_URL="https://${GHPROXY_URL}" ;;
+        esac
+        # Normalize to exactly one trailing slash.
+        while [ "$GHPROXY_URL" != "${GHPROXY_URL%/}" ]; do
+            GHPROXY_URL="${GHPROXY_URL%/}"
+        done
+        export GHPROXY_URL="${GHPROXY_URL}/"
     fi
 }
 

@@ -186,6 +186,20 @@ AUTODEPLOY_FORCE="true" InitRun > /dev/null
 AssertEq "AUTODEPLOY_FORCE clears state" "0" "$(StepsCompleted)"
 AUTODEPLOY_FORCE="false"
 
+printf '== SetGHProxyDomain normalization ==\n'
+GHPROXY_URL="proxy.example.com"; SetGHProxyDomain
+AssertEq "bare domain gets https and slash" "https://proxy.example.com/" "$GHPROXY_URL"
+GHPROXY_URL="https://proxy.example.com"; SetGHProxyDomain
+AssertEq "https without trailing slash" "https://proxy.example.com/" "$GHPROXY_URL"
+GHPROXY_URL="https://proxy.example.com/"; SetGHProxyDomain
+AssertEq "https with slash unchanged" "https://proxy.example.com/" "$GHPROXY_URL"
+GHPROXY_URL="http://proxy.example.com"; SetGHProxyDomain
+AssertEq "http scheme preserved" "http://proxy.example.com/" "$GHPROXY_URL"
+GHPROXY_URL="https://proxy.example.com//"; SetGHProxyDomain
+AssertEq "extra trailing slashes collapsed" "https://proxy.example.com/" "$GHPROXY_URL"
+GHPROXY_URL=""; SetGHProxyDomain
+AssertEq "empty stays empty" "" "$GHPROXY_URL"
+
 printf '== InstallAptPackages batching ==\n'
 # Mock apt tools so this runs without a real apt (e.g. on macOS).
 MOCK_APT_LOG="${TMPDIR_TESTS}/apt.log"

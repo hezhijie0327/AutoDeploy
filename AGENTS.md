@@ -237,12 +237,22 @@ Each orchestration leaf runs through `RunStep "<id>" <function>`. A step is appe
 ## Common Patterns
 
 ### Proxy Configuration
-`GHPROXY_URL` is env-overridable (bare domain, no scheme):
+`GHPROXY_URL` is env-overridable; it accepts a bare domain or a full URL (scheme optional) and normalizes to `scheme://host/`:
 ```bash
 SetGHProxyDomain() {
     GHPROXY_URL="${GHPROXY_URL:-}"
     if [ -n "$GHPROXY_URL" ]; then
-        export GHPROXY_URL="https://${GHPROXY_URL}/"
+        # Accept a bare domain (proxy.example.com) or a full URL
+        # (https://proxy.example.com[/]); keep any given scheme.
+        case "$GHPROXY_URL" in
+            *://*) ;;
+            *) GHPROXY_URL="https://${GHPROXY_URL}" ;;
+        esac
+        # Normalize to exactly one trailing slash.
+        while [ "$GHPROXY_URL" != "${GHPROXY_URL%/}" ]; do
+            GHPROXY_URL="${GHPROXY_URL%/}"
+        done
+        export GHPROXY_URL="${GHPROXY_URL}/"
     fi
 }
 ```

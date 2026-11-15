@@ -129,7 +129,17 @@ GetCurrentUsername() {
 SetGHProxyDomain() {
     GHPROXY_URL="${GHPROXY_URL:-}"
     if [ -n "$GHPROXY_URL" ]; then
-        export GHPROXY_URL="https://${GHPROXY_URL}/"
+        # Accept a bare domain (proxy.example.com) or a full URL
+        # (https://proxy.example.com[/]); keep any given scheme.
+        case "$GHPROXY_URL" in
+            *://*) ;;
+            *) GHPROXY_URL="https://${GHPROXY_URL}" ;;
+        esac
+        # Normalize to exactly one trailing slash.
+        while [ "$GHPROXY_URL" != "${GHPROXY_URL%/}" ]; do
+            GHPROXY_URL="${GHPROXY_URL%/}"
+        done
+        export GHPROXY_URL="${GHPROXY_URL}/"
     fi
 }
 

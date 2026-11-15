@@ -25,7 +25,7 @@ GIT_HTTP_PROXY="${GIT_HTTP_PROXY:-}"
 GIT_HTTPS_PROXY="${GIT_HTTPS_PROXY:-}"
 
 ## Proxy / mirrors
-GHPROXY_URL="${GHPROXY_URL:-}" # GitHub proxy domain, no scheme
+GHPROXY_URL="${GHPROXY_URL:-}" # GitHub proxy: bare domain or full URL (scheme optional)
 PROXY_URL="${PROXY_URL:-http://vpn.zhijie.online:7890}" # zsh proxy_on helper
 
 ## Zsh

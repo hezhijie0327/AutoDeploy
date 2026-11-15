@@ -70,7 +70,7 @@ CUSTOM_DNS_GLOBAL=(
 )
 
 ## Proxy / mirrors
-GHPROXY_URL="${GHPROXY_URL:-}" # GitHub proxy domain, no scheme
+GHPROXY_URL="${GHPROXY_URL:-}" # GitHub proxy: bare domain or full URL (scheme optional)
 PROXY_URL="${PROXY_URL:-http://vpn.zhijie.online:7890}" # zsh proxy_on helper
 PROXY_PROTOCOL="${PROXY_PROTOCOL:-socks5}" # proxychains upstream
 PROXY_IP="${PROXY_IP:-127.0.0.1}"
