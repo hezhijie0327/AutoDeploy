@@ -147,6 +147,11 @@ There is no dry-run mode. The scripts modify the live system; test in a VM or sp
 
 ```text
 src/
+├── config/
+│   ├── DSM.sh       # top-of-script Configuration block (tunable defaults)
+│   ├── macOS.sh
+│   ├── Ubuntu.sh
+│   └── ProxmoxVE.sh
 ├── lib/
 │   ├── common.sh    # shared by all four platforms (bash 3.2 compatible)
 │   └── debian.sh    # shared by Ubuntu + Proxmox VE (bash 4.4+)
@@ -154,14 +159,22 @@ src/
 ├── macOS.sh
 ├── Ubuntu.sh
 └── ProxmoxVE.sh
-build.sh             # concatenates header + libs + platform file → root script
-lint.sh              # bash -n, shellcheck, build-freshness check
+build.sh             # concatenates header + config + libs + platform → root script
+lint.sh              # bash -n, shellcheck, step-count, build-freshness checks
 tests/run_tests.sh   # unit tests for the pure functions
 ```
 
-`build.sh` assembles each root script as: license/usage header → `lib/common.sh` → (`lib/debian.sh` for Ubuntu/PVE) → platform file. Shared functions live in the libs; platform files set the globals a shared function needs (documented above each function, e.g. `GPG_HOME`, `ZSH_PATH_LIST`, `FAIL2BAN_JAILS`) and keep only platform-specific logic plus the `## Process` orchestration.
+`build.sh` assembles each root script as: license/usage header → `config/<platform>.sh` → `lib/common.sh` → (`lib/debian.sh` for Ubuntu/PVE) → platform file. The Configuration block lands at the very top of the generated script so operators can tune a deployment in one place. Shared functions live in the libs; platform files set the structural globals a shared function needs (documented above each function, e.g. `GPG_HOME`, `ZSH_PATH_LIST`, `FAIL2BAN_JAILS`) and keep only platform-specific logic plus the `## Process` orchestration.
 
 All scripts run under `set -Eeuo pipefail` with an `ERR` trap that reports the failing line and command. Commands whose failure is expected (e.g. `git config --unset` on a missing key, `chattr` on unsupported filesystems) carry an explicit `|| true`.
+
+### Configuration block
+
+`src/config/<platform>.sh` is the single authoritative source of tunable defaults: credentials, identity, behavior switches, release pinning, network/DNS, proxy/mirrors, zsh theme/plugins, and package lists. Every knob is env-overridable (`VAR="${VAR:-default}"`). Functions reference these globals; the `:-` fallbacks kept inside a few shared functions are only a safety net, not a second place to edit. Structural arrays that operators rarely touch (firewall rules, sysctl values, chrony servers) stay in the functions.
+
+### Resume and progress
+
+Each orchestration leaf runs through `RunStep "<id>" <function>`. A step is appended to the state file (`$AUTODEPLOY_STATE_DIR/state`, default `~/.autodeploy`) only after it succeeds, so an interrupted run resumes at the first unfinished step. Container functions (`ConfigurePackages`, `ConfigureSystem`, `InstallCustomPackages`) always run — they set globals and dispatch their children, which skip individually if already done. `GetSystemInformation` and macOS `ConfigureZsh` always run because later steps depend on the globals they set. `AUTODEPLOY_FORCE=true` clears the state and re-runs everything. `RenderProgress` prints a `[####----] done/total (pct%)` line per step; `AUTODEPLOY_STEP_TOTAL` must equal the number of `RunStep` calls (lint.sh enforces this).
 
 ## Conventions
 
@@ -192,7 +205,9 @@ All scripts run under `set -Eeuo pipefail` with an `ERR` trap that reports the f
 ### Gotchas
 - **macOS ships bash 3.2**: `lib/common.sh` must stay 3.2-compatible — no associative arrays, no namerefs, guard empty-array expansions with `${arr[@]+"${arr[@]}"}`. `lib/debian.sh` targets bash 4.4+ only.
 - **Generated files**: commit the regenerated root scripts together with the `src/` change; `lint.sh` enforces freshness.
-- **Release pinning is intentional**: `LSB_CODENAME`/`LSB_VERSION` (Ubuntu) and `LSB_CODENAME`/`CEPH_CODENAME` (PVE) are hardcoded to the latest release by design. Bump them each release; do not switch to auto-detection.
+- **Step total**: when adding/removing a `RunStep` call, update `AUTODEPLOY_STEP_TOTAL` in `src/config/<platform>.sh`; `lint.sh` fails on a mismatch.
+- **Configuration is authoritative**: edit tunable defaults in `src/config/<platform>.sh`, not inside functions. Keep new knobs env-overridable.
+- **Release pinning is intentional**: `LSB_CODENAME`/`LSB_VERSION` (Ubuntu) and `LSB_CODENAME`/`CEPH_CODENAME` (PVE) are hardcoded to the latest release by design. Bump them each release in the config block; do not switch to auto-detection.
 - **Single quotes in generated snippets** (e.g. `plugin_upgrade_list`) are deliberate — they must not expand at generation time.
 - `pcie_acs_override` is a patched-kernel parameter; mainline kernels ignore it. Kept intentionally for homelab IOMMU grouping.
 - macOS has no `shuf`; use `$((RANDOM % 256))` for random octets.

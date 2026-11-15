@@ -20,6 +20,10 @@
 - **安全加固**：UFW / PVE 防火墙、Fail2Ban、CrowdSec、SSH 密钥自动生成（ecdsa / ed25519 / rsa）
 - **系统优化**：BBR、sysctl 调优、ZRAM swap、chrony 时间同步、XanMod 内核（按 CPU psABI 级别选择）
 - **可重复执行**：已有密钥和配置自动备份为 `*.bak.<时间戳>`，不会直接覆盖
+- **断点续跑**：每个步骤成功后记录到 `~/.autodeploy/state`，中断后重跑自动跳过已完成步骤；`AUTODEPLOY_FORCE=true` 全部重来
+- **进度可视**：每步打印 `[####----------------] 8/48 (16%) ConfigureChrony` 进度条
+- **顶部集中配置**：每个脚本开头是 Configuration 块，凭据 / 开关 / 网络 / 软件包列表一处可调
+- **批量装包**：依赖一次性批量安装（apt / brew），省去逐包重复解析，装机与重跑更快
 - **失败即停**：`set -Eeuo pipefail` + 行号报错，不再静默跑完一半
 
 ## 快速开始
@@ -40,7 +44,9 @@ curl "https://source.zhijie.online/AutoDeploy/main/Ubuntu.sh" | sudo bash
 
 ## 配置
 
-所有开关都通过**环境变量**覆盖，在执行前 export 即可。使用内置默认密码时脚本会打印 WARNING，部署后请及时修改。
+每个脚本顶部都有一个 **Configuration 块**，集中了全部可调默认值（凭据、身份、行为开关、网络/DNS、发行版代号、代理、zsh、软件包列表），微调时直接编辑那一处即可。
+
+所有开关也支持**环境变量**覆盖（优先级高于配置块默认值），在执行前 export 即可。使用内置默认密码时脚本会打印 WARNING，部署后请及时修改。
 
 ### 凭据
 
@@ -61,6 +67,8 @@ curl "https://source.zhijie.online/AutoDeploy/main/Ubuntu.sh" | sudo bash
 | `RESET_CLUSTER` | `true` | 重置 corosync 集群状态（PVE；**已入集群的节点务必设 `false`**） |
 | `REINSTALL_BREW` | `false` | 重装 Homebrew（macOS） |
 | `DISABLE_SWAP` | `false` | 不创建 swapfile（Ubuntu） |
+| `AUTODEPLOY_FORCE` | `false` | 忽略断点记录，强制重跑所有步骤 |
+| `AUTODEPLOY_STATE_DIR` | `~/.autodeploy` | 断点续跑状态文件目录 |
 | `USE_GLOBAL_DNS` | `false` | 使用 Google DNS 而非 AliDNS |
 | `XANMOD_BRANCH` | `edge` | XanMod 内核分支：`disable` / `main` / `edge` / `lts` / `rt` |
 | `GHPROXY_URL` | 空（DSM 为 `proxy.zhijie.online`） | GitHub 代理域名，不带协议头 |
@@ -85,7 +93,7 @@ curl "https://source.zhijie.online/AutoDeploy/main/Ubuntu.sh" | sudo bash
 
 ## 开发
 
-根目录的 `*.sh` 是**构建产物**（`curl | bash` 直接拉取），源码在 `src/`：共享函数在 `src/lib/common.sh`（全平台，bash 3.2 兼容）和 `src/lib/debian.sh`（Ubuntu / PVE），平台差异在 `src/<平台>.sh`。
+根目录的 `*.sh` 是**构建产物**（`curl | bash` 直接拉取），源码在 `src/`：顶部配置块在 `src/config/<平台>.sh`，共享函数在 `src/lib/common.sh`（全平台，bash 3.2 兼容）和 `src/lib/debian.sh`（Ubuntu / PVE），平台差异与编排在 `src/<平台>.sh`。`build.sh` 按「头部 → 配置 → 共享库 → 平台」拼装成单文件。
 
 ```bash
 ./build.sh              # 修改 src/ 后重新生成根脚本（需一并提交）
