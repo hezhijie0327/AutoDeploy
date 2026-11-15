@@ -71,7 +71,7 @@ curl "https://source.zhijie.online/AutoDeploy/main/Ubuntu.sh" | sudo bash
 | `AUTODEPLOY_STATE_DIR` | `~/.autodeploy` | 断点续跑状态文件目录 |
 | `USE_GLOBAL_DNS` | `false` | 使用 Google DNS 而非 AliDNS |
 | `XANMOD_BRANCH` | `edge` | XanMod 内核分支：`disable` / `main` / `edge` / `lts` / `rt` |
-| `GHPROXY_URL` | 空（DSM 为 `proxy.zhijie.online`） | GitHub 代理域名，不带协议头 |
+| `GHPROXY_URL` | 空 | GitHub 代理域名，不带协议头 |
 
 ### 网络与身份
 
