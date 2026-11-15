@@ -47,6 +47,74 @@ WarnDefaultPassword() {
     fi
 }
 
+## Resume + progress
+# Each orchestration step runs through RunStep. A step is recorded in the state
+# file only after it succeeds, so an interrupted run resumes at the first
+# unfinished step. AUTODEPLOY_FORCE=true clears the state and re-runs everything.
+# Platform must set: AUTODEPLOY_STATE_DIR, AUTODEPLOY_STEP_TOTAL.
+StateFile() {
+    printf '%s/state\n' "$AUTODEPLOY_STATE_DIR"
+}
+
+StepDone() {
+    local state_file
+    state_file=$(StateFile)
+    [ -f "$state_file" ] && grep -qxF "$1" "$state_file"
+}
+
+MarkStep() {
+    mkdir -p "$AUTODEPLOY_STATE_DIR"
+    printf '%s\n' "$1" >> "$(StateFile)"
+}
+
+StepsCompleted() {
+    local state_file
+    state_file=$(StateFile)
+    if [ -f "$state_file" ]; then
+        wc -l < "$state_file" | tr -d ' '
+    else
+        printf '0\n'
+    fi
+}
+
+RenderProgress() {
+    local label="$1" total="${AUTODEPLOY_STEP_TOTAL:-0}" completed width=20 filled percent bar
+    completed=$(StepsCompleted)
+    if [ "$total" -le 0 ]; then
+        LogInfo "$label"
+        return 0
+    fi
+    percent=$((completed * 100 / total))
+    filled=$((completed * width / total))
+    bar="$(printf '%*s' "$filled" '' | tr ' ' '#')$(printf '%*s' "$((width - filled))" '' | tr ' ' '-')"
+    LogInfo "[${bar}] ${completed}/${total} (${percent}%) ${label}"
+}
+
+RunStep() {
+    local step_id="$1"
+    shift
+    if [ "${AUTODEPLOY_FORCE:-false}" != "true" ] && StepDone "$step_id"; then
+        LogInfo "skip ${step_id} (completed in a previous run)"
+        return 0
+    fi
+    RenderProgress "running ${step_id}"
+    "$@"
+    MarkStep "$step_id"
+}
+
+InitRun() {
+    if [ "${AUTODEPLOY_FORCE:-false}" = "true" ]; then
+        rm -f "$(StateFile)"
+        LogInfo "AUTODEPLOY_FORCE=true: re-running all steps"
+    else
+        local completed
+        completed=$(StepsCompleted)
+        if [ "$completed" -gt 0 ]; then
+            LogInfo "resuming: ${completed}/${AUTODEPLOY_STEP_TOTAL} steps already complete"
+        fi
+    fi
+}
+
 trap 'Die "failed at line ${LINENO}: ${BASH_COMMAND}"' ERR
 
 ## Function
@@ -227,7 +295,7 @@ GenerateOMZProfile() {
         "plugins=(${ZSH_BUILD_IN_PLUGINS} ${external_plugins})"
         "ZSH_CACHE_DIR=\"\$ZSH/cache\""
         "ZSH_CUSTOM=\"\$ZSH/custom\""
-        "ZSH_THEME=\"ys\""
+        "ZSH_THEME=\"${ZSH_THEME:-ys}\""
         "DISABLE_AUTO_UPDATE=\"true\""
         "DISABLE_UPDATE_PROMPT=\"true\""
         "UPDATE_ZSH_DAYS=\"7\""

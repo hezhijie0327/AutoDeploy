@@ -2,11 +2,184 @@
 # Copyright 2026 Zhijie He
 # Licensed under Apache-2.0 WITH Commons-Clause-1.0. See LICENSE.
 #
-# GENERATED FILE - do not edit directly. Edit src/ and run ./build.sh.
+# GENERATED FILE - edit src/ and run ./build.sh to regenerate.
+# For a one-off tweak you may edit the Configuration block below.
 #
 ## How to get and use?
 # curl "https://source.zhijie.online/AutoDeploy/main/Ubuntu.sh" | sudo bash
 # wget -qO- "https://source.zhijie.online/AutoDeploy/main/Ubuntu.sh" | sudo bash
+# ============================================================================
+# Configuration - Ubuntu
+# The single place to tune a deployment. Edit defaults here, or override any
+# knob via environment variable before running, e.g.:
+#   ROOT_PASSWORD='...' PURGE_OTHER_USERS=false curl .../Ubuntu.sh | sudo bash
+# ============================================================================
+
+## Resume / progress
+# State lives under the running user's home. AUTODEPLOY_FORCE=true re-runs all.
+AUTODEPLOY_STATE_DIR="${AUTODEPLOY_STATE_DIR:-${HOME}/.autodeploy}"
+AUTODEPLOY_FORCE="${AUTODEPLOY_FORCE:-false}"
+AUTODEPLOY_STEP_TOTAL=48 # must match the RunStep count (lint.sh checks)
+
+## Credentials (defaults are intentional; change them after deployment)
+ROOT_PASSWORD="${ROOT_PASSWORD:-R00t@123!}"
+DEFAULT_PASSWORD="${DEFAULT_PASSWORD:-*Ubuntu123*}"
+LOCK_ROOT="${LOCK_ROOT:-FALSE}" # TRUE locks the root account after deployment
+NUT_ADMIN_PASSWORD="${NUT_ADMIN_PASSWORD:-123456}"
+NUT_MON_PASSWORD="${NUT_MON_PASSWORD:-secret}"
+SNMP_AUTH_PASS="${SNMP_AUTH_PASS:-}" # empty -> root password (warns)
+SNMP_PRIV_PASS="${SNMP_PRIV_PASS:-}" # empty -> hostname (warns)
+OPENSSH_PASSWORD="${OPENSSH_PASSWORD:-}"
+GPG_PUBKEY="${GPG_PUBKEY:-DD982DAAB9C71C78F9563E5207EB56787030D792}"
+
+## Identity
+DEFAULT_USERNAME="${DEFAULT_USERNAME:-ubuntu}"
+DEFAULT_FIRSTNAME="${DEFAULT_FIRSTNAME:-User}"
+DEFAULT_LASTNAME="${DEFAULT_LASTNAME:-Ubuntu}"
+HOSTNAME_PREFIX="${HOSTNAME_PREFIX:-Ubuntu}"
+GIT_USER_NAME="${GIT_USER_NAME:-}"
+GIT_USER_EMAIL="${GIT_USER_EMAIL:-}"
+GIT_USER_SIGNINGKEY="${GIT_USER_SIGNINGKEY:-}"
+GIT_COMMIT_GPGSIGN="${GIT_COMMIT_GPGSIGN:-false}"
+GIT_GPG_PROGRAM="${GIT_GPG_PROGRAM:-gpg}"
+GIT_HTTP_PROXY="${GIT_HTTP_PROXY:-}"
+GIT_HTTPS_PROXY="${GIT_HTTPS_PROXY:-}"
+
+## Behavior switches
+PURGE_OTHER_USERS="${PURGE_OTHER_USERS:-true}" # remove other /home users (fresh-install assumption)
+USE_GLOBAL_DNS="${USE_GLOBAL_DNS:-false}" # true -> Google DNS, false -> AliDNS
+RESET_DOMAIN="${RESET_DOMAIN:-false}"
+RESET_HOSTNAME="${RESET_HOSTNAME:-false}"
+DISABLE_SWAP="${DISABLE_SWAP:-false}"
+DISABLE_ICMP_ECHO="${DISABLE_ICMP_ECHO:-false}"
+PREFER_IPV4="${PREFER_IPV4:-true}"
+XANMOD_BRANCH="${XANMOD_BRANCH:-edge}" # disable | main | edge | lts | rt
+I915_GUC_OPTION="${I915_GUC_OPTION:-3}" # 0 | 1 GuC | 2 HuC | 3 GuC/HuC
+NUT_MODE="${NUT_MODE:-}" # netclient | netserver | none | standalone
+NUT_HOST="${NUT_HOST:-}"
+
+## Release pinning (intentionally the latest release; bump each release)
+LSB_CODENAME="${LSB_CODENAME:-resolute}"
+LSB_VERSION="${LSB_VERSION:-26.04}"
+
+## Network (STATIC_*_CONFIG format: address/prefix,gateway)
+NIC_NAME="${NIC_NAME:-}" # e.g. enp6s18 / ens18; empty -> auto-detect
+STATIC_IPV4_CONFIG="${STATIC_IPV4_CONFIG:-}" # e.g. 10.192.31.254/19,10.192.0.1
+STATIC_IPV6_CONFIG="${STATIC_IPV6_CONFIG:-}" # e.g. 2409:8a20:8800::254/64,2409:8a20:8800::1
+CUSTOM_DNS_CN=(
+    "223.5.5.5"
+    "223.6.6.6"
+    "2400:3200::1"
+    "2400:3200:baba::1"
+)
+CUSTOM_DNS_GLOBAL=(
+    "8.8.4.4"
+    "8.8.8.8"
+    "2001:4860:4860::8844"
+    "2001:4860:4860::8888"
+)
+
+## Proxy / mirrors
+GHPROXY_URL="${GHPROXY_URL:-}" # GitHub proxy domain, no scheme
+PROXY_URL="${PROXY_URL:-http://vpn.zhijie.online:7890}" # zsh proxy_on helper
+PROXY_PROTOCOL="${PROXY_PROTOCOL:-socks5}" # proxychains upstream
+PROXY_IP="${PROXY_IP:-127.0.0.1}"
+PROXY_PORT="${PROXY_PORT:-7891}"
+PROXY_USERNAME="${PROXY_USERNAME:-}"
+PROXY_PASSWORD="${PROXY_PASSWORD:-}"
+DOCKER_REGISTRY_MIRRORS=()
+
+## Zsh
+ZSH_THEME="${ZSH_THEME:-ys}"
+ZSH_BUILD_IN_PLUGINS="${ZSH_BUILD_IN_PLUGINS:-aliases colored-man-pages command-not-found common-aliases docker docker-compose extract git history ssh sudo systemd ubuntu ufw}"
+
+## Dependency packages (apt)
+DEPENDENCY_PACKAGES=(
+    "apparmor"
+    "apparmor-profiles"
+    "apparmor-profiles-extra"
+    "apparmor-utils"
+    "apt-file"
+    "apt-transport-https"
+    "busybox"
+    "ca-certificates"
+    "chrony"
+    "cron"
+    "curl"
+    "dnsutils"
+    "ethtool"
+    "fail2ban"
+    "fastfetch"
+    "fonts-noto-cjk"
+    "fonts-noto-color-emoji"
+    "fwupd"
+    "git"
+    "git-lfs"
+    "gnupg"
+    "iperf3"
+    "iputils-ping"
+    "jq"
+    "knot-dnsutils"
+    "landscape-common"
+    "libsnmp-dev"
+    "lldpd"
+    "lm-sensors"
+    "lsb-release"
+    "mailutils"
+    "mtr-tiny"
+    "nano"
+    "netplan.io"
+    "net-tools"
+    "nfs-common"
+    "nmap"
+    "nut"
+    "nut-i2c"
+    "nut-ipmi"
+    "nut-modbus"
+    "nut-powerman-pdu"
+    "nut-snmp"
+    "nut-xml"
+    "openssh-client"
+    "openssh-server"
+    "p7zip-full"
+    "pinentry-tty"
+    "postfix"
+    "proxychains-ng"
+    "python3"
+    "python3-pip"
+    "qrencode"
+    "rar"
+    "realmd"
+    "resolvconf"
+    "rsyslog"
+    "snmp"
+    "snmpd"
+    "snmp-mibs-downloader"
+    "socat"
+    "sudo"
+    "systemd"
+    "systemd-zram-generator"
+    "tcpdump"
+    "tshark"
+    "tuned"
+    "udisks2"
+    "udisks2-bcache"
+    "udisks2-btrfs"
+    "udisks2-lvm2"
+    "udisks2-zram"
+    "ufw"
+    "unrar"
+    "unzip"
+    "update-notifier-common"
+    "uuid-runtime"
+    "vim"
+    "virt-what"
+    "wget"
+    "whois"
+    "wireguard"
+    "zip"
+    "zsh"
+)
 # ============================================================================
 # common.sh - shared across all platforms (DSM / macOS / Ubuntu / Proxmox VE)
 # Part of the generated single-file scripts; not executable on its own.
@@ -53,6 +226,74 @@ WarnDefaultPassword() {
     local name="$1" value="$2" default_value="$3"
     if [ "$value" = "$default_value" ]; then
         LogWarn "${name} is using the built-in default. Change it after deployment, or override it with ${name}=<value> before running."
+    fi
+}
+
+## Resume + progress
+# Each orchestration step runs through RunStep. A step is recorded in the state
+# file only after it succeeds, so an interrupted run resumes at the first
+# unfinished step. AUTODEPLOY_FORCE=true clears the state and re-runs everything.
+# Platform must set: AUTODEPLOY_STATE_DIR, AUTODEPLOY_STEP_TOTAL.
+StateFile() {
+    printf '%s/state\n' "$AUTODEPLOY_STATE_DIR"
+}
+
+StepDone() {
+    local state_file
+    state_file=$(StateFile)
+    [ -f "$state_file" ] && grep -qxF "$1" "$state_file"
+}
+
+MarkStep() {
+    mkdir -p "$AUTODEPLOY_STATE_DIR"
+    printf '%s\n' "$1" >> "$(StateFile)"
+}
+
+StepsCompleted() {
+    local state_file
+    state_file=$(StateFile)
+    if [ -f "$state_file" ]; then
+        wc -l < "$state_file" | tr -d ' '
+    else
+        printf '0\n'
+    fi
+}
+
+RenderProgress() {
+    local label="$1" total="${AUTODEPLOY_STEP_TOTAL:-0}" completed width=20 filled percent bar
+    completed=$(StepsCompleted)
+    if [ "$total" -le 0 ]; then
+        LogInfo "$label"
+        return 0
+    fi
+    percent=$((completed * 100 / total))
+    filled=$((completed * width / total))
+    bar="$(printf '%*s' "$filled" '' | tr ' ' '#')$(printf '%*s' "$((width - filled))" '' | tr ' ' '-')"
+    LogInfo "[${bar}] ${completed}/${total} (${percent}%) ${label}"
+}
+
+RunStep() {
+    local step_id="$1"
+    shift
+    if [ "${AUTODEPLOY_FORCE:-false}" != "true" ] && StepDone "$step_id"; then
+        LogInfo "skip ${step_id} (completed in a previous run)"
+        return 0
+    fi
+    RenderProgress "running ${step_id}"
+    "$@"
+    MarkStep "$step_id"
+}
+
+InitRun() {
+    if [ "${AUTODEPLOY_FORCE:-false}" = "true" ]; then
+        rm -f "$(StateFile)"
+        LogInfo "AUTODEPLOY_FORCE=true: re-running all steps"
+    else
+        local completed
+        completed=$(StepsCompleted)
+        if [ "$completed" -gt 0 ]; then
+            LogInfo "resuming: ${completed}/${AUTODEPLOY_STEP_TOTAL} steps already complete"
+        fi
     fi
 }
 
@@ -236,7 +477,7 @@ GenerateOMZProfile() {
         "plugins=(${ZSH_BUILD_IN_PLUGINS} ${external_plugins})"
         "ZSH_CACHE_DIR=\"\$ZSH/cache\""
         "ZSH_CUSTOM=\"\$ZSH/custom\""
-        "ZSH_THEME=\"ys\""
+        "ZSH_THEME=\"${ZSH_THEME:-ys}\""
         "DISABLE_AUTO_UPDATE=\"true\""
         "DISABLE_UPDATE_PROMPT=\"true\""
         "UPDATE_ZSH_DAYS=\"7\""
@@ -381,19 +622,9 @@ GenerateHostname() {
 CollectDNS() {
     USE_GLOBAL_DNS="${USE_GLOBAL_DNS:-false}"
     if [ "$USE_GLOBAL_DNS" = "true" ]; then
-        CUSTOM_DNS=(
-            "8.8.4.4"
-            "8.8.8.8"
-            "2001:4860:4860::8844"
-            "2001:4860:4860::8888"
-        )
+        CUSTOM_DNS=("${CUSTOM_DNS_GLOBAL[@]}")
     else
-        CUSTOM_DNS=(
-            "223.5.5.5"
-            "223.6.6.6"
-            "2400:3200::1"
-            "2400:3200:baba::1"
-        )
+        CUSTOM_DNS=("${CUSTOM_DNS_CN[@]}")
     fi
     DHCP_DNS=()
     CURRENT_DNS=()
@@ -1099,14 +1330,8 @@ CleanupOutageKernels() {
 ## Function
 # Get System Information
 function GetSystemInformation() {
-    # Defined early: InstallCustomPackages runs before ConfigureSystem and
-    # already needs the default username.
-    DEFAULT_FIRSTNAME="User"
-    DEFAULT_LASTNAME="Ubuntu"
+    # Identity, credentials and release pinning live in the Configuration block.
     DEFAULT_FULLNAME="${DEFAULT_LASTNAME} ${DEFAULT_FIRSTNAME}"
-    DEFAULT_USERNAME="${DEFAULT_USERNAME:-ubuntu}"
-    DEFAULT_PASSWORD="${DEFAULT_PASSWORD:-*Ubuntu123*}"
-    HOSTNAME_PREFIX="Ubuntu"
 
     function CheckMachineEnvironment() {
         function CheckHypervisorEnvironment() {
@@ -1154,11 +1379,6 @@ function GetSystemInformation() {
             *) Die "Unsupported architecture." ;;
         esac
     }
-    function SetLSBCodename() {
-        # Intentionally pinned to the latest release; bump these every release.
-        LSB_CODENAME="resolute"
-        LSB_VERSION="26.04"
-    }
     CollectDNS
     GenerateDomain
     CheckMachineEnvironment
@@ -1166,7 +1386,6 @@ function GetSystemInformation() {
     GetCPUpsABILevel
     GetCPUVendorID
     GetOSArchitecture
-    SetLSBCodename
     SetGHProxyDomain
 }
 
@@ -1391,38 +1610,38 @@ function ConfigurePackages() {
     ZSH_HOME="/home/${DEFAULT_USERNAME}"
     ZSH_OWNER="${DEFAULT_USERNAME}:${DEFAULT_USERNAME}"
     ZSH_PATH_LIST=("/bin" "/sbin" "/usr/bin" "/usr/sbin" "/usr/local/bin" "/usr/local/sbin")
-    ZSH_BUILD_IN_PLUGINS="aliases colored-man-pages command-not-found common-aliases docker docker-compose extract git history ssh sudo systemd ubuntu ufw"
     ZSH_EXTRA_EXPORTS=("export DEBIAN_FRONTEND=\"noninteractive\"")
     ZSH_TRAPEXIT="false"
 
-    ConfigureAPT
-    ConfigureBusybox
-    ConfigureChrony
-    ConfigureCloudflareWARP
-    ConfigureCrontab
-    ConfigureCrowdSec
-    ConfigureDockerEngine
-    ConfigureFail2Ban
-    ConfigureFRRouting
-    ConfigureGPG && ConfigureGit
-    ConfigureGrub
-    ConfigureLandscape
-    ConfigureLLDPD
-    ConfigureModules
-    ConfigureNetplan
-    ConfigureNut
-    ConfigureOpenSSH
-    ConfigurePostfix
-    ConfigureProxyChains
-    ConfigurePythonPyPI
-    ConfigureResolved
-    ConfigureSshd
-    ConfigureSysctl
-    ConfigureSystemd
-    ConfigureTuned
-    ConfigureUfw
-    ConfigureWireGuard
-    ConfigureZsh
+    RunStep "ConfigureAPT" ConfigureAPT
+    RunStep "ConfigureBusybox" ConfigureBusybox
+    RunStep "ConfigureChrony" ConfigureChrony
+    RunStep "ConfigureCloudflareWARP" ConfigureCloudflareWARP
+    RunStep "ConfigureCrontab" ConfigureCrontab
+    RunStep "ConfigureCrowdSec" ConfigureCrowdSec
+    RunStep "ConfigureDockerEngine" ConfigureDockerEngine
+    RunStep "ConfigureFail2Ban" ConfigureFail2Ban
+    RunStep "ConfigureFRRouting" ConfigureFRRouting
+    RunStep "ConfigureGPG" ConfigureGPG
+    RunStep "ConfigureGit" ConfigureGit
+    RunStep "ConfigureGrub" ConfigureGrub
+    RunStep "ConfigureLandscape" ConfigureLandscape
+    RunStep "ConfigureLLDPD" ConfigureLLDPD
+    RunStep "ConfigureModules" ConfigureModules
+    RunStep "ConfigureNetplan" ConfigureNetplan
+    RunStep "ConfigureNut" ConfigureNut
+    RunStep "ConfigureOpenSSH" ConfigureOpenSSH
+    RunStep "ConfigurePostfix" ConfigurePostfix
+    RunStep "ConfigureProxyChains" ConfigureProxyChains
+    RunStep "ConfigurePythonPyPI" ConfigurePythonPyPI
+    RunStep "ConfigureResolved" ConfigureResolved
+    RunStep "ConfigureSshd" ConfigureSshd
+    RunStep "ConfigureSysctl" ConfigureSysctl
+    RunStep "ConfigureSystemd" ConfigureSystemd
+    RunStep "ConfigureTuned" ConfigureTuned
+    RunStep "ConfigureUfw" ConfigureUfw
+    RunStep "ConfigureWireGuard" ConfigureWireGuard
+    RunStep "ConfigureZsh" ConfigureZsh
 }
 
 # Configure System
@@ -1536,14 +1755,14 @@ function ConfigureSystem() {
         rm -f "/etc/localtime"
         ln -s "/usr/share/zoneinfo/Asia/Shanghai" "/etc/localtime"
     }
-    ConfigureDefaultShell
-    ConfigureDefaultUser
-    ConfigureGAI
-    ConfigureHostfile
-    ConfigureLocales
-    ConfigureRootUser
-    ConfigureSWAP
-    ConfigureTimeZone
+    RunStep "ConfigureDefaultShell" ConfigureDefaultShell
+    RunStep "ConfigureDefaultUser" ConfigureDefaultUser
+    RunStep "ConfigureGAI" ConfigureGAI
+    RunStep "ConfigureHostfile" ConfigureHostfile
+    RunStep "ConfigureLocales" ConfigureLocales
+    RunStep "ConfigureRootUser" ConfigureRootUser
+    RunStep "ConfigureSWAP" ConfigureSWAP
+    RunStep "ConfigureTimeZone" ConfigureTimeZone
 }
 
 # Install Custom Packages
@@ -1612,103 +1831,18 @@ deb-src [arch=${OS_ARCHITECTURE} signed-by=/usr/share/keyrings/crowdsec-archive-
     }
     OMZ_HOME="/home/${DEFAULT_USERNAME}"
     OMZ_OWNER="${DEFAULT_USERNAME}:${DEFAULT_USERNAME}"
-    #InstallCloudflareWARP
-    InstallCrowdSec
-    InstallDockerEngine
-    InstallFRRouting
-    InstallOhMyZsh
-    #InstallTor
-    InstallXanModKernel
+    #RunStep "InstallCloudflareWARP" InstallCloudflareWARP
+    RunStep "InstallCrowdSec" InstallCrowdSec
+    RunStep "InstallDockerEngine" InstallDockerEngine
+    RunStep "InstallFRRouting" InstallFRRouting
+    RunStep "InstallOhMyZsh" InstallOhMyZsh
+    #RunStep "InstallTor" InstallTor
+    RunStep "InstallXanModKernel" InstallXanModKernel
 }
 
 # Install Dependency Packages
 function InstallDependencyPackages() {
-    local apt_list=(
-        "apparmor"
-        "apparmor-profiles"
-        "apparmor-profiles-extra"
-        "apparmor-utils"
-        "apt-file"
-        "apt-transport-https"
-        "busybox"
-        "ca-certificates"
-        "chrony"
-        "cron"
-        "curl"
-        "dnsutils"
-        "ethtool"
-        "fail2ban"
-        "fastfetch"
-        "fonts-noto-cjk"
-        "fonts-noto-color-emoji"
-        "fwupd"
-        "git"
-        "git-lfs"
-        "gnupg"
-        "iperf3"
-        "iputils-ping"
-        "jq"
-        "knot-dnsutils"
-        "landscape-common"
-        "libsnmp-dev"
-        "lldpd"
-        "lm-sensors"
-        "lsb-release"
-        "mailutils"
-        "mtr-tiny"
-        "nano"
-        "netplan.io"
-        "net-tools"
-        "nfs-common"
-        "nmap"
-        "nut"
-        "nut-i2c"
-        "nut-ipmi"
-        "nut-modbus"
-        "nut-powerman-pdu"
-        "nut-snmp"
-        "nut-xml"
-        "openssh-client"
-        "openssh-server"
-        "p7zip-full"
-        "pinentry-tty"
-        "postfix"
-        "proxychains-ng"
-        "python3"
-        "python3-pip"
-        "qrencode"
-        "rar"
-        "realmd"
-        "resolvconf"
-        "rsyslog"
-        "snmp"
-        "snmpd"
-        "snmp-mibs-downloader"
-        "socat"
-        "sudo"
-        "systemd"
-        "systemd-zram-generator"
-        "tcpdump"
-        "tshark"
-        "tuned"
-        "udisks2"
-        "udisks2-bcache"
-        "udisks2-btrfs"
-        "udisks2-lvm2"
-        "udisks2-zram"
-        "ufw"
-        "unrar"
-        "unzip"
-        "update-notifier-common"
-        "uuid-runtime"
-        "vim"
-        "virt-what"
-        "wget"
-        "whois"
-        "wireguard"
-        "zip"
-        "zsh"
-    )
+    local apt_list=("${DEPENDENCY_PACKAGES[@]}")
     apt_list+=(${HYPERVISOR_AGENT[@]+"${HYPERVISOR_AGENT[@]}"} ${MICROCODE[@]+"${MICROCODE[@]}"})
     # Purge guest agents that do not belong to the detected hypervisor.
     local hypervisor_agent_list=("ksmtuned" "open-vm-tools" "qemu-guest-agent" "virtualbox-guest-dkms")
@@ -1732,16 +1866,19 @@ function InstallDependencyPackages() {
 # Set DEBIAN_FRONTEND to "noninteractive"
 export DEBIAN_FRONTEND="noninteractive"
 RequireRoot
-# Call GetSystemInformation
+# Call GetSystemInformation (always runs: later steps need its globals)
 GetSystemInformation
+InitRun
 # Set TRANSPORT_PROTOCOL="http"; Call SetRepositoryMirror
-TRANSPORT_PROTOCOL="http" && SetRepositoryMirror
+TRANSPORT_PROTOCOL="http"
+RunStep "SetRepositoryMirror.http" SetRepositoryMirror
 # Call InstallDependencyPackages
-InstallDependencyPackages
+RunStep "InstallDependencyPackages" InstallDependencyPackages
 # Set TRANSPORT_PROTOCOL="https"; Call SetRepositoryMirror
-TRANSPORT_PROTOCOL="https" && SetRepositoryMirror
+TRANSPORT_PROTOCOL="https"
+RunStep "SetRepositoryMirror.https" SetRepositoryMirror
 # Call UpgradePackages
-UpgradePackages
+RunStep "UpgradePackages" UpgradePackages
 # Call InstallCustomPackages
 InstallCustomPackages
 # Call ConfigureSystem
@@ -1749,7 +1886,8 @@ ConfigureSystem
 # Call ConfigurePackages
 ConfigurePackages
 # Call CleanupTempFiles
-CleanupTempFiles /etc/ufw/*."$(date '+%Y%m%d')"*
+RunStep "CleanupTempFiles" CleanupTempFiles /etc/ufw/*."$(date '+%Y%m%d')"*
 # Call CleanupOutageKernels
 KERNEL_PATTERN='(linux-image)-[0-9].*'
-CleanupOutageKernels
+RunStep "CleanupOutageKernels" CleanupOutageKernels
+RenderProgress "complete"

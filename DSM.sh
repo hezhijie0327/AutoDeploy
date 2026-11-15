@@ -2,11 +2,45 @@
 # Copyright 2026 Zhijie He
 # Licensed under Apache-2.0 WITH Commons-Clause-1.0. See LICENSE.
 #
-# GENERATED FILE - do not edit directly. Edit src/ and run ./build.sh.
+# GENERATED FILE - edit src/ and run ./build.sh to regenerate.
+# For a one-off tweak you may edit the Configuration block below.
 #
 ## How to get and use?
 # curl "https://source.zhijie.online/AutoDeploy/main/DSM.sh" | sudo bash
 # wget -qO- "https://source.zhijie.online/AutoDeploy/main/DSM.sh" | sudo bash
+# ============================================================================
+# Configuration - Synology DSM
+# The single place to tune a deployment. Edit defaults here, or override any
+# knob via environment variable before running. Runs as root via sudo; the
+# operator account is taken from SUDO_USER.
+# ============================================================================
+
+## Resume / progress
+# State lives under the running user's home. AUTODEPLOY_FORCE=true re-runs all.
+AUTODEPLOY_STATE_DIR="${AUTODEPLOY_STATE_DIR:-${HOME}/.autodeploy}"
+AUTODEPLOY_FORCE="${AUTODEPLOY_FORCE:-false}"
+AUTODEPLOY_STEP_TOTAL=8 # must match the RunStep count (lint.sh checks)
+
+## Credentials
+OPENSSH_PASSWORD="${OPENSSH_PASSWORD:-}"
+GPG_PUBKEY="${GPG_PUBKEY:-DD982DAAB9C71C78F9563E5207EB56787030D792}"
+
+## Identity (Git)
+GIT_USER_NAME="${GIT_USER_NAME:-}"
+GIT_USER_EMAIL="${GIT_USER_EMAIL:-}"
+GIT_USER_SIGNINGKEY="${GIT_USER_SIGNINGKEY:-}"
+GIT_COMMIT_GPGSIGN="${GIT_COMMIT_GPGSIGN:-false}"
+GIT_GPG_PROGRAM="${GIT_GPG_PROGRAM:-gpg}"
+GIT_HTTP_PROXY="${GIT_HTTP_PROXY:-}"
+GIT_HTTPS_PROXY="${GIT_HTTPS_PROXY:-}"
+
+## Proxy / mirrors
+GHPROXY_URL="${GHPROXY_URL:-proxy.zhijie.online}" # GitHub proxy domain, no scheme
+PROXY_URL="${PROXY_URL:-http://vpn.zhijie.online:7890}" # zsh proxy_on helper
+
+## Zsh
+ZSH_THEME="${ZSH_THEME:-ys}"
+ZSH_BUILD_IN_PLUGINS="${ZSH_BUILD_IN_PLUGINS:-aliases colored-man-pages command-not-found common-aliases docker docker-compose extract git history ssh sudo}"
 # ============================================================================
 # common.sh - shared across all platforms (DSM / macOS / Ubuntu / Proxmox VE)
 # Part of the generated single-file scripts; not executable on its own.
@@ -53,6 +87,74 @@ WarnDefaultPassword() {
     local name="$1" value="$2" default_value="$3"
     if [ "$value" = "$default_value" ]; then
         LogWarn "${name} is using the built-in default. Change it after deployment, or override it with ${name}=<value> before running."
+    fi
+}
+
+## Resume + progress
+# Each orchestration step runs through RunStep. A step is recorded in the state
+# file only after it succeeds, so an interrupted run resumes at the first
+# unfinished step. AUTODEPLOY_FORCE=true clears the state and re-runs everything.
+# Platform must set: AUTODEPLOY_STATE_DIR, AUTODEPLOY_STEP_TOTAL.
+StateFile() {
+    printf '%s/state\n' "$AUTODEPLOY_STATE_DIR"
+}
+
+StepDone() {
+    local state_file
+    state_file=$(StateFile)
+    [ -f "$state_file" ] && grep -qxF "$1" "$state_file"
+}
+
+MarkStep() {
+    mkdir -p "$AUTODEPLOY_STATE_DIR"
+    printf '%s\n' "$1" >> "$(StateFile)"
+}
+
+StepsCompleted() {
+    local state_file
+    state_file=$(StateFile)
+    if [ -f "$state_file" ]; then
+        wc -l < "$state_file" | tr -d ' '
+    else
+        printf '0\n'
+    fi
+}
+
+RenderProgress() {
+    local label="$1" total="${AUTODEPLOY_STEP_TOTAL:-0}" completed width=20 filled percent bar
+    completed=$(StepsCompleted)
+    if [ "$total" -le 0 ]; then
+        LogInfo "$label"
+        return 0
+    fi
+    percent=$((completed * 100 / total))
+    filled=$((completed * width / total))
+    bar="$(printf '%*s' "$filled" '' | tr ' ' '#')$(printf '%*s' "$((width - filled))" '' | tr ' ' '-')"
+    LogInfo "[${bar}] ${completed}/${total} (${percent}%) ${label}"
+}
+
+RunStep() {
+    local step_id="$1"
+    shift
+    if [ "${AUTODEPLOY_FORCE:-false}" != "true" ] && StepDone "$step_id"; then
+        LogInfo "skip ${step_id} (completed in a previous run)"
+        return 0
+    fi
+    RenderProgress "running ${step_id}"
+    "$@"
+    MarkStep "$step_id"
+}
+
+InitRun() {
+    if [ "${AUTODEPLOY_FORCE:-false}" = "true" ]; then
+        rm -f "$(StateFile)"
+        LogInfo "AUTODEPLOY_FORCE=true: re-running all steps"
+    else
+        local completed
+        completed=$(StepsCompleted)
+        if [ "$completed" -gt 0 ]; then
+            LogInfo "resuming: ${completed}/${AUTODEPLOY_STEP_TOTAL} steps already complete"
+        fi
     fi
 }
 
@@ -236,7 +338,7 @@ GenerateOMZProfile() {
         "plugins=(${ZSH_BUILD_IN_PLUGINS} ${external_plugins})"
         "ZSH_CACHE_DIR=\"\$ZSH/cache\""
         "ZSH_CUSTOM=\"\$ZSH/custom\""
-        "ZSH_THEME=\"ys\""
+        "ZSH_THEME=\"${ZSH_THEME:-ys}\""
         "DISABLE_AUTO_UPDATE=\"true\""
         "DISABLE_UPDATE_PROMPT=\"true\""
         "UPDATE_ZSH_DAYS=\"7\""
@@ -345,7 +447,6 @@ InstallCrontab() {
 function GetSystemInformation() {
     GetCurrentUsername
     HOME_BASE="/var/services/homes/${CURRENT_USERNAME}"
-    GHPROXY_URL="${GHPROXY_URL:-proxy.zhijie.online}"
     SetGHProxyDomain
 }
 
@@ -389,16 +490,15 @@ function ConfigurePackages() {
     ZSH_HOME="$HOME_BASE"
     ZSH_OWNER="${CURRENT_USERNAME}:users"
     ZSH_PATH_LIST=("/bin" "/sbin" "/usr/bin" "/usr/sbin" "/usr/local/bin" "/usr/local/sbin" "/usr/syno/bin" "/usr/syno/sbin")
-    ZSH_BUILD_IN_PLUGINS="aliases colored-man-pages command-not-found common-aliases docker docker-compose extract git history ssh sudo"
     ZSH_EXTRA_EXPORTS=("export DEBIAN_FRONTEND=\"noninteractive\"")
     ZSH_TRAPEXIT="true"
 
-    ConfigureDocker
-    ConfigureGit
-    ConfigureGPG
-    ConfigureOpenSSH
-    ConfigurePing
-    ConfigureZsh
+    RunStep "ConfigureDocker" ConfigureDocker
+    RunStep "ConfigureGit" ConfigureGit
+    RunStep "ConfigureGPG" ConfigureGPG
+    RunStep "ConfigureOpenSSH" ConfigureOpenSSH
+    RunStep "ConfigurePing" ConfigurePing
+    RunStep "ConfigureZsh" ConfigureZsh
 }
 
 # Configure System
@@ -415,23 +515,25 @@ function ConfigureSystem() {
         )
         printf '%s\n' "${profile_list[@]}" > "${HOME_BASE}/.profile"
     }
-    ConfigureDefaultShell
+    RunStep "ConfigureDefaultShell" ConfigureDefaultShell
 }
 
 # Install Custom Packages
 function InstallCustomPackages() {
     OMZ_HOME="$HOME_BASE"
     OMZ_OWNER="${CURRENT_USERNAME}:users"
-    InstallOhMyZsh
+    RunStep "InstallOhMyZsh" InstallOhMyZsh
 }
 
 ## Process
 RequireRoot
-# Call GetSystemInformation
+# Call GetSystemInformation (always runs: later steps need its globals)
 GetSystemInformation
+InitRun
 # Call InstallCustomPackages
 InstallCustomPackages
 # Call ConfigureSystem
 ConfigureSystem
 # Call ConfigurePackages
 ConfigurePackages
+RenderProgress "complete"

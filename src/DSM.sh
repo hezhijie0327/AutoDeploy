@@ -3,7 +3,6 @@
 function GetSystemInformation() {
     GetCurrentUsername
     HOME_BASE="/var/services/homes/${CURRENT_USERNAME}"
-    GHPROXY_URL="${GHPROXY_URL:-proxy.zhijie.online}"
     SetGHProxyDomain
 }
 
@@ -47,16 +46,15 @@ function ConfigurePackages() {
     ZSH_HOME="$HOME_BASE"
     ZSH_OWNER="${CURRENT_USERNAME}:users"
     ZSH_PATH_LIST=("/bin" "/sbin" "/usr/bin" "/usr/sbin" "/usr/local/bin" "/usr/local/sbin" "/usr/syno/bin" "/usr/syno/sbin")
-    ZSH_BUILD_IN_PLUGINS="aliases colored-man-pages command-not-found common-aliases docker docker-compose extract git history ssh sudo"
     ZSH_EXTRA_EXPORTS=("export DEBIAN_FRONTEND=\"noninteractive\"")
     ZSH_TRAPEXIT="true"
 
-    ConfigureDocker
-    ConfigureGit
-    ConfigureGPG
-    ConfigureOpenSSH
-    ConfigurePing
-    ConfigureZsh
+    RunStep "ConfigureDocker" ConfigureDocker
+    RunStep "ConfigureGit" ConfigureGit
+    RunStep "ConfigureGPG" ConfigureGPG
+    RunStep "ConfigureOpenSSH" ConfigureOpenSSH
+    RunStep "ConfigurePing" ConfigurePing
+    RunStep "ConfigureZsh" ConfigureZsh
 }
 
 # Configure System
@@ -73,23 +71,25 @@ function ConfigureSystem() {
         )
         printf '%s\n' "${profile_list[@]}" > "${HOME_BASE}/.profile"
     }
-    ConfigureDefaultShell
+    RunStep "ConfigureDefaultShell" ConfigureDefaultShell
 }
 
 # Install Custom Packages
 function InstallCustomPackages() {
     OMZ_HOME="$HOME_BASE"
     OMZ_OWNER="${CURRENT_USERNAME}:users"
-    InstallOhMyZsh
+    RunStep "InstallOhMyZsh" InstallOhMyZsh
 }
 
 ## Process
 RequireRoot
-# Call GetSystemInformation
+# Call GetSystemInformation (always runs: later steps need its globals)
 GetSystemInformation
+InitRun
 # Call InstallCustomPackages
 InstallCustomPackages
 # Call ConfigureSystem
 ConfigureSystem
 # Call ConfigurePackages
 ConfigurePackages
+RenderProgress "complete"

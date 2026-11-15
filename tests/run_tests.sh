@@ -68,6 +68,9 @@ esac
 unset RESET_HOSTNAME
 
 printf '== CollectDNS ==\n'
+# Normally provided by the Configuration block; set them here for the unit test.
+CUSTOM_DNS_CN=("223.5.5.5" "223.6.6.6" "2400:3200::1" "2400:3200:baba::1")
+CUSTOM_DNS_GLOBAL=("8.8.4.4" "8.8.8.8" "2001:4860:4860::8844" "2001:4860:4860::8888")
 RESOLV_CONF="${TMPDIR_TESTS}/resolv.conf"
 printf 'nameserver 1.1.1.1\nnameserver 223.5.5.5\nnameserver 127.0.0.53\nnameserver 9.9.9.9\n' > "$RESOLV_CONF"
 CollectDNS
@@ -139,6 +142,49 @@ else
 fi
 BackupPath "${TMPDIR_TESTS}/never-existed" > /dev/null
 printf 'ok   no-op on missing target\n'
+
+printf '== Resume / progress ==\n'
+AUTODEPLOY_STATE_DIR="${TMPDIR_TESTS}/state"
+AUTODEPLOY_STEP_TOTAL=3
+AUTODEPLOY_FORCE="false"
+STEP_RUN_COUNT=0
+DummyStep() { STEP_RUN_COUNT=$((STEP_RUN_COUNT + 1)); }
+
+RunStep "s1" DummyStep > /dev/null
+AssertEq "first run executes step" "1" "$STEP_RUN_COUNT"
+RunStep "s1" DummyStep > /dev/null
+AssertEq "completed step is skipped" "1" "$STEP_RUN_COUNT"
+if StepDone "s1"; then printf 'ok   StepDone true for finished step\n'; else printf 'FAIL StepDone true for finished step\n'; FAILURES=$((FAILURES + 1)); fi
+if StepDone "s2"; then printf 'FAIL StepDone false for pending step\n'; FAILURES=$((FAILURES + 1)); else printf 'ok   StepDone false for pending step\n'; fi
+AssertEq "StepsCompleted counts state lines" "1" "$(StepsCompleted)"
+
+out=$(RenderProgress "test")
+case "$out" in
+    *"1/3 (33%)"*) printf 'ok   progress renders completed/total\n' ;;
+    *) printf 'FAIL progress renders completed/total, got [%s]\n' "$out"; FAILURES=$((FAILURES + 1)) ;;
+esac
+
+# A failing step must not be recorded. Run it in a separate bash process so
+# errexit is fully active (a `|| true` subshell would suppress it).
+cat > "${TMPDIR_TESTS}/failrun.sh" <<'EOS'
+source src/lib/common.sh
+AUTODEPLOY_STATE_DIR="$1"
+AUTODEPLOY_STEP_TOTAL=3
+AUTODEPLOY_FORCE="false"
+FailStep() { return 1; }
+RunStep "failstep" FailStep
+EOS
+bash "${TMPDIR_TESTS}/failrun.sh" "${TMPDIR_TESTS}/state-fail" > /dev/null 2>&1 || true
+if [ -f "${TMPDIR_TESTS}/state-fail/state" ] && grep -qxF "failstep" "${TMPDIR_TESTS}/state-fail/state"; then
+    printf 'FAIL failing step is not recorded\n'
+    FAILURES=$((FAILURES + 1))
+else
+    printf 'ok   failing step is not recorded\n'
+fi
+
+AUTODEPLOY_FORCE="true" InitRun > /dev/null
+AssertEq "AUTODEPLOY_FORCE clears state" "0" "$(StepsCompleted)"
+AUTODEPLOY_FORCE="false"
 
 printf '\n'
 if [ "$FAILURES" -eq 0 ]; then

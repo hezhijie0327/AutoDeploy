@@ -39,19 +39,9 @@ GenerateHostname() {
 CollectDNS() {
     USE_GLOBAL_DNS="${USE_GLOBAL_DNS:-false}"
     if [ "$USE_GLOBAL_DNS" = "true" ]; then
-        CUSTOM_DNS=(
-            "8.8.4.4"
-            "8.8.8.8"
-            "2001:4860:4860::8844"
-            "2001:4860:4860::8888"
-        )
+        CUSTOM_DNS=("${CUSTOM_DNS_GLOBAL[@]}")
     else
-        CUSTOM_DNS=(
-            "223.5.5.5"
-            "223.6.6.6"
-            "2400:3200::1"
-            "2400:3200:baba::1"
-        )
+        CUSTOM_DNS=("${CUSTOM_DNS_CN[@]}")
     fi
     DHCP_DNS=()
     CURRENT_DNS=()

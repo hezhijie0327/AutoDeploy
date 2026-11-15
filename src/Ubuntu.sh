@@ -1,14 +1,8 @@
 ## Function
 # Get System Information
 function GetSystemInformation() {
-    # Defined early: InstallCustomPackages runs before ConfigureSystem and
-    # already needs the default username.
-    DEFAULT_FIRSTNAME="User"
-    DEFAULT_LASTNAME="Ubuntu"
+    # Identity, credentials and release pinning live in the Configuration block.
     DEFAULT_FULLNAME="${DEFAULT_LASTNAME} ${DEFAULT_FIRSTNAME}"
-    DEFAULT_USERNAME="${DEFAULT_USERNAME:-ubuntu}"
-    DEFAULT_PASSWORD="${DEFAULT_PASSWORD:-*Ubuntu123*}"
-    HOSTNAME_PREFIX="Ubuntu"
 
     function CheckMachineEnvironment() {
         function CheckHypervisorEnvironment() {
@@ -56,11 +50,6 @@ function GetSystemInformation() {
             *) Die "Unsupported architecture." ;;
         esac
     }
-    function SetLSBCodename() {
-        # Intentionally pinned to the latest release; bump these every release.
-        LSB_CODENAME="resolute"
-        LSB_VERSION="26.04"
-    }
     CollectDNS
     GenerateDomain
     CheckMachineEnvironment
@@ -68,7 +57,6 @@ function GetSystemInformation() {
     GetCPUpsABILevel
     GetCPUVendorID
     GetOSArchitecture
-    SetLSBCodename
     SetGHProxyDomain
 }
 
@@ -293,38 +281,38 @@ function ConfigurePackages() {
     ZSH_HOME="/home/${DEFAULT_USERNAME}"
     ZSH_OWNER="${DEFAULT_USERNAME}:${DEFAULT_USERNAME}"
     ZSH_PATH_LIST=("/bin" "/sbin" "/usr/bin" "/usr/sbin" "/usr/local/bin" "/usr/local/sbin")
-    ZSH_BUILD_IN_PLUGINS="aliases colored-man-pages command-not-found common-aliases docker docker-compose extract git history ssh sudo systemd ubuntu ufw"
     ZSH_EXTRA_EXPORTS=("export DEBIAN_FRONTEND=\"noninteractive\"")
     ZSH_TRAPEXIT="false"
 
-    ConfigureAPT
-    ConfigureBusybox
-    ConfigureChrony
-    ConfigureCloudflareWARP
-    ConfigureCrontab
-    ConfigureCrowdSec
-    ConfigureDockerEngine
-    ConfigureFail2Ban
-    ConfigureFRRouting
-    ConfigureGPG && ConfigureGit
-    ConfigureGrub
-    ConfigureLandscape
-    ConfigureLLDPD
-    ConfigureModules
-    ConfigureNetplan
-    ConfigureNut
-    ConfigureOpenSSH
-    ConfigurePostfix
-    ConfigureProxyChains
-    ConfigurePythonPyPI
-    ConfigureResolved
-    ConfigureSshd
-    ConfigureSysctl
-    ConfigureSystemd
-    ConfigureTuned
-    ConfigureUfw
-    ConfigureWireGuard
-    ConfigureZsh
+    RunStep "ConfigureAPT" ConfigureAPT
+    RunStep "ConfigureBusybox" ConfigureBusybox
+    RunStep "ConfigureChrony" ConfigureChrony
+    RunStep "ConfigureCloudflareWARP" ConfigureCloudflareWARP
+    RunStep "ConfigureCrontab" ConfigureCrontab
+    RunStep "ConfigureCrowdSec" ConfigureCrowdSec
+    RunStep "ConfigureDockerEngine" ConfigureDockerEngine
+    RunStep "ConfigureFail2Ban" ConfigureFail2Ban
+    RunStep "ConfigureFRRouting" ConfigureFRRouting
+    RunStep "ConfigureGPG" ConfigureGPG
+    RunStep "ConfigureGit" ConfigureGit
+    RunStep "ConfigureGrub" ConfigureGrub
+    RunStep "ConfigureLandscape" ConfigureLandscape
+    RunStep "ConfigureLLDPD" ConfigureLLDPD
+    RunStep "ConfigureModules" ConfigureModules
+    RunStep "ConfigureNetplan" ConfigureNetplan
+    RunStep "ConfigureNut" ConfigureNut
+    RunStep "ConfigureOpenSSH" ConfigureOpenSSH
+    RunStep "ConfigurePostfix" ConfigurePostfix
+    RunStep "ConfigureProxyChains" ConfigureProxyChains
+    RunStep "ConfigurePythonPyPI" ConfigurePythonPyPI
+    RunStep "ConfigureResolved" ConfigureResolved
+    RunStep "ConfigureSshd" ConfigureSshd
+    RunStep "ConfigureSysctl" ConfigureSysctl
+    RunStep "ConfigureSystemd" ConfigureSystemd
+    RunStep "ConfigureTuned" ConfigureTuned
+    RunStep "ConfigureUfw" ConfigureUfw
+    RunStep "ConfigureWireGuard" ConfigureWireGuard
+    RunStep "ConfigureZsh" ConfigureZsh
 }
 
 # Configure System
@@ -438,14 +426,14 @@ function ConfigureSystem() {
         rm -f "/etc/localtime"
         ln -s "/usr/share/zoneinfo/Asia/Shanghai" "/etc/localtime"
     }
-    ConfigureDefaultShell
-    ConfigureDefaultUser
-    ConfigureGAI
-    ConfigureHostfile
-    ConfigureLocales
-    ConfigureRootUser
-    ConfigureSWAP
-    ConfigureTimeZone
+    RunStep "ConfigureDefaultShell" ConfigureDefaultShell
+    RunStep "ConfigureDefaultUser" ConfigureDefaultUser
+    RunStep "ConfigureGAI" ConfigureGAI
+    RunStep "ConfigureHostfile" ConfigureHostfile
+    RunStep "ConfigureLocales" ConfigureLocales
+    RunStep "ConfigureRootUser" ConfigureRootUser
+    RunStep "ConfigureSWAP" ConfigureSWAP
+    RunStep "ConfigureTimeZone" ConfigureTimeZone
 }
 
 # Install Custom Packages
@@ -514,103 +502,18 @@ deb-src [arch=${OS_ARCHITECTURE} signed-by=/usr/share/keyrings/crowdsec-archive-
     }
     OMZ_HOME="/home/${DEFAULT_USERNAME}"
     OMZ_OWNER="${DEFAULT_USERNAME}:${DEFAULT_USERNAME}"
-    #InstallCloudflareWARP
-    InstallCrowdSec
-    InstallDockerEngine
-    InstallFRRouting
-    InstallOhMyZsh
-    #InstallTor
-    InstallXanModKernel
+    #RunStep "InstallCloudflareWARP" InstallCloudflareWARP
+    RunStep "InstallCrowdSec" InstallCrowdSec
+    RunStep "InstallDockerEngine" InstallDockerEngine
+    RunStep "InstallFRRouting" InstallFRRouting
+    RunStep "InstallOhMyZsh" InstallOhMyZsh
+    #RunStep "InstallTor" InstallTor
+    RunStep "InstallXanModKernel" InstallXanModKernel
 }
 
 # Install Dependency Packages
 function InstallDependencyPackages() {
-    local apt_list=(
-        "apparmor"
-        "apparmor-profiles"
-        "apparmor-profiles-extra"
-        "apparmor-utils"
-        "apt-file"
-        "apt-transport-https"
-        "busybox"
-        "ca-certificates"
-        "chrony"
-        "cron"
-        "curl"
-        "dnsutils"
-        "ethtool"
-        "fail2ban"
-        "fastfetch"
-        "fonts-noto-cjk"
-        "fonts-noto-color-emoji"
-        "fwupd"
-        "git"
-        "git-lfs"
-        "gnupg"
-        "iperf3"
-        "iputils-ping"
-        "jq"
-        "knot-dnsutils"
-        "landscape-common"
-        "libsnmp-dev"
-        "lldpd"
-        "lm-sensors"
-        "lsb-release"
-        "mailutils"
-        "mtr-tiny"
-        "nano"
-        "netplan.io"
-        "net-tools"
-        "nfs-common"
-        "nmap"
-        "nut"
-        "nut-i2c"
-        "nut-ipmi"
-        "nut-modbus"
-        "nut-powerman-pdu"
-        "nut-snmp"
-        "nut-xml"
-        "openssh-client"
-        "openssh-server"
-        "p7zip-full"
-        "pinentry-tty"
-        "postfix"
-        "proxychains-ng"
-        "python3"
-        "python3-pip"
-        "qrencode"
-        "rar"
-        "realmd"
-        "resolvconf"
-        "rsyslog"
-        "snmp"
-        "snmpd"
-        "snmp-mibs-downloader"
-        "socat"
-        "sudo"
-        "systemd"
-        "systemd-zram-generator"
-        "tcpdump"
-        "tshark"
-        "tuned"
-        "udisks2"
-        "udisks2-bcache"
-        "udisks2-btrfs"
-        "udisks2-lvm2"
-        "udisks2-zram"
-        "ufw"
-        "unrar"
-        "unzip"
-        "update-notifier-common"
-        "uuid-runtime"
-        "vim"
-        "virt-what"
-        "wget"
-        "whois"
-        "wireguard"
-        "zip"
-        "zsh"
-    )
+    local apt_list=("${DEPENDENCY_PACKAGES[@]}")
     apt_list+=(${HYPERVISOR_AGENT[@]+"${HYPERVISOR_AGENT[@]}"} ${MICROCODE[@]+"${MICROCODE[@]}"})
     # Purge guest agents that do not belong to the detected hypervisor.
     local hypervisor_agent_list=("ksmtuned" "open-vm-tools" "qemu-guest-agent" "virtualbox-guest-dkms")
@@ -634,16 +537,19 @@ function InstallDependencyPackages() {
 # Set DEBIAN_FRONTEND to "noninteractive"
 export DEBIAN_FRONTEND="noninteractive"
 RequireRoot
-# Call GetSystemInformation
+# Call GetSystemInformation (always runs: later steps need its globals)
 GetSystemInformation
+InitRun
 # Set TRANSPORT_PROTOCOL="http"; Call SetRepositoryMirror
-TRANSPORT_PROTOCOL="http" && SetRepositoryMirror
+TRANSPORT_PROTOCOL="http"
+RunStep "SetRepositoryMirror.http" SetRepositoryMirror
 # Call InstallDependencyPackages
-InstallDependencyPackages
+RunStep "InstallDependencyPackages" InstallDependencyPackages
 # Set TRANSPORT_PROTOCOL="https"; Call SetRepositoryMirror
-TRANSPORT_PROTOCOL="https" && SetRepositoryMirror
+TRANSPORT_PROTOCOL="https"
+RunStep "SetRepositoryMirror.https" SetRepositoryMirror
 # Call UpgradePackages
-UpgradePackages
+RunStep "UpgradePackages" UpgradePackages
 # Call InstallCustomPackages
 InstallCustomPackages
 # Call ConfigureSystem
@@ -651,7 +557,8 @@ ConfigureSystem
 # Call ConfigurePackages
 ConfigurePackages
 # Call CleanupTempFiles
-CleanupTempFiles /etc/ufw/*."$(date '+%Y%m%d')"*
+RunStep "CleanupTempFiles" CleanupTempFiles /etc/ufw/*."$(date '+%Y%m%d')"*
 # Call CleanupOutageKernels
 KERNEL_PATTERN='(linux-image)-[0-9].*'
-CleanupOutageKernels
+RunStep "CleanupOutageKernels" CleanupOutageKernels
+RenderProgress "complete"

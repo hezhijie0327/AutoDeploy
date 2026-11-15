@@ -2,11 +2,141 @@
 # Copyright 2026 Zhijie He
 # Licensed under Apache-2.0 WITH Commons-Clause-1.0. See LICENSE.
 #
-# GENERATED FILE - do not edit directly. Edit src/ and run ./build.sh.
+# GENERATED FILE - edit src/ and run ./build.sh to regenerate.
+# For a one-off tweak you may edit the Configuration block below.
 #
 ## How to get and use?
 # /bin/bash -c "$(curl -fsSL 'https://source.zhijie.online/AutoDeploy/main/macOS.sh')"
 # /bin/bash -c "$(wget -qO- 'https://source.zhijie.online/AutoDeploy/main/macOS.sh')"
+# ============================================================================
+# Configuration - macOS
+# The single place to tune a deployment. Edit defaults here, or override any
+# knob via environment variable before running. Runs as the operator (no root).
+# ============================================================================
+
+## Resume / progress
+# State lives under the running user's home. AUTODEPLOY_FORCE=true re-runs all.
+AUTODEPLOY_STATE_DIR="${AUTODEPLOY_STATE_DIR:-${HOME}/.autodeploy}"
+AUTODEPLOY_FORCE="${AUTODEPLOY_FORCE:-false}"
+AUTODEPLOY_STEP_TOTAL=14 # must match the RunStep count (lint.sh checks)
+
+## Credentials
+OPENSSH_PASSWORD="${OPENSSH_PASSWORD:-}"
+GPG_PUBKEY="${GPG_PUBKEY:-DD982DAAB9C71C78F9563E5207EB56787030D792}"
+
+## Identity (Git)
+GIT_USER_NAME="${GIT_USER_NAME:-}"
+GIT_USER_EMAIL="${GIT_USER_EMAIL:-}"
+GIT_USER_SIGNINGKEY="${GIT_USER_SIGNINGKEY:-}"
+GIT_COMMIT_GPGSIGN="${GIT_COMMIT_GPGSIGN:-false}"
+GIT_GPG_PROGRAM="${GIT_GPG_PROGRAM:-gpg}"
+GIT_HTTP_PROXY="${GIT_HTTP_PROXY:-}"
+GIT_HTTPS_PROXY="${GIT_HTTPS_PROXY:-}"
+
+## Behavior switches
+REINSTALL_BREW="${REINSTALL_BREW:-false}" # true wipes and reinstalls Homebrew
+
+## Proxy / mirrors
+GHPROXY_URL="${GHPROXY_URL:-}" # GitHub proxy domain, no scheme
+PROXY_URL="${PROXY_URL:-http://vpn.zhijie.online:7890}" # zsh proxy_on helper
+PROXY_PROTOCOL="${PROXY_PROTOCOL:-socks5}" # proxychains upstream
+PROXY_IP="${PROXY_IP:-127.0.0.1}"
+PROXY_PORT="${PROXY_PORT:-7891}"
+PROXY_USERNAME="${PROXY_USERNAME:-}"
+PROXY_PASSWORD="${PROXY_PASSWORD:-}"
+
+## Zsh
+ZSH_THEME="${ZSH_THEME:-ys}"
+ZSH_BUILD_IN_PLUGINS="${ZSH_BUILD_IN_PLUGINS:-aliases brew colored-man-pages command-not-found common-aliases docker docker-compose extract git history macos ssh sudo}"
+
+## Homebrew formulae
+BREW_PACKAGES=(
+    "bash"
+    "cloudflared"
+    "coreutils"
+    "curl"
+    "fastfetch"
+    "fd"
+    "ffmpeg"
+    "findutils"
+    "gawk"
+    "git"
+    "git-lfs"
+    "gnupg"
+    "gnutls"
+    "grep"
+    "iperf3"
+    "iproute2mac"
+    "jq"
+    "knot"
+    "mailutils"
+    "mas"
+    "mtr"
+    "nano"
+    "nmap"
+    "openssh"
+    "p7zip"
+    "pinentry"
+    "proxychains-ng"
+    "python3"
+    "qrencode"
+    "rar"
+    "ripgrep"
+    "tcpdump"
+    "the_silver_searcher"
+    "unzip"
+    "vim"
+    "wget"
+    "whois"
+    "wireguard-tools"
+    "wireshark"
+    "ykman"
+    "youtube-dl"
+    "zip"
+    "zsh"
+)
+
+## Homebrew casks (installed only if InstallAppFromCask is enabled)
+CASK_APPS=(
+    "blackhole-16ch" # BlackHole 16ch
+    "blackhole-2ch" # BlackHole 2ch
+    "blackhole-64ch" # BlackHole 64ch
+    "docker" # Docker
+    "drawio" # Draw.io
+    "iina" # IINA
+    "jordanbaird-ice" # Ice
+    "keka" # Keka
+    "kekaexternalhelper" # Keka External Helper
+    "lm-studio" # LM Studio
+    "microsoft-edge" # Microsoft Edge
+    "obs" # OBS
+    "onyx" # OnyX
+    "rectangle" # Rectangle
+    "stats" # Stats
+    "visual-studio-code" # Visual Studio Code
+)
+
+## Mac App Store ids (installed only if InstallAppFromMAS is enabled)
+MAS_APPS=(
+    "1136220934" # Infuse
+    "1289583905" # Pixelmator Pro
+    "1352778147" # Bitwarden
+    "409222199" # Cyberduck
+    "424389933" # Final Cut Pro
+    "424390742" # Compressor
+    "434290957" # Motion
+    "451108668" # QQ
+    "462054704" # Microsoft Word
+    "462058435" # Microsoft Excel
+    "462062816" # Microsoft PowerPoint
+    "497799835" # Xcode
+    "595615424" # QQ音乐
+    "634148309" # Logic Pro
+    "634159523" # MainStage
+    "823766827" # OneDrive
+    "836500024" # Wechat
+    "985367838" # Microsoft Outlook
+)
 # ============================================================================
 # common.sh - shared across all platforms (DSM / macOS / Ubuntu / Proxmox VE)
 # Part of the generated single-file scripts; not executable on its own.
@@ -53,6 +183,74 @@ WarnDefaultPassword() {
     local name="$1" value="$2" default_value="$3"
     if [ "$value" = "$default_value" ]; then
         LogWarn "${name} is using the built-in default. Change it after deployment, or override it with ${name}=<value> before running."
+    fi
+}
+
+## Resume + progress
+# Each orchestration step runs through RunStep. A step is recorded in the state
+# file only after it succeeds, so an interrupted run resumes at the first
+# unfinished step. AUTODEPLOY_FORCE=true clears the state and re-runs everything.
+# Platform must set: AUTODEPLOY_STATE_DIR, AUTODEPLOY_STEP_TOTAL.
+StateFile() {
+    printf '%s/state\n' "$AUTODEPLOY_STATE_DIR"
+}
+
+StepDone() {
+    local state_file
+    state_file=$(StateFile)
+    [ -f "$state_file" ] && grep -qxF "$1" "$state_file"
+}
+
+MarkStep() {
+    mkdir -p "$AUTODEPLOY_STATE_DIR"
+    printf '%s\n' "$1" >> "$(StateFile)"
+}
+
+StepsCompleted() {
+    local state_file
+    state_file=$(StateFile)
+    if [ -f "$state_file" ]; then
+        wc -l < "$state_file" | tr -d ' '
+    else
+        printf '0\n'
+    fi
+}
+
+RenderProgress() {
+    local label="$1" total="${AUTODEPLOY_STEP_TOTAL:-0}" completed width=20 filled percent bar
+    completed=$(StepsCompleted)
+    if [ "$total" -le 0 ]; then
+        LogInfo "$label"
+        return 0
+    fi
+    percent=$((completed * 100 / total))
+    filled=$((completed * width / total))
+    bar="$(printf '%*s' "$filled" '' | tr ' ' '#')$(printf '%*s' "$((width - filled))" '' | tr ' ' '-')"
+    LogInfo "[${bar}] ${completed}/${total} (${percent}%) ${label}"
+}
+
+RunStep() {
+    local step_id="$1"
+    shift
+    if [ "${AUTODEPLOY_FORCE:-false}" != "true" ] && StepDone "$step_id"; then
+        LogInfo "skip ${step_id} (completed in a previous run)"
+        return 0
+    fi
+    RenderProgress "running ${step_id}"
+    "$@"
+    MarkStep "$step_id"
+}
+
+InitRun() {
+    if [ "${AUTODEPLOY_FORCE:-false}" = "true" ]; then
+        rm -f "$(StateFile)"
+        LogInfo "AUTODEPLOY_FORCE=true: re-running all steps"
+    else
+        local completed
+        completed=$(StepsCompleted)
+        if [ "$completed" -gt 0 ]; then
+            LogInfo "resuming: ${completed}/${AUTODEPLOY_STEP_TOTAL} steps already complete"
+        fi
     fi
 }
 
@@ -236,7 +434,7 @@ GenerateOMZProfile() {
         "plugins=(${ZSH_BUILD_IN_PLUGINS} ${external_plugins})"
         "ZSH_CACHE_DIR=\"\$ZSH/cache\""
         "ZSH_CUSTOM=\"\$ZSH/custom\""
-        "ZSH_THEME=\"ys\""
+        "ZSH_THEME=\"${ZSH_THEME:-ys}\""
         "DISABLE_AUTO_UPDATE=\"true\""
         "DISABLE_UPDATE_PROMPT=\"true\""
         "UPDATE_ZSH_DAYS=\"7\""
@@ -431,7 +629,6 @@ function ConfigurePackages() {
     ZSH_HOME="/Users/${CURRENT_USERNAME}"
     ZSH_OWNER=""
     ZSH_PATH_LIST=("/bin" "/sbin" "/usr/bin" "/usr/sbin" "/usr/local/bin" "/usr/local/sbin" "${BREW_PREFIX}/bin" "${BREW_PREFIX}/sbin")
-    ZSH_BUILD_IN_PLUGINS="aliases brew colored-man-pages command-not-found common-aliases docker docker-compose extract git history macos ssh sudo"
     ZSH_EXTRA_EXPORTS=(
         "export HOMEBREW_API_DOMAIN=\"https://mirrors.cernet.edu.cn/homebrew-bottles/api\""
         "export HOMEBREW_BOTTLE_DOMAIN=\"https://mirrors.cernet.edu.cn/homebrew-bottles/bottles\""
@@ -440,14 +637,16 @@ function ConfigurePackages() {
     )
     ZSH_TRAPEXIT="false"
 
-    ConfigureGit
-    ConfigureGPG
-    ConfigureOpenSSH
-    ConfigureProxyChains
-    ConfigurePythonPyPI
-    ConfigureSshd
-    ConfigureWireGuard
-    ConfigureZsh && ConfigureCrontab
+    RunStep "ConfigureGit" ConfigureGit
+    RunStep "ConfigureGPG" ConfigureGPG
+    RunStep "ConfigureOpenSSH" ConfigureOpenSSH
+    RunStep "ConfigureProxyChains" ConfigureProxyChains
+    RunStep "ConfigurePythonPyPI" ConfigurePythonPyPI
+    RunStep "ConfigureSshd" ConfigureSshd
+    RunStep "ConfigureWireGuard" ConfigureWireGuard
+    # Always runs: ConfigureCrontab needs the DEFAULT_PATH it computes.
+    ConfigureZsh
+    RunStep "ConfigureCrontab" ConfigureCrontab
 }
 
 # Configure System
@@ -471,31 +670,14 @@ function ConfigureSystem() {
         defaults write com.apple.desktopservices DSDontWriteNetworkStores -bool true
         defaults write com.apple.desktopservices DSDontWriteUSBStores -bool true
     }
-    ConfigureHostfile
-    ConfigureSystemDefault
+    RunStep "ConfigureHostfile" ConfigureHostfile
+    RunStep "ConfigureSystemDefault" ConfigureSystemDefault
 }
 
 # Install Custom Packages
 function InstallCustomPackages() {
     function InstallAppFromCask() {
-        local app_list=(
-            "blackhole-16ch" # BlackHole 16ch
-            "blackhole-2ch" # BlackHole 2ch
-            "blackhole-64ch" # BlackHole 64ch
-            "docker" # Docker
-            "drawio" # Draw.io
-            "iina" # IINA
-            "jordanbaird-ice" # Ice
-            "keka" # Keka
-            "kekaexternalhelper" # Keka External Helper
-            "lm-studio" # LM Studio
-            "microsoft-edge" # Microsoft Edge
-            "obs" # OBS
-            "onyx" # OnyX
-            "rectangle" # Rectangle
-            "stats" # Stats
-            "visual-studio-code" # Visual Studio Code
-        )
+        local app_list=("${CASK_APPS[@]}")
         HaveCommand brew || return 0
         local app
         for app in "${app_list[@]}"; do
@@ -507,26 +689,7 @@ function InstallCustomPackages() {
         done
     }
     function InstallAppFromMAS() {
-        local app_list=(
-            "1136220934" # Infuse
-            "1289583905" # Pixelmator Pro
-            "1352778147" # Bitwarden
-            "409222199" # Cyberduck
-            "424389933" # Final Cut Pro
-            "424390742" # Compressor
-            "434290957" # Motion
-            "451108668" # QQ
-            "462054704" # Microsoft Word
-            "462058435" # Microsoft Excel
-            "462062816" # Microsoft PowerPoint
-            "497799835" # Xcode
-            "595615424" # QQ音乐
-            "634148309" # Logic Pro
-            "634159523" # MainStage
-            "823766827" # OneDrive
-            "836500024" # Wechat
-            "985367838" # Microsoft Outlook
-        )
+        local app_list=("${MAS_APPS[@]}")
         HaveCommand mas || return 0
         local app
         for app in "${app_list[@]}"; do
@@ -539,9 +702,9 @@ function InstallCustomPackages() {
     }
     OMZ_HOME="/Users/${CURRENT_USERNAME}"
     OMZ_OWNER=""
-    #InstallAppFromCask
-    #InstallAppFromMAS
-    InstallOhMyZsh
+    #RunStep "InstallAppFromCask" InstallAppFromCask
+    #RunStep "InstallAppFromMAS" InstallAppFromMAS
+    RunStep "InstallOhMyZsh" InstallOhMyZsh
 }
 
 # Install Dependency Packages
@@ -557,51 +720,7 @@ function InstallDependencyPackages() {
     if ! HaveCommand brew; then
         /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
     fi
-    local app_list=(
-        "bash"
-        "cloudflared"
-        "coreutils"
-        "curl"
-        "fastfetch"
-        "fd"
-        "ffmpeg"
-        "findutils"
-        "gawk"
-        "git"
-        "git-lfs"
-        "gnupg"
-        "gnutls"
-        "grep"
-        "iperf3"
-        "iproute2mac"
-        "jq"
-        "knot"
-        "mailutils"
-        "mas"
-        "mtr"
-        "nano"
-        "nmap"
-        "openssh"
-        "p7zip"
-        "pinentry"
-        "proxychains-ng"
-        "python3"
-        "qrencode"
-        "rar"
-        "ripgrep"
-        "tcpdump"
-        "the_silver_searcher"
-        "unzip"
-        "vim"
-        "wget"
-        "whois"
-        "wireguard-tools"
-        "wireshark"
-        "ykman"
-        "youtube-dl"
-        "zip"
-        "zsh"
-    )
+    local app_list=("${BREW_PACKAGES[@]}")
     brew developer on
     brew update
     local app
@@ -631,12 +750,13 @@ function CleanupTempFiles() {
 }
 
 ## Process
-# Call GetSystemInformation
+# Call GetSystemInformation (always runs: later steps need its globals)
 GetSystemInformation
+InitRun
 # Call InstallDependencyPackages
-InstallDependencyPackages
+RunStep "InstallDependencyPackages" InstallDependencyPackages
 # Call UpgradePackages
-UpgradePackages
+RunStep "UpgradePackages" UpgradePackages
 # Call InstallCustomPackages
 InstallCustomPackages
 # Call ConfigureSystem
@@ -644,4 +764,5 @@ ConfigureSystem
 # Call ConfigurePackages
 ConfigurePackages
 # Call CleanupTempFiles
-CleanupTempFiles
+RunStep "CleanupTempFiles" CleanupTempFiles
+RenderProgress "complete"

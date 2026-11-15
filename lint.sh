@@ -36,6 +36,18 @@ else
     printf '\n== shellcheck ==\nskipped (not installed)\n'
 fi
 
+printf '\n== step count ==\n'
+for file in DSM.sh macOS.sh Ubuntu.sh ProxmoxVE.sh; do
+    count=$(grep -cE '^[[:space:]]*RunStep "' "$file" || true)
+    total=$(sed -n 's/^AUTODEPLOY_STEP_TOTAL=\([0-9][0-9]*\).*/\1/p' "$file")
+    if [ "$count" = "$total" ]; then
+        printf 'ok   %s (%s steps)\n' "$file" "$total"
+    else
+        printf 'FAIL %s: %s RunStep calls but AUTODEPLOY_STEP_TOTAL=%s\n' "$file" "$count" "$total"
+        status=1
+    fi
+done
+
 printf '\n== build freshness ==\n'
 tmpdir=$(mktemp -d)
 trap 'rm -rf "$tmpdir"' EXIT

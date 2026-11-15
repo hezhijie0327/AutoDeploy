@@ -1,14 +1,8 @@
 ## Function
 # Get System Information
 function GetSystemInformation() {
-    # Defined early: InstallCustomPackages runs before ConfigureSystem and
-    # already needs the default username.
-    DEFAULT_FIRSTNAME="User"
-    DEFAULT_LASTNAME="Proxmox"
+    # Identity, credentials and release pinning live in the Configuration block.
     DEFAULT_FULLNAME="${DEFAULT_LASTNAME} ${DEFAULT_FIRSTNAME}"
-    DEFAULT_USERNAME="${DEFAULT_USERNAME:-proxmox}"
-    DEFAULT_PASSWORD="${DEFAULT_PASSWORD:-*Proxmox123*}"
-    HOSTNAME_PREFIX="ProxmoxVE"
 
     function GenerateResolv() {
         CollectDNS
@@ -32,11 +26,6 @@ function GetSystemInformation() {
             LogWarn "vmbr0 has no IPv4 address; /etc/hosts gets no management IP entry"
         fi
     }
-    function SetPackageCodename() {
-        # Intentionally pinned to the latest PVE release; bump these every release.
-        CEPH_CODENAME="tentacle"
-        LSB_CODENAME="trixie"
-    }
     GenerateDomain
     GenerateHostname
     GenerateResolv
@@ -44,7 +33,6 @@ function GetSystemInformation() {
     GetHostname
     GetManagementIPAddress
     SetGHProxyDomain
-    SetPackageCodename
 }
 
 # Set Repository Mirror
@@ -296,10 +284,6 @@ function ConfigurePackages() {
             printf '%s\n' "${vm_container_fw_list[@]}" > "/etc/pve/firewall/${vm}.fw"
         done
     }
-    function ConfigureSNMP() {
-        SNMP_USER="proxmox"
-        ConfigureSNMPBase
-    }
     function ConfigureZfs() {
         HaveCommand zpool || return 0
         local pool
@@ -354,41 +338,41 @@ function ConfigurePackages() {
     ZSH_HOME="/home/${DEFAULT_USERNAME}"
     ZSH_OWNER="${DEFAULT_USERNAME}:${DEFAULT_USERNAME}"
     ZSH_PATH_LIST=("/bin" "/sbin" "/usr/bin" "/usr/sbin" "/usr/local/bin" "/usr/local/sbin" "/usr/lib/cargo/bin")
-    ZSH_BUILD_IN_PLUGINS="aliases colored-man-pages command-not-found common-aliases debian docker docker-compose extract git history ssh sudo systemd"
     ZSH_EXTRA_EXPORTS=("export DEBIAN_FRONTEND=\"noninteractive\"")
     ZSH_TRAPEXIT="false"
 
-    ConfigureAPT
-    ConfigureAPTPVEExtras
-    ConfigureBusybox
-    ConfigureChrony
-    ConfigureCrontab
-    ConfigureCrowdSec
-    ConfigureDockerEngine
-    ConfigureFail2Ban
-    ConfigureFRRouting
-    ConfigureGPG && ConfigureGit
-    ConfigureGrub
-    ConfigureLLDPD
-    ConfigureModules
-    ConfigureZfsModules
-    ConfigureNut
-    ConfigureOpenSSH
-    ConfigurePVEPrivKeys
-    ConfigurePostfix
-    ConfigureProxyChains
-    ConfigurePVECeph
-    ConfigurePVECluster
-    ConfigurePVEContainer
-    ConfigurePVEDashboard
-    ConfigurePVEFirewall
-    ConfigurePythonPyPI
-    ConfigureSNMP
-    ConfigureSshd
-    ConfigureSysctl
-    ConfigureTuned
-    ConfigureZfs
-    ConfigureZsh
+    RunStep "ConfigureAPT" ConfigureAPT
+    RunStep "ConfigureAPTPVEExtras" ConfigureAPTPVEExtras
+    RunStep "ConfigureBusybox" ConfigureBusybox
+    RunStep "ConfigureChrony" ConfigureChrony
+    RunStep "ConfigureCrontab" ConfigureCrontab
+    RunStep "ConfigureCrowdSec" ConfigureCrowdSec
+    RunStep "ConfigureDockerEngine" ConfigureDockerEngine
+    RunStep "ConfigureFail2Ban" ConfigureFail2Ban
+    RunStep "ConfigureFRRouting" ConfigureFRRouting
+    RunStep "ConfigureGPG" ConfigureGPG
+    RunStep "ConfigureGit" ConfigureGit
+    RunStep "ConfigureGrub" ConfigureGrub
+    RunStep "ConfigureLLDPD" ConfigureLLDPD
+    RunStep "ConfigureModules" ConfigureModules
+    RunStep "ConfigureZfsModules" ConfigureZfsModules
+    RunStep "ConfigureNut" ConfigureNut
+    RunStep "ConfigureOpenSSH" ConfigureOpenSSH
+    RunStep "ConfigurePVEPrivKeys" ConfigurePVEPrivKeys
+    RunStep "ConfigurePostfix" ConfigurePostfix
+    RunStep "ConfigureProxyChains" ConfigureProxyChains
+    RunStep "ConfigurePVECeph" ConfigurePVECeph
+    RunStep "ConfigurePVECluster" ConfigurePVECluster
+    RunStep "ConfigurePVEContainer" ConfigurePVEContainer
+    RunStep "ConfigurePVEDashboard" ConfigurePVEDashboard
+    RunStep "ConfigurePVEFirewall" ConfigurePVEFirewall
+    RunStep "ConfigurePythonPyPI" ConfigurePythonPyPI
+    RunStep "ConfigureSNMP" ConfigureSNMPBase
+    RunStep "ConfigureSshd" ConfigureSshd
+    RunStep "ConfigureSysctl" ConfigureSysctl
+    RunStep "ConfigureTuned" ConfigureTuned
+    RunStep "ConfigureZfs" ConfigureZfs
+    RunStep "ConfigureZsh" ConfigureZsh
 }
 
 # Configure System
@@ -526,14 +510,14 @@ function ConfigureSystem() {
         CreateSWAP
         UpdateFSTAB
     }
-    ConfigureDefaultShell
-    ConfigureDefaultUser
-    ConfigureGAI
-    ConfigureHostfile
-    ConfigureProxmoxVENode
-    ConfigureRootUser
-    ConfigureSecureBoot
-    ConfigureSWAP
+    RunStep "ConfigureDefaultShell" ConfigureDefaultShell
+    RunStep "ConfigureDefaultUser" ConfigureDefaultUser
+    RunStep "ConfigureGAI" ConfigureGAI
+    RunStep "ConfigureHostfile" ConfigureHostfile
+    RunStep "ConfigureProxmoxVENode" ConfigureProxmoxVENode
+    RunStep "ConfigureRootUser" ConfigureRootUser
+    RunStep "ConfigureSecureBoot" ConfigureSecureBoot
+    RunStep "ConfigureSWAP" ConfigureSWAP
 }
 
 # Install Custom Packages
@@ -564,100 +548,15 @@ deb-src [arch=amd64 signed-by=/usr/share/keyrings/crowdsec-archive-keyring.gpg] 
     }
     OMZ_HOME="/home/${DEFAULT_USERNAME}"
     OMZ_OWNER="${DEFAULT_USERNAME}:${DEFAULT_USERNAME}"
-    InstallCrowdSec
-    InstallDockerEngine
-    InstallFRRouting
-    InstallOhMyZsh
+    RunStep "InstallCrowdSec" InstallCrowdSec
+    RunStep "InstallDockerEngine" InstallDockerEngine
+    RunStep "InstallFRRouting" InstallFRRouting
+    RunStep "InstallOhMyZsh" InstallOhMyZsh
 }
 
 # Install Dependency Packages
 function InstallDependencyPackages() {
-    local apt_list=(
-        "apparmor"
-        "apparmor-profiles"
-        "apparmor-profiles-extra"
-        "apparmor-utils"
-        "apt-file"
-        "apt-transport-https"
-        "busybox"
-        "ca-certificates"
-        "ceph"
-        "chrony"
-        "curl"
-        "dnsutils"
-        "efibootmgr"
-        "efitools"
-        "efivar"
-        "ethtool"
-        "fail2ban"
-        "fastfetch"
-        "fonts-noto-cjk"
-        "fonts-noto-color-emoji"
-        "fwupd"
-        "git"
-        "git-lfs"
-        "gnupg"
-        "grub-efi-amd64-signed"
-        "iperf3"
-        "jq"
-        "knot-dnsutils"
-        "libsnmp-dev"
-        "lldpd"
-        "lm-sensors"
-        "lsb-release"
-        "mailutils"
-        "mokutil"
-        "mtr-tiny"
-        "nano"
-        "net-tools"
-        "nmap"
-        "nut"
-        "nut-i2c"
-        "nut-ipmi"
-        "nut-modbus"
-        "nut-powerman-pdu"
-        "nut-snmp"
-        "nut-xml"
-        "openssh-client"
-        "openssh-server"
-        "openvswitch-switch"
-        "p7zip-full"
-        "pinentry-tty"
-        "postfix"
-        "proxmox-secure-boot-support"
-        "proxychains-ng"
-        "python3"
-        "python3-pip"
-        "qrencode"
-        "rar"
-        "rsyslog"
-        "sbsigntool"
-        "shim-signed"
-        "snmp"
-        "snmp-mibs-downloader"
-        "snmpd"
-        "sudo"
-        "sudo-rs"
-        "systemd"
-        "systemd-zram-generator"
-        "tcpdump"
-        "tshark"
-        "tuned"
-        "udisks2"
-        "udisks2-bcache"
-        "udisks2-btrfs"
-        "udisks2-lvm2"
-        "udisks2-zram"
-        "unrar"
-        "unzip"
-        "uuid-runtime"
-        "vim"
-        "virt-what"
-        "wget"
-        "whois"
-        "zip"
-        "zsh"
-    )
+    local apt_list=("${DEPENDENCY_PACKAGES[@]}")
     apt_list+=(${MICROCODE[@]+"${MICROCODE[@]}"})
     InstallAptPackages "${apt_list[@]}"
 }
@@ -666,16 +565,19 @@ function InstallDependencyPackages() {
 # Set DEBIAN_FRONTEND to "noninteractive"
 export DEBIAN_FRONTEND="noninteractive"
 RequireRoot
-# Call GetSystemInformation
+# Call GetSystemInformation (always runs: later steps need its globals)
 GetSystemInformation
+InitRun
 # Set TRANSPORT_PROTOCOL="http"; Call SetRepositoryMirror
-TRANSPORT_PROTOCOL="http" && SetRepositoryMirror
+TRANSPORT_PROTOCOL="http"
+RunStep "SetRepositoryMirror.http" SetRepositoryMirror
 # Call InstallDependencyPackages
-InstallDependencyPackages
+RunStep "InstallDependencyPackages" InstallDependencyPackages
 # Set TRANSPORT_PROTOCOL="https"; Call SetRepositoryMirror
-TRANSPORT_PROTOCOL="https" && SetRepositoryMirror
+TRANSPORT_PROTOCOL="https"
+RunStep "SetRepositoryMirror.https" SetRepositoryMirror
 # Call UpgradePackages
-UpgradePackages
+RunStep "UpgradePackages" UpgradePackages
 # Call InstallCustomPackages
 InstallCustomPackages
 # Call ConfigureSystem
@@ -683,7 +585,8 @@ ConfigureSystem
 # Call ConfigurePackages
 ConfigurePackages
 # Call CleanupTempFiles
-CleanupTempFiles /etc/apt/sources.list.d/pve-enterprise.list*
+RunStep "CleanupTempFiles" CleanupTempFiles /etc/apt/sources.list.d/pve-enterprise.list*
 # Call CleanupOutageKernels
 KERNEL_PATTERN='(pve-kernel|proxmox-kernel)-[0-9].*-pve'
-CleanupOutageKernels
+RunStep "CleanupOutageKernels" CleanupOutageKernels
+RenderProgress "complete"

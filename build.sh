@@ -18,7 +18,8 @@ BuildScript() {
             '# Copyright 2026 Zhijie He' \
             '# Licensed under Apache-2.0 WITH Commons-Clause-1.0. See LICENSE.' \
             '#' \
-            '# GENERATED FILE - do not edit directly. Edit src/ and run ./build.sh.' \
+            '# GENERATED FILE - edit src/ and run ./build.sh to regenerate.' \
+            '# For a one-off tweak you may edit the Configuration block below.' \
             '#' \
             '## How to get and use?'
         printf '%s\n' "$usage"
@@ -31,19 +32,19 @@ BuildScript() {
 BuildScript "DSM.sh" \
     '# curl "https://source.zhijie.online/AutoDeploy/main/DSM.sh" | sudo bash
 # wget -qO- "https://source.zhijie.online/AutoDeploy/main/DSM.sh" | sudo bash' \
-    src/lib/common.sh src/DSM.sh
+    src/config/DSM.sh src/lib/common.sh src/DSM.sh
 
 BuildScript "macOS.sh" \
     "# /bin/bash -c \"\$(curl -fsSL 'https://source.zhijie.online/AutoDeploy/main/macOS.sh')\"
 # /bin/bash -c \"\$(wget -qO- 'https://source.zhijie.online/AutoDeploy/main/macOS.sh')\"" \
-    src/lib/common.sh src/macOS.sh
+    src/config/macOS.sh src/lib/common.sh src/macOS.sh
 
 BuildScript "Ubuntu.sh" \
     '# curl "https://source.zhijie.online/AutoDeploy/main/Ubuntu.sh" | sudo bash
 # wget -qO- "https://source.zhijie.online/AutoDeploy/main/Ubuntu.sh" | sudo bash' \
-    src/lib/common.sh src/lib/debian.sh src/Ubuntu.sh
+    src/config/Ubuntu.sh src/lib/common.sh src/lib/debian.sh src/Ubuntu.sh
 
 BuildScript "ProxmoxVE.sh" \
     '# curl "https://source.zhijie.online/AutoDeploy/main/ProxmoxVE.sh" | sudo bash
 # wget -qO- "https://source.zhijie.online/AutoDeploy/main/ProxmoxVE.sh" | sudo bash' \
-    src/lib/common.sh src/lib/debian.sh src/ProxmoxVE.sh
+    src/config/ProxmoxVE.sh src/lib/common.sh src/lib/debian.sh src/ProxmoxVE.sh

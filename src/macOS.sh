@@ -89,7 +89,6 @@ function ConfigurePackages() {
     ZSH_HOME="/Users/${CURRENT_USERNAME}"
     ZSH_OWNER=""
     ZSH_PATH_LIST=("/bin" "/sbin" "/usr/bin" "/usr/sbin" "/usr/local/bin" "/usr/local/sbin" "${BREW_PREFIX}/bin" "${BREW_PREFIX}/sbin")
-    ZSH_BUILD_IN_PLUGINS="aliases brew colored-man-pages command-not-found common-aliases docker docker-compose extract git history macos ssh sudo"
     ZSH_EXTRA_EXPORTS=(
         "export HOMEBREW_API_DOMAIN=\"https://mirrors.cernet.edu.cn/homebrew-bottles/api\""
         "export HOMEBREW_BOTTLE_DOMAIN=\"https://mirrors.cernet.edu.cn/homebrew-bottles/bottles\""
@@ -98,14 +97,16 @@ function ConfigurePackages() {
     )
     ZSH_TRAPEXIT="false"
 
-    ConfigureGit
-    ConfigureGPG
-    ConfigureOpenSSH
-    ConfigureProxyChains
-    ConfigurePythonPyPI
-    ConfigureSshd
-    ConfigureWireGuard
-    ConfigureZsh && ConfigureCrontab
+    RunStep "ConfigureGit" ConfigureGit
+    RunStep "ConfigureGPG" ConfigureGPG
+    RunStep "ConfigureOpenSSH" ConfigureOpenSSH
+    RunStep "ConfigureProxyChains" ConfigureProxyChains
+    RunStep "ConfigurePythonPyPI" ConfigurePythonPyPI
+    RunStep "ConfigureSshd" ConfigureSshd
+    RunStep "ConfigureWireGuard" ConfigureWireGuard
+    # Always runs: ConfigureCrontab needs the DEFAULT_PATH it computes.
+    ConfigureZsh
+    RunStep "ConfigureCrontab" ConfigureCrontab
 }
 
 # Configure System
@@ -129,31 +130,14 @@ function ConfigureSystem() {
         defaults write com.apple.desktopservices DSDontWriteNetworkStores -bool true
         defaults write com.apple.desktopservices DSDontWriteUSBStores -bool true
     }
-    ConfigureHostfile
-    ConfigureSystemDefault
+    RunStep "ConfigureHostfile" ConfigureHostfile
+    RunStep "ConfigureSystemDefault" ConfigureSystemDefault
 }
 
 # Install Custom Packages
 function InstallCustomPackages() {
     function InstallAppFromCask() {
-        local app_list=(
-            "blackhole-16ch" # BlackHole 16ch
-            "blackhole-2ch" # BlackHole 2ch
-            "blackhole-64ch" # BlackHole 64ch
-            "docker" # Docker
-            "drawio" # Draw.io
-            "iina" # IINA
-            "jordanbaird-ice" # Ice
-            "keka" # Keka
-            "kekaexternalhelper" # Keka External Helper
-            "lm-studio" # LM Studio
-            "microsoft-edge" # Microsoft Edge
-            "obs" # OBS
-            "onyx" # OnyX
-            "rectangle" # Rectangle
-            "stats" # Stats
-            "visual-studio-code" # Visual Studio Code
-        )
+        local app_list=("${CASK_APPS[@]}")
         HaveCommand brew || return 0
         local app
         for app in "${app_list[@]}"; do
@@ -165,26 +149,7 @@ function InstallCustomPackages() {
         done
     }
     function InstallAppFromMAS() {
-        local app_list=(
-            "1136220934" # Infuse
-            "1289583905" # Pixelmator Pro
-            "1352778147" # Bitwarden
-            "409222199" # Cyberduck
-            "424389933" # Final Cut Pro
-            "424390742" # Compressor
-            "434290957" # Motion
-            "451108668" # QQ
-            "462054704" # Microsoft Word
-            "462058435" # Microsoft Excel
-            "462062816" # Microsoft PowerPoint
-            "497799835" # Xcode
-            "595615424" # QQ音乐
-            "634148309" # Logic Pro
-            "634159523" # MainStage
-            "823766827" # OneDrive
-            "836500024" # Wechat
-            "985367838" # Microsoft Outlook
-        )
+        local app_list=("${MAS_APPS[@]}")
         HaveCommand mas || return 0
         local app
         for app in "${app_list[@]}"; do
@@ -197,9 +162,9 @@ function InstallCustomPackages() {
     }
     OMZ_HOME="/Users/${CURRENT_USERNAME}"
     OMZ_OWNER=""
-    #InstallAppFromCask
-    #InstallAppFromMAS
-    InstallOhMyZsh
+    #RunStep "InstallAppFromCask" InstallAppFromCask
+    #RunStep "InstallAppFromMAS" InstallAppFromMAS
+    RunStep "InstallOhMyZsh" InstallOhMyZsh
 }
 
 # Install Dependency Packages
@@ -215,51 +180,7 @@ function InstallDependencyPackages() {
     if ! HaveCommand brew; then
         /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
     fi
-    local app_list=(
-        "bash"
-        "cloudflared"
-        "coreutils"
-        "curl"
-        "fastfetch"
-        "fd"
-        "ffmpeg"
-        "findutils"
-        "gawk"
-        "git"
-        "git-lfs"
-        "gnupg"
-        "gnutls"
-        "grep"
-        "iperf3"
-        "iproute2mac"
-        "jq"
-        "knot"
-        "mailutils"
-        "mas"
-        "mtr"
-        "nano"
-        "nmap"
-        "openssh"
-        "p7zip"
-        "pinentry"
-        "proxychains-ng"
-        "python3"
-        "qrencode"
-        "rar"
-        "ripgrep"
-        "tcpdump"
-        "the_silver_searcher"
-        "unzip"
-        "vim"
-        "wget"
-        "whois"
-        "wireguard-tools"
-        "wireshark"
-        "ykman"
-        "youtube-dl"
-        "zip"
-        "zsh"
-    )
+    local app_list=("${BREW_PACKAGES[@]}")
     brew developer on
     brew update
     local app
@@ -289,12 +210,13 @@ function CleanupTempFiles() {
 }
 
 ## Process
-# Call GetSystemInformation
+# Call GetSystemInformation (always runs: later steps need its globals)
 GetSystemInformation
+InitRun
 # Call InstallDependencyPackages
-InstallDependencyPackages
+RunStep "InstallDependencyPackages" InstallDependencyPackages
 # Call UpgradePackages
-UpgradePackages
+RunStep "UpgradePackages" UpgradePackages
 # Call InstallCustomPackages
 InstallCustomPackages
 # Call ConfigureSystem
@@ -302,4 +224,5 @@ ConfigureSystem
 # Call ConfigurePackages
 ConfigurePackages
 # Call CleanupTempFiles
-CleanupTempFiles
+RunStep "CleanupTempFiles" CleanupTempFiles
+RenderProgress "complete"
