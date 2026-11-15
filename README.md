@@ -1,5 +1,8 @@
 # AutoDeploy
 
+[![License](https://img.shields.io/badge/License-Apache%202.0--Commons%20Clause-blue)](LICENSE)
+[![Bash](https://img.shields.io/badge/Bash-4EAA25?logo=gnubash&logoColor=white)](https://www.gnu.org/software/bash/)
+
 这是一个跨平台自动化系统部署脚本集合，支持多种操作系统的快速配置和部署。编码代理指南见 [AGENTS.md](AGENTS.md)。
 
 ## 支持的平台
