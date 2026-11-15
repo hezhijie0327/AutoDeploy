@@ -1,153 +1,1167 @@
 #!/bin/bash
-
+# Copyright 2026 Zhijie He
+# Licensed under Apache-2.0 WITH Commons-Clause-1.0. See LICENSE.
+#
+# GENERATED FILE - do not edit directly. Edit src/ and run ./build.sh.
+#
 ## How to get and use?
 # curl "https://source.zhijie.online/AutoDeploy/main/Ubuntu.sh" | sudo bash
 # wget -qO- "https://source.zhijie.online/AutoDeploy/main/Ubuntu.sh" | sudo bash
+# ============================================================================
+# common.sh - shared across all platforms (DSM / macOS / Ubuntu / Proxmox VE)
+# Part of the generated single-file scripts; not executable on its own.
+# Compatible with bash 3.2 (macOS system bash) - avoid bash 4+ features here.
+# ============================================================================
+
+set -Eeuo pipefail
+
+LogInfo() {
+    printf '[AutoDeploy] %s\n' "$*"
+}
+
+LogWarn() {
+    printf '[AutoDeploy] WARNING: %s\n' "$*" >&2
+}
+
+Die() {
+    printf '[AutoDeploy] ERROR: %s\n' "$*" >&2
+    exit 1
+}
+
+HaveCommand() {
+    command -v "$1" > /dev/null 2>&1
+}
+
+RequireRoot() {
+    if [ "$(id -u)" -ne 0 ]; then
+        Die "this script must run as root (use sudo)"
+    fi
+}
+
+# Move an existing file/directory aside instead of destroying it, so a re-run
+# never wipes keys or configuration without a recovery path.
+BackupPath() {
+    local target="$1" backup
+    if [ -e "$target" ]; then
+        backup="${target}.bak.$(date '+%Y%m%d%H%M%S')"
+        mv "$target" "$backup"
+        LogInfo "backed up ${target} -> ${backup}"
+    fi
+}
+
+WarnDefaultPassword() {
+    local name="$1" value="$2" default_value="$3"
+    if [ "$value" = "$default_value" ]; then
+        LogWarn "${name} is using the built-in default. Change it after deployment, or override it with ${name}=<value> before running."
+    fi
+}
+
+trap 'Die "failed at line ${LINENO}: ${BASH_COMMAND}"' ERR
 
 ## Function
-# Get System Information
-function GetSystemInformation() {
-    function CheckDNSConfiguration() {
-        USE_GLOBAL_DNS="false"
-        if [ "${USE_GLOBAL_DNS}" == "true" ]; then
-            CUSTOM_DNS=(
-                "8.8.4.4"
-                "8.8.8.8"
-                "2001:4860:4860::8844"
-                "2001:4860:4860::8888"
-            )
-        else
-            CUSTOM_DNS=(
-                "223.5.5.5"
-                "223.6.6.6"
-                "2400:3200::1"
-                "2400:3200:baba::1"
-            )
+# Get System Information (shared parts)
+GetCurrentUsername() {
+    # Under `curl | sudo bash`, whoami is root; SUDO_USER is the real operator.
+    # Used by DSM/macOS; debian platforms use DEFAULT_USERNAME instead.
+    # shellcheck disable=SC2034
+    CURRENT_USERNAME="${SUDO_USER:-$(whoami)}"
+}
+
+SetGHProxyDomain() {
+    GHPROXY_URL="${GHPROXY_URL:-}"
+    if [ -n "$GHPROXY_URL" ]; then
+        export GHPROXY_URL="https://${GHPROXY_URL}/"
+    fi
+}
+
+# Configure Packages (shared)
+ApplyGitConfig() {
+    local gitconfig_key_list=(
+        "commit.gpgsign"
+        "gpg.program"
+        "http.proxy"
+        "https.proxy"
+        "user.name"
+        "user.email"
+        "user.signingkey"
+        "url.${GHPROXY_URL}https://github.com/.insteadOf"
+    )
+    local gitconfig_value_list=(
+        "${GIT_COMMIT_GPGSIGN:-false}"
+        "${GIT_GPG_PROGRAM:-gpg}"
+        "${GIT_HTTP_PROXY:-}"
+        "${GIT_HTTPS_PROXY:-}"
+        "${GIT_USER_NAME:-}"
+        "${GIT_USER_EMAIL:-}"
+        "${GIT_USER_SIGNINGKEY:-}"
+        "https://github.com/"
+    )
+    local i
+    for i in "${!gitconfig_key_list[@]}"; do
+        git config --global --unset "${gitconfig_key_list[$i]}" || true
+        if [ -n "${gitconfig_value_list[$i]}" ]; then
+            git config --global "${gitconfig_key_list[$i]}" "${gitconfig_value_list[$i]}"
         fi
-        DHCP_DNS=()
-        CUSTOM_DNS_LINE="" && for CUSTOM_DNS_TASK in "${!CUSTOM_DNS[@]}"; do
-            CUSTOM_DNS_LINE="${CUSTOM_DNS_LINE} ${CUSTOM_DNS[$CUSTOM_DNS_TASK]}"
-            CUSTOM_DNS_LINE=$(echo "${CUSTOM_DNS_LINE}" | sed "s/^\ //g")
-        done && CURRENT_DNS_EXCLUDE="$(echo ${DHCP_DNS[*]} ${CUSTOM_DNS_LINE} | sed 's/\ /\\\|/g')\|127.0.0.53"
-        if [ -f "/etc/resolv.conf" ]; then
-            CURRENT_DNS=(${DHCP_DNS[*]} $(cat "/etc/resolv.conf" | grep "nameserver\ " | sed "s/nameserver\ //g" | grep -v "${CURRENT_DNS_EXCLUDE}" | awk "{print $2}"))
-            CURRENT_DNS_LINE="" && for CURRENT_DNS_TASK in "${!CURRENT_DNS[@]}"; do
-                CURRENT_DNS_LINE="${CURRENT_DNS_LINE} ${CURRENT_DNS[$CURRENT_DNS_TASK]}"
-                CURRENT_DNS_LINE=$(echo "${CURRENT_DNS_LINE}" | sed "s/^\ //g")
-            done && DNS_LINE=$(echo "${CURRENT_DNS_LINE} ${CUSTOM_DNS_LINE}" | cut -d ' ' -f 1-3)
-        fi
-    }
-    function CheckMachineEnvironment() {
-        function CheckHypervisorEnvironment() {
-            which "virt-what" > "/dev/null" 2>&1
-            if [ "$?" -eq "1" ]; then
-                if [ -f "/etc/apt/sources.list" ]; then
-                    APT_SOURCES_FILE="/etc/apt/sources.list"
-                else
-                    APT_SOURCES_FILE="/etc/apt/sources.list.d/ubuntu.sources"
-                fi && sed -i "s/[a-z]\{0,\}[.]\{0,\}archive.ubuntu.com/mirrors.cernet.edu.cn/g;s/[a-z]\{0,\}[.]\{0,\}ports.ubuntu.com/mirrors.cernet.edu.cn/g;s/[a-z]\{0,\}[.]\{0,\}security.ubuntu.com/mirrors.cernet.edu.cn/g" "${APT_SOURCES_FILE}" && apt update && apt install virt-what -qy
-                which "virt-what" > "/dev/null" 2>&1
-                if [ "$?" -eq "1" ]; then
-                    echo "virt-what has not been installed!"
-                    exit 1
-                fi
-            fi && hypervisor_environment=$(virt-what) && if [ "${hypervisor_environment}" == "" ]; then
-                hypervisor_environment="none"
-            elif [ "${hypervisor_environment}" == "kvm" ]; then
-                HYPERVISOR_AGENT=("ksmtuned" "qemu-guest-agent")
-            elif [ "${hypervisor_environment}" == "vmware" ]; then
-                HYPERVISOR_AGENT=("open-vm-tools")
-            elif [ "${hypervisor_environment}" == "virtualbox" ]; then
-                HYPERVISOR_AGENT=("virtualbox-guest-dkms")
+    done
+}
+
+ConfigureGit() {
+    HaveCommand git || return 0
+    ApplyGitConfig
+    # On root-run platforms the default user gets a baseline config without
+    # the operator's personal identity (configure that per user later).
+    if [ "$(id -u)" -eq 0 ] && [ -n "${DEFAULT_USERNAME:-}" ]; then
+        local user_gitconfig="/home/${DEFAULT_USERNAME}/.gitconfig"
+        git config --file "$user_gitconfig" commit.gpgsign "${GIT_COMMIT_GPGSIGN:-false}"
+        git config --file "$user_gitconfig" gpg.program "${GIT_GPG_PROGRAM:-gpg}"
+        git config --file "$user_gitconfig" "url.${GHPROXY_URL}https://github.com/.insteadOf" "https://github.com/"
+        chown "$DEFAULT_USERNAME:$DEFAULT_USERNAME" "$user_gitconfig"
+    fi
+}
+
+# Platform must set: GPG_HOME, GPG_KEYSERVER, GPG_PINENTRY (may be empty),
+# and optionally GPG_HOME_OWNER (user:group) when running as root.
+ConfigureGPG() {
+    HaveCommand gpg || return 0
+    GPG_PUBKEY="${GPG_PUBKEY:-DD982DAAB9C71C78F9563E5207EB56787030D792}"
+    BackupPath "$GPG_HOME"
+    mkdir -p "$GPG_HOME"
+    export GNUPGHOME="$GPG_HOME"
+    gpg --keyserver "$GPG_KEYSERVER" --recv "$GPG_PUBKEY" || Die "failed to receive GPG key ${GPG_PUBKEY}"
+    printf '%s:6:\n' "$GPG_PUBKEY" | gpg --import-ownertrust
+    GPG_PUBKEY_ID_A=$(gpg --list-keys --keyid-format LONG | awk '/^(pub|sub)/ && /\[A\]/ {split($2, a, "/"); print a[2]}' | head -n 1)
+    GPG_PUBKEY_ID_C=$(gpg --list-keys --keyid-format LONG | awk '/^(pub|sub)/ && /\[C\]/ {split($2, a, "/"); print a[2]}' | head -n 1)
+    if [ -n "$GPG_PUBKEY_ID_A" ]; then
+        {
+            printf '%s\n' "enable-ssh-support"
+            if [ -n "$GPG_PINENTRY" ]; then
+                printf '%s\n' "pinentry-program ${GPG_PINENTRY}"
             fi
-        }
-        CheckHypervisorEnvironment
-    }
-    function GenerateDomain() {
-        RESET_DOMAIN="false"
-        if [ -f "/etc/resolv.conf" ]; then
-            NEW_DOMAIN=($(cat "/etc/resolv.conf" | grep "^search " | cut -d " " -f 2- | awk "{print $2}"))
+        } > "${GPG_HOME}/gpg-agent.conf"
+        printf '%s\n' "$GPG_PUBKEY_ID_A" > "${GPG_HOME}/sshcontrol"
+    fi
+    if [ -n "$GPG_PUBKEY_ID_C" ]; then
+        gpg --export-ssh-key "$GPG_PUBKEY_ID_C" > "${GPG_HOME}/authorized_keys"
+    fi
+    gpgconf --kill gpg-agent > /dev/null 2>&1 || true
+    unset GNUPGHOME
+    if [ -n "${GPG_HOME_OWNER:-}" ]; then
+        chown -R "$GPG_HOME_OWNER" "$GPG_HOME"
+    fi
+    find "$GPG_HOME" -type d -exec chmod 700 {} +
+    find "$GPG_HOME" -type f -exec chmod 600 {} +
+}
+
+# Generate the user key pairs (ecdsa/ed25519/rsa) inside an existing .ssh dir.
+# DSA is intentionally gone: OpenSSH >= 9.8 disables it, 10.x removed it.
+GenerateSSHKeys() {
+    local ssh_dir="$1" comment="$2"
+    ssh-keygen -t ecdsa -b 384 -f "${ssh_dir}/id_ecdsa" -C "$comment" -N "${OPENSSH_PASSWORD:-}"
+    ssh-keygen -t ed25519 -f "${ssh_dir}/id_ed25519" -C "$comment" -N "${OPENSSH_PASSWORD:-}"
+    ssh-keygen -t rsa -b 4096 -f "${ssh_dir}/id_rsa" -C "$comment" -N "${OPENSSH_PASSWORD:-}"
+    chmod 400 "${ssh_dir}"/id_*
+    chmod 644 "${ssh_dir}"/id_*.pub
+}
+
+GenerateHostSSHKeys() {
+    local ssh_dir="$1" comment="$2"
+    rm -f "${ssh_dir}"/ssh_host_*
+    ssh-keygen -t ecdsa -b 384 -f "${ssh_dir}/ssh_host_ecdsa_key" -C "$comment" -N "${OPENSSH_PASSWORD:-}"
+    ssh-keygen -t ed25519 -f "${ssh_dir}/ssh_host_ed25519_key" -C "$comment" -N "${OPENSSH_PASSWORD:-}"
+    ssh-keygen -t rsa -b 4096 -f "${ssh_dir}/ssh_host_rsa_key" -C "$comment" -N "${OPENSSH_PASSWORD:-}"
+    chmod 400 "${ssh_dir}"/ssh_host_*
+    chmod 644 "${ssh_dir}"/ssh_host_*.pub
+}
+
+# Platform must set: PROXYCHAINS_CONF
+ConfigureProxyChains() {
+    local proxychains_list=(
+        'localnet 127.0.0.0/255.0.0.0'
+        'localnet 10.0.0.0/255.0.0.0'
+        'localnet 172.16.0.0/255.240.0.0'
+        'localnet 192.168.0.0/255.255.0.0'
+        'localnet ::1/128'
+        'proxy_dns'
+        'remote_dns_subnet 224'
+        'strict_chain'
+        'tcp_connect_time_out 8000'
+        'tcp_read_time_out 15000'
+        '[ProxyList]'
+        "${PROXY_PROTOCOL:-socks5} ${PROXY_IP:-127.0.0.1} ${PROXY_PORT:-7891}${PROXY_USERNAME:+ ${PROXY_USERNAME} ${PROXY_PASSWORD:-}}"
+    )
+    printf '%s\n' "${proxychains_list[@]}" > "$PROXYCHAINS_CONF"
+}
+
+ConfigurePythonPyPI() {
+    local which_pip=""
+    if HaveCommand pip3; then
+        which_pip="pip3"
+    elif HaveCommand pip; then
+        which_pip="pip"
+    else
+        return 0
+    fi
+    "$which_pip" config set global.index-url "https://mirrors.cernet.edu.cn/pypi/web/simple"
+    if [ "$(id -u)" -eq 0 ] && [ -n "${DEFAULT_USERNAME:-}" ] && [ -f "/root/.config/pip/pip.conf" ]; then
+        install -D -m 644 -o "$DEFAULT_USERNAME" -g "$DEFAULT_USERNAME" \
+            "/root/.config/pip/pip.conf" "/home/${DEFAULT_USERNAME}/.config/pip/pip.conf"
+    fi
+}
+
+# Platform must set: ZSH_PATH_LIST (array)
+GenerateCommandPath() {
+    DEFAULT_PATH=""
+    local path_entry
+    for path_entry in "${ZSH_PATH_LIST[@]}"; do
+        DEFAULT_PATH="${path_entry}:${DEFAULT_PATH}"
+    done
+    DEFAULT_PATH="${DEFAULT_PATH%:}"
+}
+
+# Platform must set: ZSH_HOME, ZSH_BUILD_IN_PLUGINS, ZSH_EXTRA_EXPORTS (array,
+# may be empty), ZSH_TRAPEXIT (true/false), ZSH_OWNER (may be empty).
+GenerateOMZProfile() {
+    local proxy_url="${PROXY_URL:-http://vpn.zhijie.online:7890}"
+    local no_proxy='localhost,127.0.0.1,::1'
+    local external_plugins="zsh-autosuggestions zsh-completions zsh-history-substring-search zsh-syntax-highlighting"
+    local omz_list=(
+        "export EDITOR=\"nano\""
+        "export GPG_TTY=\$(tty)"
+        ${ZSH_EXTRA_EXPORTS[@]+"${ZSH_EXTRA_EXPORTS[@]}"}
+        "export PATH=\"${DEFAULT_PATH}:\$PATH\""
+        "export SSH_AUTH_SOCK=\"\$(gpgconf --list-dirs agent-ssh-socket)\" && gpgconf --launch gpg-agent && gpg-connect-agent updatestartuptty /bye > \"/dev/null\" 2>&1"
+        "export ZSH=\"\$HOME/.oh-my-zsh\""
+        "function proxy_off(){ unset all_proxy; unset ftp_proxy; unset http_proxy; unset https_proxy; unset rsync_proxy; unset no_proxy }"
+        "function proxy_on(){ export all_proxy=\"${proxy_url}\"; export ftp_proxy=\"${proxy_url}\"; export http_proxy=\"${proxy_url}\"; export https_proxy=\"${proxy_url}\"; export rsync_proxy=\"${proxy_url}\"; export no_proxy=\"${no_proxy}\" }"
+        "plugins=(${ZSH_BUILD_IN_PLUGINS} ${external_plugins})"
+        "ZSH_CACHE_DIR=\"\$ZSH/cache\""
+        "ZSH_CUSTOM=\"\$ZSH/custom\""
+        "ZSH_THEME=\"ys\""
+        "DISABLE_AUTO_UPDATE=\"true\""
+        "DISABLE_UPDATE_PROMPT=\"true\""
+        "UPDATE_ZSH_DAYS=\"7\""
+        "ZSH_COMPDUMP=\"\$ZSH_CACHE_DIR/.zcompdump\""
+        "ZSH_DISABLE_COMPFIX=\"false\""
+        "CASE_SENSITIVE=\"true\""
+        "COMPLETION_WAITING_DOTS=\"true\""
+        "DISABLE_AUTO_TITLE=\"false\""
+        "DISABLE_LS_COLORS=\"false\""
+        "DISABLE_MAGIC_FUNCTIONS=\"true\""
+        "DISABLE_UNTRACKED_FILES_DIRTY=\"false\""
+        "ENABLE_CORRECTION=\"true\""
+        "HIST_STAMPS=\"yyyy-mm-dd\""
+        "HYPHEN_INSENSITIVE=\"false\""
+        "ZSH_THEME_RANDOM_QUIET=\"true\""
+        "ZSH_AUTOSUGGEST_HIGHLIGHT_STYLE=\"bg=250,fg=238,bold,underline\""
+        "ZSH_AUTOSUGGEST_STRATEGY=(match_prev_cmd history completion)"
+        "ZSH_AUTOSUGGEST_USE_ASYNC=\"true\""
+        "source \"\$ZSH/oh-my-zsh.sh\""
+    )
+    if [ "${ZSH_TRAPEXIT:-false}" = "true" ]; then
+        omz_list+=('TRAPEXIT() { rm -rf ~/.zsh_history(N) ~/.ssh/known_hosts*(N) }')
+    fi
+    printf '%s\n' "${omz_list[@]}" > "${ZSH_HOME}/.zshrc"
+    if [ -n "${ZSH_OWNER:-}" ]; then
+        chown "$ZSH_OWNER" "${ZSH_HOME}/.zshrc"
+    fi
+}
+
+ConfigureZsh() {
+    HaveCommand zsh || return 0
+    [ -d "${ZSH_HOME}/.oh-my-zsh" ] || return 0
+    GenerateCommandPath
+    GenerateOMZProfile
+}
+
+# Platform must set: OMZ_HOME, OMZ_OWNER (may be empty)
+InstallOhMyZsh() {
+    HaveCommand git || Die "git is required to install oh-my-zsh"
+    local plugin_list=(
+        "zsh-autosuggestions"
+        "zsh-completions"
+        "zsh-history-substring-search"
+        "zsh-syntax-highlighting"
+    )
+    local omz_dir="${OMZ_HOME}/.oh-my-zsh"
+    BackupPath "$omz_dir"
+    git clone --depth=1 "${GHPROXY_URL:-}https://github.com/ohmyzsh/ohmyzsh.git" "$omz_dir"
+    local plugin
+    for plugin in "${plugin_list[@]}"; do
+        git clone --depth=1 "${GHPROXY_URL:-}https://github.com/zsh-users/${plugin}.git" "${omz_dir}/custom/plugins/${plugin}"
+    done
+    # Single quotes are intentional: this script is generated, not expanded here.
+    # shellcheck disable=SC2016
+    local plugin_upgrade_list=(
+        '#!/bin/bash'
+        'plugin_list=($(ls "$HOME/.oh-my-zsh/custom/plugins" | grep -v "^example$"))'
+        'for plugin_list_task in "${!plugin_list[@]}"; do'
+        "    rm -rf \"\$HOME/.oh-my-zsh/custom/plugins/\${plugin_list[\$plugin_list_task]}\" && git clone --depth=1 \"${GHPROXY_URL:-}https://github.com/zsh-users/\${plugin_list[\$plugin_list_task]}.git\" \"\$HOME/.oh-my-zsh/custom/plugins/\${plugin_list[\$plugin_list_task]}\""
+        'done'
+    )
+    printf '%s\n' "${plugin_upgrade_list[@]}" > "${omz_dir}/oh-my-zsh-plugin.sh"
+    if [ -n "${OMZ_OWNER:-}" ]; then
+        chown -R "$OMZ_OWNER" "$omz_dir"
+    fi
+}
+
+# Write /etc/wireguard/wg0.conf. The private key never touches a temp file.
+# Platform handles directory ownership and bringing the interface up.
+GenerateWireGuardConfig() {
+    TUNNEL_CLIENT_IPADDR="10.172.$((RANDOM % 256)).$((RANDOM % 256))/32"
+    local private_key public_key preshared_key
+    private_key=$(wg genkey)
+    public_key=$(printf '%s' "$private_key" | wg pubkey)
+    preshared_key=$(wg genpsk)
+    local wireguard_list=(
+        "[Interface]"
+        "Address = ${TUNNEL_CLIENT_IPADDR}"
+        "# DNS = 127.0.0.1, ::1"
+        "ListenPort = 51820"
+        "MTU = 1420"
+        "PrivateKey = ${private_key}"
+        "# [Peer]"
+        "# AllowedIPs = ${TUNNEL_CLIENT_IPADDR}"
+        "# Endpoint = 127.0.0.1:51820"
+        "# PersistentKeepalive = 5"
+        "# PresharedKey = ${preshared_key}"
+        "# PublicKey = ${public_key}"
+    )
+    printf '%s\n' "${wireguard_list[@]}" > "/etc/wireguard/wg0.conf"
+    chmod 600 "/etc/wireguard/wg0.conf"
+}
+
+# Platform must set: CRONTAB_USER, CRONTAB_ENTRIES (array)
+InstallCrontab() {
+    HaveCommand crontab || return 0
+    local sudo_prefix=()
+    if [ "$(id -u)" -ne 0 ]; then
+        sudo_prefix=(sudo)
+    fi
+    printf '%s\n' "${CRONTAB_ENTRIES[@]}" | ${sudo_prefix[@]+"${sudo_prefix[@]}"} crontab -u "$CRONTAB_USER" -
+    ${sudo_prefix[@]+"${sudo_prefix[@]}"} crontab -lu "$CRONTAB_USER"
+}
+# ============================================================================
+# debian.sh - shared between Ubuntu and Proxmox VE (Debian-family, bash 4.4+)
+# Part of the generated single-file scripts; not executable on its own.
+# ============================================================================
+
+## Function
+# Get System Information (shared parts)
+GenerateDomain() {
+    RESET_DOMAIN="${RESET_DOMAIN:-false}"
+    NEW_DOMAIN=()
+    local resolv_conf="${RESOLV_CONF:-/etc/resolv.conf}" search_line
+    if [ -f "$resolv_conf" ]; then
+        search_line=$(awk '/^search/ {for (i = 2; i <= NF; i++) printf "%s ", $i; exit}' "$resolv_conf")
+        if [ -n "$search_line" ]; then
+            read -r -a NEW_DOMAIN <<< "$search_line"
         fi
-        if [ $(echo "${NEW_DOMAIN[*]}" | sed "s/\ /\\n/g" | wc -l ) -lt 1 ] || [ "${RESET_DOMAIN}" == "true" ]; then
-            NEW_DOMAIN=("localdomain")
-        fi
-    }
-    function GenerateHostname() {
-        RESET_HOSTNAME="false"
-        if [ -f "/etc/hostname" ]; then
-            NEW_HOSTNAME=$(cat "/etc/hostname" | awk "{print $2}")
-        fi
-        if [ $(echo "${NEW_HOSTNAME}" | wc -l) -ne 1 ]; then
-            which "hostname" > "/dev/null" 2>&1
-            if [ "$?" -eq "0" ]; then
-                NEW_HOSTNAME=$(hostname)
-            fi
-        fi
-        if [ $(echo "${NEW_HOSTNAME}" | wc -l) -ne 1 ] || [ "${RESET_HOSTNAME}" == "true" ]; then
-            NEW_HOSTNAME="Ubuntu-$(date '+%Y%m%d%H%M%S')"
-        fi
-    }
-    function GetCPUpsABILevel() {
-        # https://dl.xanmod.org/check_x86-64_psabi.sh
-        psABILevel=$(awk 'BEGIN{while(!/flags/)if(getline<"/proc/cpuinfo"!=1)exit 0;if(/lm/&&/cmov/&&/cx8/&&/fpu/&&/fxsr/&&/mmx/&&/syscall/&&/sse2/)l=1;if(l==1&&/cx16/&&/lahf/&&/popcnt/&&/sse4_1/&&/sse4_2/&&/ssse3/)l=2;if(l==2&&/avx/&&/avx2/&&/bmi1/&&/bmi2/&&/f16c/&&/fma/&&/abm/&&/movbe/&&/xsave/)l=3;if(l==3&&/avx512f/&&/avx512bw/&&/avx512cd/&&/avx512dq/&&/avx512vl/)l=4;print l}')
-    }
-    function GetCPUVendorID() {
-        CPU_VENDOR_ID=$(cat '/proc/cpuinfo' | grep 'vendor_id' | uniq | awk -F ':' '{print $2}' | awk -F ' ' '{print $1}')
-        if [ "${CPU_VENDOR_ID}" == "AuthenticAMD" ]; then
+    fi
+    if [ "${#NEW_DOMAIN[@]}" -eq 0 ] || [ "$RESET_DOMAIN" = "true" ]; then
+        NEW_DOMAIN=("localdomain")
+    fi
+}
+
+GenerateHostname() {
+    RESET_HOSTNAME="${RESET_HOSTNAME:-false}"
+    NEW_HOSTNAME=""
+    local hostname_file="${HOSTNAME_FILE:-/etc/hostname}"
+    if [ -f "$hostname_file" ]; then
+        NEW_HOSTNAME=$(awk '{print $1; exit}' "$hostname_file")
+    fi
+    if [ -z "$NEW_HOSTNAME" ] && HaveCommand hostname; then
+        NEW_HOSTNAME=$(hostname)
+    fi
+    if [ -z "$NEW_HOSTNAME" ] || [ "$RESET_HOSTNAME" = "true" ]; then
+        NEW_HOSTNAME="${HOSTNAME_PREFIX}-$(date '+%Y%m%d%H%M%S')"
+    fi
+}
+
+# Sets CUSTOM_DNS / CURRENT_DNS / DHCP_DNS / DNS_LINE (first three, space joined)
+CollectDNS() {
+    USE_GLOBAL_DNS="${USE_GLOBAL_DNS:-false}"
+    if [ "$USE_GLOBAL_DNS" = "true" ]; then
+        CUSTOM_DNS=(
+            "8.8.4.4"
+            "8.8.8.8"
+            "2001:4860:4860::8844"
+            "2001:4860:4860::8888"
+        )
+    else
+        CUSTOM_DNS=(
+            "223.5.5.5"
+            "223.6.6.6"
+            "2400:3200::1"
+            "2400:3200:baba::1"
+        )
+    fi
+    DHCP_DNS=()
+    CURRENT_DNS=()
+    local resolv_conf="${RESOLV_CONF:-/etc/resolv.conf}" ns
+    if [ -f "$resolv_conf" ]; then
+        while IFS= read -r ns; do
+            case " ${CUSTOM_DNS[*]} ${DHCP_DNS[*]:-} 127.0.0.53 " in
+                *" ${ns} "*) ;;
+                *) CURRENT_DNS+=("$ns") ;;
+            esac
+        done < <(awk '/^nameserver/ {print $2}' "$resolv_conf")
+    fi
+    DNS_LINE=$(printf '%s\n' ${CURRENT_DNS[@]+"${CURRENT_DNS[@]}"} "${CUSTOM_DNS[@]}" | head -n 3 | tr '\n' ' ')
+    DNS_LINE="${DNS_LINE% }"
+}
+
+GetCPUVendorID() {
+    CPU_VENDOR_ID=$(awk -F: '/vendor_id/ {gsub(/^[ \t]+/, "", $2); print $2; exit}' /proc/cpuinfo)
+    # pcie_acs_override is a patched-kernel parameter (common homelab kernels);
+    # mainline kernels ignore it with a warning. Kept intentionally.
+    case "$CPU_VENDOR_ID" in
+        AuthenticAMD)
             CPU_VENDOR_ID="AMD"
             ENABLE_IOMMU=" amd_iommu=on iommu=pt pci=assign-busses pcie_acs_override=downstream,multifunction"
             INTEL_GVT_MODULES=()
-            INTEL_HDMI_AUDIO_MUDULE=()
+            INTEL_HDMI_AUDIO_MODULE=()
             MICROCODE=("amd64-microcode")
             NESTED_MODULES=("kvm_amd")
-        elif [ "${CPU_VENDOR_ID}" == "GenuineIntel" ]; then
+            ;;
+        GenuineIntel)
             CPU_VENDOR_ID="Intel"
             ENABLE_IOMMU=" intel_iommu=on iommu=pt pci=assign-busses pcie_acs_override=downstream,multifunction"
             INTEL_GVT_MODULES=("i915" "kvmgt")
-            INTEL_HDMI_AUDIO_MUDULE=("snd_hda_intel")
+            INTEL_HDMI_AUDIO_MODULE=("snd_hda_intel")
             MICROCODE=("intel-microcode")
             NESTED_MODULES=("kvm_intel")
-        else
+            ;;
+        *)
             CPU_VENDOR_ID="Unknown"
             ENABLE_IOMMU=""
             INTEL_GVT_MODULES=()
-            INTEL_HDMI_AUDIO_MUDULE=()
+            INTEL_HDMI_AUDIO_MODULE=()
             MICROCODE=()
             NESTED_MODULES=()
-        fi
-    }
-    function GetOSArchitecture() {
-        which "dpkg" > "/dev/null" 2>&1
-        if [ "$?" -eq "0" ]; then
-            OSArchitecture=$(dpkg --print-architecture)
+            ;;
+    esac
+}
+
+ComputeFullDomain() {
+    NEW_FULL_DOMAIN=""
+    local domain
+    for domain in "${NEW_DOMAIN[@]}"; do
+        NEW_FULL_DOMAIN="${NEW_FULL_DOMAIN} ${NEW_HOSTNAME}.${domain}"
+    done
+    NEW_FULL_DOMAIN="${NEW_FULL_DOMAIN# }"
+}
+
+# Write /etc/resolv.conf with up to three nameservers plus the search domain.
+WriteResolvConf() {
+    local resolv_conf_list=()
+    resolv_conf_list+=(${CURRENT_DNS[@]+"${CURRENT_DNS[@]}"})
+    resolv_conf_list+=("${CUSTOM_DNS[@]}")
+    local count=0 entry
+    chattr -i /etc/resolv.conf > /dev/null 2>&1 || true
+    rm -f /etc/resolv.conf
+    {
+        for entry in "${resolv_conf_list[@]}"; do
+            if [ "$count" -ge 3 ]; then
+                break
+            fi
+            printf 'nameserver %s\n' "$entry"
+            count=$((count + 1))
+        done
+        printf 'search %s\n' "${NEW_DOMAIN[*]}"
+    } > /etc/resolv.conf
+}
+
+# Configure Packages (shared)
+# Platform must set: APT_PREFERENCES (array of "<release> <priority>")
+ConfigureAPT() {
+    local apt_conf_list=(
+        '# Disable HTTP Pipelining'
+        'Acquire::http::Pipeline-Depth "0";'
+        '# Disable Phased Updates'
+        'APT::Get::Always-Include-Phased-Updates true;'
+        'Update-Manager::Always-Include-Phased-Updates true;'
+    )
+    mkdir -p /etc/apt/apt.conf.d
+    printf '%s\n' "${apt_conf_list[@]}" > /etc/apt/apt.conf.d/99autodeploy
+    rm -rf /etc/apt/preferences.d
+    mkdir -p /etc/apt/preferences.d
+    local entry release priority
+    : > /etc/apt/preferences
+    for entry in "${APT_PREFERENCES[@]}"; do
+        release="${entry%% *}"
+        priority="${entry##* }"
+        case "$priority" in
+            *[!0-9]*) priority="500" ;;
+        esac
+        printf 'Package: *\nPin: release a=%s\nPin-Priority: %s\n\n' "$release" "$priority" >> /etc/apt/preferences
+    done
+    apt modernize-sources
+    rm -f /etc/apt/sources.list.bak /etc/apt/sources.list.d/*.bak
+}
+
+ConfigureBusybox() {
+    HaveCommand busybox || return 0
+    busybox --install -s
+}
+
+ConfigureChrony() {
+    HaveCommand chronyc || return 0
+    local chrony_list=(
+        "allow"
+        "clientloglimit 65536"
+        "driftfile /var/lib/chrony/chrony.drift"
+        "dumpdir /run/chrony"
+        "keyfile /etc/chrony/chrony.keys"
+        "leapsectz right/UTC"
+        "logdir /var/log/chrony"
+        "makestep 1 3"
+        "ratelimit burst 8 interval 3 leak 2"
+        "rtcsync"
+    )
+    DHCP_NTP=()
+    local chrony_ntp_list=(
+        ${DHCP_NTP[@]+"${DHCP_NTP[@]}"}
+        "ntp.ntsc.ac.cn"
+        "ntp1.nim.ac.cn"
+        "ntp2.nim.ac.cn"
+        "ntp.aliyun.com"
+        "ntp.tencent.com"
+        "time.apple.com"
+        "time.windows.com"
+        "time.cloudflare.com"
+        "time.nist.gov"
+        "pool.ntp.org"
+    )
+    local prefer_list=("ntp.ntsc.ac.cn" "ntp1.nim.ac.cn" "ntp2.nim.ac.cn")
+    local server suffix
+    {
+        printf '%s\n' "${chrony_list[@]}"
+        for server in "${chrony_ntp_list[@]}"; do
+            suffix=" iburst"
+            case " ${prefer_list[*]} ${DHCP_NTP[*]:-} " in
+                *" ${server} "*) suffix=" iburst prefer" ;;
+            esac
+            printf 'server %s%s\n' "$server" "$suffix"
+        done
+    } > /etc/chrony/chrony.conf
+    systemctl restart chrony
+    sleep 5
+    chronyc activity
+    chronyc tracking
+    chronyc clients
+    hwclock -w || true
+}
+
+ConfigureCrowdSec() {
+    HaveCommand cscli || return 0
+    local collection
+    for collection in "crowdsecurity/iptables" "crowdsecurity/linux-lpe" "crowdsecurity/linux" "crowdsecurity/sshd"; do
+        cscli collections install "$collection"
+    done
+    systemctl restart crowdsec
+    cscli hub list
+}
+
+ConfigureDockerEngine() {
+    HaveCommand docker || return 0
+    DOCKER_REGISTRY_MIRRORS=()
+    local docker_list=(
+        "{"
+        "  \"allow-direct-routing\": true,"
+        "  \"experimental\": true,"
+        "  \"firewall-backend\": \"nftables\","
+        "  \"ip-forward\": true"
+        "}"
+    )
+    if [ "${#DOCKER_REGISTRY_MIRRORS[@]}" -gt 0 ]; then
+        docker_list=(
+            "{"
+            "  \"allow-direct-routing\": true,"
+            "  \"experimental\": true,"
+            "  \"firewall-backend\": \"nftables\","
+            "  \"ip-forward\": true,"
+            "  \"registry-mirrors\": ["
+            "$(printf '    "%s",\n' "${DOCKER_REGISTRY_MIRRORS[@]}" | sed '$s/,$//')"
+            "  ]"
+            "}"
+        )
+    fi
+    if [ ! -d "/docker" ]; then
+        mkdir "/docker"
+    fi
+    chown -R "${DEFAULT_USERNAME}:docker" "/docker"
+    chmod -R 775 "/docker"
+    mkdir -p /etc/docker
+    printf '%s\n' 'DOCKER_OPTS="--iptables=false"' > /etc/default/docker
+    printf '%s\n' "${docker_list[@]}" > /etc/docker/daemon.json
+    systemctl enable docker
+    systemctl restart docker
+}
+
+# Platform must set: FAIL2BAN_JAILS (array), FAIL2BAN_BANACTION (ufw or default),
+# and optionally FAIL2BAN_FILTER_NAME + FAIL2BAN_FILTER (array).
+ConfigureFail2Ban() {
+    HaveCommand fail2ban-client || return 0
+    if [ -d /etc/fail2ban/jail.d ]; then
+        rm -f /etc/fail2ban/jail.d/*
+    else
+        mkdir -p /etc/fail2ban/jail.d
+    fi
+    if [ -f /etc/fail2ban/fail2ban.conf ]; then
+        cp /etc/fail2ban/fail2ban.conf /etc/fail2ban/fail2ban.local
+    fi
+    if [ -f /etc/fail2ban/jail.conf ]; then
+        if [ "${FAIL2BAN_BANACTION}" = "ufw" ]; then
+            sed -E \
+                -e 's/action = iptables-allports/action = ufw/g' \
+                -e 's/banaction = iptables-multiport(-log)?/banaction = ufw/g' \
+                -e 's/banaction = ufw-log/banaction = ufw/g' \
+                -e 's/banaction_allports = iptables-allports/banaction_allports = ufw/g' \
+                /etc/fail2ban/jail.conf > /etc/fail2ban/jail.local
         else
-            if [ "$(uname -m)" == "aarch64" ]; then
-                OSArchitecture="arm64"
-            elif [ "$(uname -m)" == "x86_64" ]; then
-                OSArchitecture="amd64"
+            cp /etc/fail2ban/jail.conf /etc/fail2ban/jail.local
+        fi
+    fi
+    if [ -n "${FAIL2BAN_FILTER_NAME:-}" ]; then
+        printf '%s\n' "${FAIL2BAN_FILTER[@]}" > "/etc/fail2ban/filter.d/${FAIL2BAN_FILTER_NAME}.conf"
+    fi
+    printf '%s\n' "${FAIL2BAN_JAILS[@]}" > /etc/fail2ban/jail.d/fail2ban_default.conf
+    systemctl enable fail2ban
+    fail2ban-client reload
+    sleep 5
+    fail2ban-client status
+}
+
+ConfigureFRRouting() {
+    HaveCommand vtysh || return 0
+    local frrouting_list=(
+        "frr defaults datacenter"
+        "log syslog errors"
+    )
+    printf '%s\n' "${frrouting_list[@]}" > /etc/frr/frr.conf
+    systemctl restart frr
+    sleep 5
+    vtysh -c "show running-config"
+    vtysh -c "show ip route"
+    vtysh -c "show ipv6 route"
+}
+
+ConfigureLLDPD() {
+    HaveCommand lldpcli || return 0
+    printf '%s\n' 'DAEMON_ARGS="-c -e -f -s -x"' > /etc/default/lldpd
+    systemctl restart lldpd
+    lldpcli show neighbors detail
+}
+
+# Platform must set: MODULE_LIST_EXTRA (array, may be empty)
+ConfigureModules() {
+    if [ -d /etc/modprobe.d ]; then
+        rm -rf /etc/modprobe.d
+        mkdir -p /etc/modprobe.d
+    fi
+    rm -f /etc/modules
+    local iommu_modules=()
+    if [ -n "$ENABLE_IOMMU" ]; then
+        iommu_modules=("vfio" "vfio_iommu_type1" "vfio_pci" "vfio_virqfd")
+        printf '%s\n' "options vfio_iommu_type1 allow_unsafe_interrupts=1" > /etc/modprobe.d/vfio_iommu_type1.conf
+    fi
+    local module_list=(
+        "kvm"
+        "tls"
+        ${INTEL_GVT_MODULES[@]+"${INTEL_GVT_MODULES[@]}"}
+        ${INTEL_HDMI_AUDIO_MODULE[@]+"${INTEL_HDMI_AUDIO_MODULE[@]}"}
+        ${iommu_modules[@]+"${iommu_modules[@]}"}
+        ${NESTED_MODULES[@]+"${NESTED_MODULES[@]}"}
+        ${MODULE_LIST_EXTRA[@]+"${MODULE_LIST_EXTRA[@]}"}
+    )
+    printf '%s\n' "${module_list[@]}" | sort -u > /etc/modules
+    printf '%s\n' "options kvm ignore_msrs=1 report_ignored_msrs=0" >> /etc/modprobe.d/kvm.conf
+    if [ "$CPU_VENDOR_ID" = "AMD" ]; then
+        printf '%s\n' "options kvm-amd nested=1" > /etc/modprobe.d/kvm-amd.conf
+    elif [ "$CPU_VENDOR_ID" = "Intel" ]; then
+        # 0 | 1 - GuC | 2 - HuC | 3 - GuC / HuC
+        printf '%s\n' "options i915 enable_guc=${I915_GUC_OPTION:-3} enable_gvt=1" > /etc/modprobe.d/i915.conf
+        printf '%s\n' "options kvm-intel nested=Y" > /etc/modprobe.d/kvm-intel.conf
+        printf '%s\n' "options snd-hda-intel enable_msi=1" > /etc/modprobe.d/snd-hda-intel.conf
+    fi
+}
+
+ConfigureNut() {
+    HaveCommand upsmon || return 0
+    function Create_upsd_users() {
+        NUT_ADMIN_PASSWORD="${NUT_ADMIN_PASSWORD:-123456}"
+        NUT_MON_PASSWORD="${NUT_MON_PASSWORD:-secret}"
+        WarnDefaultPassword "NUT_ADMIN_PASSWORD" "$NUT_ADMIN_PASSWORD" "123456"
+        WarnDefaultPassword "NUT_MON_PASSWORD" "$NUT_MON_PASSWORD" "secret"
+        upsd_user_list=(
+            "admin,${NUT_ADMIN_PASSWORD},master,FSD,SET"
+            "monuser,${NUT_MON_PASSWORD},slave,,"
+        )
+    }
+    function Generate_nut_conf() {
+        printf 'MODE=%s\n' "${NUT_MODE:-none}" > /etc/nut/nut.conf
+    }
+    function Generate_ups_conf() {
+        local ups_driver_list=(
+            "ups,usbhid-ups,auto"
+        )
+        local ups_conf_list=(
+            "maxretry = 3"
+            "retrydelay = 5"
+        )
+        local entry ups_name ups_driver ups_port
+        {
+            printf '%s\n' "${ups_conf_list[@]}"
+            for entry in "${ups_driver_list[@]}"; do
+                ups_name="${entry%%,*}"
+                ups_driver=$(printf '%s' "$entry" | cut -d ',' -f 2)
+                ups_port="${entry##*,}"
+                printf '[%s]\n    driver = %s\n    port = %s\n' "$ups_name" "$ups_driver" "$ups_port"
+            done
+        } > /etc/nut/ups.conf
+    }
+    function Generate_upsd_conf() {
+        local upsd_config_list=(
+            "MAXAGE 15"
+            "MAXCONN 1024"
+            "STATEPATH /var/run/nut"
+        )
+        {
+            if [ "${NUT_MODE}" = "standalone" ]; then
+                printf '%s\n' "LISTEN 127.0.0.1 3493" "LISTEN ::1 3493"
+            else
+                printf '%s\n' "LISTEN 0.0.0.0 3493"
+            fi
+            printf '%s\n' "${upsd_config_list[@]}"
+        } > /etc/nut/upsd.conf
+    }
+    function Generate_upsd_users() {
+        local entry upsd_username upsd_password upsd_role upsd_actions
+        {
+            for entry in "${upsd_user_list[@]}"; do
+                upsd_username=$(printf '%s' "$entry" | cut -d ',' -f 1)
+                upsd_password=$(printf '%s' "$entry" | cut -d ',' -f 2)
+                upsd_role=$(printf '%s' "$entry" | cut -d ',' -f 3)
+                upsd_actions=$(printf '%s' "$entry" | cut -d ',' -f 4-5 | tr ',' ' ' | sed 's/^ //g;s/ $//g')
+                printf '[%s]\n' "$upsd_username"
+                if [ -n "$upsd_actions" ]; then
+                    printf '    actions = %s\n    instcmds = ALL\n' "$upsd_actions"
+                fi
+                printf '    password = %s\n    upsmon %s\n' "$upsd_password" "$upsd_role"
+            done
+        } > /etc/nut/upsd.users
+    }
+    function Generate_upsmon_conf() {
+        local upsmon_list=(
+            "DEADTIME 15"
+            "FINALDELAY 5"
+            "HOSTSYNC 15"
+            "MINSUPPLIES 1"
+            "NOCOMMWARNTIME 300"
+            "POLLFREQ 5"
+            "POLLFREQALERT 5"
+            "POWERDOWNFLAG /etc/killpower"
+            "RBWARNTIME 43200"
+            'SHUTDOWNCMD "/sbin/shutdown -h +0"'
+            "MONITOR ${UPSMON_SYSTEM} 1 ${UPSMON_USERNAME} ${UPSMON_PASSWORD} ${UPSMON_ROLE}"
+        )
+        printf '%s\n' "${upsmon_list[@]}" > /etc/nut/upsmon.conf
+    }
+    NUT_MODE="${NUT_MODE:-}" # netclient | netserver | none | standalone
+    NUT_HOST="${NUT_HOST:-}" # localhost
+    rm -f /etc/nut/*.*
+    local nut_service_list=()
+    case "${NUT_MODE:-none}" in
+        netclient)
+            Create_upsd_users
+            UPSMON_USERNAME=$(printf '%s' "${upsd_user_list[1]}" | cut -d ',' -f 1)
+            UPSMON_PASSWORD=$(printf '%s' "${upsd_user_list[1]}" | cut -d ',' -f 2)
+            UPSMON_ROLE=$(printf '%s' "${upsd_user_list[1]}" | cut -d ',' -f 3)
+            UPSMON_SYSTEM="${UPS_NAME:-ups}@${NUT_HOST:-localhost}"
+            nut_service_list=(
+                "nut-client,enable"
+                "nut-driver,disable"
+                "nut-monitor,enable"
+                "nut-server,disable"
+            )
+            Generate_nut_conf
+            Generate_upsmon_conf
+            ;;
+        netserver|standalone)
+            Create_upsd_users
+            UPSMON_USERNAME=$(printf '%s' "${upsd_user_list[0]}" | cut -d ',' -f 1)
+            UPSMON_PASSWORD=$(printf '%s' "${upsd_user_list[0]}" | cut -d ',' -f 2)
+            UPSMON_ROLE=$(printf '%s' "${upsd_user_list[0]}" | cut -d ',' -f 3)
+            UPSMON_SYSTEM="${UPS_NAME:-ups}@localhost"
+            nut_service_list=(
+                "nut-client,enable"
+                "nut-driver,enable"
+                "nut-monitor,enable"
+                "nut-server,enable"
+            )
+            Generate_nut_conf
+            Generate_ups_conf
+            Generate_upsd_conf
+            Generate_upsd_users
+            Generate_upsmon_conf
+            ;;
+        none)
+            nut_service_list=(
+                "nut-client,disable"
+                "nut-driver,disable"
+                "nut-monitor,disable"
+                "nut-server,disable"
+            )
+            Generate_nut_conf
+            ;;
+    esac
+    chown -R root:nut /etc/nut
+    chmod 640 /etc/nut/*.*
+    local entry service_name service_status
+    for entry in "${nut_service_list[@]}"; do
+        service_name="${entry%%,*}"
+        service_status="${entry##*,}"
+        systemctl "$service_status" "$service_name" > /dev/null 2>&1 || true
+    done
+}
+
+ConfigureOpenSSH() {
+    HaveCommand ssh-keygen || return 0
+    if [ -d /etc/ssh ]; then
+        GenerateHostSSHKeys /etc/ssh "root@${NEW_HOSTNAME}"
+    fi
+    BackupPath /root/.ssh
+    mkdir -p /root/.ssh
+    touch /root/.ssh/authorized_keys /root/.ssh/known_hosts
+    GenerateSSHKeys /root/.ssh "root@${NEW_HOSTNAME}"
+    chmod 600 /root/.ssh/authorized_keys
+    chmod 644 /root/.ssh/known_hosts
+    chmod 700 /root/.ssh
+    local user_ssh="/home/${DEFAULT_USERNAME}/.ssh"
+    BackupPath "$user_ssh"
+    mkdir -p "$user_ssh"
+    if [ -f "/home/${DEFAULT_USERNAME}/.gnupg/authorized_keys" ]; then
+        mv "/home/${DEFAULT_USERNAME}/.gnupg/authorized_keys" "${user_ssh}/authorized_keys"
+    else
+        touch "${user_ssh}/authorized_keys"
+    fi
+    touch "${user_ssh}/known_hosts"
+    GenerateSSHKeys "$user_ssh" "${DEFAULT_USERNAME}@${NEW_HOSTNAME}"
+    chown -R "$DEFAULT_USERNAME:$DEFAULT_USERNAME" "$user_ssh"
+    chmod 600 "${user_ssh}/authorized_keys"
+    chmod 644 "${user_ssh}/known_hosts"
+    chmod 700 "$user_ssh"
+}
+
+ConfigurePostfix() {
+    [ -f /etc/postfix/main.cf ] || return 0
+    local current_hostname
+    current_hostname=$(awk -F '=' '/^myhostname/ {gsub(/^[ \t]+|[ \t]+$/, "", $2); print $2; exit}' /etc/postfix/main.cf)
+    if [ -n "$current_hostname" ]; then
+        sed -i "s/${current_hostname}/${NEW_HOSTNAME}/g" /etc/postfix/main.cf
+    fi
+}
+
+# Platform wrapper sets SNMP_USER, then calls this.
+ConfigureSNMPBase() {
+    HaveCommand snmpwalk || return 0
+    if [ -z "${SNMP_AUTH_PASS:-}" ]; then
+        SNMP_AUTH_PASS="${ROOT_PASSWORD}"
+        LogWarn "SNMP_AUTH_PASS defaults to the root password; override it via SNMP_AUTH_PASS."
+    fi
+    if [ -z "${SNMP_PRIV_PASS:-}" ]; then
+        SNMP_PRIV_PASS="${NEW_HOSTNAME}"
+        LogWarn "SNMP_PRIV_PASS defaults to the hostname; override it via SNMP_PRIV_PASS."
+    fi
+    SNMP_SYS_CONTACT="${DEFAULT_FULLNAME}"
+    SNMP_SYS_LOCATION="${NEW_HOSTNAME}"
+    SNMP_SYS_NAME="${NEW_FULL_DOMAIN}"
+    local snmp_list=(
+        "agentaddress udp:161,udp6:161"
+        "master agentx"
+        "rouser ${SNMP_USER}"
+        "sysContact ${SNMP_SYS_CONTACT}"
+        "sysLocation ${SNMP_SYS_LOCATION}"
+        "sysName ${SNMP_SYS_NAME}"
+        "sysServices 76"
+    )
+    systemctl stop snmpd
+    pkill -x snmpd > /dev/null 2>&1 || true
+    sed -i 's/^mibs :/# mibs :/g' /etc/snmp/snmp.conf
+    printf 'createUser %s SHA "%s" AES "%s"\n' "$SNMP_USER" "$SNMP_AUTH_PASS" "$SNMP_PRIV_PASS" > /var/lib/snmp/snmpd.conf
+    printf '%s\n' "${snmp_list[@]}" | sort > /etc/snmp/snmpd.conf
+    systemctl start snmpd
+    # Verification only; head closes the pipe early, so ignore SIGPIPE.
+    snmpwalk -v3 -a SHA -A "$SNMP_AUTH_PASS" -x AES -X "$SNMP_PRIV_PASS" -l authPriv -u "$SNMP_USER" 127.0.0.1 | head || true
+}
+
+# Root password login is intentional: the root account gets locked afterwards
+# via LOCK_ROOT=TRUE (see ConfigureRootUser).
+ConfigureSshd() {
+    [ -f /usr/share/openssh/sshd_config ] || return 0
+    sed -E \
+        -e 's/^#?PasswordAuthentication .*/PasswordAuthentication yes/' \
+        -e 's/^#?PermitRootLogin .*/PermitRootLogin yes/' \
+        -e 's/^#?PubkeyAuthentication .*/PubkeyAuthentication yes/' \
+        /usr/share/openssh/sshd_config > /etc/ssh/sshd_config
+    rm -f /etc/ssh/sshd_config.d/*
+}
+
+# mode: include|exclude; pattern: extended regex matched against interface names
+CollectInterfaces() {
+    local mode="$1" pattern="$2" iface
+    while IFS= read -r iface; do
+        if [ "$mode" = "include" ]; then
+            if [[ "$iface" =~ $pattern ]]; then
+                printf '%s\n' "$iface"
+            fi
+        else
+            if [[ ! "$iface" =~ $pattern ]]; then
+                printf '%s\n' "$iface"
             fi
         fi
-        if [ "${OSArchitecture}" == "arm64" ]; then
-            MIRROR_URL="ubuntu-ports"
-        elif [ "${OSArchitecture}" == "amd64" ]; then
-            MIRROR_URL="ubuntu"
-        else
-            echo "Unsupported architecture."
-            exit 1
+    done < <(awk -F: 'NR>2 {gsub(/^[ \t]+/, "", $1); print $1}' /proc/net/dev)
+}
+
+# Platform must set: SYSCTL_INTERFACE_MODE, SYSCTL_INTERFACE_PATTERN
+ConfigureSysctl() {
+    HaveCommand sysctl || return 0
+    local icmp_echo=()
+    if [ "${DISABLE_ICMP_ECHO:-false}" = "true" ]; then
+        icmp_echo=(
+            "net.ipv4.icmp_echo_ignore_all = 1"
+            "net.ipv6.icmp.echo_ignore_all = 1"
+        )
+    fi
+    local interface_list=("all" "default") iface
+    while IFS= read -r iface; do
+        interface_list+=("$iface")
+    done < <(CollectInterfaces "$SYSCTL_INTERFACE_MODE" "$SYSCTL_INTERFACE_PATTERN")
+    local sysctl_list=(
+        "net.core.default_qdisc = fq_pie"
+        "net.core.rmem_max = 7500000"
+        "net.core.wmem_max = 7500000"
+        "net.ipv4.ip_forward = 1"
+        "net.ipv4.tcp_congestion_control = bbr"
+        "net.ipv4.tcp_fastopen = 3"
+        "vm.dirty_background_ratio = 5"
+        "vm.dirty_ratio = 15"
+        "vm.overcommit_memory = 1"
+        "vm.page-cluster = 0"
+        "vm.swappiness = 10"
+        ${icmp_echo[@]+"${icmp_echo[@]}"}
+    )
+    mkdir -p /etc/sysctl.d
+    if [ ! -f /etc/sysctl.d/99-sysctl.conf ]; then
+        ln -s /etc/sysctl.conf /etc/sysctl.d/99-sysctl.conf
+    fi
+    {
+        printf '%s\n' "${sysctl_list[@]}"
+        for iface in "${interface_list[@]}"; do
+            printf 'net.ipv6.conf.%s.accept_ra = 2\n' "$iface"
+            printf 'net.ipv6.conf.%s.addr_gen_mode = 0\n' "$iface"
+            printf 'net.ipv6.conf.%s.autoconf = 1\n' "$iface"
+            printf 'net.ipv6.conf.%s.forwarding = 1\n' "$iface"
+            printf 'net.ipv6.conf.%s.use_tempaddr = 0\n' "$iface"
+        done
+    } | sort -u > /etc/sysctl.d/99-autodeploy.conf
+    sysctl -p
+}
+
+ConfigureTuned() {
+    HaveCommand tuned-adm || return 0
+    tuned-adm profile "$(tuned-adm recommend)"
+    tuned-adm active
+}
+
+# Configure System (shared)
+ConfigureGAI() {
+    local prefer_ipv4_option
+    if [ "${PREFER_IPV4:-true}" = "true" ]; then
+        prefer_ipv4_option="precedence ::ffff:0:0/96 100"
+    else
+        prefer_ipv4_option="precedence ::ffff:0:0/96 10"
+    fi
+    local gai_conf_list=(
+        "label ::/0 1"
+        "label ::1/128 0"
+        "label 2001:0::/32 7"
+        "label 2002::/16 2"
+        "label ::/96 3"
+        "label fc00::/7 6"
+        "label fec0::/10 5"
+        "label ::ffff:0:0/96 4"
+        "precedence ::/0 40"
+        "precedence ::1/128 50"
+        "precedence 2002::/16 30"
+        "precedence ::/96 20"
+        "$prefer_ipv4_option"
+        "scopev4 ::ffff:0.0.0.0/96 14"
+        "scopev4 ::ffff:127.0.0.0/104 2"
+        "scopev4 ::ffff:169.254.0.0/112 2"
+    )
+    printf '%s\n' "${gai_conf_list[@]}" | sort -u > /etc/gai.conf
+}
+
+# Only the deployment user switches to zsh; system accounts keep their shells.
+ConfigureDefaultShell() {
+    if HaveCommand zsh && [ -n "${DEFAULT_USERNAME:-}" ]; then
+        usermod -s /bin/zsh "$DEFAULT_USERNAME"
+    fi
+    usermod -s /bin/bash root
+}
+
+ConfigureRootUser() {
+    LOCK_ROOT="${LOCK_ROOT:-FALSE}"
+    ROOT_PASSWORD="${ROOT_PASSWORD:-R00t@123!}"
+    WarnDefaultPassword "ROOT_PASSWORD" "$ROOT_PASSWORD" 'R00t@123!'
+    printf 'root:%s\n' "$ROOT_PASSWORD" | chpasswd
+    if [ "$LOCK_ROOT" = "TRUE" ]; then
+        passwd -l root
+    else
+        passwd -u root
+    fi
+}
+
+# Swap size in MiB from RAM in MiB (pure, tested in tests/)
+ComputeSwapSize() {
+    local ram_mb="$1" ram_size frac_first
+    ram_size=$(awk -v ram="$ram_mb" 'BEGIN{print log(ram)/log(2)}')
+    if [[ "$ram_size" == *.* ]]; then
+        frac_first=$(printf '%s' "$ram_size" | cut -d '.' -f 2 | cut -c 1)
+        ram_size=${ram_size%%.*}
+        if [ "$frac_first" -gt 5 ]; then
+            ram_size=$((ram_size + 1))
         fi
+    fi
+    if [ "$ram_size" -le 11 ]; then
+        printf '%s\n' $((2 ** ram_size * 2))
+    elif [ "$ram_size" -le 13 ]; then
+        printf '%s\n' $((2 ** ram_size))
+    elif [ "$ram_size" -le 16 ]; then
+        printf '%s\n' $((2 ** 12))
+    else
+        printf '%s\n' $((2 ** 13))
+    fi
+}
+
+# Install / Upgrade / Cleanup (shared helpers)
+InstallAptRepo() {
+    local name="$1" key_url="$2" repo_line="$3"
+    rm -f "/usr/share/keyrings/${name}-archive-keyring.gpg"
+    curl -fsSL "$key_url" | gpg --dearmor -o "/usr/share/keyrings/${name}-archive-keyring.gpg"
+    printf '%s\n' "$repo_line" > "/etc/apt/sources.list.d/${name}.list"
+}
+
+InstallAptPackages() {
+    apt update
+    local pkg
+    for pkg in "$@"; do
+        if apt-cache show "$pkg" > /dev/null 2>&1; then
+            apt install -qy "$pkg"
+        else
+            LogWarn "package not available, skipped: ${pkg}"
+        fi
+    done
+}
+
+UpgradePackages() {
+    apt update
+    apt full-upgrade -qy
+    apt autoremove -qy --purge
+}
+
+# Extra paths to remove may be passed as arguments. Never wipe all of /tmp.
+CleanupTempFiles() {
+    apt clean
+    rm -f /root/.*_history /tmp/*.autodeploy "$@"
+}
+
+# Platform must set: KERNEL_PATTERN (grep -E matching installed kernel packages)
+# Keeps the newest kernel, purges the rest.
+CleanupOutageKernels() {
+    local latest kernel
+    latest=$(dpkg -l | grep -E "$KERNEL_PATTERN" | awk '{print $2}' | sort -V | tail -n 1 || true)
+    if [ -z "$latest" ]; then
+        return 0
+    fi
+    local kernel_list=()
+    while IFS= read -r kernel; do
+        if [ "$kernel" != "$latest" ]; then
+            kernel_list+=("$kernel")
+        fi
+    done < <(dpkg -l | grep -E "$KERNEL_PATTERN" | awk '{print $2}' | sort -V || true)
+    for kernel in ${kernel_list[@]+"${kernel_list[@]}"}; do
+        apt purge -qy "$kernel"
+    done
+    apt autoremove -qy --purge
+}
+## Function
+# Get System Information
+function GetSystemInformation() {
+    # Defined early: InstallCustomPackages runs before ConfigureSystem and
+    # already needs the default username.
+    DEFAULT_FIRSTNAME="User"
+    DEFAULT_LASTNAME="Ubuntu"
+    DEFAULT_FULLNAME="${DEFAULT_LASTNAME} ${DEFAULT_FIRSTNAME}"
+    DEFAULT_USERNAME="${DEFAULT_USERNAME:-ubuntu}"
+    DEFAULT_PASSWORD="${DEFAULT_PASSWORD:-*Ubuntu123*}"
+    HOSTNAME_PREFIX="Ubuntu"
+
+    function CheckMachineEnvironment() {
+        function CheckHypervisorEnvironment() {
+            if ! HaveCommand virt-what; then
+                local apt_sources_file="/etc/apt/sources.list"
+                if [ ! -f "$apt_sources_file" ]; then
+                    apt_sources_file="/etc/apt/sources.list.d/ubuntu.sources"
+                fi
+                sed -i -E \
+                    -e 's/[a-z.]*archive\.ubuntu\.com/mirrors.cernet.edu.cn/g' \
+                    -e 's/[a-z.]*ports\.ubuntu\.com/mirrors.cernet.edu.cn/g' \
+                    -e 's/[a-z.]*security\.ubuntu\.com/mirrors.cernet.edu.cn/g' \
+                    "$apt_sources_file"
+                apt update
+                apt install virt-what -qy
+                HaveCommand virt-what || Die "virt-what has not been installed!"
+            fi
+            local hypervisor_environment
+            hypervisor_environment=$(virt-what)
+            HYPERVISOR_AGENT=()
+            case "$hypervisor_environment" in
+                kvm) HYPERVISOR_AGENT=("ksmtuned" "qemu-guest-agent") ;;
+                vmware) HYPERVISOR_AGENT=("open-vm-tools") ;;
+                virtualbox) HYPERVISOR_AGENT=("virtualbox-guest-dkms") ;;
+            esac
+        }
+        CheckHypervisorEnvironment
+    }
+    function GetCPUpsABILevel() {
+        # https://dl.xanmod.org/check_x86-64_psabi.sh
+        PSABI_LEVEL=$(awk 'BEGIN{while(!/flags/)if(getline<"/proc/cpuinfo"!=1)exit 0;if(/lm/&&/cmov/&&/cx8/&&/fpu/&&/fxsr/&&/mmx/&&/syscall/&&/sse2/)l=1;if(l==1&&/cx16/&&/lahf/&&/popcnt/&&/sse4_1/&&/sse4_2/&&/ssse3/)l=2;if(l==2&&/avx/&&/avx2/&&/bmi1/&&/bmi2/&&/f16c/&&/fma/&&/abm/&&/movbe/&&/xsave/)l=3;if(l==3&&/avx512f/&&/avx512bw/&&/avx512cd/&&/avx512dq/&&/avx512vl/)l=4;print l}')
+    }
+    function GetOSArchitecture() {
+        if HaveCommand dpkg; then
+            OS_ARCHITECTURE=$(dpkg --print-architecture)
+        else
+            case "$(uname -m)" in
+                aarch64) OS_ARCHITECTURE="arm64" ;;
+                x86_64) OS_ARCHITECTURE="amd64" ;;
+            esac
+        fi
+        case "${OS_ARCHITECTURE:-}" in
+            arm64) MIRROR_URL="ubuntu-ports" ;;
+            amd64) MIRROR_URL="ubuntu" ;;
+            *) Die "Unsupported architecture." ;;
+        esac
     }
     function SetLSBCodename() {
-        LSBCodename="resolute"
-        LSBVersion="26.04"
+        # Intentionally pinned to the latest release; bump these every release.
+        LSB_CODENAME="resolute"
+        LSB_VERSION="26.04"
     }
-    function SetGHProxyDomain() {
-        GHPROXY_URL=""
-        if [ "${GHPROXY_URL}" != "" ]; then
-            export GHPROXY_URL="https://${GHPROXY_URL}/"
-        fi
-    }
-    CheckDNSConfiguration
-    GenerateDomain && CheckMachineEnvironment
+    CollectDNS
+    GenerateDomain
+    CheckMachineEnvironment
     GenerateHostname
     GetCPUpsABILevel
     GetCPUVendorID
@@ -155,866 +1169,232 @@ function GetSystemInformation() {
     SetLSBCodename
     SetGHProxyDomain
 }
+
 # Set Repository Mirror
 function SetRepositoryMirror() {
-    mirror_list=(
-        "deb ${transport_protocol}://mirrors.cernet.edu.cn/${MIRROR_URL} ${LSBCodename} main multiverse restricted universe"
-        "deb ${transport_protocol}://mirrors.cernet.edu.cn/${MIRROR_URL} ${LSBCodename}-backports main multiverse restricted universe"
-        "deb ${transport_protocol}://mirrors.cernet.edu.cn/${MIRROR_URL} ${LSBCodename}-proposed main multiverse restricted universe"
-        "deb ${transport_protocol}://mirrors.cernet.edu.cn/${MIRROR_URL} ${LSBCodename}-security main multiverse restricted universe"
-        "deb ${transport_protocol}://mirrors.cernet.edu.cn/${MIRROR_URL} ${LSBCodename}-updates main multiverse restricted universe"
-        "deb-src ${transport_protocol}://mirrors.cernet.edu.cn/${MIRROR_URL} ${LSBCodename} main multiverse restricted universe"
-        "deb-src ${transport_protocol}://mirrors.cernet.edu.cn/${MIRROR_URL} ${LSBCodename}-backports main multiverse restricted universe"
-        "deb-src ${transport_protocol}://mirrors.cernet.edu.cn/${MIRROR_URL} ${LSBCodename}-proposed main multiverse restricted universe"
-        "deb-src ${transport_protocol}://mirrors.cernet.edu.cn/${MIRROR_URL} ${LSBCodename}-security main multiverse restricted universe"
-        "deb-src ${transport_protocol}://mirrors.cernet.edu.cn/${MIRROR_URL} ${LSBCodename}-updates main multiverse restricted universe"
+    local mirror_list=(
+        "deb ${TRANSPORT_PROTOCOL}://mirrors.cernet.edu.cn/${MIRROR_URL} ${LSB_CODENAME} main multiverse restricted universe"
+        "deb ${TRANSPORT_PROTOCOL}://mirrors.cernet.edu.cn/${MIRROR_URL} ${LSB_CODENAME}-backports main multiverse restricted universe"
+        "deb ${TRANSPORT_PROTOCOL}://mirrors.cernet.edu.cn/${MIRROR_URL} ${LSB_CODENAME}-proposed main multiverse restricted universe"
+        "deb ${TRANSPORT_PROTOCOL}://mirrors.cernet.edu.cn/${MIRROR_URL} ${LSB_CODENAME}-security main multiverse restricted universe"
+        "deb ${TRANSPORT_PROTOCOL}://mirrors.cernet.edu.cn/${MIRROR_URL} ${LSB_CODENAME}-updates main multiverse restricted universe"
+        "deb-src ${TRANSPORT_PROTOCOL}://mirrors.cernet.edu.cn/${MIRROR_URL} ${LSB_CODENAME} main multiverse restricted universe"
+        "deb-src ${TRANSPORT_PROTOCOL}://mirrors.cernet.edu.cn/${MIRROR_URL} ${LSB_CODENAME}-backports main multiverse restricted universe"
+        "deb-src ${TRANSPORT_PROTOCOL}://mirrors.cernet.edu.cn/${MIRROR_URL} ${LSB_CODENAME}-proposed main multiverse restricted universe"
+        "deb-src ${TRANSPORT_PROTOCOL}://mirrors.cernet.edu.cn/${MIRROR_URL} ${LSB_CODENAME}-security main multiverse restricted universe"
+        "deb-src ${TRANSPORT_PROTOCOL}://mirrors.cernet.edu.cn/${MIRROR_URL} ${LSB_CODENAME}-updates main multiverse restricted universe"
     )
     if [ ! -d "/etc/apt/sources.list.d" ]; then
         mkdir "/etc/apt/sources.list.d"
     else
-        rm -rf /etc/apt/sources.list.d/*.*
+        rm -f /etc/apt/sources.list.d/*.*
     fi
-    rm -rf "/tmp/apt.autodeploy" && for mirror_list_task in "${!mirror_list[@]}"; do
-        echo "${mirror_list[$mirror_list_task]}" >> "/tmp/apt.autodeploy"
-    done && cat "/tmp/apt.autodeploy" > "/etc/apt/sources.list" && rm -rf "/tmp/apt.autodeploy"
+    printf '%s\n' "${mirror_list[@]}" > "/etc/apt/sources.list"
 }
+
 # Configure Packages
 function ConfigurePackages() {
-    function ConfigureAPT() {
-        apt_conf_list=(
-            '# Disable HTTP Pipelining'
-            'Acquire::http::Pipeline-Depth "0";'
-            '# Disable Phased Updates'
-            'APT::Get::Always-Include-Phased-Updates true;'
-            'Update-Manager::Always-Include-Phased-Updates true;'
-        )
-        apt_preference_list=(
-            "${LSBCodename}-backports 990"
-            "${LSBCodename}-security 500"
-            "${LSBCodename}-updates 500"
-            "${LSBCodename} 500"
-            "${LSBCodename}-proposed 100"
-        )
-        if [ ! -d "/etc/apt/apt.conf.d" ]; then
-            mkdir "/etc/apt/apt.conf.d"
-        fi
-        rm -rf "/tmp/apt_conf_list.autodeploy" && for apt_conf_list_task in "${!apt_conf_list[@]}"; do
-            echo "${apt_conf_list[$apt_conf_list_task]}" >> "/tmp/apt_conf_list.autodeploy"
-        done && cat "/tmp/apt_conf_list.autodeploy" > "/etc/apt/apt.conf.d/99autodeploy" && rm -rf "/tmp/apt_conf_list.autodeploy"
-        if [ -d "/etc/apt/preferences.d" ]; then
-            rm -rf "/etc/apt/preferences.d"
-        fi && mkdir "/etc/apt/preferences.d"
-        rm -rf "/tmp/apt_preference_list.autodeploy" && for apt_preference_list_task in "${!apt_preference_list[@]}"; do
-            APT_PIN_RELEASE=$(echo "${apt_preference_list[$apt_preference_list_task]}" | cut -d " " -f 1)
-            APT_PIN_PRIORITY=$(echo "${apt_preference_list[$apt_preference_list_task]}" | cut -d " " -f 2)
-            if [ ! -z $(echo ${APT_PIN_PRIORITY} | grep "[a-z]\|[A-Z]\|-") ]; then
-                APT_PIN_PRIORITY="500"
-            fi
-            echo -e "Package: *\nPin: release a=${APT_PIN_RELEASE}\nPin-Priority: ${APT_PIN_PRIORITY}\n" >> "/tmp/apt_preference_list.autodeploy"
-        done && cat "/tmp/apt_preference_list.autodeploy" | sed '$d' > "/etc/apt/preferences"
-        apt modernize-sources -qy && rm -rf /etc/apt/sources.list.bak /etc/apt/sources.list.d/*.bak
-    }
-    function ConfigureBusybox() {
-        which "busybox" > "/dev/null" 2>&1
-        if [ "$?" -eq "0" ]; then
-            busybox --install -s
-        fi
-    }
-    function ConfigureChrony() {
-        chrony_list=(
-            "allow"
-            "clientloglimit 65536"
-            "driftfile /var/lib/chrony/chrony.drift"
-            "dumpdir /run/chrony"
-            "keyfile /etc/chrony/chrony.keys"
-            "leapsectz right/UTC"
-            "logdir /var/log/chrony"
-            "makestep 1 3"
-            "ratelimit burst 8 interval 3 leak 2"
-            "rtcsync"
-        )
-        DHCP_NTP=()
-        chrony_ntp_list=(
-            "${DHCP_NTP[@]}"
-            "ntp.ntsc.ac.cn"
-            "ntp1.nim.ac.cn"
-            "ntp2.nim.ac.cn"
-            "ntp.aliyun.com"
-            "ntp.tencent.com"
-            "time.apple.com"
-            "time.windows.com"
-            "time.cloudflare.com"
-            "time.nist.gov"
-            "pool.ntp.org"
-        )
-        which "chronyc" > "/dev/null" 2>&1
-        if [ "$?" -eq "0" ]; then
-            rm -rf "/tmp/chrony.autodeploy" && for chrony_list_task in "${!chrony_list[@]}"; do
-                echo "${chrony_list[$chrony_list_task]}" >> "/tmp/chrony.autodeploy"
-            done && for chrony_ntp_list_task in "${!chrony_ntp_list[@]}"; do
-                if [ "${chrony_ntp_list[$chrony_ntp_list_task]}" == "ntp.ntsc.ac.cn" ] || [ "${chrony_ntp_list[$chrony_ntp_list_task]}" == "ntp1.nim.ac.cn" ] || [ "${chrony_ntp_list[$chrony_ntp_list_task]}" == "ntp2.nim.ac.cn" ] || [ "$(echo ${DHCP_NTP[@]} | grep ${chrony_ntp_list[$chrony_ntp_list_task]})" != "" ]; then
-                    echo "server ${chrony_ntp_list[$chrony_ntp_list_task]} iburst prefer" >> "/tmp/chrony.autodeploy"
-                else
-                    echo "server ${chrony_ntp_list[$chrony_ntp_list_task]} iburst" >> "/tmp/chrony.autodeploy"
-                fi
-            done && cat "/tmp/chrony.autodeploy" > "/etc/chrony/chrony.conf" && rm -rf "/tmp/chrony.autodeploy" && systemctl restart chrony && sleep 5s && chronyc activity && chronyc tracking && chronyc clients && hwclock -w
-        fi
-    }
     function ConfigureCloudflareWARP() {
         # Get token from `https://<YOUR_TEAM_NAME>.cloudflareaccess.com/warp`
         # Login via `warp-cli registration token 'com.cloudflare.warp://<your-team-name>.cloudflareaccess.com/auth?token=<your-token>'`
-        which "warp-cli" > "/dev/null" 2>&1
-        if [ "$?" -eq "0" ]; then
-            ufw allow in on CloudflareWARP
-        fi
+        HaveCommand warp-cli || return 0
+        ufw allow in on CloudflareWARP
     }
     function ConfigureCrontab() {
-        crontab_list=(
+        CRONTAB_USER="root"
+        CRONTAB_ENTRIES=(
             "0 0 * * 7 sudo apt update && sudo apt full-upgrade -qy && sudo apt autoremove -qy --purge"
             "# 0 4 * * 7 sudo reboot"
             "@reboot sudo rm -rf ~/.*_history ~/.ssh/known_hosts*"
         )
-        which "crontab" > "/dev/null" 2>&1
-        if [ "$?" -eq "0" ]; then
-            rm -rf "/tmp/crontab.autodeploy" && for crontab_list_task in "${!crontab_list[@]}"; do
-                echo "${crontab_list[$crontab_list_task]}" >> "/tmp/crontab.autodeploy"
-            done && crontab -u "root" "/tmp/crontab.autodeploy" && crontab -lu "root" && rm -rf "/tmp/crontab.autodeploy"
-        fi
-    }
-    function ConfigureCrowdSec() {
-        crowdsec_hub_list=(
-            "crowdsecurity/iptables"
-            "crowdsecurity/linux-lpe"
-            "crowdsecurity/linux"
-            "crowdsecurity/sshd"
-        )
-        which "cscli" > "/dev/null" 2>&1
-        if [ "$?" -eq "0" ]; then
-            for crowdsec_hub_list_task in "${!crowdsec_hub_list[@]}"; do
-                cscli collections install ${crowdsec_hub_list[$crowdsec_hub_list_task]}
-            done && systemctl restart crowdsec && cscli hub list
-        fi
-    }
-    function ConfigureDockerEngine() {
-        DOCKER_REGISTRY_MIRRORS=()
-
-        if [ ${#DOCKER_REGISTRY_MIRRORS[@]} -gt 0 ]; then
-            docker_list=(
-                "{"
-                "  \"allow-direct-routing\": true,"
-                "  \"experimental\": true,"
-                "  \"firewall-backend\": \"nftables\","
-                "  \"ip-forward\": true,"
-                "  \"registry-mirrors\": ["
-                "$(printf '    "%s",\n' "${DOCKER_REGISTRY_MIRRORS[@]}" | sed '$s/,$//')"
-                "  ]"
-                "}"
-            )
-        else
-            docker_list=(
-                "{"
-                "  \"allow-direct-routing\": true,"
-                "  \"experimental\": true,"
-                "  \"firewall-backend\": \"nftables\","
-                "  \"ip-forward\": true"
-                "}"
-            )
-        fi
-
-        which "docker" > "/dev/null" 2>&1
-        if [ "$?" -eq "0" ]; then
-            if [ ! -d "/docker" ]; then
-                mkdir "/docker"
-            fi && chown -R ${DEFAULT_USERNAME}:docker "/docker" && chmod -R 775 "/docker"
-            if [ ! -d "/etc/docker" ]; then
-                mkdir "/etc/docker"
-            fi
-            rm -rf "/tmp/docker.autodeploy" && echo 'DOCKER_OPTS="--iptables=false"' > "/tmp/docker.autodeploy" && cat "/tmp/docker.autodeploy" > "/etc/default/docker" && rm -rf "/tmp/docker.autodeploy"
-            rm -rf "/tmp/docker.autodeploy" && for docker_list_task in "${!docker_list[@]}"; do
-                echo "${docker_list[$docker_list_task]}" >> "/tmp/docker.autodeploy"
-            done && cat "/tmp/docker.autodeploy" > "/etc/docker/daemon.json" && systemctl restart docker && rm -rf "/tmp/docker.autodeploy"
-        fi
-    }
-    function ConfigureFail2Ban() {
-        fail2ban_list=(
-            "[sshd]"
-            "bantime = 604800"
-            "enabled = true"
-            "filter = sshd"
-            "findtime = 60"
-            "logpath = /var/log/auth.log"
-            "maxretry = 5"
-            "port = 22"
-        )
-        which "fail2ban-client" > "/dev/null" 2>&1
-        if [ "$?" -eq "0" ]; then
-            if [ -d "/etc/fail2ban/jail.d" ]; then
-                rm -rf /etc/fail2ban/jail.d/*
-            else
-                mkdir "/etc/fail2ban/jail.d"
-            fi
-            if [ -f "/etc/fail2ban/fail2ban.conf" ]; then
-                cat "/etc/fail2ban/fail2ban.conf" > "/etc/fail2ban/fail2ban.local"
-            fi
-            if [ -f "/etc/fail2ban/jail.conf" ]; then
-                cat "/etc/fail2ban/jail.conf" | sed "s/action\ \=\ iptables\-allports/action\ \=\ ufw/g;s/banaction\ \=\ iptables\-multiport/banaction\ \=\ ufw/g;s/banaction\ \=\ iptables\-multiport\-log/banaction\ \=\ ufw/g;s/banaction\ \=\ ufw\-log/banaction\ \=\ ufw/g;s/banaction\_allports\ \=\ iptables\-allports/banaction\_allports\ \=\ ufw/g" > "/etc/fail2ban/jail.local"
-            fi
-            rm -rf "/tmp/fail2ban.autodeploy" && for fail2ban_list_task in "${!fail2ban_list[@]}"; do
-                echo "${fail2ban_list[$fail2ban_list_task]}" >> "/tmp/fail2ban.autodeploy"
-            done && cat "/tmp/fail2ban.autodeploy" > "/etc/fail2ban/jail.d/fail2ban_default.conf" && rm -rf "/tmp/fail2ban.autodeploy" && systemctl enable fail2ban && fail2ban-client reload && sleep 5s && fail2ban-client status
-        fi
-    }
-    function ConfigureFRRouting() {
-        frrouting_list=(
-            "frr defaults datacenter"
-            "log syslog errors"
-        )
-        which "vtysh" > "/dev/null" 2>&1
-        if [ "$?" -eq "0" ]; then
-            rm -rf "/tmp/frrouting.autodeploy" && for frrouting_list_task in "${!frrouting_list[@]}"; do
-                echo "${frrouting_list[$frrouting_list_task]}" >> "/tmp/frrouting.autodeploy"
-            done && cat "/tmp/frrouting.autodeploy" > "/etc/frr/frr.conf" && rm -rf "/tmp/frrouting.autodeploy"
-            systemctl restart frr && sleep 5s && vtysh -c "show running-config" && vtysh -c "show ip route" && vtysh -c "show ipv6 route"
-        fi
-    }
-    function ConfigureGit() {
-        gitconfig_key_list=(
-            "commit.gpgsign"
-            "gpg.program"
-            "http.proxy"
-            "https.proxy"
-            "user.name"
-            "user.email"
-            "user.signingkey"
-            "url.${GHPROXY_URL}https://github.com/.insteadOf"
-        )
-        gitconfig_value_list=(
-            "${GIT_COMMIT_GPGSIGN:-false}"
-            "${GIT_GPG_PROGRAM:-gpg}"
-            "${GIT_HTTP_PROXY}"
-            "${GIT_HTTPS_PROXY}"
-            "${GIT_USER_NAME}"
-            "${GIT_USER_EMAIL}"
-            "${GIT_USER_SIGNINGKEY}"
-            "https://github.com/"
-        )
-        which "git" > "/dev/null" 2>&1
-        if [ "$?" -eq "0" ]; then
-            for gitconfig_list_task in "${!gitconfig_key_list[@]}"; do
-                git config --global --unset ${gitconfig_key_list[$gitconfig_list_task]}
-
-                if [ "${gitconfig_value_list[$gitconfig_list_task]}" != "" ]; then
-                    git config --global ${gitconfig_key_list[$gitconfig_list_task]} "${gitconfig_value_list[$gitconfig_list_task]}"
-                fi
-            done
-        fi
-        if [ -f "/root/.gitconfig" ] && [ "${GIT_USER_CONFIG}" != "TRUE" ]; then
-            mv "/root/.gitconfig" "/root/.gitconfig.bak" && GIT_COMMIT_GPGSIGN="" && GIT_GPG_PROGRAM="" && GIT_HTTP_PROXY="" && GIT_HTTPS_PROXY="" && GIT_USER_NAME="" && GIT_USER_EMAIL="" && GIT_USER_SIGNINGKEY="" && GIT_USER_CONFIG="TRUE" && ConfigureGit && mv "/root/.gitconfig" "/home/${DEFAULT_USERNAME}/.gitconfig" && chown -R $DEFAULT_USERNAME:$DEFAULT_USERNAME "/home/${DEFAULT_USERNAME}/.gitconfig" && mv "/root/.gitconfig.bak" "/root/.gitconfig"
-        fi
-    }
-    function ConfigureGPG() {
-        GPG_PUBKEY=""
-        if [ "${GPG_PUBKEY}" == "" ]; then
-            GPG_PUBKEY="DD982DAAB9C71C78F9563E5207EB56787030D792"
-        fi
-        which "gpg" > "/dev/null" 2>&1
-        if [ "$?" -eq "0" ]; then
-            rm -rf "/home/${DEFAULT_USERNAME}/.gnupg" "/root/.gnupg" && gpg --keyserver hkps://keyserver.ubuntu.com:443 --recv ${GPG_PUBKEY} && echo "${GPG_PUBKEY}" | awk 'BEGIN { FS = "\n" }; { print $1":6:" }' | gpg --import-ownertrust && GPG_PUBKEY_ID_A=$(gpg --list-keys --keyid-format LONG | grep "pub\|sub" | awk '{print $2, $4}' | grep "\[A\]" | awk '{print $1}' | awk -F '/' '{print $2}') && GPG_PUBKEY_ID_C=$(gpg --list-keys --keyid-format LONG | grep "pub\|sub" | awk '{print $2, $4}' | grep "\[C\]" | awk '{print $1}' | awk -F '/' '{print $2}')
-            if [ "${GPG_PUBKEY_ID_A}" != "" ]; then
-                gpg_agent_list=(
-                    "enable-ssh-support"
-                    "pinentry-program /usr/bin/pinentry-tty"
-                )
-                rm -rf "/root/.gnupg/gpg-agent.conf" && for gpg_agent_list_task in "${!gpg_agent_list[@]}"; do
-                    echo "${gpg_agent_list[$gpg_agent_list_task]}" >> "/root/.gnupg/gpg-agent.conf"
-                done && echo "${GPG_PUBKEY_ID_A}" > "/root/.gnupg/sshcontrol" && gpg --export-ssh-key ${GPG_PUBKEY_ID_C} > "/root/.gnupg/authorized_keys" && if [ -d "/root/.gnupg" ]; then
-                    mv "/root/.gnupg" "/home/${DEFAULT_USERNAME}/.gnupg" && chown -R $DEFAULT_USERNAME:$DEFAULT_USERNAME "/home/${DEFAULT_USERNAME}/.gnupg"
-                fi
-            fi
-        fi
+        InstallCrontab
     }
     function ConfigureGrub() {
-        which "update-grub" > "/dev/null" 2>&1
-        if [ "$?" -eq "0" ]; then
-            if [ -f "/etc/default/grub.d/50-cloudimg-settings.cfg" ]; then
-                rm -rf "/etc/default/grub.d/50-cloudimg-settings.cfg"
-            fi
-            if [ -f "/usr/share/grub/default/grub" ]; then
-                rm -rf "/tmp/grub.autodeploy" && cat "/usr/share/grub/default/grub" | sed "s/GRUB\_CMDLINE\_LINUX\_DEFAULT\=\"quiet splash\"/GRUB\_CMDLINE\_LINUX\_DEFAULT\=\"quiet security=apparmor mitigations=auto,nosmt${ENABLE_IOMMU}\"/g;s/#GRUB_DISABLE_OS_PROBER=false/GRUB_DISABLE_OS_PROBER=true/g;s/GRUB_TIMEOUT=.*/GRUB_TIMEOUT=5/g;/GRUB_TIMEOUT_STYLE=/d" > "/tmp/grub.autodeploy" && cat "/tmp/grub.autodeploy" > "/etc/default/grub" && update-grub && rm -rf "/tmp/grub.autodeploy"
-            fi
-        fi
+        HaveCommand update-grub || return 0
+        rm -f "/etc/default/grub.d/50-cloudimg-settings.cfg"
+        [ -f "/usr/share/grub/default/grub" ] || return 0
+        sed -E \
+            -e "s/GRUB_CMDLINE_LINUX_DEFAULT=\"quiet splash\"/GRUB_CMDLINE_LINUX_DEFAULT=\"quiet security=apparmor mitigations=auto,nosmt${ENABLE_IOMMU}\"/g" \
+            -e 's/#GRUB_DISABLE_OS_PROBER=false/GRUB_DISABLE_OS_PROBER=true/g' \
+            -e 's/GRUB_TIMEOUT=.*/GRUB_TIMEOUT=5/g' \
+            -e '/GRUB_TIMEOUT_STYLE=/d' \
+            "/usr/share/grub/default/grub" > "/etc/default/grub"
+        update-grub
     }
     function ConfigureLandscape() {
-        if [ -f "/usr/lib/python3/dist-packages/landscape/lib/network.py" ]; then
-            cat "/usr/lib/python3/dist-packages/landscape/lib/network.py" | sed "s/tostring/tobytes/g" > "/tmp/landscape.autodeploy" && cat "/tmp/landscape.autodeploy" > "/usr/lib/python3/dist-packages/landscape/lib/network.py" && rm -rf "/tmp/landscape.autodeploy"
-        fi
-    }
-    function ConfigureLLDPD() {
-        which "lldpcli" > "/dev/null" 2>&1
-        if [ "$?" -eq "0" ]; then
-            echo 'DAEMON_ARGS="-c -e -f -s -x"' > "/tmp/lldpd.autodeploy" && cat "/tmp/lldpd.autodeploy" > "/etc/default/lldpd" && rm -rf "/tmp/lldpd.autodeploy"
-            systemctl restart lldpd && lldpcli show neighbors detail
-        fi
-    }
-    function ConfigureModules() {
-        if [ -d "/etc/modprobe.d" ]; then
-            rm -rf "/etc/modprobe.d" && mkdir -p "/etc/modprobe.d"
-        fi
-        if [ -f "/etc/modules" ]; then
-            rm -rf "/etc/modules"
-        fi
-        if [ "${ENABLE_IOMMU}" != "" ]; then
-            IOMMU_MODULES=("vfio" "vfio_iommu_type1" "vfio_pci" "vfio_virqfd")
-            echo "options vfio_iommu_type1 allow_unsafe_interrupts=1" > "/etc/modprobe.d/vfio_iommu_type1.conf"
-        fi
-        module_list=(
-            "kvm"
-            "tls"
-            ${INTEL_GVT_MODULES[*]}
-            ${INTEL_HDMI_AUDIO_MUDULE[*]}
-            ${IOMMU_MODULES[*]}
-            ${NESTED_MODULES[*]}
-        )
-        rm -rf "/tmp/module.autodeploy" && for module_list_task in "${!module_list[@]}"; do
-            echo "${module_list[$module_list_task]}" >> "/tmp/module.autodeploy"
-        done && cat "/tmp/module.autodeploy" | sort | uniq > "/etc/modules" && rm -rf "/tmp/module.autodeploy"
-        echo "options kvm ignore_msrs=1 report_ignored_msrs=0" >> "/etc/modprobe.d/kvm.conf"
-        if [ "${CPU_VENDOR_ID}" == "AMD" ]; then
-            echo "options kvm-amd nested=1" > "/etc/modprobe.d/kvm-amd.conf"
-        elif [ "${CPU_VENDOR_ID}" == "Intel" ]; then
-            i915_GUC_OPTION="" # 0 | 1 - GuC | 2 - HuC | 3 - GuC / HuC
-            echo "options i915 enable_guc=${i915_GUC_OPTION:-3} enable_gvt=1" > "/etc/modprobe.d/i915.conf"
-            echo "options kvm-intel nested=Y" > "/etc/modprobe.d/kvm-intel.conf"
-            echo "options snd-hda-intel enable_msi=1" > "/etc/modprobe.d/snd-hda-intel.conf"
-        fi
+        [ -f "/usr/lib/python3/dist-packages/landscape/lib/network.py" ] || return 0
+        sed -i 's/tostring/tobytes/g' "/usr/lib/python3/dist-packages/landscape/lib/network.py"
     }
     function ConfigureNetplan() {
-        NIC_NAME="" # enp6s18 / ens18
-        STATIC_IPV4_CONFIG="" # 10.192.31.254/19,10.192.0.1
-        STATIC_IPV6_CONFIG="" # 2409:8a20:8800::254/64,2409:8a20:8800::1
-
-        STATIC_IPV4_ADDR=$(echo "${STATIC_IPV4_CONFIG}" | cut -d ',' -f 1)
-        STATIC_IPV4_GATEWAY=$(echo "${STATIC_IPV4_CONFIG}" | cut -d ',' -f 2)
-        STATIC_IPV6_ADDR=$(echo "${STATIC_IPV6_CONFIG}" | cut -d ',' -f 1)
-        STATIC_IPV6_GATEWAY=$(echo "${STATIC_IPV6_CONFIG}" | cut -d ',' -f 2)
-
-        if [ ! -n "${NIC_NAME}" ]; then
-            NIC_NAME=$(ls /sys/class/net | grep -v "docker0\|lo\|wg0" | head -n 1)
+        HaveCommand netplan || return 0
+        NIC_NAME="${NIC_NAME:-}" # enp6s18 / ens18
+        STATIC_IPV4_CONFIG="${STATIC_IPV4_CONFIG:-}" # 10.192.31.254/19,10.192.0.1
+        STATIC_IPV6_CONFIG="${STATIC_IPV6_CONFIG:-}" # 2409:8a20:8800::254/64,2409:8a20:8800::1
+        local static_ipv4_addr static_ipv4_gateway static_ipv6_addr static_ipv6_gateway
+        static_ipv4_addr=$(printf '%s' "$STATIC_IPV4_CONFIG" | cut -d ',' -f 1)
+        static_ipv4_gateway=$(printf '%s' "$STATIC_IPV4_CONFIG" | cut -d ',' -f 2)
+        static_ipv6_addr=$(printf '%s' "$STATIC_IPV6_CONFIG" | cut -d ',' -f 1)
+        static_ipv6_gateway=$(printf '%s' "$STATIC_IPV6_CONFIG" | cut -d ',' -f 2)
+        if [ -z "$NIC_NAME" ]; then
+            local iface_path
+            for iface_path in /sys/class/net/*; do
+                case "${iface_path##*/}" in
+                    docker0|lo|wg0) ;;
+                    *) NIC_NAME="${iface_path##*/}"; break ;;
+                esac
+            done
         fi
-
-        netplan_list=(
+        local netplan_list=(
             "network:"
             "  version: 2"
             "  renderer: NetworkManager"
             "  ethernets:"
             "    ${NIC_NAME}:"
         )
-
-        if [ -n "${STATIC_IPV4_ADDR}" ]; then
+        if [ -n "$static_ipv4_addr" ]; then
             netplan_list+=("      dhcp4: false")
         else
             netplan_list+=("      dhcp4: true")
         fi
-
-        if [ -n "${STATIC_IPV6_ADDR}" ]; then
+        if [ -n "$static_ipv6_addr" ]; then
             netplan_list+=("      dhcp6: false")
         else
             netplan_list+=("      dhcp6: true")
         fi
-
-        if [ -n "${STATIC_IPV4_ADDR}" ] || [ -n "${STATIC_IPV6_ADDR}" ]; then
+        if [ -n "$static_ipv4_addr" ] || [ -n "$static_ipv6_addr" ]; then
             netplan_list+=("      addresses:")
-
-            if [ -n "${STATIC_IPV4_ADDR}" ]; then
-                netplan_list+=("        - ${STATIC_IPV4_ADDR}")
+            if [ -n "$static_ipv4_addr" ]; then
+                netplan_list+=("        - ${static_ipv4_addr}")
             fi
-
-            if [ -n "${STATIC_IPV6_ADDR}" ]; then
-                netplan_list+=("        - ${STATIC_IPV6_ADDR}")
+            if [ -n "$static_ipv6_addr" ]; then
+                netplan_list+=("        - ${static_ipv6_addr}")
             fi
         fi
-
-        if [ -n "${STATIC_IPV4_GATEWAY}" ] || [ -n "${STATIC_IPV6_GATEWAY}" ]; then
+        if [ -n "$static_ipv4_gateway" ] || [ -n "$static_ipv6_gateway" ]; then
             netplan_list+=("      routes:")
-
-            if [ -n "${STATIC_IPV4_GATEWAY}" ]; then
+            if [ -n "$static_ipv4_gateway" ]; then
                 netplan_list+=("        - to: 0.0.0.0/0")
-                netplan_list+=("          via: ${STATIC_IPV4_GATEWAY}")
+                netplan_list+=("          via: ${static_ipv4_gateway}")
             fi
-
-            if [ -n "${STATIC_IPV6_GATEWAY}" ]; then
+            if [ -n "$static_ipv6_gateway" ]; then
                 netplan_list+=("        - to: ::/0")
-                netplan_list+=("          via: ${STATIC_IPV6_GATEWAY}")
+                netplan_list+=("          via: ${static_ipv6_gateway}")
             fi
         fi
-
-        which "netplan" > "/dev/null" 2>&1
-        if [ "$?" -eq "0" ]; then
-            if [ ! -d "/etc/netplan" ]; then
-                mkdir "/etc/netplan"
-            else
-                rm -rf /etc/netplan/*.yaml
-            fi
-            rm -rf "/tmp/netplan.autodeploy" && for netplan_list_task in "${!netplan_list[@]}"; do
-                echo "${netplan_list[$netplan_list_task]}" >> "/tmp/netplan.autodeploy"
-            done && cat "/tmp/netplan.autodeploy" > "/etc/netplan/netplan.yaml" && rm -rf "/tmp/netplan.autodeploy" && chmod 600 "/etc/netplan/netplan.yaml" && netplan apply
-        fi
-    }
-    function ConfigureNut() {
-        which "upsmon" > "/dev/null" 2>&1
-        if [ "$?" -eq "0" ]; then
-            function Create_upsd_users() {
-                upsd_user_list=(
-                    "admin,123456,master,FSD,SET"
-                    "monuser,secret,slave,,"
-                )
-            }
-            function Generate_nut_conf() {
-                echo "MODE=${NUT_MODE:-none}" > "/etc/nut/nut.conf"
-            }
-            function Generate_ups_conf() {
-                ups_driver_list=(
-                    "ups,usbhid-ups,auto"
-                )
-                ups_conf_list=(
-                    "maxretry = 3"
-                    "retrydelay = 5"
-                )
-                rm -rf "/tmp/ups.conf.autodeploy" && for ups_conf_list_task in "${!ups_conf_list[@]}"; do
-                    echo "${ups_conf_list[$ups_conf_list_task]}" >> "/tmp/ups.conf.autodeploy"
-                done && for ups_driver_list_task in "${!ups_driver_list[@]}"; do
-                    UPS_NAME=$(echo "${ups_driver_list[$ups_driver_list_task]}" | cut -d ',' -f 1)
-                    UPS_DRIVER=$(echo "${ups_driver_list[$ups_driver_list_task]}" | cut -d ',' -f 2)
-                    UPS_PORT=$(echo "${ups_driver_list[$ups_driver_list_task]}" | cut -d ',' -f 3)
-                    echo -e "[${UPS_NAME}]\n    driver = ${UPS_DRIVER}\n    port = ${UPS_PORT}" >> "/tmp/ups.conf.autodeploy"
-                done && cat "/tmp/ups.conf.autodeploy" > "/etc/nut/ups.conf" && rm -rf "/tmp/ups.conf.autodeploy"
-            }
-            function Generate_upsd_conf() {
-                if [ "${NUT_MODE}" == "standalone" ]; then
-                    upsd_config_list=(
-                        "LISTEN 127.0.0.1 3493"
-                        "LISTEN ::1 3493"
-                        "MAXAGE 15"
-                        "MAXCONN 1024"
-                        "STATEPATH /var/run/nut"
-                    )
-                else
-                    upsd_config_list=(
-                        "LISTEN 0.0.0.0 3493"
-                        "MAXAGE 15"
-                        "MAXCONN 1024"
-                        "STATEPATH /var/run/nut"
-                    )
-                fi
-                rm -rf "/tmp/upsd.conf.autodeploy" && for upsd_config_list_task in "${!upsd_config_list[@]}"; do
-                    echo "${upsd_config_list[$upsd_config_list_task]}" >> "/tmp/upsd.conf.autodeploy"
-                done && cat "/tmp/upsd.conf.autodeploy" > "/etc/nut/upsd.conf" && rm -rf "/tmp/upsd.conf.autodeploy"
-            }
-            function Generate_upsd_users() {
-                rm -rf "/tmp/upsd.users.autodeploy" && for upsd_user_list_task in "${!upsd_user_list[@]}"; do
-                    UPSD_USERNAME=$(echo "${upsd_user_list[$upsd_user_list_task]}" | cut -d ',' -f 1)
-                    UPSD_PASSWORD=$(echo "${upsd_user_list[$upsd_user_list_task]}" | cut -d ',' -f 2)
-                    UPSD_ROLE=$(echo "${upsd_user_list[$upsd_user_list_task]}" | cut -d ',' -f 3)
-                    UPSD_ACTIONS=$(echo "${upsd_user_list[$upsd_user_list_task]}" | cut -d ',' -f 4-5 | tr ',' ' ' | sed 's/^ //g')
-                    if [ "${UPSD_ACTIONS}" != "" ]; then
-                        UPSD_ACTIONS="    actions = ${UPSD_ACTIONS}\n    instcmds = ALL\n"
-                    fi
-                    echo -e "[${UPSD_USERNAME}]\n${UPSD_ACTIONS}    password = ${UPSD_PASSWORD}\n    upsmon ${UPSD_ROLE}" >> "/tmp/upsd.users.autodeploy"
-                done && cat "/tmp/upsd.users.autodeploy" > "/etc/nut/upsd.users" && rm -rf "/tmp/upsd.users.autodeploy"
-            }
-            function Generate_upsmon_conf() {
-                upsmon_list=(
-                    "DEADTIME 15"
-                    "FINALDELAY 5"
-                    "HOSTSYNC 15"
-                    "MINSUPPLIES 1"
-                    "NOCOMMWARNTIME 300"
-                    "POLLFREQ 5"
-                    "POLLFREQALERT 5"
-                    "POWERDOWNFLAG /etc/killpower"
-                    "RBWARNTIME 43200"
-                    'SHUTDOWNCMD "/sbin/shutdown -h +0"'
-                    "MONITOR ${UPSMON_SYSTEM} 1 ${UPSMON_USERNAME} ${UPSMON_PASSWORD} ${UPSMON_ROLE}"
-                )
-                rm -rf "/tmp/upsmon.conf.autodeploy" && for upsmon_list_task in "${!upsmon_list[@]}"; do
-                    echo "${upsmon_list[$upsmon_list_task]}" >> "/tmp/upsmon.conf.autodeploy"
-                done && cat "/tmp/upsmon.conf.autodeploy" > "/etc/nut/upsmon.conf" && rm -rf "/tmp/upsmon.conf.autodeploy"
-            }
-            function Generate_upssched_conf() {
-                upssched_conf=(
-                    "CMDSCRIPT /bin/upssched-cmd"
-                )
-            }
-            NUT_MODE="" # netclient | netserver | none | standalone
-            NUT_HOST="" # localhost
-            rm -rf /etc/nut/*.* && case ${NUT_MODE:-none} in
-                netclient)
-                    Create_upsd_users
-                    UPSMON_USERNAME=$(echo "${upsd_user_list[*]}" | cut -d ' ' -f 2 | cut -d ',' -f 1)
-                    UPSMON_PASSWORD=$(echo "${upsd_user_list[*]}" | cut -d ' ' -f 2 | cut -d ',' -f 2)
-                    UPSMON_ROLE=$(echo "${upsd_user_list[*]}" | cut -d ' ' -f 2 | cut -d ',' -f 3)
-                    UPSMON_SYSTEM="${UPS_NAME:-ups}@${NUT_HOST:-localhost}"
-                    nut_service_list=(
-                        "nut-client,enabled"
-                        "nut-driver,disabled"
-                        "nut-monitor,enabled"
-                        "nut-server,disabled"
-                    )
-                    Generate_nut_conf
-                    Generate_upsmon_conf
-                    Generate_upssched_conf
-                    ;;
-                netserver|standalone)
-                    Create_upsd_users
-                    UPSMON_USERNAME=$(echo "${upsd_user_list[*]}" | cut -d ' ' -f 1 | cut -d ',' -f 1)
-                    UPSMON_PASSWORD=$(echo "${upsd_user_list[*]}" | cut -d ' ' -f 1 | cut -d ',' -f 2)
-                    UPSMON_ROLE=$(echo "${upsd_user_list[*]}" | cut -d ' ' -f 1 | cut -d ',' -f 3)
-                    UPSMON_SYSTEM="${UPS_NAME:-ups}@localhost"
-                    nut_service_list=(
-                        "nut-client,enabled"
-                        "nut-driver,enabled"
-                        "nut-monitor,enabled"
-                        "nut-server,enabled"
-                    )
-                    Generate_nut_conf
-                    Generate_ups_conf
-                    Generate_upsd_conf
-                    Generate_upsd_users
-                    Generate_upsmon_conf
-                    Generate_upssched_conf
-                    ;;
-                none)
-                    nut_service_list=(
-                        "nut-client,disable"
-                        "nut-driver,disable"
-                        "nut-monitor,disable"
-                        "nut-server,disable"
-                    )
-                    Generate_nut_conf
-                    ;;
-            esac && chown -R root:nut "/etc/nut" && chmod 640 /etc/nut/*.*
-            for nut_service_list_task in "${!nut_service_list[@]}"; do
-                NUT_SERVICE_NAME=$(echo "${nut_service_list[$nut_service_list_task]}" | cut -d ',' -f 1)
-                NUT_SERVICE_STATUS=$(echo "${nut_service_list[$nut_service_list_task]}" | cut -d ',' -f 2)
-                systemctl ${NUT_SERVICE_STATUS} ${NUT_SERVICE_NAME} > "/dev/null" 2>&1
-            done
-        fi
-    }
-    function ConfigureOpenSSH() {
-        OPENSSH_PASSWORD=""
-        which "ssh-keygen" > "/dev/null" 2>&1
-        if [ "$?" -eq "0" ]; then
-            if [ -d "/etc/ssh" ]; then
-                rm -rf /etc/ssh/ssh_host_* && ssh-keygen -t ecdsa -b 384 -f "/etc/ssh/ssh_host_ecdsa_key" -C "root@${NEW_HOSTNAME}" -N "${OPENSSH_PASSWORD}" && ssh-keygen -t ed25519 -f "/etc/ssh/ssh_host_ed25519_key" -C "root@${NEW_HOSTNAME}" -N "${OPENSSH_PASSWORD}" && ssh-keygen -t rsa -b 4096 -f "/etc/ssh/ssh_host_rsa_key" -C "root@${NEW_HOSTNAME}" -N "${OPENSSH_PASSWORD}" && chmod 400 /etc/ssh/ssh_host_* && chmod 644 /etc/ssh/ssh_host_*.pub
-            fi
-            rm -rf "/root/.ssh" && mkdir "/root/.ssh" && touch "/root/.ssh/authorized_keys" && touch "/root/.ssh/known_hosts" && ssh-keygen -t ecdsa -b 384 -f "/root/.ssh/id_ecdsa" -C "root@${NEW_HOSTNAME}" -N "${OPENSSH_PASSWORD}" && ssh-keygen -t ed25519 -f "/root/.ssh/id_ed25519" -C "root@${NEW_HOSTNAME}" -N "${OPENSSH_PASSWORD}" && ssh-keygen -t rsa -b 4096 -f "/root/.ssh/id_rsa" -C "root@${NEW_HOSTNAME}" -N "${OPENSSH_PASSWORD}" && chmod 400 /root/.ssh/id_* && chmod 600 "/root/.ssh/authorized_keys" && chmod 644 "/root/.ssh/known_hosts" && chmod 644 /root/.ssh/id_*.pub && chmod 700 "/root/.ssh"
-            rm -rf "/home/${DEFAULT_USERNAME}/.ssh" && mkdir "/home/${DEFAULT_USERNAME}/.ssh" && if [ -f "/home/${DEFAULT_USERNAME}/.gnupg/authorized_keys" ]; then
-                mv "/home/${DEFAULT_USERNAME}/.gnupg/authorized_keys" "/home/${DEFAULT_USERNAME}/.ssh/authorized_keys"
-            else
-                touch "/home/${DEFAULT_USERNAME}/.ssh/authorized_keys"
-            fi && touch "/home/${DEFAULT_USERNAME}/.ssh/known_hosts" && ssh-keygen -t ecdsa -b 384 -f "/home/${DEFAULT_USERNAME}/.ssh/id_ecdsa" -C "${DEFAULT_USERNAME}@${NEW_HOSTNAME}" -N "${OPENSSH_PASSWORD}" && ssh-keygen -t ed25519 -f "/home/${DEFAULT_USERNAME}/.ssh/id_ed25519" -C "${DEFAULT_USERNAME}@${NEW_HOSTNAME}" -N "${OPENSSH_PASSWORD}" && ssh-keygen -t rsa -b 4096 -f "/home/${DEFAULT_USERNAME}/.ssh/id_rsa" -C "${DEFAULT_USERNAME}@${NEW_HOSTNAME}" -N "${OPENSSH_PASSWORD}" && chown -R $DEFAULT_USERNAME:$DEFAULT_USERNAME "/home/${DEFAULT_USERNAME}/.ssh" && chown -R $DEFAULT_USERNAME:$DEFAULT_USERNAME /home/${DEFAULT_USERNAME}/.ssh/* && chmod 400 /home/${DEFAULT_USERNAME}/.ssh/id_* && chmod 600 "/home/${DEFAULT_USERNAME}/.ssh/authorized_keys" && chmod 644 "/home/${DEFAULT_USERNAME}/.ssh/known_hosts" && chmod 644 /home/${DEFAULT_USERNAME}/.ssh/id_*.pub && chmod 700 "/home/${DEFAULT_USERNAME}/.ssh"
-        fi
-    }
-    function ConfigurePostfix() {
-        if [ -f "/etc/postfix/main.cf" ]; then
-            if [ "$(cat '/etc/postfix/main.cf' | grep 'myhostname\ \=\ ')" != "" ]; then
-                CURRENT_HOSTNAME=$(cat "/etc/postfix/main.cf" | grep "myhostname\ \=\ " | sed "s/myhostname\ \=\ //g")
-                cat "/etc/postfix/main.cf" | sed "s/$CURRENT_HOSTNAME/$NEW_HOSTNAME/g" > "/tmp/main.cf.autodeploy" && cat "/tmp/main.cf.autodeploy" > "/etc/postfix/main.cf" && rm -rf "/tmp/main.cf.autodeploy"
-            fi
-        fi
-    }
-    function ConfigureProxyChains() {
-        PROXY_PROTOCOL=""
-        PROXY_IP=""
-        PROXY_PORT=""
-        PROXY_USERNAME=""
-        PROXY_PASSWORD=""
-
-        proxychains_list=(
-            'localnet 127.0.0.0/255.0.0.0'
-            'localnet 10.0.0.0/255.0.0.0'
-            'localnet 172.16.0.0/255.240.0.0'
-            'localnet 192.168.0.0/255.255.0.0'
-            'localnet ::1/128'
-            'proxy_dns'
-            'remote_dns_subnet 224'
-            'strict_chain'
-            'tcp_connect_time_out 8000'
-            'tcp_read_time_out 15000'
-            '[ProxyList]'
-            "${PROXY_PROTOCOL:-socks5} ${PROXY_IP:-127.0.0.1} ${PROXY_PORT:-7891}${PROXY_USERNAME:+ $PROXY_USERNAME $PROXY_PASSWORD}"
-        )
-
-        if [ -f "/etc/proxychains4.conf" ]; then
-            rm -rf "/etc/proxychains4.conf"
-        fi && for proxychains_list_task in "${!proxychains_list[@]}"; do
-            echo "${proxychains_list[$proxychains_list_task]}" >> "/etc/proxychains4.conf"
-        done
-    }
-    function ConfigurePythonPyPI() {
-        which "pip3" > "/dev/null" 2>&1
-        if [ "$?" -eq "0" ]; then
-            WHICH_PIP="pip3"
-        else
-            which "pip" > "/dev/null" 2>&1
-            if [ "$?" -eq "0" ]; then
-                WHICH_PIP="pip"
-            else
-                WHICH_PIP="null"
-            fi
-        fi
-        if [ "${WHICH_PIP}" != "null" ]; then
-            ${WHICH_PIP} config set global.index-url "https://mirrors.cernet.edu.cn/pypi/web/simple"
-        fi
-        if [ -f "/root/.config/pip/pip.conf" ]; then
-            if [ ! -d "/home/${DEFAULT_USERNAME}/.config" ]; then
-                mkdir "/home/${DEFAULT_USERNAME}/.config"
-            fi
-            if [ ! -d "/home/${DEFAULT_USERNAME}/.config/pip" ]; then
-                mkdir "/home/${DEFAULT_USERNAME}/.config/pip"
-            fi
-            rm -rf "/home/${DEFAULT_USERNAME}/.config/pip/pip.conf" && cp -rf "/root/.config/pip/pip.conf" "/home/${DEFAULT_USERNAME}/.config/pip/pip.conf" && chown -R $DEFAULT_USERNAME:$DEFAULT_USERNAME "/home/${DEFAULT_USERNAME}/.config" && chown -R $DEFAULT_USERNAME:$DEFAULT_USERNAME "/home/${DEFAULT_USERNAME}/.config/pip" && chown -R $DEFAULT_USERNAME:$DEFAULT_USERNAME "/home/${DEFAULT_USERNAME}/.config/pip/pip.conf"
-        fi
+        mkdir -p /etc/netplan
+        rm -f /etc/netplan/*.yaml
+        printf '%s\n' "${netplan_list[@]}" > "/etc/netplan/netplan.yaml"
+        chmod 600 "/etc/netplan/netplan.yaml"
+        netplan apply
     }
     function ConfigureResolved() {
-        resolved_list=(
-            "[Resolve]"
-            "DNS=${DNS_LINE}"
-            "DNSOverTLS=opportunistic"
-            "DNSSEC=allow-downgrade"
-            "DNSStubListener=false"
-            "Domains=${NEW_DOMAIN[*]}"
-        )
-        which "resolvectl" > "/dev/null" 2>&1
-        if [ "$?" -eq "0" ]; then
-            if [ ! -d "/etc/systemd/resolved.conf.d" ]; then
-                mkdir "/etc/systemd/resolved.conf.d"
-            else
-                rm -rf /etc/systemd/resolved.conf.d/*.conf
-            fi
-            rm -rf "/tmp/resolved.autodeploy" && for resolved_list_task in "${!resolved_list[@]}"; do
-                echo "${resolved_list[$resolved_list_task]}" | sed "s/DNS\=\ /DNS\=/g" >> "/tmp/resolved.autodeploy"
-            done && cat "/tmp/resolved.autodeploy" > "/etc/systemd/resolved.conf.d/resolved.conf" && systemctl restart systemd-resolved && rm -rf "/tmp/resolved.autodeploy" && if [ -f "/etc/resolv.conf" ]; then
-                chattr -i "/etc/resolv.conf" > "/dev/null" 2>&1
-                rm -rf "/etc/resolv.conf" && ln -s "/run/systemd/resolve/resolv.conf" "/etc/resolv.conf"
-            fi
+        if HaveCommand resolvectl; then
+            local resolved_list=(
+                "[Resolve]"
+                "DNS=${DNS_LINE}"
+                "DNSOverTLS=opportunistic"
+                "DNSSEC=allow-downgrade"
+                "DNSStubListener=false"
+                "Domains=${NEW_DOMAIN[*]}"
+            )
+            mkdir -p "/etc/systemd/resolved.conf.d"
+            rm -f /etc/systemd/resolved.conf.d/*.conf
+            printf '%s\n' "${resolved_list[@]}" > "/etc/systemd/resolved.conf.d/resolved.conf"
+            systemctl restart systemd-resolved
+            chattr -i /etc/resolv.conf > /dev/null 2>&1 || true
+            rm -f /etc/resolv.conf
+            ln -s "/run/systemd/resolve/resolv.conf" "/etc/resolv.conf"
         else
-            resolv_conf_list=(
-                ${CURRENT_DNS[@]}
-                ${CUSTOM_DNS[@]}
-            )
-            rm -rf "/tmp/resolv.autodeploy" && DNS_COUNT="1" && for resolv_conf_list_task in "${!resolv_conf_list[@]}"; do
-                if [ "${DNS_COUNT}" -gt "3" ]; then
-                    break
-                else
-                    echo "nameserver ${resolv_conf_list[$resolv_conf_list_task]}" >> "/tmp/resolv.autodeploy"
-                fi && DNS_COUNT=$(( ${DNS_COUNT} + 1 ))
-            done && echo "search ${NEW_DOMAIN[*]}" >> "/tmp/resolv.autodeploy" && if [ -f "/etc/resolv.conf" ]; then
-                chattr -i "/etc/resolv.conf" > "/dev/null" 2>&1
-                if [ "$?" -eq "1" ]; then
-                    rm -rf "/etc/resolv.conf"
-                fi
-            fi && rm -rf "/etc/resolv.conf" && cat "/tmp/resolv.autodeploy" > "/etc/resolv.conf" && rm -rf "/tmp/resolv.autodeploy" && chattr +i "/etc/resolv.conf"
-        fi
-    }
-    function ConfigureSNMP() {
-        SNMP_AUTH_PASS="${ROOT_PASSWORD}"
-        SNMP_PRIV_PASS="${NEW_HOSTNAME}"
-        SNMP_SYS_CONTACT="${DEFAULT_FULLNAME}"
-        SNMP_SYS_LOCATION="${NEW_HOSTNAME}"
-        SNMP_SYS_NAME="${NEW_FULL_DOMAIN}"
-        SNMP_USER="ubuntu"
-        snmp_list=(
-            "agentaddress udp:161,udp6:161"
-            "master agentx"
-            "rouser ${SNMP_USER}"
-            "sysContact ${SNMP_SYS_CONTACT}"
-            "sysLocation ${SNMP_SYS_LOCATION}"
-            "sysName ${SNMP_SYS_NAME}"
-            "sysServices 76"
-        )
-        which "snmpwalk" > "/dev/null" 2>&1
-        if [ "$?" -eq "0" ]; then
-            systemctl stop snmpd
-            kill $(ps -ef | grep snmp | grep -v 'grep' | cut -d ' ' -f 3) > "/dev/null" 2>&1
-            sed -i 's/^mibs :/# mibs :/g' "/etc/snmp/snmp.conf"
-            echo "createUser ${SNMP_USER} SHA \"${SNMP_AUTH_PASS}\" AES \"${SNMP_PRIV_PASS}\"" > "/var/lib/snmp/snmpd.conf"
-            rm -rf "/tmp/snmp.autodeploy" && for snmp_list_task in "${!snmp_list[@]}"; do
-                echo "${snmp_list[$snmp_list_task]}" >> "/tmp/snmp.autodeploy"
-            done && cat "/tmp/snmp.autodeploy" | sort > "/etc/snmp/snmpd.conf" && rm -rf "/tmp/snmp.autodeploy" && systemctl start snmpd && snmpwalk -v3 -a SHA -A ${SNMP_AUTH_PASS} -x AES -X ${SNMP_PRIV_PASS} -l authPriv -u ${SNMP_USER} 127.0.0.1 | head
-        fi
-    }
-    function ConfigureSshd() {
-        if [ -f "/usr/share/openssh/sshd_config" ]; then
-            cat "/usr/share/openssh/sshd_config" | sed "s/\#PasswordAuthentication\ yes/PasswordAuthentication\ yes/g;s/\#PermitRootLogin\ prohibit\-password/PermitRootLogin\ yes/g;s/\#PubkeyAuthentication\ yes/PubkeyAuthentication\ yes/g" > "/tmp/sshd_config.autodeploy" && cat "/tmp/sshd_config.autodeploy" > "/etc/ssh/sshd_config" && rm -rf "/tmp/sshd_config.autodeploy" /etc/ssh/sshd_config.d/*
-        fi
-    }
-    function ConfigureSysctl() {
-        DISABLE_ICMP_ECHO="false"
-        if [ "${DISABLE_ICMP_ECHO}" == "true" ]; then
-            icmp_echo=(
-                "net.ipv4.icmp_echo_ignore_all = 1"
-                "net.ipv6.icmp.echo_ignore_all = 1"
-            )
-        fi
-        network_interface=(
-            "all"
-            "default"
-            $(cat "/proc/net/dev" | grep -v "docker0\|lo\|wg0" | grep "\:" | sed "s/[[:space:]]//g" | cut -d ":" -f 1 | sort | uniq | awk "{print $2}")
-        )
-        sysctl_list=(
-            "net.core.default_qdisc = fq_pie"
-            "net.core.rmem_max = 7500000"
-            "net.core.wmem_max = 7500000"
-            "net.ipv4.ip_forward = 1"
-            "net.ipv4.tcp_congestion_control = bbr"
-            "net.ipv4.tcp_fastopen = 3"
-            "vm.dirty_background_ratio = 5"
-            "vm.dirty_ratio = 15"
-            "vm.overcommit_memory = 1"
-            "vm.page-cluster = 0"
-            "vm.swappiness = 10"
-            ${icmp_echo[@]}
-        )
-        which "sysctl" > "/dev/null" 2>&1
-        if [ "$?" -eq "0" ]; then
-            if [ ! -d "/etc/sysctl.d" ]; then
-                mkdir -p "/etc/sysctl.d"
-            fi
-
-            if [ ! -f "/etc/sysctl.d/99-sysctl.conf" ]; then
-                ln -s "/etc/sysctl.conf" "/etc/sysctl.d/99-sysctl.conf"
-            fi
-
-            rm -rf "/tmp/sysctl.autodeploy" && for sysctl_list_task in "${!sysctl_list[@]}"; do
-                echo "${sysctl_list[$sysctl_list_task]}" >> "/tmp/sysctl.autodeploy"
-            done && for network_interface_task in "${!network_interface[@]}"; do
-                echo -e "net.ipv6.conf.${bridge_interface[$bridge_interface_task]}.accept_ra = 2\nnet.ipv6.conf.${bridge_interface[$bridge_interface_task]}.addr_gen_mode = 0\nnet.ipv6.conf.${bridge_interface[$bridge_interface_task]}.autoconf = 1\nnet.ipv6.conf.${bridge_interface[$bridge_interface_task]}.forwarding = 1\nnet.ipv6.conf.${bridge_interface[$bridge_interface_task]}.use_tempaddr = 0" >> "/tmp/sysctl.autodeploy"
-            done && cat "/tmp/sysctl.autodeploy" | sort | uniq > "/etc/sysctl.d/99-autodeploy.conf" && sysctl -p && rm -rf "/tmp/sysctl.autodeploy"
+            WriteResolvConf
+            chattr +i /etc/resolv.conf
         fi
     }
     function ConfigureSystemd() {
-        systemd_list=(
-            "systemd-networkd-wait-online,disable"
-        )
-        for systemd_list_task in "${!systemd_list[@]}"; do
-            systemctl $(echo "${systemd_list[$systemd_list_task]}" | cut -d ',' -f 2) $(echo "${systemd_list[$systemd_list_task]}" | cut -d ',' -f 1)
-        done
-    }
-    function ConfigureTuned() {
-        which "tuned-adm" > "/dev/null" 2>&1
-        if [ "$?" -eq "0" ]; then
-            tuned-adm profile "$(tuned-adm recommend)" && tuned-adm active
-        fi
+        systemctl disable systemd-networkd-wait-online > /dev/null 2>&1 || true
     }
     function ConfigureUfw() {
-        which "ufw" > "/dev/null" 2>&1
-        if [ "$?" -eq "0" ] && [ -f "/etc/default/ufw" ]; then
-            echo "$(cat '/etc/default/ufw' | sed 's/DEFAULT\_APPLICATION\_POLICY\=\"ACCEPT\"/DEFAULT\_APPLICATION\_POLICY\=\"REJECT\"/g;s/DEFAULT\_APPLICATION\_POLICY\=\"DROP\"/DEFAULT\_APPLICATION\_POLICY\=\"REJECT\"/g;s/DEFAULT\_APPLICATION\_POLICY\=\"SKIP\"/DEFAULT\_APPLICATION\_POLICY\=\"REJECT\"/g;s/DEFAULT\_FORWARD\_POLICY\=\"DROP\"/DEFAULT\_FORWARD\_POLICY\=\"ACCEPT\"/g;s/DEFAULT\_FORWARD\_POLICY\=\"REJECT\"/DEFAULT\_FORWARD\_POLICY\=\"ACCEPT\"/g;s/DEFAULT\_INPUT\_POLICY\=\"ACCEPT\"/DEFAULT\_INPUT\_POLICY\=\"REJECT\"/g;s/DEFAULT\_INPUT\_POLICY\=\"DROP\"/DEFAULT\_INPUT\_POLICY\=\"REJECT\"/g;s/DEFAULT\_OUTPUT\_POLICY\=\"DROP\"/DEFAULT\_OUTPUT\_POLICY\=\"ACCEPT\"/g;s/DEFAULT\_OUTPUT\_POLICY\=\"REJECT\"/DEFAULT\_OUTPUT\_POLICY\=\"ACCEPT\"/g;s/MANAGE\_BUILTINS\=yes/MANAGE\_BUILTINS\=no/g;s/IPV6\=no/IPV6\=yes/g')" > "/tmp/ufw.autodeploy" && cat "/tmp/ufw.autodeploy" > "/etc/default/ufw" && rm -rf "/tmp/ufw.autodeploy"
-            ufw reload && ufw reset && ufw allow 123/udp && ufw allow 161/udp && ufw limit 22/tcp && ufw allow 323/udp && ufw allow 3493/tcp && ufw allow 51820/udp && ufw allow in on wg0 && ufw enable && ufw status verbose
-        fi
+        HaveCommand ufw || return 0
+        [ -f "/etc/default/ufw" ] || return 0
+        sed -i -E \
+            -e 's/DEFAULT_APPLICATION_POLICY="(ACCEPT|DROP|SKIP)"/DEFAULT_APPLICATION_POLICY="REJECT"/g' \
+            -e 's/DEFAULT_FORWARD_POLICY="(DROP|REJECT)"/DEFAULT_FORWARD_POLICY="ACCEPT"/g' \
+            -e 's/DEFAULT_INPUT_POLICY="(ACCEPT|DROP)"/DEFAULT_INPUT_POLICY="REJECT"/g' \
+            -e 's/DEFAULT_OUTPUT_POLICY="(DROP|REJECT)"/DEFAULT_OUTPUT_POLICY="ACCEPT"/g' \
+            -e 's/MANAGE_BUILTINS=yes/MANAGE_BUILTINS=no/g' \
+            -e 's/IPV6=no/IPV6=yes/g' \
+            "/etc/default/ufw"
+        ufw reload
+        ufw --force reset
+        ufw allow 123/udp
+        ufw allow 161/udp
+        ufw limit 22/tcp
+        ufw allow 323/udp
+        ufw allow 3493/tcp
+        ufw allow 51820/udp
+        ufw allow in on wg0
+        ufw --force enable
+        ufw status verbose
     }
     function ConfigureWireGuard() {
-        TUNNEL_CLIENT_IPADDR="10.172.$(shuf -i '0-255' -n 1).$(shuf -i '0-255' -n 1)/32"
-
+        HaveCommand wg || return 0
         if [ ! -d "/etc/wireguard" ]; then
             mkdir "/etc/wireguard"
         else
-            rm -rf /etc/wireguard/*
+            rm -f /etc/wireguard/*
         fi
-        which "wg" > "/dev/null" 2>&1
-        if [ "$?" -eq "0" ]; then
-            wireguard_list=(
-                "[Interface]"
-                "Address = ${TUNNEL_CLIENT_IPADDR}"
-                "# DNS = 127.0.0.1, ::1"
-                "ListenPort = 51820"
-                "MTU = 1420"
-                "PrivateKey = $(wg genkey | tee '/tmp/wireguard.autodeploy')"
-                "# [Peer]"
-                "# AllowedIPs = ${TUNNEL_CLIENT_IPADDR}"
-                "# Endpoint = 127.0.0.1:51820"
-                "# PersistentKeepalive = 5"
-                "# PresharedKey = $(wg genpsk)"
-                "# PublicKey = $(cat '/tmp/wireguard.autodeploy' | wg pubkey)"
-            )
-            rm -rf "/tmp/wireguard.autodeploy" && for wireguard_list_task in "${!wireguard_list[@]}"; do
-                echo "${wireguard_list[$wireguard_list_task]}" | sed "s/\,\ $//g;s/^\,\ //g" >> "/tmp/wireguard.autodeploy"
-            done && cat "/tmp/wireguard.autodeploy" > "/etc/wireguard/wg0.conf" && chown -R ${DEFAULT_USERNAME}:sudo "/etc/wireguard" && chmod -R 775 "/etc/wireguard" && chown -R ${DEFAULT_USERNAME}:${DEFAULT_USERNAME} "/etc/wireguard/wg0.conf" && chmod 600 "/etc/wireguard/wg0.conf" && rm -rf "/tmp/wireguard.autodeploy" && systemctl enable wg-quick@wg0 && if [ -f "/lib/systemd/system/wg-quick@.service" ]; then
-                if [ ! -f "/lib/systemd/system/wg-quick@.service.bak" ]; then
-                    cp "/lib/systemd/system/wg-quick@.service" "/lib/systemd/system/wg-quick@.service.bak"
-                fi
-                cat "/lib/systemd/system/wg-quick@.service.bak" | sed "s/RestartSec\=5\nRestart\=always//g;s/RemainAfterExit\=yes/RemainAfterExit\=yes\nRestartSec\=5\nRestart\=always/g;s/Type\=oneshot/\#Type\=oneshot/g" > "/tmp/wireguard.autodeploy" && cat "/tmp/wireguard.autodeploy" > "/lib/systemd/system/wg-quick@.service" && rm -rf "/tmp/wireguard.autodeploy" && systemctl daemon-reload wg-quick@wg0
-            fi && systemctl start wg-quick@wg0 && wg
-        fi
-    }
-    function ConfigureZsh() {
-        function GenerateCommandPath() {
-            default_path_list=(
-                "/bin"
-                "/sbin"
-                "/usr/bin"
-                "/usr/sbin"
-                "/usr/local/bin"
-                "/usr/local/sbin"
-            )
-            DEFAULT_PATH="" && for default_path_list_task in "${!default_path_list[@]}"; do
-                if [ "${default_path_list[$default_path_list_task]}" != "" ]; then
-                    DEFAULT_PATH="${default_path_list[$default_path_list_task]}:${DEFAULT_PATH}"
-                    DEFAULT_PATH=$(echo "${DEFAULT_PATH}" | sed "s/\:$//g")
-                fi
-            done
-        }
-        function GenerateOMZProfile() {
-            PROXY_URL='http://vpn.zhijie.online:7890' # http://username:password@ip:port
-            NO_PROXY='localhost,127.0.0.1,::1'
-
-            BUILD_IN_PLUGINS="aliases colored-man-pages command-not-found common-aliases docker docker-compose extract git history ssh sudo systemd ubuntu ufw"
-            EXTERNAL_PLUGINS="zsh-autosuggestions zsh-completions zsh-history-substring-search zsh-syntax-highlighting"
-
-            omz_list=(
-                "export DEBIAN_FRONTEND=\"noninteractive\""
-                "export EDITOR=\"nano\""
-                "export GPG_TTY=\$(tty)"
-                "export PATH=\"${DEFAULT_PATH}:\$PATH\""
-                "export SSH_AUTH_SOCK=\"\$(gpgconf --list-dirs agent-ssh-socket)\" && gpgconf --launch gpg-agent && gpg-connect-agent updatestartuptty /bye > \"/dev/null\" 2>&1"
-                "export ZSH=\"\$HOME/.oh-my-zsh\""
-                "function proxy_off(){ unset all_proxy; unset ftp_proxy; unset http_proxy; unset https_proxy; unset rsync_proxy; unset no_proxy }"
-                "function proxy_on(){ export all_proxy=\"${PROXY_URL}\"; export ftp_proxy=\"${PROXY_URL}\"; export http_proxy=\"${PROXY_URL}\"; export https_proxy=\"${PROXY_URL}\"; export rsync_proxy=\"${PROXY_URL}\"; export no_proxy=\"${NO_PROXY}\" }"
-                "plugins=(${BUILD_IN_PLUGINS} ${EXTERNAL_PLUGINS})"
-                "ZSH_CACHE_DIR=\"\$ZSH/cache\""
-                "ZSH_CUSTOM=\"\$ZSH/custom\""
-                "ZSH_THEME=\"ys\""
-                "DISABLE_AUTO_UPDATE=\"true\""
-                "DISABLE_UPDATE_PROMPT=\"true\""
-                "UPDATE_ZSH_DAYS=\"7\""
-                "ZSH_COMPDUMP=\"\$ZSH_CACHE_DIR/.zcompdump\""
-                "ZSH_DISABLE_COMPFIX=\"false\""
-                "CASE_SENSITIVE=\"true\""
-                "COMPLETION_WAITING_DOTS=\"true\""
-                "DISABLE_AUTO_TITLE=\"false\""
-                "DISABLE_LS_COLORS=\"false\""
-                "DISABLE_MAGIC_FUNCTIONS=\"true\""
-                "DISABLE_UNTRACKED_FILES_DIRTY=\"false\""
-                "ENABLE_CORRECTION=\"true\""
-                "HIST_STAMPS=\"yyyy-mm-dd\""
-                "HYPHEN_INSENSITIVE=\"false\""
-                "ZSH_THEME_RANDOM_QUIET=\"true\""
-                "ZSH_AUTOSUGGEST_HIGHLIGHT_STYLE=\"bg=250,fg=238,bold,underline\""
-                "ZSH_AUTOSUGGEST_STRATEGY=(match_prev_cmd history completion)"
-                "ZSH_AUTOSUGGEST_USE_ASYNC=\"true\""
-                "source \"\$ZSH/oh-my-zsh.sh\""
-            )
-            which "zsh" > "/dev/null" 2>&1
-            if [ "$?" -eq "0" ] && [ -d "/home/${DEFAULT_USERNAME}/.oh-my-zsh" ]; then
-                rm -rf "/tmp/omz.autodeploy" && for omz_list_task in "${!omz_list[@]}"; do
-                    echo "${omz_list[$omz_list_task]}" >> "/tmp/omz.autodeploy"
-                done && cat "/tmp/omz.autodeploy" > "/home/${DEFAULT_USERNAME}/.zshrc" && chown -R $DEFAULT_USERNAME:$DEFAULT_USERNAME "/home/${DEFAULT_USERNAME}/.zshrc" && rm -rf "/tmp/omz.autodeploy"
+        GenerateWireGuardConfig
+        chown -R "${DEFAULT_USERNAME}:sudo" "/etc/wireguard"
+        chmod -R 775 "/etc/wireguard"
+        chown "${DEFAULT_USERNAME}:${DEFAULT_USERNAME}" "/etc/wireguard/wg0.conf"
+        chmod 600 "/etc/wireguard/wg0.conf"
+        systemctl enable wg-quick@wg0
+        if [ -f "/lib/systemd/system/wg-quick@.service" ]; then
+            if [ ! -f "/lib/systemd/system/wg-quick@.service.bak" ]; then
+                cp "/lib/systemd/system/wg-quick@.service" "/lib/systemd/system/wg-quick@.service.bak"
             fi
-        }
-        GenerateCommandPath
-        GenerateOMZProfile
+            sed -E \
+                -e 's/RemainAfterExit=yes/RemainAfterExit=yes\nRestartSec=5\nRestart=always/g' \
+                -e 's/^Type=oneshot/#Type=oneshot/g' \
+                "/lib/systemd/system/wg-quick@.service.bak" > "/lib/systemd/system/wg-quick@.service"
+            systemctl daemon-reload
+        fi
+        systemctl start wg-quick@wg0
+        wg
     }
+
+    APT_PREFERENCES=(
+        "${LSB_CODENAME}-backports 990"
+        "${LSB_CODENAME}-security 500"
+        "${LSB_CODENAME}-updates 500"
+        "${LSB_CODENAME} 500"
+        "${LSB_CODENAME}-proposed 100"
+    )
+    FAIL2BAN_BANACTION="ufw"
+    FAIL2BAN_JAILS=(
+        "[sshd]"
+        "bantime = 604800"
+        "enabled = true"
+        "filter = sshd"
+        "findtime = 60"
+        "logpath = /var/log/auth.log"
+        "maxretry = 5"
+        "port = 22"
+    )
+    MODULE_LIST_EXTRA=()
+    SYSCTL_INTERFACE_MODE="exclude"
+    SYSCTL_INTERFACE_PATTERN='^(docker0|lo|wg0)$'
+    PROXYCHAINS_CONF="/etc/proxychains4.conf"
+    GPG_HOME="/home/${DEFAULT_USERNAME}/.gnupg"
+    GPG_KEYSERVER="hkps://keyserver.ubuntu.com:443"
+    GPG_PINENTRY="/usr/bin/pinentry-tty"
+    GPG_HOME_OWNER="${DEFAULT_USERNAME}:${DEFAULT_USERNAME}"
+    ZSH_HOME="/home/${DEFAULT_USERNAME}"
+    ZSH_OWNER="${DEFAULT_USERNAME}:${DEFAULT_USERNAME}"
+    ZSH_PATH_LIST=("/bin" "/sbin" "/usr/bin" "/usr/sbin" "/usr/local/bin" "/usr/local/sbin")
+    ZSH_BUILD_IN_PLUGINS="aliases colored-man-pages command-not-found common-aliases docker docker-compose extract git history ssh sudo systemd ubuntu ufw"
+    ZSH_EXTRA_EXPORTS=("export DEBIAN_FRONTEND=\"noninteractive\"")
+    ZSH_TRAPEXIT="false"
+
     ConfigureAPT
     ConfigureBusybox
     ConfigureChrony
@@ -1044,75 +1424,40 @@ function ConfigurePackages() {
     ConfigureWireGuard
     ConfigureZsh
 }
+
 # Configure System
 function ConfigureSystem() {
-    function ConfigureDefaultShell() {
-        if [ -f "/etc/passwd" ]; then
-            echo "$(cat '/etc/passwd' | sed 's/\/bin\/bash/\/bin\/zsh/g;s/\/bin\/sh/\/bin\/zsh/g')" > "/tmp/shell.autodeploy"
-            cat "/tmp/shell.autodeploy" > "/etc/passwd" && rm -rf "/tmp/shell.autodeploy"
-        fi
-
-        usermod -s /bin/bash root > "/dev/null" 2>&1
-    }
     function ConfigureDefaultUser() {
-        DEFAULT_FIRSTNAME="User"
-        DEFAULT_LASTNAME="Ubuntu"
-        DEFAULT_FULLNAME="${DEFAULT_LASTNAME} ${DEFAULT_FIRSTNAME}"
-        DEFAULT_USERNAME="ubuntu"
-        DEFAULT_PASSWORD='*Ubuntu123*'
-        crontab_list=(
+        WarnDefaultPassword "DEFAULT_PASSWORD" "$DEFAULT_PASSWORD" '*Ubuntu123*'
+        PURGE_OTHER_USERS="${PURGE_OTHER_USERS:-true}"
+        if [ "$PURGE_OTHER_USERS" = "true" ]; then
+            LogWarn "PURGE_OTHER_USERS=true: removing every other user under /home (set PURGE_OTHER_USERS=false to keep them)"
+            local home_dir user
+            for home_dir in /home/*; do
+                if [ -d "$home_dir" ]; then
+                    user="${home_dir##*/}"
+                    if [ "$user" != "$DEFAULT_USERNAME" ]; then
+                        userdel -rf "$user" > /dev/null 2>&1 || true
+                    fi
+                fi
+            done
+        fi
+        if id "$DEFAULT_USERNAME" > /dev/null 2>&1; then
+            userdel -rf "$DEFAULT_USERNAME" > /dev/null 2>&1 || true
+        fi
+        useradd -c "$DEFAULT_FULLNAME" -d "/home/${DEFAULT_USERNAME}" -s "/bin/zsh" -m "$DEFAULT_USERNAME"
+        printf '%s:%s\n' "$DEFAULT_USERNAME" "$DEFAULT_PASSWORD" | chpasswd
+        adduser "$DEFAULT_USERNAME" "docker"
+        adduser "$DEFAULT_USERNAME" "sudo"
+        CRONTAB_USER="$DEFAULT_USERNAME"
+        CRONTAB_ENTRIES=(
             "@reboot rm -rf ~/.*_history ~/.ssh/known_hosts*"
         )
-        if [ -d "/home" ]; then
-            USER_LIST=($(ls "/home" | grep -v "${DEFAULT_USERNAME}" | awk "{print $2}") ${DEFAULT_USERNAME})
-        else
-            mkdir "/home" && USER_LIST=(${DEFAULT_USERNAME})
-        fi && for USER_LIST_TASK in "${!USER_LIST[@]}"; do
-            userdel -rf "${USER_LIST[$USER_LIST_TASK]}" > "/dev/null" 2>&1
-        done
-        useradd -c "${DEFAULT_FULLNAME}" -d "/home/${DEFAULT_USERNAME}" -s "/bin/zsh" -m "${DEFAULT_USERNAME}" && echo $DEFAULT_USERNAME:$DEFAULT_PASSWORD | chpasswd && adduser "${DEFAULT_USERNAME}" "docker" && adduser "${DEFAULT_USERNAME}" "sudo"
-        which "crontab" > "/dev/null" 2>&1
-        if [ "$?" -eq "0" ]; then
-            rm -rf "/tmp/crontab.autodeploy" && for crontab_list_task in "${!crontab_list[@]}"; do
-                echo "${crontab_list[$crontab_list_task]}" >> "/tmp/crontab.autodeploy"
-            done && crontab -u "${DEFAULT_USERNAME}" "/tmp/crontab.autodeploy" && crontab -lu "${DEFAULT_USERNAME}" && rm -rf "/tmp/crontab.autodeploy"
-        fi
-    }
-    function ConfigureGAI() {
-        PREFER_IPV4="true"
-        if [ "${PREFER_IPV4}" == "true" ]; then
-            PREFER_IPV4_OPTION="precedence ::ffff:0:0/96 100"
-        else
-            PREFER_IPV4_OPTION="precedence ::ffff:0:0/96 10"
-        fi
-        gai_conf_list=(
-            "label ::/0 1"
-            "label ::1/128 0"
-            "label 2001:0::/32 7"
-            "label 2002::/16 2"
-            "label ::/96 3"
-            "label fc00::/7 6"
-            "label fec0::/10 5"
-            "label ::ffff:0:0/96 4"
-            "precedence ::/0 40"
-            "precedence ::1/128 50"
-            "precedence 2002::/16 30"
-            "precedence ::/96 20"
-            "${PREFER_IPV4_OPTION}"
-            "scopev4 ::ffff:0.0.0.0/96 14"
-            "scopev4 ::ffff:127.0.0.0/104 2"
-            "scopev4 ::ffff:169.254.0.0/112 2"
-        )
-        rm -rf "/tmp/gai.autodeploy" && for gai_conf_list_task in "${!gai_conf_list[@]}"; do
-            echo "${gai_conf_list[$gai_conf_list_task]}" >> "/tmp/gai.autodeploy"
-        done && cat "/tmp/gai.autodeploy" | sort | uniq > "/etc/gai.conf"
+        InstallCrontab
     }
     function ConfigureHostfile() {
-        NEW_FULL_DOMAIN="" && for NEW_DOMAIN_TASK in "${!NEW_DOMAIN[@]}"; do
-            NEW_FULL_DOMAIN="${NEW_FULL_DOMAIN} ${NEW_HOSTNAME}.${NEW_DOMAIN[$NEW_DOMAIN_TASK]}"
-            NEW_FULL_DOMAIN=$(echo "${NEW_FULL_DOMAIN}" | sed "s/^\ //g;s/^${NEW_HOSTNAME}.$//g")
-        done
-        host_list=(
+        ComputeFullDomain
+        local host_list=(
             "127.0.0.1 localhost"
             "127.0.1.1 ${NEW_HOSTNAME}"
             "255.255.255.255 broadcasthost"
@@ -1123,109 +1468,73 @@ function ConfigureSystem() {
             "ff02::2 ip6-allrouters"
             "ff02::3 ip6-allhosts"
         )
-        rm -rf "/tmp/hosts.autodeploy" && for host_list_task in "${!host_list[@]}"; do
-            echo "${host_list[$host_list_task]}" >> "/tmp/hosts.autodeploy"
-        done && cat "/tmp/hosts.autodeploy" > "/etc/hosts" && rm -rf "/tmp/hosts.autodeploy"
-        rm -rf "/tmp/hostname.autodeploy" && echo "${NEW_HOSTNAME}" > "/tmp/hostname.autodeploy" && cat "/tmp/hostname.autodeploy" > "/etc/hostname" && rm -rf "/tmp/hostname.autodeploy" && hostnamectl set-hostname "${NEW_HOSTNAME}"
+        printf '%s\n' "${host_list[@]}" > "/etc/hosts"
+        printf '%s\n' "$NEW_HOSTNAME" > "/etc/hostname"
+        hostnamectl set-hostname "$NEW_HOSTNAME"
     }
     function ConfigureLocales() {
-        apt purge -qy locales && apt update && apt install -qy locales && locale-gen "en_US.UTF-8" && update-locale "en_US.UTF-8"
-    }
-    function ConfigureRootUser() {
-        LOCK_ROOT="FALSE"
-        ROOT_PASSWORD='R00t@123!'
-        echo root:$ROOT_PASSWORD | chpasswd && if [ "${LOCK_ROOT}" == "TRUE" ]; then
-            passwd -l "root"
-        else
-            passwd -u "root"
-        fi
+        apt purge -qy locales
+        apt update
+        apt install -qy locales
+        locale-gen "en_US.UTF-8"
+        update-locale "en_US.UTF-8"
     }
     function ConfigureSWAP() {
-        function GenerateSWAPSize() {
-            RAM_SIZE=$(awk "BEGIN{print log($(free -m | grep -i "mem" | awk '{print $2}')) / log(2)}")
-            if [[ "${RAM_SIZE}" == *.* ]]; then
-                if [ $(echo "${RAM_SIZE}" | cut -d '.' -f 2 | cut -c 1) -gt 5 ]; then
-                    RAM_SIZE=$(( $(echo "${RAM_SIZE}" | cut -d '.' -f 1 ) + 1 ))
-                fi
-            fi
-            if [ "${RAM_SIZE}" -le 11 ]; then
-                SWAP_SIZE=$(echo "2 ^ ${RAM_SIZE} * 2" | bc)
-            elif [ "${RAM_SIZE}" -gt 11 ] && [ "${RAM_SIZE}" -le 13 ]; then
-                SWAP_SIZE=$(echo "2 ^ ${RAM_SIZE}" | bc)
-            elif [ "${RAM_SIZE}" -gt 13 ] && [ "${RAM_SIZE}" -le 16 ]; then
-                SWAP_SIZE=$(echo "2 ^ 12" | bc)
-            else
-                SWAP_SIZE=$(echo "2 ^ 13" | bc)
-            fi
-        }
         function ClearSWAP() {
-            sysctl_swap_list=(
-                "vm.drop_caches=3"
-                "vm.overcommit_memory=0"
-                "vm.swappiness=0"
-            )
-            which "sysctl" > "/dev/null" 2>&1
-            if [ "$?" -eq "0" ]; then
-                sync && for sysctl_swap_list_task in "${!sysctl_swap_list[@]}"; do
-                    sysctl -w "${sysctl_swap_list[$sysctl_swap_list_task]}"
-                done
-            fi
+            HaveCommand sysctl || return 0
+            sync
+            sysctl -w vm.drop_caches=3 vm.overcommit_memory=0 vm.swappiness=0
         }
         function CreateSWAP() {
-            GenerateSWAPSize
-
+            local ram_mb
+            ram_mb=$(free -m | awk '/^Mem:/ {print $2}')
+            SWAP_SIZE=$(ComputeSwapSize "$ram_mb")
             truncate -s 0 "/swapfile"
             if [ "$(stat -f -c %T "/swapfile" 2>/dev/null)" = "btrfs" ]; then
                 chattr +C "/swapfile"
             fi
-            fallocate -l ${SWAP_SIZE}M "/swapfile"
+            fallocate -l "${SWAP_SIZE}M" "/swapfile"
             chmod 600 "/swapfile"
             mkswap "/swapfile"
             swapon "/swapfile"
         }
         function CreateZRamSWAP() {
-            zram_conf_list=(
+            local zram_conf_list=(
                 "[zram0]"
                 "compression-algorithm = zstd"
                 "zram-size = min(ram / 2, 8192)"
             )
-
-            if [ -d "/etc/systemd/zram-generator.conf.d" ]; then
-                rm -rf "/etc/systemd/zram-generator.conf.d"
-            fi && mkdir -p "/etc/systemd/zram-generator.conf.d"
-
-            rm -rf "/tmp/zram.autodeploy" && for zram_conf_list_task in "${!zram_conf_list[@]}"; do
-                echo "${zram_conf_list[$zram_conf_list_task]}" >> "/tmp/zram.autodeploy"
-            done && cat "/tmp/zram.autodeploy" > "/etc/systemd/zram-generator.conf.d/zram.conf"
+            rm -rf "/etc/systemd/zram-generator.conf.d"
+            mkdir -p "/etc/systemd/zram-generator.conf.d"
+            printf '%s\n' "${zram_conf_list[@]}" > "/etc/systemd/zram-generator.conf.d/zram.conf"
         }
         function RemoveSWAP() {
-            SWAPFILE_NAME=($(cat "/proc/swaps" | grep -v "Filename" | awk '{print $1}'))
-            for SWAPFILE_NAME_TASK in "${!SWAPFILE_NAME[@]}"; do
-                swapoff "${SWAPFILE_NAME[$SWAPFILE_NAME_TASK]}" > "/dev/null" 2>&1
-                rm -rf "${SWAPFILE_NAME[$SWAPFILE_NAME_TASK]}"
-            done
+            local swapfile
+            while IFS= read -r swapfile; do
+                swapoff "$swapfile" > /dev/null 2>&1 || true
+                rm -f "$swapfile"
+            done < <(awk 'NR>1 {print $1}' /proc/swaps)
         }
         function UpdateFSTAB() {
-            cat "/etc/fstab" | grep -v "swap" > "/tmp/fstab.autodeploy"
-            if [ -f "/swapfile" ] && [ "${DISABLE_SWAP}" == "false" ]; then
-                echo "/swapfile none swap sw 0 0" >> "/tmp/fstab.autodeploy"
+            grep -v "swap" /etc/fstab > "/tmp/fstab.autodeploy" || true
+            if [ -f "/swapfile" ] && [ "$DISABLE_SWAP" = "false" ]; then
+                printf '%s\n' "/swapfile none swap sw 0 0" >> "/tmp/fstab.autodeploy"
             fi
-            cat "/tmp/fstab.autodeploy" > "/etc/fstab" && rm -rf "/tmp/fstab.autodeploy"
+            cat "/tmp/fstab.autodeploy" > "/etc/fstab"
+            rm -f "/tmp/fstab.autodeploy"
         }
-
-        DISABLE_SWAP="false"
+        DISABLE_SWAP="${DISABLE_SWAP:-false}"
         ClearSWAP
         RemoveSWAP
-        if [ "${DISABLE_SWAP:-true}" == "false" ]; then
+        if [ "$DISABLE_SWAP" = "false" ]; then
             CreateSWAP
         fi
         CreateZRamSWAP
         UpdateFSTAB
     }
     function ConfigureTimeZone() {
-        if [ -f "/etc/localtime" ]; then
-            rm -rf "/etc/localtime"
-        fi && ln -s "/usr/share/zoneinfo/Asia/Shanghai" "/etc/localtime"
+        rm -f "/etc/localtime"
+        ln -s "/usr/share/zoneinfo/Asia/Shanghai" "/etc/localtime"
     }
     ConfigureDefaultShell
     ConfigureDefaultUser
@@ -1236,143 +1545,73 @@ function ConfigureSystem() {
     ConfigureSWAP
     ConfigureTimeZone
 }
+
 # Install Custom Packages
 function InstallCustomPackages() {
     function InstallCloudflareWARP() {
-        apt_list=(
-            "cloudflare-warp"
-        )
-        rm -rf "/usr/share/keyrings/cloudflare-warp-archive-keyring.gpg" && curl -fsSL "https://pkg.cloudflareclient.com/pubkey.gpg" | gpg --dearmor -o "/usr/share/keyrings/cloudflare-warp-archive-keyring.gpg"
-        echo "deb [arch=${OSArchitecture} signed-by=/usr/share/keyrings/cloudflare-warp-archive-keyring.gpg] https://pkg.cloudflareclient.com ${LSBCodename} main" > "/etc/apt/sources.list.d/cloudflare-warp.list"
-        apt update && for apt_list_task in "${!apt_list[@]}"; do
-            apt-cache show ${apt_list[$apt_list_task]} && if [ "$?" -eq "0" ]; then
-                apt install -qy ${apt_list[$apt_list_task]}
-            fi
-        done
+        InstallAptRepo "cloudflare-warp" "https://pkg.cloudflareclient.com/pubkey.gpg" \
+            "deb [arch=${OS_ARCHITECTURE} signed-by=/usr/share/keyrings/cloudflare-warp-archive-keyring.gpg] https://pkg.cloudflareclient.com ${LSB_CODENAME} main"
+        InstallAptPackages "cloudflare-warp"
     }
     function InstallCrowdSec() {
-        apt_list=(
-            "crowdsec"
-            "crowdsec-firewall-bouncer-nftables"
-        )
-        rm -rf "/usr/share/keyrings/crowdsec-archive-keyring.gpg" && curl -fsSL "https://packagecloud.io/crowdsec/crowdsec/gpgkey" | gpg --dearmor -o "/usr/share/keyrings/crowdsec-archive-keyring.gpg"
-        echo "deb [arch=${OSArchitecture} signed-by=/usr/share/keyrings/crowdsec-archive-keyring.gpg] https://packagecloud.io/crowdsec/crowdsec/any any main" > "/etc/apt/sources.list.d/crowdsec.list"
-        echo "deb-src [arch=${OSArchitecture} signed-by=/usr/share/keyrings/crowdsec-archive-keyring.gpg] https://packagecloud.io/crowdsec/crowdsec/any any main" >> "/etc/apt/sources.list.d/crowdsec.list"
-        which "cscli" > "/dev/null" 2>&1
-        if [ "$?" -eq "0" ]; then
-            bouncers_list=($(cscli bouncers list | grep 'FirewallBouncer' | cut -d ' ' -f 2))
-            for bouncers_list_task in "${!bouncers_list[@]}"; do
-                cscli bouncers delete ${bouncers_list[$bouncers_list_task]}
-            done
+        InstallAptRepo "crowdsec" "https://packagecloud.io/crowdsec/crowdsec/gpgkey" \
+            "deb [arch=${OS_ARCHITECTURE} signed-by=/usr/share/keyrings/crowdsec-archive-keyring.gpg] https://packagecloud.io/crowdsec/crowdsec/any any main
+deb-src [arch=${OS_ARCHITECTURE} signed-by=/usr/share/keyrings/crowdsec-archive-keyring.gpg] https://packagecloud.io/crowdsec/crowdsec/any any main"
+        if HaveCommand cscli; then
+            local bouncer
+            while IFS= read -r bouncer; do
+                cscli bouncers delete "$bouncer"
+            done < <(cscli bouncers list | grep 'FirewallBouncer' | awk '{print $1}' || true)
         fi
-        apt update && for apt_list_task in "${!apt_list[@]}"; do
-            apt-cache show ${apt_list[$apt_list_task]} && if [ "$?" -eq "0" ]; then
-                apt install -qy ${apt_list[$apt_list_task]}
-            fi
-        done
+        InstallAptPackages "crowdsec" "crowdsec-firewall-bouncer-nftables"
     }
     function InstallDockerEngine() {
-        apt_list=(
-            "containerd.io"
-            "docker-buildx-plugin"
-            "docker-ce"
-            "docker-ce-cli"
-            "docker-compose-plugin"
-        )
-        rm -rf "/usr/share/keyrings/docker-archive-keyring.gpg" && curl -fsSL "https://mirrors.cernet.edu.cn/docker-ce/linux/ubuntu/gpg" | gpg --dearmor -o "/usr/share/keyrings/docker-archive-keyring.gpg"
-        echo "deb [arch=${OSArchitecture} signed-by=/usr/share/keyrings/docker-archive-keyring.gpg] https://mirrors.cernet.edu.cn/docker-ce/linux/ubuntu ${LSBCodename} stable" > "/etc/apt/sources.list.d/docker.list"
-        apt update && apt purge -qy containerd docker-compose docker-doc docker.io podman-docker runc && for apt_list_task in "${!apt_list[@]}"; do
-            apt-cache show ${apt_list[$apt_list_task]} && if [ "$?" -eq "0" ]; then
-                apt install -qy ${apt_list[$apt_list_task]}
-            fi
-        done
+        InstallAptRepo "docker" "https://mirrors.cernet.edu.cn/docker-ce/linux/ubuntu/gpg" \
+            "deb [arch=${OS_ARCHITECTURE} signed-by=/usr/share/keyrings/docker-archive-keyring.gpg] https://mirrors.cernet.edu.cn/docker-ce/linux/ubuntu ${LSB_CODENAME} stable"
+        apt update
+        apt purge -qy containerd docker-compose docker-doc docker.io podman-docker runc || true
+        InstallAptPackages "containerd.io" "docker-buildx-plugin" "docker-ce" "docker-ce-cli" "docker-compose-plugin"
     }
     function InstallFRRouting() {
-        apt_list=(
-            "frr"
-            "frr-pythontools"
-            "frr-rpki-rtrlib"
-            "frr-snmp"
-        )
-        rm -rf "/usr/share/keyrings/frrouting-archive-keyring.gpg" && curl -fsSL "https://deb.frrouting.org/frr/keys.gpg" | gpg --dearmor -o "/usr/share/keyrings/frrouting-archive-keyring.gpg"
-        echo "deb [arch=${OSArchitecture} signed-by=/usr/share/keyrings/frrouting-archive-keyring.gpg] https://deb.frrouting.org/frr stable frr-stable" > "/etc/apt/sources.list.d/frrouting.list"
-        apt update && for apt_list_task in "${!apt_list[@]}"; do
-            apt-cache show ${apt_list[$apt_list_task]} && if [ "$?" -eq "0" ]; then
-                apt install -qy ${apt_list[$apt_list_task]}
-            fi
-        done
-    }
-    function InstallOhMyZsh() {
-        plugin_list=(
-            "zsh-autosuggestions"
-            "zsh-completions"
-            "zsh-history-substring-search"
-            "zsh-syntax-highlighting"
-        )
-        plugin_upgrade_list=(
-            '#!/bin/bash'
-            'plugin_list=($(ls "$HOME/.oh-my-zsh/custom/plugins" | grep -v "^example$" | awk "{print $1}"))'
-            'for plugin_list_task in "${!plugin_list[@]}"; do'
-            "    rm -rf \"\$HOME/.oh-my-zsh/custom/plugins/\${plugin_list[\$plugin_list_task]}\" && git clone --depth=1 \"${GHPROXY_URL}https://github.com/zsh-users/\${plugin_list[\$plugin_list_task]}.git\" \"\$HOME/.oh-my-zsh/custom/plugins/\${plugin_list[\$plugin_list_task]}\""
-            'done'
-        )
-        rm -rf "/home/${DEFAULT_USERNAME}/.oh-my-zsh" && git clone --depth=1 "${GHPROXY_URL}https://github.com/ohmyzsh/ohmyzsh.git" "/home/${DEFAULT_USERNAME}/.oh-my-zsh" && if [ -d "/home/${DEFAULT_USERNAME}/.oh-my-zsh/custom/plugins" ]; then
-            for plugin_list_task in "${!plugin_list[@]}"; do
-                rm -rf "/home/${DEFAULT_USERNAME}/.oh-my-zsh/custom/plugins/${plugin_list[$plugin_list_task]}" && git clone --depth=1 "${GHPROXY_URL}https://github.com/zsh-users/${plugin_list[$plugin_list_task]}.git" "/home/${DEFAULT_USERNAME}/.oh-my-zsh/custom/plugins/${plugin_list[$plugin_list_task]}"
-            done
-        fi && rm -rf "/home/${DEFAULT_USERNAME}/.oh-my-zsh/oh-my-zsh-plugin.sh" && for plugin_upgrade_list_task in "${!plugin_upgrade_list[@]}"; do
-            echo "${plugin_upgrade_list[$plugin_upgrade_list_task]}" >> "/home/${DEFAULT_USERNAME}/.oh-my-zsh/oh-my-zsh-plugin.sh"
-        done && chown -R $DEFAULT_USERNAME:$DEFAULT_USERNAME "/home/${DEFAULT_USERNAME}/.oh-my-zsh"
+        InstallAptRepo "frrouting" "https://deb.frrouting.org/frr/keys.gpg" \
+            "deb [arch=${OS_ARCHITECTURE} signed-by=/usr/share/keyrings/frrouting-archive-keyring.gpg] https://deb.frrouting.org/frr stable frr-stable"
+        InstallAptPackages "frr" "frr-pythontools" "frr-rpki-rtrlib" "frr-snmp"
     }
     function InstallTor() {
-        apt_list=(
-            "tor"
-        )
-        rm -rf "/usr/share/keyrings/tor-archive-keyring.gpg" && curl -fsSL "https://deb.torproject.org/torproject.org/A3C4F0F979CAA22CDBA8F512EE8CBC9E886DDD89.asc" | gpg --dearmor -o "/usr/share/keyrings/tor-archive-keyring.gpg"
-        echo "deb [arch=${OSArchitecture} signed-by=/usr/share/keyrings/tor-archive-keyring.gpg] https://deb.torproject.org/torproject.org stable main" > "/etc/apt/sources.list.d/tor.list"
-        apt update && for apt_list_task in "${!apt_list[@]}"; do
-            apt-cache show ${apt_list[$apt_list_task]} && if [ "$?" -eq "0" ]; then
-                apt install -qy ${apt_list[$apt_list_task]}
-            fi
-        done
+        InstallAptRepo "tor" "https://deb.torproject.org/torproject.org/A3C4F0F979CAA22CDBA8F512EE8CBC9E886DDD89.asc" \
+            "deb [arch=${OS_ARCHITECTURE} signed-by=/usr/share/keyrings/tor-archive-keyring.gpg] https://deb.torproject.org/torproject.org stable main"
+        InstallAptPackages "tor"
     }
     function InstallXanModKernel() {
-        # Note: The current NVIDIA, OpenZFS, VirtualBox, VMware Workstation / Player and some other dkms modules may not officially support EDGE and RT branch kernels.
-        # How to fix "modinfo: ERROR: Module tcp_bbr not found." -> sudo depmod && modinfo tcp_bbr
-        # How to remove? -> sudo apt purge -qy linux-image-*.*.*-xanmod* linux-headers-*.*.*-xanmod* && sudo apt autoremove -qy --purge
-        XANMOD_BRANCH="edge" # disable, edge, lts, rt
-        if [ "${XANMOD_BRANCH}" == "" ]; then
-            XANMOD_BRANCH=""
-        elif [ "${XANMOD_BRANCH}" == "edge" ] || [ "${XANMOD_BRANCH}" == "lts" ] || [ "${XANMOD_BRANCH}" == "rt" ]; then
-            XANMOD_BRANCH="${XANMOD_BRANCH}-"
+        # Note: NVIDIA, OpenZFS, VirtualBox, VMware and some other dkms modules
+        # may not officially support EDGE and RT branch kernels.
+        XANMOD_BRANCH="${XANMOD_BRANCH:-edge}" # disable | main | edge | lts | rt
+        local branch="$XANMOD_BRANCH"
+        # psABI v1 CPUs cannot run edge/rt builds (compare before suffixing!)
+        if [ "$PSABI_LEVEL" = "1" ] && { [ "$branch" = "edge" ] || [ "$branch" = "rt" ]; }; then
+            branch="main"
         fi
-        if [ "${psABILevel}" == "1" ] && { [ "${XANMOD_BRANCH}" == "edge" ] || [ "${XANMOD_BRANCH}" == "rt" ]; }; then
-            XANMOD_BRANCH=""
+        # no kernel benefit beyond v3
+        local level="$PSABI_LEVEL"
+        if [ "$level" = "4" ]; then
+            level="3"
         fi
-
-        # no kernel benefit
-        if [ "${psABILevel}" == "4" ]; then
-            psABILevel="3"
-        fi
-
-        if [ "${OSArchitecture}" == "amd64" ] && [ "${psABILevel}" != "0" ] && [ "${XANMOD_BRANCH}" != "disable" ]; then
-            apt_list=(
-                "linux-xanmod-${XANMOD_BRANCH}x64v${psABILevel}"
-            )
-        else
-            apt_list=(
-                "linux-generic-hwe-${LSBVersion}"
-            )
-        fi
-
-        rm -rf "/usr/share/keyrings/xanmod-archive-keyring.gpg" && curl -fsSL "https://dl.xanmod.org/archive.key" | gpg --dearmor -o "/usr/share/keyrings/xanmod-archive-keyring.gpg"
-        echo "deb [arch=${OSArchitecture} signed-by=/usr/share/keyrings/xanmod-archive-keyring.gpg] https://deb.xanmod.org ${LSBCodename} main non-free" > "/etc/apt/sources.list.d/xanmod.list"
-        apt update && for apt_list_task in "${!apt_list[@]}"; do
-            apt-cache show ${apt_list[$apt_list_task]} && if [ "$?" -eq "0" ]; then
-                apt install -qy ${apt_list[$apt_list_task]}
+        local apt_list=()
+        if [ "$OS_ARCHITECTURE" = "amd64" ] && [ "$level" != "0" ] && [ "$branch" != "disable" ]; then
+            local suffix=""
+            if [ "$branch" != "main" ]; then
+                suffix="${branch}-"
             fi
-        done
+            apt_list=("linux-xanmod-${suffix}x64v${level}")
+        else
+            apt_list=("linux-generic-hwe-${LSB_VERSION}")
+        fi
+        InstallAptRepo "xanmod" "https://dl.xanmod.org/archive.key" \
+            "deb [arch=${OS_ARCHITECTURE} signed-by=/usr/share/keyrings/xanmod-archive-keyring.gpg] https://deb.xanmod.org ${LSB_CODENAME} main non-free"
+        InstallAptPackages "${apt_list[@]}"
     }
+    OMZ_HOME="/home/${DEFAULT_USERNAME}"
+    OMZ_OWNER="${DEFAULT_USERNAME}:${DEFAULT_USERNAME}"
     #InstallCloudflareWARP
     InstallCrowdSec
     InstallDockerEngine
@@ -1381,9 +1620,10 @@ function InstallCustomPackages() {
     #InstallTor
     InstallXanModKernel
 }
+
 # Install Dependency Packages
 function InstallDependencyPackages() {
-    apt_list=(
+    local apt_list=(
         "apparmor"
         "apparmor-profiles"
         "apparmor-profiles-extra"
@@ -1469,52 +1709,37 @@ function InstallDependencyPackages() {
         "zip"
         "zsh"
     )
-    hypervisor_agent_list=(
-        "ksmtuned"
-        "open-vm-tools"
-        "qemu-guest-agent"
-        "virtualbox-guest-dkms"
-    )
-    apt_list=(${apt_list[@]} ${HYPERVISOR_AGENT[*]} ${MICROCODE[*]})
-    for hypervisor_agent_list_task in "${!hypervisor_agent_list[@]}"; do
-        if [ "${hypervisor_agent_list[$hypervisor_agent_list_task]}" != "${HYPERVISOR_AGENT[*]}" ]; then
-            if [ "$(apt list --installed | grep ${hypervisor_agent_list[$hypervisor_agent_list_task]})" != "" ]; then
-                apt purge -qy ${hypervisor_agent_list[$hypervisor_agent_list_task]} && apt autoremove -qy --purge
+    apt_list+=(${HYPERVISOR_AGENT[@]+"${HYPERVISOR_AGENT[@]}"} ${MICROCODE[@]+"${MICROCODE[@]}"})
+    # Purge guest agents that do not belong to the detected hypervisor.
+    local hypervisor_agent_list=("ksmtuned" "open-vm-tools" "qemu-guest-agent" "virtualbox-guest-dkms")
+    local agent wanted keep
+    for agent in "${hypervisor_agent_list[@]}"; do
+        keep="false"
+        for wanted in ${HYPERVISOR_AGENT[@]+"${HYPERVISOR_AGENT[@]}"}; do
+            if [ "$agent" = "$wanted" ]; then
+                keep="true"
             fi
-        fi
-    done && apt update && for apt_list_task in "${!apt_list[@]}"; do
-        apt-cache show ${apt_list[$apt_list_task]} && if [ "$?" -eq "0" ]; then
-            apt install -qy ${apt_list[$apt_list_task]}
+        done
+        if [ "$keep" = "false" ] && dpkg -l "$agent" 2>/dev/null | grep -q '^ii'; then
+            apt purge -qy "$agent"
+            apt autoremove -qy --purge
         fi
     done
-}
-# Upgrade Packages
-function UpgradePackages() {
-    apt update && apt full-upgrade -qy && apt autoremove -qy --purge
-}
-# Cleanup Temp Files
-function CleanupTempFiles() {
-    apt clean && rm -rf /etc/ufw/*.$(date '+%Y%m%d')_* /root/.*_history /tmp/*
-}
-# Cleanup Outage Kernels
-function CleanupOutageKernels() {
-    kernel_list=($(dpkg -l | grep -E "(linux-image)-[0-9].*" | awk '{print $2}' | sort -V | grep -v "$(dpkg -l | grep -E '(linux-image)-[0-9].*' | awk '{print $2}' | sort -V | tail -n 1)"))
-    for kernel_list_task in "${!kernel_list[@]}"; do
-        apt purge -qy ${kernel_list[$kernel_list_task]}
-    done && apt autoremove -qy --purge
+    InstallAptPackages "${apt_list[@]}"
 }
 
 ## Process
 # Set DEBIAN_FRONTEND to "noninteractive"
 export DEBIAN_FRONTEND="noninteractive"
+RequireRoot
 # Call GetSystemInformation
 GetSystemInformation
-# Set transport_protocol="http"; Call SetRepositoryMirror
-transport_protocol="http" && SetRepositoryMirror
+# Set TRANSPORT_PROTOCOL="http"; Call SetRepositoryMirror
+TRANSPORT_PROTOCOL="http" && SetRepositoryMirror
 # Call InstallDependencyPackages
 InstallDependencyPackages
-# Set transport_protocol="https"; Call SetRepositoryMirror
-transport_protocol="https" && SetRepositoryMirror
+# Set TRANSPORT_PROTOCOL="https"; Call SetRepositoryMirror
+TRANSPORT_PROTOCOL="https" && SetRepositoryMirror
 # Call UpgradePackages
 UpgradePackages
 # Call InstallCustomPackages
@@ -1524,6 +1749,7 @@ ConfigureSystem
 # Call ConfigurePackages
 ConfigurePackages
 # Call CleanupTempFiles
-CleanupTempFiles
+CleanupTempFiles /etc/ufw/*."$(date '+%Y%m%d')"*
 # Call CleanupOutageKernels
+KERNEL_PATTERN='(linux-image)-[0-9].*'
 CleanupOutageKernels

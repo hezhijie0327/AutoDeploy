@@ -1,265 +1,445 @@
 #!/bin/bash
-
+# Copyright 2026 Zhijie He
+# Licensed under Apache-2.0 WITH Commons-Clause-1.0. See LICENSE.
+#
+# GENERATED FILE - do not edit directly. Edit src/ and run ./build.sh.
+#
 ## How to get and use?
 # /bin/bash -c "$(curl -fsSL 'https://source.zhijie.online/AutoDeploy/main/macOS.sh')"
 # /bin/bash -c "$(wget -qO- 'https://source.zhijie.online/AutoDeploy/main/macOS.sh')"
+# ============================================================================
+# common.sh - shared across all platforms (DSM / macOS / Ubuntu / Proxmox VE)
+# Part of the generated single-file scripts; not executable on its own.
+# Compatible with bash 3.2 (macOS system bash) - avoid bash 4+ features here.
+# ============================================================================
 
+set -Eeuo pipefail
+
+LogInfo() {
+    printf '[AutoDeploy] %s\n' "$*"
+}
+
+LogWarn() {
+    printf '[AutoDeploy] WARNING: %s\n' "$*" >&2
+}
+
+Die() {
+    printf '[AutoDeploy] ERROR: %s\n' "$*" >&2
+    exit 1
+}
+
+HaveCommand() {
+    command -v "$1" > /dev/null 2>&1
+}
+
+RequireRoot() {
+    if [ "$(id -u)" -ne 0 ]; then
+        Die "this script must run as root (use sudo)"
+    fi
+}
+
+# Move an existing file/directory aside instead of destroying it, so a re-run
+# never wipes keys or configuration without a recovery path.
+BackupPath() {
+    local target="$1" backup
+    if [ -e "$target" ]; then
+        backup="${target}.bak.$(date '+%Y%m%d%H%M%S')"
+        mv "$target" "$backup"
+        LogInfo "backed up ${target} -> ${backup}"
+    fi
+}
+
+WarnDefaultPassword() {
+    local name="$1" value="$2" default_value="$3"
+    if [ "$value" = "$default_value" ]; then
+        LogWarn "${name} is using the built-in default. Change it after deployment, or override it with ${name}=<value> before running."
+    fi
+}
+
+trap 'Die "failed at line ${LINENO}: ${BASH_COMMAND}"' ERR
+
+## Function
+# Get System Information (shared parts)
+GetCurrentUsername() {
+    # Under `curl | sudo bash`, whoami is root; SUDO_USER is the real operator.
+    # Used by DSM/macOS; debian platforms use DEFAULT_USERNAME instead.
+    # shellcheck disable=SC2034
+    CURRENT_USERNAME="${SUDO_USER:-$(whoami)}"
+}
+
+SetGHProxyDomain() {
+    GHPROXY_URL="${GHPROXY_URL:-}"
+    if [ -n "$GHPROXY_URL" ]; then
+        export GHPROXY_URL="https://${GHPROXY_URL}/"
+    fi
+}
+
+# Configure Packages (shared)
+ApplyGitConfig() {
+    local gitconfig_key_list=(
+        "commit.gpgsign"
+        "gpg.program"
+        "http.proxy"
+        "https.proxy"
+        "user.name"
+        "user.email"
+        "user.signingkey"
+        "url.${GHPROXY_URL}https://github.com/.insteadOf"
+    )
+    local gitconfig_value_list=(
+        "${GIT_COMMIT_GPGSIGN:-false}"
+        "${GIT_GPG_PROGRAM:-gpg}"
+        "${GIT_HTTP_PROXY:-}"
+        "${GIT_HTTPS_PROXY:-}"
+        "${GIT_USER_NAME:-}"
+        "${GIT_USER_EMAIL:-}"
+        "${GIT_USER_SIGNINGKEY:-}"
+        "https://github.com/"
+    )
+    local i
+    for i in "${!gitconfig_key_list[@]}"; do
+        git config --global --unset "${gitconfig_key_list[$i]}" || true
+        if [ -n "${gitconfig_value_list[$i]}" ]; then
+            git config --global "${gitconfig_key_list[$i]}" "${gitconfig_value_list[$i]}"
+        fi
+    done
+}
+
+ConfigureGit() {
+    HaveCommand git || return 0
+    ApplyGitConfig
+    # On root-run platforms the default user gets a baseline config without
+    # the operator's personal identity (configure that per user later).
+    if [ "$(id -u)" -eq 0 ] && [ -n "${DEFAULT_USERNAME:-}" ]; then
+        local user_gitconfig="/home/${DEFAULT_USERNAME}/.gitconfig"
+        git config --file "$user_gitconfig" commit.gpgsign "${GIT_COMMIT_GPGSIGN:-false}"
+        git config --file "$user_gitconfig" gpg.program "${GIT_GPG_PROGRAM:-gpg}"
+        git config --file "$user_gitconfig" "url.${GHPROXY_URL}https://github.com/.insteadOf" "https://github.com/"
+        chown "$DEFAULT_USERNAME:$DEFAULT_USERNAME" "$user_gitconfig"
+    fi
+}
+
+# Platform must set: GPG_HOME, GPG_KEYSERVER, GPG_PINENTRY (may be empty),
+# and optionally GPG_HOME_OWNER (user:group) when running as root.
+ConfigureGPG() {
+    HaveCommand gpg || return 0
+    GPG_PUBKEY="${GPG_PUBKEY:-DD982DAAB9C71C78F9563E5207EB56787030D792}"
+    BackupPath "$GPG_HOME"
+    mkdir -p "$GPG_HOME"
+    export GNUPGHOME="$GPG_HOME"
+    gpg --keyserver "$GPG_KEYSERVER" --recv "$GPG_PUBKEY" || Die "failed to receive GPG key ${GPG_PUBKEY}"
+    printf '%s:6:\n' "$GPG_PUBKEY" | gpg --import-ownertrust
+    GPG_PUBKEY_ID_A=$(gpg --list-keys --keyid-format LONG | awk '/^(pub|sub)/ && /\[A\]/ {split($2, a, "/"); print a[2]}' | head -n 1)
+    GPG_PUBKEY_ID_C=$(gpg --list-keys --keyid-format LONG | awk '/^(pub|sub)/ && /\[C\]/ {split($2, a, "/"); print a[2]}' | head -n 1)
+    if [ -n "$GPG_PUBKEY_ID_A" ]; then
+        {
+            printf '%s\n' "enable-ssh-support"
+            if [ -n "$GPG_PINENTRY" ]; then
+                printf '%s\n' "pinentry-program ${GPG_PINENTRY}"
+            fi
+        } > "${GPG_HOME}/gpg-agent.conf"
+        printf '%s\n' "$GPG_PUBKEY_ID_A" > "${GPG_HOME}/sshcontrol"
+    fi
+    if [ -n "$GPG_PUBKEY_ID_C" ]; then
+        gpg --export-ssh-key "$GPG_PUBKEY_ID_C" > "${GPG_HOME}/authorized_keys"
+    fi
+    gpgconf --kill gpg-agent > /dev/null 2>&1 || true
+    unset GNUPGHOME
+    if [ -n "${GPG_HOME_OWNER:-}" ]; then
+        chown -R "$GPG_HOME_OWNER" "$GPG_HOME"
+    fi
+    find "$GPG_HOME" -type d -exec chmod 700 {} +
+    find "$GPG_HOME" -type f -exec chmod 600 {} +
+}
+
+# Generate the user key pairs (ecdsa/ed25519/rsa) inside an existing .ssh dir.
+# DSA is intentionally gone: OpenSSH >= 9.8 disables it, 10.x removed it.
+GenerateSSHKeys() {
+    local ssh_dir="$1" comment="$2"
+    ssh-keygen -t ecdsa -b 384 -f "${ssh_dir}/id_ecdsa" -C "$comment" -N "${OPENSSH_PASSWORD:-}"
+    ssh-keygen -t ed25519 -f "${ssh_dir}/id_ed25519" -C "$comment" -N "${OPENSSH_PASSWORD:-}"
+    ssh-keygen -t rsa -b 4096 -f "${ssh_dir}/id_rsa" -C "$comment" -N "${OPENSSH_PASSWORD:-}"
+    chmod 400 "${ssh_dir}"/id_*
+    chmod 644 "${ssh_dir}"/id_*.pub
+}
+
+GenerateHostSSHKeys() {
+    local ssh_dir="$1" comment="$2"
+    rm -f "${ssh_dir}"/ssh_host_*
+    ssh-keygen -t ecdsa -b 384 -f "${ssh_dir}/ssh_host_ecdsa_key" -C "$comment" -N "${OPENSSH_PASSWORD:-}"
+    ssh-keygen -t ed25519 -f "${ssh_dir}/ssh_host_ed25519_key" -C "$comment" -N "${OPENSSH_PASSWORD:-}"
+    ssh-keygen -t rsa -b 4096 -f "${ssh_dir}/ssh_host_rsa_key" -C "$comment" -N "${OPENSSH_PASSWORD:-}"
+    chmod 400 "${ssh_dir}"/ssh_host_*
+    chmod 644 "${ssh_dir}"/ssh_host_*.pub
+}
+
+# Platform must set: PROXYCHAINS_CONF
+ConfigureProxyChains() {
+    local proxychains_list=(
+        'localnet 127.0.0.0/255.0.0.0'
+        'localnet 10.0.0.0/255.0.0.0'
+        'localnet 172.16.0.0/255.240.0.0'
+        'localnet 192.168.0.0/255.255.0.0'
+        'localnet ::1/128'
+        'proxy_dns'
+        'remote_dns_subnet 224'
+        'strict_chain'
+        'tcp_connect_time_out 8000'
+        'tcp_read_time_out 15000'
+        '[ProxyList]'
+        "${PROXY_PROTOCOL:-socks5} ${PROXY_IP:-127.0.0.1} ${PROXY_PORT:-7891}${PROXY_USERNAME:+ ${PROXY_USERNAME} ${PROXY_PASSWORD:-}}"
+    )
+    printf '%s\n' "${proxychains_list[@]}" > "$PROXYCHAINS_CONF"
+}
+
+ConfigurePythonPyPI() {
+    local which_pip=""
+    if HaveCommand pip3; then
+        which_pip="pip3"
+    elif HaveCommand pip; then
+        which_pip="pip"
+    else
+        return 0
+    fi
+    "$which_pip" config set global.index-url "https://mirrors.cernet.edu.cn/pypi/web/simple"
+    if [ "$(id -u)" -eq 0 ] && [ -n "${DEFAULT_USERNAME:-}" ] && [ -f "/root/.config/pip/pip.conf" ]; then
+        install -D -m 644 -o "$DEFAULT_USERNAME" -g "$DEFAULT_USERNAME" \
+            "/root/.config/pip/pip.conf" "/home/${DEFAULT_USERNAME}/.config/pip/pip.conf"
+    fi
+}
+
+# Platform must set: ZSH_PATH_LIST (array)
+GenerateCommandPath() {
+    DEFAULT_PATH=""
+    local path_entry
+    for path_entry in "${ZSH_PATH_LIST[@]}"; do
+        DEFAULT_PATH="${path_entry}:${DEFAULT_PATH}"
+    done
+    DEFAULT_PATH="${DEFAULT_PATH%:}"
+}
+
+# Platform must set: ZSH_HOME, ZSH_BUILD_IN_PLUGINS, ZSH_EXTRA_EXPORTS (array,
+# may be empty), ZSH_TRAPEXIT (true/false), ZSH_OWNER (may be empty).
+GenerateOMZProfile() {
+    local proxy_url="${PROXY_URL:-http://vpn.zhijie.online:7890}"
+    local no_proxy='localhost,127.0.0.1,::1'
+    local external_plugins="zsh-autosuggestions zsh-completions zsh-history-substring-search zsh-syntax-highlighting"
+    local omz_list=(
+        "export EDITOR=\"nano\""
+        "export GPG_TTY=\$(tty)"
+        ${ZSH_EXTRA_EXPORTS[@]+"${ZSH_EXTRA_EXPORTS[@]}"}
+        "export PATH=\"${DEFAULT_PATH}:\$PATH\""
+        "export SSH_AUTH_SOCK=\"\$(gpgconf --list-dirs agent-ssh-socket)\" && gpgconf --launch gpg-agent && gpg-connect-agent updatestartuptty /bye > \"/dev/null\" 2>&1"
+        "export ZSH=\"\$HOME/.oh-my-zsh\""
+        "function proxy_off(){ unset all_proxy; unset ftp_proxy; unset http_proxy; unset https_proxy; unset rsync_proxy; unset no_proxy }"
+        "function proxy_on(){ export all_proxy=\"${proxy_url}\"; export ftp_proxy=\"${proxy_url}\"; export http_proxy=\"${proxy_url}\"; export https_proxy=\"${proxy_url}\"; export rsync_proxy=\"${proxy_url}\"; export no_proxy=\"${no_proxy}\" }"
+        "plugins=(${ZSH_BUILD_IN_PLUGINS} ${external_plugins})"
+        "ZSH_CACHE_DIR=\"\$ZSH/cache\""
+        "ZSH_CUSTOM=\"\$ZSH/custom\""
+        "ZSH_THEME=\"ys\""
+        "DISABLE_AUTO_UPDATE=\"true\""
+        "DISABLE_UPDATE_PROMPT=\"true\""
+        "UPDATE_ZSH_DAYS=\"7\""
+        "ZSH_COMPDUMP=\"\$ZSH_CACHE_DIR/.zcompdump\""
+        "ZSH_DISABLE_COMPFIX=\"false\""
+        "CASE_SENSITIVE=\"true\""
+        "COMPLETION_WAITING_DOTS=\"true\""
+        "DISABLE_AUTO_TITLE=\"false\""
+        "DISABLE_LS_COLORS=\"false\""
+        "DISABLE_MAGIC_FUNCTIONS=\"true\""
+        "DISABLE_UNTRACKED_FILES_DIRTY=\"false\""
+        "ENABLE_CORRECTION=\"true\""
+        "HIST_STAMPS=\"yyyy-mm-dd\""
+        "HYPHEN_INSENSITIVE=\"false\""
+        "ZSH_THEME_RANDOM_QUIET=\"true\""
+        "ZSH_AUTOSUGGEST_HIGHLIGHT_STYLE=\"bg=250,fg=238,bold,underline\""
+        "ZSH_AUTOSUGGEST_STRATEGY=(match_prev_cmd history completion)"
+        "ZSH_AUTOSUGGEST_USE_ASYNC=\"true\""
+        "source \"\$ZSH/oh-my-zsh.sh\""
+    )
+    if [ "${ZSH_TRAPEXIT:-false}" = "true" ]; then
+        omz_list+=('TRAPEXIT() { rm -rf ~/.zsh_history(N) ~/.ssh/known_hosts*(N) }')
+    fi
+    printf '%s\n' "${omz_list[@]}" > "${ZSH_HOME}/.zshrc"
+    if [ -n "${ZSH_OWNER:-}" ]; then
+        chown "$ZSH_OWNER" "${ZSH_HOME}/.zshrc"
+    fi
+}
+
+ConfigureZsh() {
+    HaveCommand zsh || return 0
+    [ -d "${ZSH_HOME}/.oh-my-zsh" ] || return 0
+    GenerateCommandPath
+    GenerateOMZProfile
+}
+
+# Platform must set: OMZ_HOME, OMZ_OWNER (may be empty)
+InstallOhMyZsh() {
+    HaveCommand git || Die "git is required to install oh-my-zsh"
+    local plugin_list=(
+        "zsh-autosuggestions"
+        "zsh-completions"
+        "zsh-history-substring-search"
+        "zsh-syntax-highlighting"
+    )
+    local omz_dir="${OMZ_HOME}/.oh-my-zsh"
+    BackupPath "$omz_dir"
+    git clone --depth=1 "${GHPROXY_URL:-}https://github.com/ohmyzsh/ohmyzsh.git" "$omz_dir"
+    local plugin
+    for plugin in "${plugin_list[@]}"; do
+        git clone --depth=1 "${GHPROXY_URL:-}https://github.com/zsh-users/${plugin}.git" "${omz_dir}/custom/plugins/${plugin}"
+    done
+    # Single quotes are intentional: this script is generated, not expanded here.
+    # shellcheck disable=SC2016
+    local plugin_upgrade_list=(
+        '#!/bin/bash'
+        'plugin_list=($(ls "$HOME/.oh-my-zsh/custom/plugins" | grep -v "^example$"))'
+        'for plugin_list_task in "${!plugin_list[@]}"; do'
+        "    rm -rf \"\$HOME/.oh-my-zsh/custom/plugins/\${plugin_list[\$plugin_list_task]}\" && git clone --depth=1 \"${GHPROXY_URL:-}https://github.com/zsh-users/\${plugin_list[\$plugin_list_task]}.git\" \"\$HOME/.oh-my-zsh/custom/plugins/\${plugin_list[\$plugin_list_task]}\""
+        'done'
+    )
+    printf '%s\n' "${plugin_upgrade_list[@]}" > "${omz_dir}/oh-my-zsh-plugin.sh"
+    if [ -n "${OMZ_OWNER:-}" ]; then
+        chown -R "$OMZ_OWNER" "$omz_dir"
+    fi
+}
+
+# Write /etc/wireguard/wg0.conf. The private key never touches a temp file.
+# Platform handles directory ownership and bringing the interface up.
+GenerateWireGuardConfig() {
+    TUNNEL_CLIENT_IPADDR="10.172.$((RANDOM % 256)).$((RANDOM % 256))/32"
+    local private_key public_key preshared_key
+    private_key=$(wg genkey)
+    public_key=$(printf '%s' "$private_key" | wg pubkey)
+    preshared_key=$(wg genpsk)
+    local wireguard_list=(
+        "[Interface]"
+        "Address = ${TUNNEL_CLIENT_IPADDR}"
+        "# DNS = 127.0.0.1, ::1"
+        "ListenPort = 51820"
+        "MTU = 1420"
+        "PrivateKey = ${private_key}"
+        "# [Peer]"
+        "# AllowedIPs = ${TUNNEL_CLIENT_IPADDR}"
+        "# Endpoint = 127.0.0.1:51820"
+        "# PersistentKeepalive = 5"
+        "# PresharedKey = ${preshared_key}"
+        "# PublicKey = ${public_key}"
+    )
+    printf '%s\n' "${wireguard_list[@]}" > "/etc/wireguard/wg0.conf"
+    chmod 600 "/etc/wireguard/wg0.conf"
+}
+
+# Platform must set: CRONTAB_USER, CRONTAB_ENTRIES (array)
+InstallCrontab() {
+    HaveCommand crontab || return 0
+    local sudo_prefix=()
+    if [ "$(id -u)" -ne 0 ]; then
+        sudo_prefix=(sudo)
+    fi
+    printf '%s\n' "${CRONTAB_ENTRIES[@]}" | ${sudo_prefix[@]+"${sudo_prefix[@]}"} crontab -u "$CRONTAB_USER" -
+    ${sudo_prefix[@]+"${sudo_prefix[@]}"} crontab -lu "$CRONTAB_USER"
+}
 ## Function
 # Get System Information
 function GetSystemInformation() {
-    function GetCurrentUsername() {
-        CurrentUsername=$(whoami)
-    }
-    function SetGHProxyDomain() {
-        GHPROXY_URL=""
-        if [ "${GHPROXY_URL}" != "" ]; then
-            export GHPROXY_URL="https://${GHPROXY_URL}/"
-        fi
+    function SetBrewPrefix() {
+        case "$(uname -m)" in
+            arm64) BREW_PREFIX="/opt/homebrew" ;;
+            *) BREW_PREFIX="/usr/local" ;;
+        esac
     }
     GetCurrentUsername
+    SetBrewPrefix
     SetGHProxyDomain
+    # Fallback in case ConfigureZsh returns early (no zsh / no oh-my-zsh).
+    DEFAULT_PATH=""
 }
+
 # Configure Packages
 function ConfigurePackages() {
     function ConfigureCrontab() {
-        crontab_list=(
+        CRONTAB_USER="$CURRENT_USERNAME"
+        CRONTAB_ENTRIES=(
             "PATH=\"${DEFAULT_PATH}:\$PATH\""
-            "0 0 * * 7 brew update && brew upgrade -g && brew cleanup"
+            "0 0 * * 7 brew update && brew upgrade --greedy && brew cleanup"
             "@reboot rm -rf ~/.*_history ~/.ssh/known_hosts*"
         )
-        which "crontab" > "/dev/null" 2>&1
-        if [ "$?" -eq "0" ]; then
-            rm -rf "/tmp/crontab.autodeploy" && for crontab_list_task in "${!crontab_list[@]}"; do
-                echo "${crontab_list[$crontab_list_task]}" >> "/tmp/crontab.autodeploy"
-            done && sudo crontab -u "${CurrentUsername}" "/tmp/crontab.autodeploy" && sudo crontab -lu "${CurrentUsername}" && rm -rf "/tmp/crontab.autodeploy"
-        fi
-    }
-    function ConfigureGit() {
-        gitconfig_key_list=(
-            "commit.gpgsign"
-            "gpg.program"
-            "http.proxy"
-            "https.proxy"
-            "user.name"
-            "user.email"
-            "user.signingkey"
-            "url.${GHPROXY_URL}https://github.com/.insteadOf"
-        )
-        gitconfig_value_list=(
-            "false"
-            "gpg"
-            ""
-            ""
-            ""
-            ""
-            ""
-            "https://github.com/"
-        )
-        which "git" > "/dev/null" 2>&1
-        if [ "$?" -eq "0" ]; then
-            for gitconfig_list_task in "${!gitconfig_key_list[@]}"; do
-                git config --global --unset ${gitconfig_key_list[$gitconfig_list_task]}
-                if [ "${gitconfig_value_list[$gitconfig_list_task]}" != "" ]; then
-                    git config --global ${gitconfig_key_list[$gitconfig_list_task]} "${gitconfig_value_list[$gitconfig_list_task]}"
-                fi
-            done
-        fi
-    }
-    function ConfigureGPG() {
-        GPG_PUBKEY=""
-        if [ "${GPG_PUBKEY}" == "" ]; then
-            GPG_PUBKEY="DD982DAAB9C71C78F9563E5207EB56787030D792"
-        fi
-        which "gpg" > "/dev/null" 2>&1
-        if [ "$?" -eq "0" ]; then
-            rm -rf "/Users/${CurrentUsername}/.gnupg" && gpg --keyserver hkps://keyserver.ubuntu.com:443 --recv ${GPG_PUBKEY} && echo "${GPG_PUBKEY}" | awk 'BEGIN { FS = "\n" }; { print $1":6:" }' | gpg --import-ownertrust && GPG_PUBKEY_ID_A=$(gpg --list-keys --keyid-format LONG | grep "pub\|sub" | awk '{print $2, $4}' | grep "\[A\]" | awk '{print $1}' | awk -F '/' '{print $2}') && GPG_PUBKEY_ID_C=$(gpg --list-keys --keyid-format LONG | grep "pub\|sub" | awk '{print $2, $4}' | grep "\[C\]" | awk '{print $1}' | awk -F '/' '{print $2}')
-            if [ "${GPG_PUBKEY_ID_A}" != "" ]; then
-                gpg_agent_list=(
-                    "enable-ssh-support"
-                    "pinentry-program /opt/homebrew/bin/pinentry-tty"
-                )
-                rm -rf "/Users/${CurrentUsername}/.gnupg/gpg-agent.conf" && for gpg_agent_list_task in "${!gpg_agent_list[@]}"; do
-                    echo "${gpg_agent_list[$gpg_agent_list_task]}" >> "/Users/${CurrentUsername}/.gnupg/gpg-agent.conf"
-                done && echo "${GPG_PUBKEY_ID_A}" > "/Users/${CurrentUsername}/.gnupg/sshcontrol"
-            fi
-        fi
+        InstallCrontab
     }
     function ConfigureOpenSSH() {
-        OPENSSH_PASSWORD=""
-        which "ssh-keygen" > "/dev/null" 2>&1
-        if [ "$?" -eq "0" ]; then
-            if [ -d "/opt/homebrew/etc/ssh" ]; then
-                if [ -d "/etc/ssh" ]; then
-                    sudo rm -rf /etc/ssh
-                fi && sudo ln -s /opt/homebrew/etc/ssh /etc/ssh
-
-                rm -rf /opt/homebrew/etc/ssh/ssh_host_* && ssh-keygen -t ecdsa -b 384 -f "/opt/homebrew/etc/ssh/ssh_host_ecdsa_key" -C "${CurrentUsername}@$(hostname)" -N "${OPENSSH_PASSWORD}" && ssh-keygen -t ed25519 -f "/opt/homebrew/etc/ssh/ssh_host_ed25519_key" -C "${CurrentUsername}@$(hostname)" -N "${OPENSSH_PASSWORD}" && ssh-keygen -t rsa -b 4096 -f "/opt/homebrew/etc/ssh/ssh_host_rsa_key" -C "${CurrentUsername}@$(hostname)" -N "${OPENSSH_PASSWORD}" && chown ${CurrentUsername}:admin /opt/homebrew/etc/ssh/ssh_host_* && chmod 400 /opt/homebrew/etc/ssh/ssh_host_* && chmod 644 /opt/homebrew/etc/ssh/ssh_host_*.pub
+        HaveCommand ssh-keygen || return 0
+        if [ -d "${BREW_PREFIX}/etc/ssh" ]; then
+            if [ -d "/etc/ssh" ] && [ ! -L "/etc/ssh" ]; then
+                sudo rm -rf /etc/ssh
             fi
-            rm -rf "/Users/${CurrentUsername}/.ssh" && mkdir "/Users/${CurrentUsername}/.ssh" && if [ "${GPG_PUBKEY_ID_C}" != "" ]; then
-                which "gpg" > "/dev/null" 2>&1
-                if [ "$?" -eq "0" ]; then
-                    gpg --export-ssh-key ${GPG_PUBKEY_ID_C} > "/Users/${CurrentUsername}/.ssh/authorized_keys"
-                else
-                    touch "/Users/${CurrentUsername}/.ssh/authorized_keys"
-                fi
-            else
-                touch "/Users/${CurrentUsername}/.ssh/authorized_keys"
-            fi && touch "/Users/${CurrentUsername}/.ssh/known_hosts" && ssh-keygen -t dsa -b 1024 -f "/Users/${CurrentUsername}/.ssh/id_dsa" -C "${CurrentUsername}@$(hostname)" -N "${OPENSSH_PASSWORD}" && ssh-keygen -t ecdsa -b 384 -f "/Users/${CurrentUsername}/.ssh/id_ecdsa" -C "${CurrentUsername}@$(hostname)" -N "${OPENSSH_PASSWORD}" && ssh-keygen -t ed25519 -f "/Users/${CurrentUsername}/.ssh/id_ed25519" -C "${CurrentUsername}@$(hostname)" -N "${OPENSSH_PASSWORD}" && ssh-keygen -t rsa -b 4096 -f "/Users/${CurrentUsername}/.ssh/id_rsa" -C "${CurrentUsername}@$(hostname)" -N "${OPENSSH_PASSWORD}" && sudo chown -R ${CurrentUsername}:staff "/Users/${CurrentUsername}/.ssh" && sudo chown -R ${CurrentUsername}:staff /Users/${CurrentUsername}/.ssh/* && chmod 400 /Users/${CurrentUsername}/.ssh/id_* && chmod 600 "/Users/${CurrentUsername}/.ssh/authorized_keys" && chmod 644 "/Users/${CurrentUsername}/.ssh/known_hosts" && chmod 644 /Users/${CurrentUsername}/.ssh/id_*.pub && chmod 700 "/Users/${CurrentUsername}/.ssh"
+            if [ ! -e "/etc/ssh" ]; then
+                sudo ln -s "${BREW_PREFIX}/etc/ssh" /etc/ssh
+            fi
+            GenerateHostSSHKeys "${BREW_PREFIX}/etc/ssh" "${CURRENT_USERNAME}@$(hostname)"
+            chown "${CURRENT_USERNAME}:admin" "${BREW_PREFIX}/etc/ssh"/ssh_host_*
         fi
-    }
-    function ConfigureProxyChains() {
-        PROXY_PROTOCOL=""
-        PROXY_IP=""
-        PROXY_PORT=""
-        PROXY_USERNAME=""
-        PROXY_PASSWORD=""
-
-        proxychains_list=(
-            'localnet 127.0.0.0/255.0.0.0'
-            'localnet 10.0.0.0/255.0.0.0'
-            'localnet 172.16.0.0/255.240.0.0'
-            'localnet 192.168.0.0/255.255.0.0'
-            'localnet ::1/128'
-            'proxy_dns'
-            'remote_dns_subnet 224'
-            'strict_chain'
-            'tcp_connect_time_out 8000'
-            'tcp_read_time_out 15000'
-            '[ProxyList]'
-            "${PROXY_PROTOCOL:-socks5} ${PROXY_IP:-127.0.0.1} ${PROXY_PORT:-7891}${PROXY_USERNAME:+ $PROXY_USERNAME $PROXY_PASSWORD}"
-        )
-
-        if [ -f "/opt/homebrew/etc/proxychains.conf" ]; then
-            rm -rf "/opt/homebrew/etc/proxychains.conf"
-        fi && for proxychains_list_task in "${!proxychains_list[@]}"; do
-            echo "${proxychains_list[$proxychains_list_task]}" >> "/opt/homebrew/etc/proxychains.conf"
-        done
-    }
-    function ConfigurePythonPyPI() {
-        which "pip3" > "/dev/null" 2>&1
-        if [ "$?" -eq "0" ]; then
-            WHICH_PIP="pip3"
+        local user_ssh="/Users/${CURRENT_USERNAME}/.ssh"
+        BackupPath "$user_ssh"
+        mkdir -p "$user_ssh"
+        if [ -f "${GPG_HOME}/authorized_keys" ]; then
+            mv "${GPG_HOME}/authorized_keys" "${user_ssh}/authorized_keys"
         else
-            which "pip" > "/dev/null" 2>&1
-            if [ "$?" -eq "0" ]; then
-                WHICH_PIP="pip"
-            else
-                WHICH_PIP="null"
-            fi
+            touch "${user_ssh}/authorized_keys"
         fi
-        if [ "${WHICH_PIP}" != "null" ]; then
-            ${WHICH_PIP} config set global.index-url "https://mirrors.cernet.edu.cn/pypi/web/simple"
-        fi
+        touch "${user_ssh}/known_hosts"
+        GenerateSSHKeys "$user_ssh" "${CURRENT_USERNAME}@$(hostname)"
+        chmod 600 "${user_ssh}/authorized_keys"
+        chmod 644 "${user_ssh}/known_hosts"
+        chmod 700 "$user_ssh"
     }
     function ConfigureSshd() {
-        if [ ! -f "/opt/homebrew/etc/ssh/sshd_config.bak" ]; then
-            cp -rf "/opt/homebrew/etc/ssh/sshd_config" "/opt/homebrew/etc/ssh/sshd_config.bak" && chown ${CurrentUsername}:admin "/opt/homebrew/etc/ssh/sshd_config.bak" && chmod 644 "/opt/homebrew/etc/ssh/sshd_config.bak"
+        # Root password login is intentional; the account is locked down later.
+        local sshd_config="${BREW_PREFIX}/etc/ssh/sshd_config"
+        [ -f "$sshd_config" ] || return 0
+        if [ ! -f "${sshd_config}.bak" ]; then
+            cp "$sshd_config" "${sshd_config}.bak"
+            chown "${CURRENT_USERNAME}:admin" "${sshd_config}.bak"
+            chmod 644 "${sshd_config}.bak"
         fi
-        if [ -f "/opt/homebrew/etc/ssh/sshd_config.bak" ]; then
-            cat "/opt/homebrew/etc/ssh/sshd_config.bak" | sed "s/\#PasswordAuthentication\ yes/PasswordAuthentication\ yes/g;s/\#PermitRootLogin\ prohibit\-password/PermitRootLogin\ yes/g;s/\#PubkeyAuthentication\ yes/PubkeyAuthentication\ yes/g;s/\#UsePAM no/UsePAM yes/g" > "/tmp/sshd_config.autodeploy" && cat "/tmp/sshd_config.autodeploy" > "/opt/homebrew/etc/ssh/sshd_config" && chown ${CurrentUsername}:admin "/opt/homebrew/etc/ssh/sshd_config" && chmod 644 "/opt/homebrew/etc/ssh/sshd_config" && rm -rf "/tmp/sshd_config.autodeploy"
-        fi
+        sed -E \
+            -e 's/^#?PasswordAuthentication .*/PasswordAuthentication yes/' \
+            -e 's/^#?PermitRootLogin .*/PermitRootLogin yes/' \
+            -e 's/^#?PubkeyAuthentication .*/PubkeyAuthentication yes/' \
+            -e 's/^#?UsePAM .*/UsePAM yes/' \
+            "${sshd_config}.bak" > "$sshd_config"
+        chown "${CURRENT_USERNAME}:admin" "$sshd_config"
+        chmod 644 "$sshd_config"
     }
     function ConfigureWireGuard() {
-        TUNNEL_CLIENT_IPADDR="10.172.$(shuf -i '0-255' -n 1).$(shuf -i '0-255' -n 1)/32"
-
+        HaveCommand wg || return 0
         if [ ! -d "/etc/wireguard" ]; then
             sudo mkdir "/etc/wireguard"
         else
-            sudo rm -rf /etc/wireguard/*
-        fi && sudo chown ${CurrentUsername}:staff "/etc/wireguard"
-        which "wg" > "/dev/null" 2>&1
-        if [ "$?" -eq "0" ]; then
-            wireguard_list=(
-                "[Interface]"
-                "Address = ${TUNNEL_CLIENT_IPADDR}"
-                "# DNS = 127.0.0.1, ::1"
-                "ListenPort = 51820"
-                "MTU = 1420"
-                "PrivateKey = $(wg genkey | tee '/tmp/wireguard.autodeploy')"
-                "# [Peer]"
-                "# AllowedIPs = ${TUNNEL_CLIENT_IPADDR}"
-                "# Endpoint = 127.0.0.1:51820"
-                "# PersistentKeepalive = 5"
-                "# PresharedKey = $(wg genpsk)"
-                "# PublicKey = $(cat '/tmp/wireguard.autodeploy' | wg pubkey)"
-            )
-            rm -rf "/tmp/wireguard.autodeploy" && for wireguard_list_task in "${!wireguard_list[@]}"; do
-                echo "${wireguard_list[$wireguard_list_task]}" | sed "s/, $//g" >> "/tmp/wireguard.autodeploy"
-            done && cat "/tmp/wireguard.autodeploy" > "/etc/wireguard/wg0.conf" && chmod 600 "/etc/wireguard/wg0.conf" && rm -rf "/tmp/wireguard.autodeploy" && sudo wg-quick up wg0 && sudo wg
+            sudo rm -f /etc/wireguard/*
         fi
+        sudo chown "${CURRENT_USERNAME}:staff" "/etc/wireguard"
+        GenerateWireGuardConfig
+        sudo wg-quick up wg0
+        sudo wg
     }
-    function ConfigureZsh() {
-        function GenerateCommandPath() {
-            default_path_list=(
-                "/bin"
-                "/sbin"
-                "/usr/bin"
-                "/usr/sbin"
-                "/usr/local/bin"
-                "/usr/local/sbin"
-                "/opt/homebrew/bin"
-                "/opt/homebrew/sbin"
-            )
-            DEFAULT_PATH="" && for default_path_list_task in "${!default_path_list[@]}"; do
-                if [ "${default_path_list[$default_path_list_task]}" != "" ]; then
-                    DEFAULT_PATH="${default_path_list[$default_path_list_task]}:${DEFAULT_PATH}"
-                    DEFAULT_PATH=$(echo "${DEFAULT_PATH}" | sed "s/\:$//g")
-                fi
-            done
-        }
-        function GenerateOMZProfile() {
-            PROXY_URL='http://vpn.zhijie.online:7890' # http://username:password@ip:port
-            NO_PROXY='localhost,127.0.0.1,::1'
 
-            BUILD_IN_PLUGINS="aliases brew colored-man-pages command-not-found common-aliases docker docker-compose extract git history macos ssh sudo"
-            EXTERNAL_PLUGINS="zsh-autosuggestions zsh-completions zsh-history-substring-search zsh-syntax-highlighting"
+    PROXYCHAINS_CONF="${BREW_PREFIX}/etc/proxychains.conf"
+    GPG_HOME="/Users/${CURRENT_USERNAME}/.gnupg"
+    GPG_KEYSERVER="hkps://keyserver.ubuntu.com:443"
+    GPG_PINENTRY="${BREW_PREFIX}/bin/pinentry-tty"
+    ZSH_HOME="/Users/${CURRENT_USERNAME}"
+    ZSH_OWNER=""
+    ZSH_PATH_LIST=("/bin" "/sbin" "/usr/bin" "/usr/sbin" "/usr/local/bin" "/usr/local/sbin" "${BREW_PREFIX}/bin" "${BREW_PREFIX}/sbin")
+    ZSH_BUILD_IN_PLUGINS="aliases brew colored-man-pages command-not-found common-aliases docker docker-compose extract git history macos ssh sudo"
+    ZSH_EXTRA_EXPORTS=(
+        "export HOMEBREW_API_DOMAIN=\"https://mirrors.cernet.edu.cn/homebrew-bottles/api\""
+        "export HOMEBREW_BOTTLE_DOMAIN=\"https://mirrors.cernet.edu.cn/homebrew-bottles/bottles\""
+        "export HOMEBREW_BREW_GIT_REMOTE=\"https://mirrors.cernet.edu.cn/brew.git\""
+        "export HOMEBREW_NO_AUTO_UPDATE=\"1\""
+    )
+    ZSH_TRAPEXIT="false"
 
-            omz_list=(
-                "export EDITOR=\"nano\""
-                "export GPG_TTY=\$(tty)"
-                "export HOMEBREW_API_DOMAIN=\"https://mirrors.cernet.edu.cn/homebrew-bottles/api\""
-                "export HOMEBREW_BOTTLE_DOMAIN=\"https://mirrors.cernet.edu.cn/homebrew-bottles/bottles\""
-                "export HOMEBREW_BREW_GIT_REMOTE=\"https://mirrors.cernet.edu.cn/brew.git\""
-                "export HOMEBREW_NO_AUTO_UPDATE=\"1\""
-                "export PATH=\"${DEFAULT_PATH}:\$PATH\""
-                "export SSH_AUTH_SOCK=\"\$(gpgconf --list-dirs agent-ssh-socket)\" && gpgconf --launch gpg-agent && gpg-connect-agent updatestartuptty /bye > \"/dev/null\" 2>&1"
-                "export ZSH=\"\$HOME/.oh-my-zsh\""
-                "function proxy_off(){ unset all_proxy; unset ftp_proxy; unset http_proxy; unset https_proxy; unset rsync_proxy; unset no_proxy }"
-                "function proxy_on(){ export all_proxy=\"${PROXY_URL}\"; export ftp_proxy=\"${PROXY_URL}\"; export http_proxy=\"${PROXY_URL}\"; export https_proxy=\"${PROXY_URL}\"; export rsync_proxy=\"${PROXY_URL}\"; export no_proxy=\"${NO_PROXY}\" }"
-                "plugins=(${BUILD_IN_PLUGINS} ${EXTERNAL_PLUGINS})"
-                "ZSH_CACHE_DIR=\"\$ZSH/cache\""
-                "ZSH_CUSTOM=\"\$ZSH/custom\""
-                "ZSH_THEME=\"ys\""
-                "DISABLE_AUTO_UPDATE=\"true\""
-                "DISABLE_UPDATE_PROMPT=\"true\""
-                "UPDATE_ZSH_DAYS=\"7\""
-                "ZSH_COMPDUMP=\"\$ZSH_CACHE_DIR/.zcompdump\""
-                "ZSH_DISABLE_COMPFIX=\"false\""
-                "CASE_SENSITIVE=\"true\""
-                "COMPLETION_WAITING_DOTS=\"true\""
-                "DISABLE_AUTO_TITLE=\"false\""
-                "DISABLE_LS_COLORS=\"false\""
-                "DISABLE_MAGIC_FUNCTIONS=\"true\""
-                "DISABLE_UNTRACKED_FILES_DIRTY=\"false\""
-                "ENABLE_CORRECTION=\"true\""
-                "HIST_STAMPS=\"yyyy-mm-dd\""
-                "HYPHEN_INSENSITIVE=\"false\""
-                "ZSH_THEME_RANDOM_QUIET=\"true\""
-                "ZSH_AUTOSUGGEST_HIGHLIGHT_STYLE=\"bg=250,fg=238,bold,underline\""
-                "ZSH_AUTOSUGGEST_STRATEGY=(match_prev_cmd history completion)"
-                "ZSH_AUTOSUGGEST_USE_ASYNC=\"true\""
-                "source \"\$ZSH/oh-my-zsh.sh\""
-            )
-            which "zsh" > "/dev/null" 2>&1
-            if [ "$?" -eq "0" ] && [ -d "/Users/${CurrentUsername}/.oh-my-zsh" ]; then
-                rm -rf "/tmp/omz.autodeploy" && for omz_list_task in "${!omz_list[@]}"; do
-                    echo "${omz_list[$omz_list_task]}" >> "/tmp/omz.autodeploy"
-                done && cat "/tmp/omz.autodeploy" > "/Users/${CurrentUsername}/.zshrc" && rm -rf "/tmp/omz.autodeploy"
-            fi
-        }
-        GenerateCommandPath
-        GenerateOMZProfile
-    }
     ConfigureGit
     ConfigureGPG
     ConfigureOpenSSH
@@ -269,10 +449,11 @@ function ConfigurePackages() {
     ConfigureWireGuard
     ConfigureZsh && ConfigureCrontab
 }
+
 # Configure System
 function ConfigureSystem() {
     function ConfigureHostfile() {
-        host_list=(
+        local host_list=(
             "127.0.0.1 localhost"
             "255.255.255.255 broadcasthost"
             "::1 ip6-localhost ip6-loopback localhost"
@@ -282,9 +463,9 @@ function ConfigureSystem() {
             "ff02::2 ip6-allrouters"
             "ff02::3 ip6-allhosts"
         )
-        rm -rf "/tmp/hosts.autodeploy" && for host_list_task in "${!host_list[@]}"; do
-            echo "${host_list[$host_list_task]}" >> "/tmp/hosts.autodeploy"
-        done && sudo chmod -R 666 "/etc/hosts" && sudo cat "/tmp/hosts.autodeploy" > "/etc/hosts" && sudo chmod -R 644 "/etc/hosts" && rm -rf "/tmp/hosts.autodeploy"
+        # tee runs under sudo; a plain `sudo cat > /etc/hosts` would redirect
+        # in the unprivileged shell and fail.
+        printf '%s\n' "${host_list[@]}" | sudo tee /etc/hosts > /dev/null
     }
     function ConfigureSystemDefault() {
         defaults write com.apple.desktopservices DSDontWriteNetworkStores -bool true
@@ -293,10 +474,11 @@ function ConfigureSystem() {
     ConfigureHostfile
     ConfigureSystemDefault
 }
+
 # Install Custom Packages
 function InstallCustomPackages() {
     function InstallAppFromCask() {
-        app_list=(
+        local app_list=(
             "blackhole-16ch" # BlackHole 16ch
             "blackhole-2ch" # BlackHole 2ch
             "blackhole-64ch" # BlackHole 64ch
@@ -314,17 +496,18 @@ function InstallCustomPackages() {
             "stats" # Stats
             "visual-studio-code" # Visual Studio Code
         )
-        which "brew" > "/dev/null" 2>&1
-        if [ "$?" -eq "0" ]; then
-            for app_list_task in "${!app_list[@]}"; do
-                brew info --cask ${app_list[$app_list_task]} && if [ "$?" -eq "0" ]; then
-                    brew install --cask ${app_list[$app_list_task]}
-                fi
-            done
-        fi
+        HaveCommand brew || return 0
+        local app
+        for app in "${app_list[@]}"; do
+            if brew info --cask "$app" > /dev/null 2>&1; then
+                brew install --cask "$app"
+            else
+                LogWarn "cask not found, skipped: ${app}"
+            fi
+        done
     }
     function InstallAppFromMAS() {
-        app_list=(
+        local app_list=(
             "1136220934" # Infuse
             "1289583905" # Pixelmator Pro
             "1352778147" # Bitwarden
@@ -344,62 +527,37 @@ function InstallCustomPackages() {
             "836500024" # Wechat
             "985367838" # Microsoft Outlook
         )
-        which "mas" > "/dev/null" 2>&1
-        if [ "$?" -eq "0" ]; then
-            for app_list_task in "${!app_list[@]}"; do
-                mas info ${app_list[$app_list_task]} && if [ "$?" -eq "0" ]; then
-                    mas install ${app_list[$app_list_task]} && if [ "$?" -eq "1" ]; then
-                        mas purchase ${app_list[$app_list_task]}
-                    fi
+        HaveCommand mas || return 0
+        local app
+        for app in "${app_list[@]}"; do
+            if mas info "$app" > /dev/null 2>&1; then
+                if ! mas install "$app"; then
+                    mas purchase "$app" || LogWarn "mas purchase failed for ${app}"
                 fi
-            done
-        fi
-    }
-    function InstallOhMyZsh() {
-        plugin_list=(
-            "zsh-autosuggestions"
-            "zsh-completions"
-            "zsh-history-substring-search"
-            "zsh-syntax-highlighting"
-        )
-        plugin_upgrade_list=(
-            '#!/bin/bash'
-            'plugin_list=($(ls "$HOME/.oh-my-zsh/custom/plugins" | grep -v "^example$" | awk "{print $1}"))'
-            'for plugin_list_task in "${!plugin_list[@]}"; do'
-            "    rm -rf \"\$HOME/.oh-my-zsh/custom/plugins/\${plugin_list[\$plugin_list_task]}\" && git clone --depth=1 \"${GHPROXY_URL}https://github.com/zsh-users/\${plugin_list[\$plugin_list_task]}.git\" \"\$HOME/.oh-my-zsh/custom/plugins/\${plugin_list[\$plugin_list_task]}\""
-            'done'
-        )
-        rm -rf "/Users/${CurrentUsername}/.oh-my-zsh" && git clone --depth=1 "${GHPROXY_URL}https://github.com/ohmyzsh/ohmyzsh.git" "/Users/${CurrentUsername}/.oh-my-zsh" && if [ -d "/Users/${CurrentUsername}/.oh-my-zsh/custom/plugins" ]; then
-            for plugin_list_task in "${!plugin_list[@]}"; do
-                rm -rf "/Users/${CurrentUsername}/.oh-my-zsh/custom/plugins/${plugin_list[$plugin_list_task]}" && git clone --depth=1 "${GHPROXY_URL}https://github.com/zsh-users/${plugin_list[$plugin_list_task]}.git" "/Users/${CurrentUsername}/.oh-my-zsh/custom/plugins/${plugin_list[$plugin_list_task]}"
-            done
-        fi && rm -rf "/Users/${CurrentUsername}/.oh-my-zsh/oh-my-zsh-plugin.sh" && for plugin_upgrade_list_task in "${!plugin_upgrade_list[@]}"; do
-            echo "${plugin_upgrade_list[$plugin_upgrade_list_task]}" >> "/Users/${CurrentUsername}/.oh-my-zsh/oh-my-zsh-plugin.sh"
+            fi
         done
     }
+    OMZ_HOME="/Users/${CURRENT_USERNAME}"
+    OMZ_OWNER=""
     #InstallAppFromCask
     #InstallAppFromMAS
     InstallOhMyZsh
 }
+
 # Install Dependency Packages
 function InstallDependencyPackages() {
-    REINSTALL_BREW="false"
-
+    REINSTALL_BREW="${REINSTALL_BREW:-false}"
     export HOMEBREW_API_DOMAIN="https://mirrors.cernet.edu.cn/homebrew-bottles/api"
     export HOMEBREW_BOTTLE_DOMAIN="https://mirrors.cernet.edu.cn/homebrew-bottles/bottles"
     export HOMEBREW_BREW_GIT_REMOTE="https://mirrors.cernet.edu.cn/brew.git"
-    export PATH="/opt/homebrew/sbin:/opt/homebrew/bin:${PATH}"
-
-    if [ "${REINSTALL_BREW}" == "true" ]; then
-        sudo rm -rf "/opt/homebrew" "/usr/local/Homebrew"
+    export PATH="${BREW_PREFIX}/sbin:${BREW_PREFIX}/bin:${PATH}"
+    if [ "$REINSTALL_BREW" = "true" ]; then
+        sudo rm -rf "$BREW_PREFIX" "/usr/local/Homebrew"
     fi
-
-    which "brew" > "/dev/null" 2>&1
-    if [ "$?" -eq "1" ]; then
+    if ! HaveCommand brew; then
         /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
     fi
-
-    app_list=(
+    local app_list=(
         "bash"
         "cloudflared"
         "coreutils"
@@ -444,23 +602,32 @@ function InstallDependencyPackages() {
         "zip"
         "zsh"
     )
-    brew developer on && brew update && for app_list_task in "${!app_list[@]}"; do
-        brew info --formula ${app_list[$app_list_task]} && if [ "$?" -eq "0" ]; then
-            brew install --formula ${app_list[$app_list_task]}
+    brew developer on
+    brew update
+    local app
+    for app in "${app_list[@]}"; do
+        if brew info --formula "$app" > /dev/null 2>&1; then
+            brew install --formula "$app"
+        elif brew info --cask "$app" > /dev/null 2>&1; then
+            brew install --cask "$app"
         else
-            brew info --cask ${app_list[$app_list_task]} && if [ "$?" -eq "0" ]; then
-                brew install --cask ${app_list[$app_list_task]}
-            fi
+            LogWarn "formula/cask not found, skipped: ${app}"
         fi
     done
 }
+
 # Upgrade Packages
 function UpgradePackages() {
-    brew update && brew upgrade --greedy && mas upgrade && softwareupdate -ai
+    brew update
+    brew upgrade --greedy
+    mas upgrade || LogWarn "mas upgrade failed (sign in to the App Store first)"
+    sudo softwareupdate --install --all
 }
+
 # Cleanup Temp Files
 function CleanupTempFiles() {
-    brew cleanup && rm -rf /Users/${CurrentUsername}/.*_history /tmp/*.autodeploy
+    brew cleanup
+    rm -f "/Users/${CURRENT_USERNAME}/".*_history /tmp/*.autodeploy
 }
 
 ## Process
