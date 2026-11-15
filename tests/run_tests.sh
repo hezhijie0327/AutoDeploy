@@ -67,6 +67,20 @@ case "$NEW_HOSTNAME" in
 esac
 unset RESET_HOSTNAME
 
+printf '== Custom hostname / domain ==\n'
+CUSTOM_HOSTNAME="myhost"
+HOSTNAME_PREFIX="Test" GenerateHostname
+AssertEq "CUSTOM_HOSTNAME overrides detection" "myhost" "$NEW_HOSTNAME"
+RESET_HOSTNAME="true" HOSTNAME_PREFIX="Test" GenerateHostname
+AssertEq "CUSTOM_HOSTNAME wins over RESET_HOSTNAME" "myhost" "$NEW_HOSTNAME"
+unset CUSTOM_HOSTNAME RESET_HOSTNAME
+CUSTOM_DOMAIN="example.com corp.example.com"
+GenerateDomain
+AssertEq "CUSTOM_DOMAIN sets search domains" "example.com corp.example.com" "${NEW_DOMAIN[*]}"
+RESET_DOMAIN="true" GenerateDomain
+AssertEq "CUSTOM_DOMAIN wins over RESET_DOMAIN" "example.com corp.example.com" "${NEW_DOMAIN[*]}"
+unset CUSTOM_DOMAIN RESET_DOMAIN
+
 printf '== CollectDNS ==\n'
 # Normally provided by the Configuration block; set them here for the unit test.
 CUSTOM_DNS_CN=("223.5.5.5" "223.6.6.6" "2400:3200::1" "2400:3200:baba::1")

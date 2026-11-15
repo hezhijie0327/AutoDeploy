@@ -50,6 +50,8 @@ PURGE_OTHER_USERS="${PURGE_OTHER_USERS:-true}" # remove other /home users (fresh
 USE_GLOBAL_DNS="${USE_GLOBAL_DNS:-false}" # true -> Google DNS, false -> AliDNS
 RESET_DOMAIN="${RESET_DOMAIN:-false}"
 RESET_HOSTNAME="${RESET_HOSTNAME:-false}"
+CUSTOM_HOSTNAME="${CUSTOM_HOSTNAME:-}" # explicit hostname; overrides auto-detection and RESET_HOSTNAME
+CUSTOM_DOMAIN="${CUSTOM_DOMAIN:-}" # explicit search domain(s), space-separated; overrides RESET_DOMAIN
 DISABLE_SWAP="${DISABLE_SWAP:-false}"
 DISABLE_ICMP_ECHO="${DISABLE_ICMP_ECHO:-false}"
 PREFER_IPV4="${PREFER_IPV4:-true}"
@@ -601,6 +603,10 @@ InstallCrontab() {
 GenerateDomain() {
     RESET_DOMAIN="${RESET_DOMAIN:-false}"
     NEW_DOMAIN=()
+    if [ -n "${CUSTOM_DOMAIN:-}" ]; then
+        read -r -a NEW_DOMAIN <<< "$CUSTOM_DOMAIN"
+        return 0
+    fi
     local resolv_conf="${RESOLV_CONF:-/etc/resolv.conf}" search_line
     if [ -f "$resolv_conf" ]; then
         search_line=$(awk '/^search/ {for (i = 2; i <= NF; i++) printf "%s ", $i; exit}' "$resolv_conf")
@@ -616,6 +622,10 @@ GenerateDomain() {
 GenerateHostname() {
     RESET_HOSTNAME="${RESET_HOSTNAME:-false}"
     NEW_HOSTNAME=""
+    if [ -n "${CUSTOM_HOSTNAME:-}" ]; then
+        NEW_HOSTNAME="$CUSTOM_HOSTNAME"
+        return 0
+    fi
     local hostname_file="${HOSTNAME_FILE:-/etc/hostname}"
     if [ -f "$hostname_file" ]; then
         NEW_HOSTNAME=$(awk '{print $1; exit}' "$hostname_file")

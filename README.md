@@ -80,6 +80,7 @@ curl "https://source.zhijie.online/AutoDeploy/main/Ubuntu.sh" | sudo bash
 | `NIC_NAME` / `STATIC_IPV4_CONFIG` / `STATIC_IPV6_CONFIG` | Netplan 静态网络，格式 `地址/掩码,网关`（Ubuntu） |
 | `GIT_USER_NAME` / `GIT_USER_EMAIL` / `GIT_USER_SIGNINGKEY` | root 的 Git 身份 |
 | `PROXY_PROTOCOL` / `PROXY_IP` / `PROXY_PORT` / `PROXY_USERNAME` / `PROXY_PASSWORD` | proxychains 上游代理 |
+| `CUSTOM_HOSTNAME` / `CUSTOM_DOMAIN` | 自定义主机名 / 搜索域（Ubuntu / PVE），优先于自动检测与 `RESET_*` |
 | `DEFAULT_USERNAME` | 默认用户名（`ubuntu` / `proxmox`） |
 
 示例：

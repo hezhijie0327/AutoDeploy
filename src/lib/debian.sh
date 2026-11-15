@@ -8,6 +8,10 @@
 GenerateDomain() {
     RESET_DOMAIN="${RESET_DOMAIN:-false}"
     NEW_DOMAIN=()
+    if [ -n "${CUSTOM_DOMAIN:-}" ]; then
+        read -r -a NEW_DOMAIN <<< "$CUSTOM_DOMAIN"
+        return 0
+    fi
     local resolv_conf="${RESOLV_CONF:-/etc/resolv.conf}" search_line
     if [ -f "$resolv_conf" ]; then
         search_line=$(awk '/^search/ {for (i = 2; i <= NF; i++) printf "%s ", $i; exit}' "$resolv_conf")
@@ -23,6 +27,10 @@ GenerateDomain() {
 GenerateHostname() {
     RESET_HOSTNAME="${RESET_HOSTNAME:-false}"
     NEW_HOSTNAME=""
+    if [ -n "${CUSTOM_HOSTNAME:-}" ]; then
+        NEW_HOSTNAME="$CUSTOM_HOSTNAME"
+        return 0
+    fi
     local hostname_file="${HOSTNAME_FILE:-/etc/hostname}"
     if [ -f "$hostname_file" ]; then
         NEW_HOSTNAME=$(awk '{print $1; exit}' "$hostname_file")
