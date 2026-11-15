@@ -3,54 +3,32 @@
 [![License](https://img.shields.io/badge/License-Apache%202.0--Commons%20Clause-blue)](LICENSE)
 [![Bash](https://img.shields.io/badge/Bash-4EAA25?logo=gnubash&logoColor=white)](https://www.gnu.org/software/bash/)
 
-这是一个跨平台自动化系统部署脚本集合，支持多种操作系统的快速配置和部署。编码代理指南见 [AGENTS.md](AGENTS.md)。
+跨平台自动化系统部署脚本集合，一条命令完成系统初始化、镜像源配置、软件安装与安全加固。编码代理指南见 [AGENTS.md](AGENTS.md)。
 
 ## 支持的平台
 
-- **DSM.sh** - 群晖 NAS (Synology DSM) 部署脚本
-- **macOS.sh** - macOS 系统部署脚本
-- **ProxmoxVE.sh** - Proxmox VE 虚拟化平台部署脚本
-- **Ubuntu.sh** - Ubuntu 系统部署脚本
+- **DSM.sh** - 群晖 NAS (Synology DSM)
+- **macOS.sh** - macOS（自动识别 ARM / Intel）
+- **ProxmoxVE.sh** - Proxmox VE 虚拟化平台
+- **Ubuntu.sh** - Ubuntu
 
 ## 特性
 
-所有脚本都包含以下功能模块：
-
-### 1. 系统信息获取
-
-- 自动检测当前用户和系统架构
-- 设置代理和镜像源
-- 获取硬件信息（CPU供应商等）
-
-### 2. 仓库镜像配置
-
-- 配置国内镜像源（中科大等）
-- 优化软件包下载速度
-- 支持自定义代理设置
-
-### 3. 软件包安装配置
-
-- 安装必要工具和依赖
-- 配置开发环境
-- 安装系统安全增强工具
-
-### 4. 系统配置
-
-- SSH 密钥生成和配置
-- Git 环境配置
-- GPG 密钥配置
-- 防火墙和安全设置
-- 网络和系统优化
+- **单文件分发**：`curl | bash` 直接执行，无需克隆仓库
+- **国内镜像加速**：CERNET 镜像源（APT / Homebrew / PyPI / Docker CE），可选 GitHub 代理
+- **开发环境**：oh-my-zsh + 常用插件、Git、GPG（SSH 认证支持）
+- **安全加固**：UFW / PVE 防火墙、Fail2Ban、CrowdSec、SSH 密钥自动生成（ecdsa / ed25519 / rsa）
+- **系统优化**：BBR、sysctl 调优、ZRAM swap、chrony 时间同步、XanMod 内核（按 CPU psABI 级别选择）
+- **可重复执行**：已有密钥和配置自动备份为 `*.bak.<时间戳>`，不会直接覆盖
+- **失败即停**：`set -Eeuo pipefail` + 行号报错，不再静默跑完一半
 
 ## 快速开始
-
-### 直接执行
 
 ```bash
 # DSM 群晖
 curl "https://source.zhijie.online/AutoDeploy/main/DSM.sh" | sudo bash
 
-# macOS
+# macOS（普通用户执行，内部按需 sudo）
 /bin/bash -c "$(curl -fsSL 'https://source.zhijie.online/AutoDeploy/main/macOS.sh')"
 
 # Proxmox VE
@@ -60,80 +38,73 @@ curl "https://source.zhijie.online/AutoDeploy/main/ProxmoxVE.sh" | sudo bash
 curl "https://source.zhijie.online/AutoDeploy/main/Ubuntu.sh" | sudo bash
 ```
 
-### 下载后执行
+## 配置
+
+所有开关都通过**环境变量**覆盖，在执行前 export 即可。使用内置默认密码时脚本会打印 WARNING，部署后请及时修改。
+
+### 凭据
+
+| 变量 | 默认值 | 说明 |
+|------|--------|------|
+| `ROOT_PASSWORD` | `R00t@123!` | root 密码（Ubuntu / PVE） |
+| `DEFAULT_PASSWORD` | `*Ubuntu123*` / `*Proxmox123*` | 默认用户密码 |
+| `LOCK_ROOT` | `FALSE` | 设为 `TRUE` 部署后锁定 root 账户 |
+| `NUT_ADMIN_PASSWORD` / `NUT_MON_PASSWORD` | `123456` / `secret` | NUT UPS 用户密码 |
+| `SNMP_AUTH_PASS` / `SNMP_PRIV_PASS` | root 密码 / 主机名 | SNMPv3 凭据（建议显式设置） |
+| `OPENSSH_PASSWORD` | 空 | SSH 私钥口令 |
+
+### 行为开关
+
+| 变量 | 默认值 | 说明 |
+|------|--------|------|
+| `PURGE_OTHER_USERS` | `true` | 删除 `/home` 下其他用户（Ubuntu / PVE，全新装机假设；保留请设 `false`） |
+| `RESET_CLUSTER` | `true` | 重置 corosync 集群状态（PVE；**已入集群的节点务必设 `false`**） |
+| `REINSTALL_BREW` | `false` | 重装 Homebrew（macOS） |
+| `DISABLE_SWAP` | `false` | 不创建 swapfile（Ubuntu） |
+| `USE_GLOBAL_DNS` | `false` | 使用 Google DNS 而非 AliDNS |
+| `XANMOD_BRANCH` | `edge` | XanMod 内核分支：`disable` / `main` / `edge` / `lts` / `rt` |
+| `GHPROXY_URL` | 空（DSM 为 `proxy.zhijie.online`） | GitHub 代理域名，不带协议头 |
+
+### 网络与身份
+
+| 变量 | 说明 |
+|------|------|
+| `NIC_NAME` / `STATIC_IPV4_CONFIG` / `STATIC_IPV6_CONFIG` | Netplan 静态网络，格式 `地址/掩码,网关`（Ubuntu） |
+| `GIT_USER_NAME` / `GIT_USER_EMAIL` / `GIT_USER_SIGNINGKEY` | root 的 Git 身份 |
+| `PROXY_PROTOCOL` / `PROXY_IP` / `PROXY_PORT` / `PROXY_USERNAME` / `PROXY_PASSWORD` | proxychains 上游代理 |
+| `DEFAULT_USERNAME` | 默认用户名（`ubuntu` / `proxmox`） |
+
+示例：
 
 ```bash
-# 下载脚本
-wget -qO- "https://source.zhijie.online/AutoDeploy/main/Ubuntu.sh" > Ubuntu.sh
-
-# 赋予执行权限
-chmod +x Ubuntu.sh
-
-# 执行脚本
-sudo bash Ubuntu.sh
+export ROOT_PASSWORD='MyS3cure!Pass'
+export DEFAULT_PASSWORD='MyUser!Pass'
+export PURGE_OTHER_USERS=false
+curl "https://source.zhijie.online/AutoDeploy/main/Ubuntu.sh" | sudo bash
 ```
 
-## 自定义配置
+## 开发
 
-### 代理设置
+根目录的 `*.sh` 是**构建产物**（`curl | bash` 直接拉取），源码在 `src/`：共享函数在 `src/lib/common.sh`（全平台，bash 3.2 兼容）和 `src/lib/debian.sh`（Ubuntu / PVE），平台差异在 `src/<平台>.sh`。
 
 ```bash
-# 在脚本执行前设置代理环境变量
-export GHPROXY_URL="proxy.example.com"
+./build.sh              # 修改 src/ 后重新生成根脚本（需一并提交）
+./lint.sh               # bash -n + shellcheck + 构建一致性检查
+bash tests/run_tests.sh # 纯函数单元测试
 ```
 
-### DNS 自定义
-
-修改脚本中的 `CUSTOM_DNS` 数组：
-
-```bash
-CUSTOM_DNS=(
-    "223.5.5.5"
-    "223.6.6.6"
-    "8.8.8.8"
-)
-```
-
-### 软件包定制
-
-编辑对应脚本中的 `app_list` 数组来添加或删除需要安装的软件包。
+发行版代号（Ubuntu `resolute/26.04`、PVE `trixie/tentacle`）**有意硬编码到最新版本**，每个发行版周期手动更新。
 
 ## 注意事项
 
-**重要提醒**：
+- 脚本会修改系统配置（用户、网络、防火墙、SSH），**请先在测试环境验证**
+- 默认密码仅为装机便利，生产环境必须修改；SSH root 密码登录是有意保留的，部署完成后建议 `LOCK_ROOT=TRUE`
+- `PURGE_OTHER_USERS` 与 `RESET_CLUSTER` 默认为破坏性行为，仅适用于全新装机
+- 建议执行前备份重要数据
 
-- 脚本会修改系统配置，请在测试环境先行验证
-- 部分操作需要 root 权限
-- 建议在执行前备份重要数据
-- 默认密码应在生产环境中修改
+## 文档
 
-## 故障排除
-
-### 调试模式
-
-在脚本开头添加以下行启用调试：
-
-```bash
-set -x  # 启用调试输出
-set -e  # 遇到错误立即退出
-```
-
-### 常见问题
-
-1. **权限错误**：确保使用 sudo 执行脚本
-2. **网络问题**：检查 DNS 和代理设置
-3. **架构不兼容**：脚本会自动检测并提示不支持的架构
-
-## 贡献指南
-
-欢迎提交 Issue 和 Pull Request 来改进这些脚本！
-
-### 代码规范
-
-- 使用 PascalCase 命名函数
-- 使用 UPPERCASE_SNAKE_CASE 命名全局变量
-- 保持各平台脚本结构一致
-- 添加适当的注释和文档
+- [AGENTS.md](AGENTS.md) - 架构、约定与编码代理指南（英文）
 
 ## License
 

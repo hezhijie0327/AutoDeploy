@@ -111,252 +111,151 @@ Family-wide Markdown rules, shared verbatim across all ZJ projects:
 
 ## Project
 
-This project consists of 4 main deployment scripts:
+Four deployment scripts, one per platform:
+
 - `DSM.sh` - Synology DSM deployment script
-- `macOS.sh` - macOS deployment script  
+- `macOS.sh` - macOS deployment script
 - `ProxmoxVE.sh` - Proxmox VE deployment script
 - `Ubuntu.sh` - Ubuntu deployment script
 
-All scripts follow a similar structure with functions for:
-1. System information gathering
-2. Repository mirror configuration
-3. Package installation and configuration
-4. System configuration
+The root `*.sh` files are **generated distribution artifacts** — they are what `curl | bash` fetches. Edit the sources under `src/`, then run `./build.sh` to regenerate them. Never hand-edit the root scripts; `lint.sh` fails if they are stale.
+
+Each script follows the same phases: system information gathering → repository mirrors → dependency packages → custom packages → system configuration → package configuration → cleanup.
 
 ## Commands
 
-### Testing Single Scripts
-Each script is standalone and can be tested with:
 ```bash
-# Test with dry run (comment out actual modifications)
-sudo bash DSM.sh
-sudo bash macOS.sh  
-sudo bash ProxmoxVE.sh
-sudo bash Ubuntu.sh
+# Regenerate root scripts from src/ (run after every source change)
+./build.sh
+
+# Full validation: bash -n + shellcheck + build freshness
+./lint.sh
+
+# Unit tests for pure functions (runs on bash 3.2 and 5.x)
+bash tests/run_tests.sh
+
+# Syntax check one script
+bash -n Ubuntu.sh
+
+# Static analysis (warning severity must stay clean)
+shellcheck --shell=bash --severity=warning Ubuntu.sh
 ```
 
-### Validation Commands
-```bash
-# Check script syntax
-bash -n SCRIPT_NAME.sh
+There is no dry-run mode. The scripts modify the live system; test in a VM or spare machine, never on a host you care about.
 
-# Check script execution trace (debug)
-bash -x SCRIPT_NAME.sh
+## Architecture
 
-# Verify executable permissions
-ls -la *.sh
+```text
+src/
+├── lib/
+│   ├── common.sh    # shared by all four platforms (bash 3.2 compatible)
+│   └── debian.sh    # shared by Ubuntu + Proxmox VE (bash 4.4+)
+├── DSM.sh           # platform-specific functions + orchestration
+├── macOS.sh
+├── Ubuntu.sh
+└── ProxmoxVE.sh
+build.sh             # concatenates header + libs + platform file → root script
+lint.sh              # bash -n, shellcheck, build-freshness check
+tests/run_tests.sh   # unit tests for the pure functions
 ```
 
-### Testing Individual Functions
-Add test calls at the end of scripts:
-```bash
-# Test individual function
-GetSystemInformation
-echo "Hostname: $NEW_HOSTNAME"
-exit 0
-```
+`build.sh` assembles each root script as: license/usage header → `lib/common.sh` → (`lib/debian.sh` for Ubuntu/PVE) → platform file. Shared functions live in the libs; platform files set the globals a shared function needs (documented above each function, e.g. `GPG_HOME`, `ZSH_PATH_LIST`, `FAIL2BAN_JAILS`) and keep only platform-specific logic plus the `## Process` orchestration.
+
+All scripts run under `set -Eeuo pipefail` with an `ERR` trap that reports the failing line and command. Commands whose failure is expected (e.g. `git config --unset` on a missing key, `chattr` on unsupported filesystems) carry an explicit `|| true`.
 
 ## Conventions
 
 ### General Principles
-- Use `#!/bin/bash` shebang
-- All scripts should be executable with `chmod +x`
-- Use functions to organize code logically
-- Follow consistent naming patterns across scripts
-
-### Function Naming
-- Use PascalCase for function names: `GetSystemInformation()`, `ConfigurePackages()`
-- Group related functions under parent functions with descriptive names
-- Use verb-noun pattern: `InstallCustomPackages()`, `GenerateHostname()`
+- `#!/bin/bash` shebang; license header is emitted by `build.sh`
+- Root scripts are executable (`build.sh` sets the bit)
+- PascalCase verb-noun function names: `GetSystemInformation()`, `InstallCustomPackages()`
+- Platform-specific helpers are nested inside their parent function; shared helpers live in `src/lib/`
 
 ### Variable Naming
-- Use UPPERCASE_SNAKE_CASE for global variables: `NEW_HOSTNAME`, `GHPROXY_URL`
-- Use lowercase_snake_case for local variables
-- Export environment variables when needed: `export GHPROXY_URL`
-
-### Code Organization
-```bash
-function ParentFunction() {
-    function NestedFunction() {
-        # Implementation
-    }
-    # Call nested functions
-    NestedFunction
-}
-```
+- UPPERCASE_SNAKE_CASE for globals: `NEW_HOSTNAME`, `GHPROXY_URL`, `DEFAULT_USERNAME`
+- lowercase_snake_case for locals, declared with `local`
+- Every tunable is an env-overridable global: `ROOT_PASSWORD="${ROOT_PASSWORD:-R00t@123!}"`
+- Loop variables are short (`i`, `entry`, `pkg`); always quote expansions
 
 ### Error Handling
-- Check command existence before execution:
-```bash
-which "git" > "/dev/null" 2>&1
-if [ "$?" -eq "0" ]; then
-    # Command exists, proceed
-fi
-```
-- Use proper exit codes for error conditions
-- Handle architecture differences with conditional logic
-
-### String Manipulation
-- Use `sed` for text replacement with proper escaping
-- Use `awk` for text processing
-- Quote variables properly: `"$VARIABLE"` not `$VARIABLE`
+- Check commands with `HaveCommand` (wraps `command -v`), never `which`
+- `RequireRoot` guards the Linux/DSM scripts; macOS runs as the operator and uses `sudo` per command
+- `Die` for fatal errors, `LogWarn` for degraded-but-continuing, `LogInfo` for progress
+- `BackupPath` moves an existing file/dir to `*.bak.<timestamp>` instead of deleting — re-runs must not destroy keys or configs
 
 ### File Operations
-- Create temporary files with `.autodeploy` suffix
-- Always clean up temporary files: `rm -rf "/tmp/file.autodeploy"`
-- Use proper permissions for sensitive files (600, 700, 400)
-- Check file existence before operations
+- Write config files with `printf '%s\n' "${array[@]}" > "$target"` — no temp-file round-trips
+- `rm -f` for files; `rm -rf` only for directories
+- Cleanup removes only `*.autodeploy` temp files, never all of `/tmp`
+- Sensitive files 600, SSH dirs 700, private keys 400
 
-### Array Usage
-```bash
-array_name=(
-    "item1"
-    "item2"
-    "item3"
-)
-for task in "${!array_name[@]}"; do
-    echo "${array_name[$task]}"
-done
-```
+### Gotchas
+- **macOS ships bash 3.2**: `lib/common.sh` must stay 3.2-compatible — no associative arrays, no namerefs, guard empty-array expansions with `${arr[@]+"${arr[@]}"}`. `lib/debian.sh` targets bash 4.4+ only.
+- **Generated files**: commit the regenerated root scripts together with the `src/` change; `lint.sh` enforces freshness.
+- **Release pinning is intentional**: `LSB_CODENAME`/`LSB_VERSION` (Ubuntu) and `LSB_CODENAME`/`CEPH_CODENAME` (PVE) are hardcoded to the latest release by design. Bump them each release; do not switch to auto-detection.
+- **Single quotes in generated snippets** (e.g. `plugin_upgrade_list`) are deliberate — they must not expand at generation time.
+- `pcie_acs_override` is a patched-kernel parameter; mainline kernels ignore it. Kept intentionally for homelab IOMMU grouping.
+- macOS has no `shuf`; use `$((RANDOM % 256))` for random octets.
 
 ## Platform-Specific Considerations
 
 ### DSM.sh
-- Uses Synology-specific commands: `synogroup`, `chown root:docker`
-- Paths: `/var/services/homes/` instead of `/home/`
-- Package management via opkg
+- Runs as root via `sudo bash`; the operator account is taken from `SUDO_USER` (not `whoami`, which is root under sudo)
+- Synology commands: `synogroup`, `chown root:docker`; homes under `/var/services/homes/`
+- Default shell switches via `~/.profile` exec (DSM has no `usermod`)
 
 ### macOS.sh
-- Architecture detection (ARM vs x86_64)
-- Homebrew paths: `/opt/homebrew/` (ARM) vs `/usr/local/` (Intel)
-- LaunchDaemons for service management
-- MAS (Mac App Store) integration
+- Runs as the operator, no root requirement; `BREW_PREFIX` detects `/opt/homebrew` (ARM) vs `/usr/local` (Intel)
+- Homebrew openssh: host keys and sshd_config under `${BREW_PREFIX}/etc/ssh`, `/etc/ssh` symlinked to it
+- MAS (Mac App Store) integration via `mas`
 
 ### ProxmoxVE.sh
-- APT-based package management
-- Kernel module loading and configuration
-- Virtualization-specific optimizations
-- Uses `proxmox-boot-tool` for bootloader config
+- APT-based; `proxmox-boot-tool` for ZFS bootloader config
+- `ConfigurePVECluster` resets corosync state — gated by `RESET_CLUSTER` (default `true`; set `false` on clustered nodes)
+- Subscription-nag and CT-template mirror patches are fragile across PVE upgrades; re-run after updating
 
 ### Ubuntu.sh
-- APT package management with USTC mirrors
-- Netplan for network configuration
-- systemd for service management
-- UFW firewall configuration
+- APT with CERNET mirrors; Netplan for network; systemd-resolved for DNS
+- XanMod kernel selection respects CPU psABI level (`PSABI_LEVEL`); v1 CPUs fall back to the main branch
+- UFW firewall; `ufw --force reset/enable` to stay non-interactive
 
 ## Common Patterns
 
 ### Proxy Configuration
-All scripts support GitHub proxy via `GHPROXY_URL` variable:
+`GHPROXY_URL` is env-overridable (bare domain, no scheme):
 ```bash
 SetGHProxyDomain() {
-    GHPROXY_URL="proxy.example.com"
-    if [ "${GHPROXY_URL}" != "" ]; then
+    GHPROXY_URL="${GHPROXY_URL:-}"
+    if [ -n "$GHPROXY_URL" ]; then
         export GHPROXY_URL="https://${GHPROXY_URL}/"
     fi
 }
 ```
 
-### Git Configuration
-Standardized across all platforms:
-```bash
-function ConfigureGit() {
-    gitconfig_key_list=(
-        "commit.gpgsign"
-        "gpg.program"
-        "user.name"
-        "user.email"
-        # ... more configs
-    )
-    # Configure git settings
-}
-```
-
 ### SSH Key Generation
-Consistent key generation across all scripts:
-```bash
-ssh-keygen -t ecdsa -b 384 -f "path/to/key" -C "comment" -N ""
-ssh-keygen -t ed25519 -f "path/to/key" -C "comment" -N ""
-ssh-keygen -t rsa -b 4096 -f "path/to/key" -C "comment" -N ""
-```
+ecdsa-384 / ed25519 / rsa-4096 only. DSA was removed: OpenSSH ≥ 9.8 disables it and 10.x removed it, which broke the whole `&&` chain on modern systems.
+
+### Credentials
+Default passwords are kept on purpose (operators change them after deployment). Every default in use triggers a `WarnDefaultPassword`/`LogWarn` notice and can be overridden via environment variable before running. SSH root password login is intentional; the root account is locked afterwards with `LOCK_ROOT=TRUE`.
 
 ## Security Considerations
 
-### File Permissions
-- SSH keys: 400 for private, 644 for public
-- Config files: 600 or 644 depending on sensitivity
-- Directories: 700 for SSH, 755 for general
-
-### Secret Management
-- Avoid hardcoding passwords in scripts
-- Use variables for default passwords that should be changed
-- GPG key import and trust configuration
-
-### Service Security
-- Firewall rules are restrictive by default
-- SSH configuration hardening
-- Fail2Ban integration where applicable
+- SSH keys: 400 private, 644 public; `.ssh` 700; `authorized_keys` 600
+- GPG home: directories 700, files 600 (never chmod a directory 600 — it breaks key access)
+- WireGuard private keys are generated in memory, never written to temp files
+- Destructive operations are gated and warn: `PURGE_OTHER_USERS` (default `true`), `RESET_CLUSTER` (default `true`)
+- Firewall rules are restrictive by default; Fail2Ban + CrowdSec where applicable
 
 ## Deployment Guidelines
 
-### Before Running Scripts
-1. Review script contents for site-specific customizations
-2. Ensure proper backup of critical configuration
-3. Test in non-production environment first
-
-### Customization Points
-- Proxy settings: `GHPROXY_URL`, proxy configurations
-- DNS settings: Custom DNS servers in `CUSTOM_DNS` arrays
-- Package lists: Modify `app_list` arrays as needed
-- User accounts: Default usernames and passwords should be changed
-
-### Script Execution
-All scripts can be executed via:
+1. Review the script and override credentials/knobs via environment variables
+2. Back up critical configuration; test in a non-production environment first
+3. Run:
 ```bash
-# Direct execution
 curl "https://source.zhijie.online/AutoDeploy/main/SCRIPT.sh" | sudo bash
-
-# Or download first
-wget -qO- "https://source.zhijie.online/AutoDeploy/main/SCRIPT.sh" | sudo bash
 ```
 
-## Repository Structure Best Practices
+## Key Docs
 
-### File Organization
-- Keep scripts in root directory
-- Use consistent naming: PlatformName.sh
-- Maintain same function structure across scripts
-- Document platform-specific differences
-
-### Documentation Updates
-- Update AGENTS.md when adding new functions
-- Document breaking changes
-- Maintain platform-specific considerations
-- Update usage examples
-
-## Common Debugging Techniques
-
-### Enable Debug Mode
-Add to script beginning:
-```bash
-set -x  # Enable debug
-set -e  # Exit on error
-```
-
-### Check Variables
-```bash
-# Debug variable values
-echo "DEBUG: Variable = $VARIABLE" >&2
-```
-
-### Test Command Execution
-```bash
-# Dry run with echo
-echo "Would run: command with options"
-
-# Test with redirection
-command > /dev/null 2>&1
-if [ $? -eq 0 ]; then
-    echo "Command succeeded"
-fi
-```
+- [README.md](README.md) - Chinese user-facing overview and configuration reference
+- [LICENSE](LICENSE) - Apache 2.0 with Commons Clause v1.0
