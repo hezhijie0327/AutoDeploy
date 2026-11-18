@@ -396,9 +396,7 @@ ConfigureSystem() {
             done < <(awk 'NR>1 {print $1}' /proc/swaps)
         }
         UpdateFSTAB() {
-            grep -v "swap" /etc/fstab > "/tmp/fstab.autodeploy" || true
-            cat "/tmp/fstab.autodeploy" > "/etc/fstab"
-            rm -f "/tmp/fstab.autodeploy"
+            sed -i '/swap/d' /etc/fstab
         }
         ClearSWAP
         RemoveSWAP

@@ -78,7 +78,6 @@ REINSTALL_RELEASE='24.04' REINSTALL_PASSWORD='MyS3cure!Pass' \
 | `DISABLE_SWAP` | `false` | 不创建 swapfile（Ubuntu） |
 | `AUTODEPLOY_FORCE` | `false` | 忽略断点记录，强制重跑所有步骤 |
 | `AUTODEPLOY_STATE_DIR` | `~/.autodeploy` | 断点续跑状态文件目录 |
-| `USE_GLOBAL_DNS` | `false` | 使用 Google DNS 而非 AliDNS |
 | `XANMOD_BRANCH` | `edge` | XanMod 内核分支：`disable` / `main` / `edge` / `lts` / `rt` |
 | `GHPROXY_URL` | 空 | GitHub 代理地址，可带或不带 `https://`（自动补全 scheme 与末尾斜杠） |
 
@@ -90,6 +89,7 @@ REINSTALL_RELEASE='24.04' REINSTALL_PASSWORD='MyS3cure!Pass' \
 | `GIT_USER_NAME` / `GIT_USER_EMAIL` / `GIT_USER_SIGNINGKEY` | root 的 Git 身份 |
 | `PROXY_PROTOCOL` / `PROXY_IP` / `PROXY_PORT` / `PROXY_USERNAME` / `PROXY_PASSWORD` | proxychains 上游代理 |
 | `CUSTOM_HOSTNAME` / `CUSTOM_DOMAIN` | 自定义主机名 / 搜索域（Ubuntu / PVE），优先于自动检测与 `RESET_*` |
+| `CUSTOM_DNS` | `223.5.5.5 223.6.6.6 2400:3200::1 2400:3200:baba::1` | 解析器列表（空格分隔，默认 AliDNS，env 可覆盖） |
 | `DEFAULT_USERNAME` | 默认用户名（`ubuntu` / `proxmox`） |
 
 示例：
@@ -108,7 +108,6 @@ curl "https://source.zhijie.online/AutoDeploy/main/dist/Ubuntu.sh" | sudo bash
 | `REINSTALL_RELEASE` | `26.04` | 目标 Ubuntu **LTS** 版本（`20.04` / `22.04` / `24.04` / `26.04`） |
 | `REINSTALL_PASSWORD` | 随机生成并打印 | 新系统 root 密码；留空时若检测到本机 SSH 公钥则同时安装密钥 |
 | `REINSTALL_SSH_KEYS` | 复用本机 root 公钥 | authorized_keys 内容或文件路径 |
-| `REINSTALL_CN_MIRROR` | `true` | `false` 时使用 Ubuntu / Alpine 官方源 |
 | `REINSTALL_ALPINE_VERSION` | `auto` | 固定 Alpine 版本（如 `3.22`） |
 | `REINSTALL_INSTALLER_PART_SIZE_MB` | `2048` | 安装暂存分区大小 |
 

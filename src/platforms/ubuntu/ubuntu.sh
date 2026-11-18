@@ -38,8 +38,8 @@ GetSystemInformation() {
     GetUbuntuMirror() {
         GetOSArchitecture
         case "${OS_ARCHITECTURE:-}" in
-            arm64) MIRROR_URL="ubuntu-ports" ;;
-            amd64) MIRROR_URL="ubuntu" ;;
+            arm64) APT_MIRROR_REPO="ubuntu-ports" ;;
+            amd64) APT_MIRROR_REPO="ubuntu" ;;
         esac
     }
     CollectDNS
@@ -55,16 +55,16 @@ GetSystemInformation() {
 # Set Repository Mirror
 SetRepositoryMirror() {
     local mirror_list=(
-        "deb ${TRANSPORT_PROTOCOL}://mirrors.cernet.edu.cn/${MIRROR_URL} ${LSB_CODENAME} main multiverse restricted universe"
-        "deb ${TRANSPORT_PROTOCOL}://mirrors.cernet.edu.cn/${MIRROR_URL} ${LSB_CODENAME}-backports main multiverse restricted universe"
-        "deb ${TRANSPORT_PROTOCOL}://mirrors.cernet.edu.cn/${MIRROR_URL} ${LSB_CODENAME}-proposed main multiverse restricted universe"
-        "deb ${TRANSPORT_PROTOCOL}://mirrors.cernet.edu.cn/${MIRROR_URL} ${LSB_CODENAME}-security main multiverse restricted universe"
-        "deb ${TRANSPORT_PROTOCOL}://mirrors.cernet.edu.cn/${MIRROR_URL} ${LSB_CODENAME}-updates main multiverse restricted universe"
-        "deb-src ${TRANSPORT_PROTOCOL}://mirrors.cernet.edu.cn/${MIRROR_URL} ${LSB_CODENAME} main multiverse restricted universe"
-        "deb-src ${TRANSPORT_PROTOCOL}://mirrors.cernet.edu.cn/${MIRROR_URL} ${LSB_CODENAME}-backports main multiverse restricted universe"
-        "deb-src ${TRANSPORT_PROTOCOL}://mirrors.cernet.edu.cn/${MIRROR_URL} ${LSB_CODENAME}-proposed main multiverse restricted universe"
-        "deb-src ${TRANSPORT_PROTOCOL}://mirrors.cernet.edu.cn/${MIRROR_URL} ${LSB_CODENAME}-security main multiverse restricted universe"
-        "deb-src ${TRANSPORT_PROTOCOL}://mirrors.cernet.edu.cn/${MIRROR_URL} ${LSB_CODENAME}-updates main multiverse restricted universe"
+        "deb ${TRANSPORT_PROTOCOL}://mirrors.cernet.edu.cn/${APT_MIRROR_REPO} ${LSB_CODENAME} main multiverse restricted universe"
+        "deb ${TRANSPORT_PROTOCOL}://mirrors.cernet.edu.cn/${APT_MIRROR_REPO} ${LSB_CODENAME}-backports main multiverse restricted universe"
+        "deb ${TRANSPORT_PROTOCOL}://mirrors.cernet.edu.cn/${APT_MIRROR_REPO} ${LSB_CODENAME}-proposed main multiverse restricted universe"
+        "deb ${TRANSPORT_PROTOCOL}://mirrors.cernet.edu.cn/${APT_MIRROR_REPO} ${LSB_CODENAME}-security main multiverse restricted universe"
+        "deb ${TRANSPORT_PROTOCOL}://mirrors.cernet.edu.cn/${APT_MIRROR_REPO} ${LSB_CODENAME}-updates main multiverse restricted universe"
+        "deb-src ${TRANSPORT_PROTOCOL}://mirrors.cernet.edu.cn/${APT_MIRROR_REPO} ${LSB_CODENAME} main multiverse restricted universe"
+        "deb-src ${TRANSPORT_PROTOCOL}://mirrors.cernet.edu.cn/${APT_MIRROR_REPO} ${LSB_CODENAME}-backports main multiverse restricted universe"
+        "deb-src ${TRANSPORT_PROTOCOL}://mirrors.cernet.edu.cn/${APT_MIRROR_REPO} ${LSB_CODENAME}-proposed main multiverse restricted universe"
+        "deb-src ${TRANSPORT_PROTOCOL}://mirrors.cernet.edu.cn/${APT_MIRROR_REPO} ${LSB_CODENAME}-security main multiverse restricted universe"
+        "deb-src ${TRANSPORT_PROTOCOL}://mirrors.cernet.edu.cn/${APT_MIRROR_REPO} ${LSB_CODENAME}-updates main multiverse restricted universe"
     )
     mkdir -p "/etc/apt/sources.list.d"
     rm -f /etc/apt/sources.list.d/*.*
@@ -190,7 +190,6 @@ ConfigurePackages() {
             -e 's/MANAGE_BUILTINS=yes/MANAGE_BUILTINS=no/g' \
             -e 's/IPV6=no/IPV6=yes/g' \
             "/etc/default/ufw"
-        ufw reload
         ufw --force reset
         ufw allow 123/udp
         ufw allow 161/udp
@@ -317,12 +316,10 @@ ConfigureSystem() {
             done < <(awk 'NR>1 {print $1}' /proc/swaps)
         }
         UpdateFSTAB() {
-            grep -v "swap" /etc/fstab > "/tmp/fstab.autodeploy" || true
+            sed -i '/swap/d' /etc/fstab
             if [ -f "/swapfile" ] && [ "$DISABLE_SWAP" = "false" ]; then
-                printf '%s\n' "/swapfile none swap sw 0 0" >> "/tmp/fstab.autodeploy"
+                printf '%s\n' "/swapfile none swap sw 0 0" >> "/etc/fstab"
             fi
-            cat "/tmp/fstab.autodeploy" > "/etc/fstab"
-            rm -f "/tmp/fstab.autodeploy"
         }
         ClearSWAP
         RemoveSWAP

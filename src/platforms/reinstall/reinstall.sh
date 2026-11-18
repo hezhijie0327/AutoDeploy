@@ -44,10 +44,10 @@ CollectReinstallFacts() {
     MGMT_MAC=$(cat "/sys/class/net/${MGMT_IFACE}/address")
     MGMT_IPV4=$(ip -4 addr show "$MGMT_IFACE" scope global | awk '/inet / {print $2; exit}')
     MGMT_IPV4_GW=$(ip -4 route show default | awk '{print $3; exit}')
-    MGMT_IPV6=$(ip -6 addr show "$MGMT_IFACE" scope global temporary 2>/dev/null | awk '/inet6/ && !/temporary/ {print $2; exit}')
+    MGMT_IPV6=$(ip -6 addr show "$MGMT_IFACE" scope global 2>/dev/null | awk '/inet6/ && !/temporary/ {print $2; exit}')
     MGMT_IPV6_GW=$(ip -6 route show default 2>/dev/null | awk '/default/ {print $3; exit}')
     DNS_SERVERS=$(awk '/^nameserver/ {print $2}' /etc/resolv.conf | grep -v '^127\.' | head -n 3 | paste -sd, -)
-    [ -n "$DNS_SERVERS" ] || DNS_SERVERS="223.5.5.5,8.8.8.8"
+    [ -n "$DNS_SERVERS" ] || DNS_SERVERS="223.5.5.5,223.6.6.6"
 
     root_source=$(findmnt -no SOURCE /)
     REINSTALL_DISK="/dev/$(lsblk -no PKNAME "$root_source" | head -n 1)"
@@ -97,13 +97,10 @@ PrepareReinstallCredentials() {
 # Alpine netboot kernel/initrd/modloop plus the phase-2 installer script.
 DownloadInstallerFiles() {
     GetUbuntuCodename "$REINSTALL_RELEASE"
-    if [ "$REINSTALL_CN_MIRROR" = "true" ]; then
-        ALPINE_MIRROR="http://mirrors.cernet.edu.cn/alpine"
-        IMAGE_MIRROR="http://mirrors.cernet.edu.cn/ubuntu-cloud-images"
-    else
-        ALPINE_MIRROR="http://dl-cdn.alpinelinux.org/alpine"
-        IMAGE_MIRROR="http://cloud-images.ubuntu.com"
-    fi
+    # China mirrors only (CERNET); http so an unsynced installer clock cannot
+    # break the download.
+    ALPINE_MIRROR="http://mirrors.cernet.edu.cn/alpine"
+    IMAGE_MIRROR="http://mirrors.cernet.edu.cn/ubuntu-cloud-images"
     if [ "$REINSTALL_ALPINE_VERSION" = "auto" ]; then
         REINSTALL_ALPINE_VERSION=$(curl -fsSL "${ALPINE_MIRROR}/" | grep -oE 'v3\.[0-9]+' | sort -uV | tail -n 1 | tr -d v || true)
     fi

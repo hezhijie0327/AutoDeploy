@@ -155,7 +155,6 @@ InstallCustomPackages() {
 
 # Install Dependency Packages
 InstallDependencyPackages() {
-    REINSTALL_BREW="${REINSTALL_BREW:-false}"
     export HOMEBREW_API_DOMAIN="https://mirrors.cernet.edu.cn/homebrew-bottles/api"
     export HOMEBREW_BOTTLE_DOMAIN="https://mirrors.cernet.edu.cn/homebrew-bottles/bottles"
     export HOMEBREW_BREW_GIT_REMOTE="https://mirrors.cernet.edu.cn/brew.git"

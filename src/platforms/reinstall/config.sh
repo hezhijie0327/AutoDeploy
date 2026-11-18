@@ -18,7 +18,6 @@ REINSTALL_INSTALLER_PART_SIZE_MB="${REINSTALL_INSTALLER_PART_SIZE_MB:-2048}" # s
 ## Installer bootstrap (Alpine netboot files run the install after reboot)
 REINSTALL_ALPINE_VERSION="${REINSTALL_ALPINE_VERSION:-auto}" # auto = detect newest, or pin e.g. 3.22
 REINSTALL_CONFHOME="${REINSTALL_CONFHOME:-https://source.zhijie.online/AutoDeploy/main/src/platforms/reinstall}" # trans.sh location
-REINSTALL_CN_MIRROR="${REINSTALL_CN_MIRROR:-true}" # false -> official upstream mirrors
 
 ## Identity of the freshly installed system
 REINSTALL_PASSWORD="${REINSTALL_PASSWORD:-}" # empty -> generate one (printed) or key-only

@@ -63,7 +63,6 @@ REINSTALL_INSTALLER_PART_SIZE_MB="${REINSTALL_INSTALLER_PART_SIZE_MB:-2048}" # s
 ## Installer bootstrap (Alpine netboot files run the install after reboot)
 REINSTALL_ALPINE_VERSION="${REINSTALL_ALPINE_VERSION:-auto}" # auto = detect newest, or pin e.g. 3.22
 REINSTALL_CONFHOME="${REINSTALL_CONFHOME:-https://source.zhijie.online/AutoDeploy/main/src/platforms/reinstall}" # trans.sh location
-REINSTALL_CN_MIRROR="${REINSTALL_CN_MIRROR:-true}" # false -> official upstream mirrors
 
 ## Identity of the freshly installed system
 REINSTALL_PASSWORD="${REINSTALL_PASSWORD:-}" # empty -> generate one (printed) or key-only
@@ -214,8 +213,8 @@ trap 'Die "failed at line ${LINENO}: ${BASH_COMMAND}"' ERR
 # ============================================================================
 # modules/debian/system.sh - system information gathering for Debian family
 # (Ubuntu / Proxmox VE, bash 4.4+)
-# Sets: NEW_DOMAIN, NEW_HOSTNAME, OLD_HOSTNAME, CURRENT_DNS, DHCP_DNS,
-# CUSTOM_DNS, DNS_LINE, CPU_VENDOR_ID, ENABLE_IOMMU, MICROCODE,
+# Sets: NEW_DOMAIN, NEW_HOSTNAME, OLD_HOSTNAME, CURRENT_DNS, DNS_SERVERS,
+# DNS_LINE, CPU_VENDOR_ID, ENABLE_IOMMU, MICROCODE,
 # INTEL_GVT_MODULES, INTEL_HDMI_AUDIO_MODULE, NESTED_MODULES,
 # OS_ARCHITECTURE, plus the Debian structural globals via SetDebianGlobals.
 # ============================================================================
@@ -262,26 +261,21 @@ GenerateHostname() {
     fi
 }
 
-# Sets CUSTOM_DNS / CURRENT_DNS / DHCP_DNS / DNS_LINE (first three, space joined)
+# Parses CUSTOM_DNS and collects the nameservers still in use. Sets
+# DNS_SERVERS / CURRENT_DNS / DNS_LINE (first three, space joined).
 CollectDNS() {
-    USE_GLOBAL_DNS="${USE_GLOBAL_DNS:-false}"
-    if [ "$USE_GLOBAL_DNS" = "true" ]; then
-        CUSTOM_DNS=("${CUSTOM_DNS_GLOBAL[@]}")
-    else
-        CUSTOM_DNS=("${CUSTOM_DNS_CN[@]}")
-    fi
-    DHCP_DNS=()
+    read -r -a DNS_SERVERS <<< "$CUSTOM_DNS"
     CURRENT_DNS=()
     local resolv_conf="${RESOLV_CONF:-/etc/resolv.conf}" ns
     if [ -f "$resolv_conf" ]; then
         while IFS= read -r ns; do
-            case " ${CUSTOM_DNS[*]} ${DHCP_DNS[*]:-} 127.0.0.53 " in
+            case " ${DNS_SERVERS[*]} 127.0.0.53 " in
                 *" ${ns} "*) ;;
                 *) CURRENT_DNS+=("$ns") ;;
             esac
         done < <(awk '/^nameserver/ {print $2}' "$resolv_conf")
     fi
-    DNS_LINE=$(printf '%s\n' ${CURRENT_DNS[@]+"${CURRENT_DNS[@]}"} "${CUSTOM_DNS[@]}" | head -n 3 | tr '\n' ' ')
+    DNS_LINE=$(printf '%s\n' ${CURRENT_DNS[@]+"${CURRENT_DNS[@]}"} "${DNS_SERVERS[@]}" | head -n 3 | tr '\n' ' ')
     DNS_LINE="${DNS_LINE% }"
 }
 
@@ -330,7 +324,7 @@ ComputeFullDomain() {
 WriteResolvConf() {
     local resolv_conf_list=()
     resolv_conf_list+=(${CURRENT_DNS[@]+"${CURRENT_DNS[@]}"})
-    resolv_conf_list+=("${CUSTOM_DNS[@]}")
+    resolv_conf_list+=("${DNS_SERVERS[@]}")
     local count=0 entry
     chattr -i /etc/resolv.conf > /dev/null 2>&1 || true
     rm -f /etc/resolv.conf
@@ -421,10 +415,10 @@ CollectReinstallFacts() {
     MGMT_MAC=$(cat "/sys/class/net/${MGMT_IFACE}/address")
     MGMT_IPV4=$(ip -4 addr show "$MGMT_IFACE" scope global | awk '/inet / {print $2; exit}')
     MGMT_IPV4_GW=$(ip -4 route show default | awk '{print $3; exit}')
-    MGMT_IPV6=$(ip -6 addr show "$MGMT_IFACE" scope global temporary 2>/dev/null | awk '/inet6/ && !/temporary/ {print $2; exit}')
+    MGMT_IPV6=$(ip -6 addr show "$MGMT_IFACE" scope global 2>/dev/null | awk '/inet6/ && !/temporary/ {print $2; exit}')
     MGMT_IPV6_GW=$(ip -6 route show default 2>/dev/null | awk '/default/ {print $3; exit}')
     DNS_SERVERS=$(awk '/^nameserver/ {print $2}' /etc/resolv.conf | grep -v '^127\.' | head -n 3 | paste -sd, -)
-    [ -n "$DNS_SERVERS" ] || DNS_SERVERS="223.5.5.5,8.8.8.8"
+    [ -n "$DNS_SERVERS" ] || DNS_SERVERS="223.5.5.5,223.6.6.6"
 
     root_source=$(findmnt -no SOURCE /)
     REINSTALL_DISK="/dev/$(lsblk -no PKNAME "$root_source" | head -n 1)"
@@ -474,13 +468,10 @@ PrepareReinstallCredentials() {
 # Alpine netboot kernel/initrd/modloop plus the phase-2 installer script.
 DownloadInstallerFiles() {
     GetUbuntuCodename "$REINSTALL_RELEASE"
-    if [ "$REINSTALL_CN_MIRROR" = "true" ]; then
-        ALPINE_MIRROR="http://mirrors.cernet.edu.cn/alpine"
-        IMAGE_MIRROR="http://mirrors.cernet.edu.cn/ubuntu-cloud-images"
-    else
-        ALPINE_MIRROR="http://dl-cdn.alpinelinux.org/alpine"
-        IMAGE_MIRROR="http://cloud-images.ubuntu.com"
-    fi
+    # China mirrors only (CERNET); http so an unsynced installer clock cannot
+    # break the download.
+    ALPINE_MIRROR="http://mirrors.cernet.edu.cn/alpine"
+    IMAGE_MIRROR="http://mirrors.cernet.edu.cn/ubuntu-cloud-images"
     if [ "$REINSTALL_ALPINE_VERSION" = "auto" ]; then
         REINSTALL_ALPINE_VERSION=$(curl -fsSL "${ALPINE_MIRROR}/" | grep -oE 'v3\.[0-9]+' | sort -uV | tail -n 1 | tr -d v || true)
     fi

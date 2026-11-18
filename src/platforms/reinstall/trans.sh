@@ -77,10 +77,13 @@ probe_image_partition() {
 setup_network() {
     # resolv.conf first so wget can resolve the mirrors.
     : > /etc/resolv.conf
-    dns_list=$(get_extra dns "223.5.5.5,8.8.8.8")
-    echo "$dns_list" | tr ',' '\n' | while IFS= read -r ns; do
+    dns_list=$(get_extra dns "223.5.5.5,223.6.6.6")
+    old_ifs=$IFS
+    IFS=,
+    for ns in $dns_list; do
         [ -n "$ns" ] && printf 'nameserver %s\n' "$ns" >> /etc/resolv.conf
     done
+    IFS=$old_ifs
 
     mgmt_mac=$(get_extra mac "")
     mgmt_iface=$(get_extra iface "")
@@ -192,7 +195,7 @@ partition_disk() {
     partprobe "$target_disk"
     sleep 1
     installer_part=$(part_dev "$target_disk" 3)
-    mkfs.ext4 -F -L installer "$installer_part" > /dev/null 2>&1
+    mkfs.ext4 -F -L installer "$installer_part" > /dev/null 2>&1 || die "mkfs.ext4 on the installer partition failed"
     mkdir -p /installer
     mount "$installer_part" /installer || die "cannot mount the installer partition"
 }
@@ -368,7 +371,7 @@ chroot_configure() {
             printf '%s' "      routes:"$'\n'"${route_lines}"
         fi
         printf '%s\n' "      nameservers:"
-        printf '%s\n' "        addresses: [$(get_extra dns "223.5.5.5,8.8.8.8")]"
+        printf '%s\n' "        addresses: [$(get_extra dns "223.5.5.5,223.6.6.6")]"
     } > /os/etc/netplan/99-autodeploy.yaml
 
     # Regenerate fstab: root keeps the image UUID; the ESP is mounted explicitly.

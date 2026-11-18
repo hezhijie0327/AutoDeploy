@@ -1,8 +1,8 @@
 # ============================================================================
 # modules/debian/system.sh - system information gathering for Debian family
 # (Ubuntu / Proxmox VE, bash 4.4+)
-# Sets: NEW_DOMAIN, NEW_HOSTNAME, OLD_HOSTNAME, CURRENT_DNS, DHCP_DNS,
-# CUSTOM_DNS, DNS_LINE, CPU_VENDOR_ID, ENABLE_IOMMU, MICROCODE,
+# Sets: NEW_DOMAIN, NEW_HOSTNAME, OLD_HOSTNAME, CURRENT_DNS, DNS_SERVERS,
+# DNS_LINE, CPU_VENDOR_ID, ENABLE_IOMMU, MICROCODE,
 # INTEL_GVT_MODULES, INTEL_HDMI_AUDIO_MODULE, NESTED_MODULES,
 # OS_ARCHITECTURE, plus the Debian structural globals via SetDebianGlobals.
 # ============================================================================
@@ -49,26 +49,21 @@ GenerateHostname() {
     fi
 }
 
-# Sets CUSTOM_DNS / CURRENT_DNS / DHCP_DNS / DNS_LINE (first three, space joined)
+# Parses CUSTOM_DNS and collects the nameservers still in use. Sets
+# DNS_SERVERS / CURRENT_DNS / DNS_LINE (first three, space joined).
 CollectDNS() {
-    USE_GLOBAL_DNS="${USE_GLOBAL_DNS:-false}"
-    if [ "$USE_GLOBAL_DNS" = "true" ]; then
-        CUSTOM_DNS=("${CUSTOM_DNS_GLOBAL[@]}")
-    else
-        CUSTOM_DNS=("${CUSTOM_DNS_CN[@]}")
-    fi
-    DHCP_DNS=()
+    read -r -a DNS_SERVERS <<< "$CUSTOM_DNS"
     CURRENT_DNS=()
     local resolv_conf="${RESOLV_CONF:-/etc/resolv.conf}" ns
     if [ -f "$resolv_conf" ]; then
         while IFS= read -r ns; do
-            case " ${CUSTOM_DNS[*]} ${DHCP_DNS[*]:-} 127.0.0.53 " in
+            case " ${DNS_SERVERS[*]} 127.0.0.53 " in
                 *" ${ns} "*) ;;
                 *) CURRENT_DNS+=("$ns") ;;
             esac
         done < <(awk '/^nameserver/ {print $2}' "$resolv_conf")
     fi
-    DNS_LINE=$(printf '%s\n' ${CURRENT_DNS[@]+"${CURRENT_DNS[@]}"} "${CUSTOM_DNS[@]}" | head -n 3 | tr '\n' ' ')
+    DNS_LINE=$(printf '%s\n' ${CURRENT_DNS[@]+"${CURRENT_DNS[@]}"} "${DNS_SERVERS[@]}" | head -n 3 | tr '\n' ' ')
     DNS_LINE="${DNS_LINE% }"
 }
 
@@ -117,7 +112,7 @@ ComputeFullDomain() {
 WriteResolvConf() {
     local resolv_conf_list=()
     resolv_conf_list+=(${CURRENT_DNS[@]+"${CURRENT_DNS[@]}"})
-    resolv_conf_list+=("${CUSTOM_DNS[@]}")
+    resolv_conf_list+=("${DNS_SERVERS[@]}")
     local count=0 entry
     chattr -i /etc/resolv.conf > /dev/null 2>&1 || true
     rm -f /etc/resolv.conf

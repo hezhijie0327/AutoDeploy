@@ -17,7 +17,6 @@ DEFAULT_FIRSTNAME="${DEFAULT_FIRSTNAME:-User}"
 
 ## Behavior switches
 PURGE_OTHER_USERS="${PURGE_OTHER_USERS:-true}" # remove other /home users (fresh-install assumption)
-USE_GLOBAL_DNS="${USE_GLOBAL_DNS:-false}" # true -> Google DNS, false -> AliDNS
 RESET_DOMAIN="${RESET_DOMAIN:-false}"
 RESET_HOSTNAME="${RESET_HOSTNAME:-false}"
 CUSTOM_HOSTNAME="${CUSTOM_HOSTNAME:-}" # explicit hostname; overrides auto-detection and RESET_HOSTNAME
@@ -25,22 +24,12 @@ CUSTOM_DOMAIN="${CUSTOM_DOMAIN:-}" # explicit search domain(s), space-separated;
 DISABLE_ICMP_ECHO="${DISABLE_ICMP_ECHO:-false}"
 PREFER_IPV4="${PREFER_IPV4:-true}"
 I915_GUC_OPTION="${I915_GUC_OPTION:-3}" # 0 | 1 GuC | 2 HuC | 3 GuC/HuC
-NUT_MODE="${NUT_MODE:-}" # netclient | netserver | none | standalone
-NUT_HOST="${NUT_HOST:-}"
+NUT_MODE="${NUT_MODE:-none}" # netclient | netserver | none | standalone
+NUT_HOST="${NUT_HOST:-localhost}" # NUT server host (netclient mode)
+UPS_NAME="${UPS_NAME:-ups}" # UPS device name on the NUT server
 
 ## Network
-CUSTOM_DNS_CN=(
-    "223.5.5.5"
-    "223.6.6.6"
-    "2400:3200::1"
-    "2400:3200:baba::1"
-)
-CUSTOM_DNS_GLOBAL=(
-    "8.8.4.4"
-    "8.8.8.8"
-    "2001:4860:4860::8844"
-    "2001:4860:4860::8888"
-)
+CUSTOM_DNS="${CUSTOM_DNS:-223.5.5.5 223.6.6.6 2400:3200::1 2400:3200:baba::1}" # resolvers, space-separated (AliDNS)
 
 ## Proxy / mirrors
 DOCKER_REGISTRY_MIRRORS=()

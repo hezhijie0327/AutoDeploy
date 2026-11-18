@@ -498,20 +498,20 @@ InitUserSSHDir() {
 # ============================================================================
 
 GenerateWireGuardConfig() {
-    TUNNEL_CLIENT_IPADDR="10.172.$((RANDOM % 256)).$((RANDOM % 256))/32"
+    local tunnel_address="10.172.$((RANDOM % 256)).$((RANDOM % 256))/32"
     local private_key public_key preshared_key
     private_key=$(wg genkey)
     public_key=$(printf '%s' "$private_key" | wg pubkey)
     preshared_key=$(wg genpsk)
     local wireguard_list=(
         "[Interface]"
-        "Address = ${TUNNEL_CLIENT_IPADDR}"
+        "Address = ${tunnel_address}"
         "# DNS = 127.0.0.1, ::1"
         "ListenPort = 51820"
         "MTU = 1420"
         "PrivateKey = ${private_key}"
         "# [Peer]"
-        "# AllowedIPs = ${TUNNEL_CLIENT_IPADDR}"
+        "# AllowedIPs = ${tunnel_address}"
         "# Endpoint = 127.0.0.1:51820"
         "# PersistentKeepalive = 5"
         "# PresharedKey = ${preshared_key}"
@@ -777,7 +777,6 @@ InstallCustomPackages() {
 
 # Install Dependency Packages
 InstallDependencyPackages() {
-    REINSTALL_BREW="${REINSTALL_BREW:-false}"
     export HOMEBREW_API_DOMAIN="https://mirrors.cernet.edu.cn/homebrew-bottles/api"
     export HOMEBREW_BOTTLE_DOMAIN="https://mirrors.cernet.edu.cn/homebrew-bottles/bottles"
     export HOMEBREW_BREW_GIT_REMOTE="https://mirrors.cernet.edu.cn/brew.git"

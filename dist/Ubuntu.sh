@@ -62,7 +62,6 @@ DEFAULT_FIRSTNAME="${DEFAULT_FIRSTNAME:-User}"
 
 ## Behavior switches
 PURGE_OTHER_USERS="${PURGE_OTHER_USERS:-true}" # remove other /home users (fresh-install assumption)
-USE_GLOBAL_DNS="${USE_GLOBAL_DNS:-false}" # true -> Google DNS, false -> AliDNS
 RESET_DOMAIN="${RESET_DOMAIN:-false}"
 RESET_HOSTNAME="${RESET_HOSTNAME:-false}"
 CUSTOM_HOSTNAME="${CUSTOM_HOSTNAME:-}" # explicit hostname; overrides auto-detection and RESET_HOSTNAME
@@ -70,22 +69,12 @@ CUSTOM_DOMAIN="${CUSTOM_DOMAIN:-}" # explicit search domain(s), space-separated;
 DISABLE_ICMP_ECHO="${DISABLE_ICMP_ECHO:-false}"
 PREFER_IPV4="${PREFER_IPV4:-true}"
 I915_GUC_OPTION="${I915_GUC_OPTION:-3}" # 0 | 1 GuC | 2 HuC | 3 GuC/HuC
-NUT_MODE="${NUT_MODE:-}" # netclient | netserver | none | standalone
-NUT_HOST="${NUT_HOST:-}"
+NUT_MODE="${NUT_MODE:-none}" # netclient | netserver | none | standalone
+NUT_HOST="${NUT_HOST:-localhost}" # NUT server host (netclient mode)
+UPS_NAME="${UPS_NAME:-ups}" # UPS device name on the NUT server
 
 ## Network
-CUSTOM_DNS_CN=(
-    "223.5.5.5"
-    "223.6.6.6"
-    "2400:3200::1"
-    "2400:3200:baba::1"
-)
-CUSTOM_DNS_GLOBAL=(
-    "8.8.4.4"
-    "8.8.8.8"
-    "2001:4860:4860::8844"
-    "2001:4860:4860::8888"
-)
+CUSTOM_DNS="${CUSTOM_DNS:-223.5.5.5 223.6.6.6 2400:3200::1 2400:3200:baba::1}" # resolvers, space-separated (AliDNS)
 
 ## Proxy / mirrors
 DOCKER_REGISTRY_MIRRORS=()
@@ -569,20 +558,20 @@ InitUserSSHDir() {
 # ============================================================================
 
 GenerateWireGuardConfig() {
-    TUNNEL_CLIENT_IPADDR="10.172.$((RANDOM % 256)).$((RANDOM % 256))/32"
+    local tunnel_address="10.172.$((RANDOM % 256)).$((RANDOM % 256))/32"
     local private_key public_key preshared_key
     private_key=$(wg genkey)
     public_key=$(printf '%s' "$private_key" | wg pubkey)
     preshared_key=$(wg genpsk)
     local wireguard_list=(
         "[Interface]"
-        "Address = ${TUNNEL_CLIENT_IPADDR}"
+        "Address = ${tunnel_address}"
         "# DNS = 127.0.0.1, ::1"
         "ListenPort = 51820"
         "MTU = 1420"
         "PrivateKey = ${private_key}"
         "# [Peer]"
-        "# AllowedIPs = ${TUNNEL_CLIENT_IPADDR}"
+        "# AllowedIPs = ${tunnel_address}"
         "# Endpoint = 127.0.0.1:51820"
         "# PersistentKeepalive = 5"
         "# PresharedKey = ${preshared_key}"
@@ -745,7 +734,7 @@ ConfigureCrontab() {
 InstallAptRepo() {
     local name="$1" key_url="$2" repo_line="$3"
     rm -f "/usr/share/keyrings/${name}-archive-keyring.gpg"
-    curl -fsSL "$key_url" | gpg --dearmor -o "/usr/share/keyrings/${name}-archive-keyring.gpg"
+    curl -fsSL "$key_url" | gpg --batch --yes --dearmor -o "/usr/share/keyrings/${name}-archive-keyring.gpg"
     printf '%s\n' "$repo_line" > "/etc/apt/sources.list.d/${name}.list"
 }
 
@@ -815,10 +804,12 @@ CleanupOutageKernels() {
             kernel_list+=("$kernel")
         fi
     done < <(dpkg -l | grep -E "$KERNEL_PATTERN" | awk '{print $2}' | sort -V || true)
-    for kernel in ${kernel_list[@]+"${kernel_list[@]}"}; do
-        apt purge -qy "$kernel"
-    done
-    apt autoremove -qy --purge
+    if [ "${#kernel_list[@]}" -gt 0 ]; then
+        # One apt pass for all outdated kernels, matching the batching in
+        # InstallAptPackages.
+        apt purge -qy "${kernel_list[@]}"
+        apt autoremove -qy --purge
+    fi
 }
 # ============================================================================
 # modules/debian/daemons.sh - shared Debian-family service configuration
@@ -844,9 +835,7 @@ ConfigureChrony() {
         "ratelimit burst 8 interval 3 leak 2"
         "rtcsync"
     )
-    DHCP_NTP=()
     local chrony_ntp_list=(
-        ${DHCP_NTP[@]+"${DHCP_NTP[@]}"}
         "ntp.ntsc.ac.cn"
         "ntp1.nim.ac.cn"
         "ntp2.nim.ac.cn"
@@ -864,7 +853,7 @@ ConfigureChrony() {
         printf '%s\n' "${chrony_list[@]}"
         for server in "${chrony_ntp_list[@]}"; do
             suffix=" iburst"
-            case " ${prefer_list[*]} ${DHCP_NTP[*]:-} " in
+            case " ${prefer_list[*]} " in
                 *" ${server} "*) suffix=" iburst prefer" ;;
             esac
             printf 'server %s%s\n' "$server" "$suffix"
@@ -880,7 +869,6 @@ ConfigureChrony() {
 
 ConfigureDockerEngine() {
     HaveCommand docker || return 0
-    DOCKER_REGISTRY_MIRRORS=()
     local docker_list=(
         "{"
         "  \"allow-direct-routing\": true,"
@@ -948,20 +936,24 @@ ConfigureLLDPD() {
 
 ConfigureNut() {
     HaveCommand upsmon || return 0
-    CreateUpsdUsers() {
+
+    # upsd account entries: "name,password,role,actions" (actions space-separated).
+    # The helpers write one file each and take their input as arguments; the
+    # parsed user list stays a local of this function (dynamic scoping).
+    BuildUpsdUserList() {
         NUT_ADMIN_PASSWORD="${NUT_ADMIN_PASSWORD:-123456}"
         NUT_MON_PASSWORD="${NUT_MON_PASSWORD:-secret}"
         WarnDefaultPassword "NUT_ADMIN_PASSWORD" "$NUT_ADMIN_PASSWORD" "123456"
         WarnDefaultPassword "NUT_MON_PASSWORD" "$NUT_MON_PASSWORD" "secret"
         upsd_user_list=(
-            "admin,${NUT_ADMIN_PASSWORD},master,FSD,SET"
-            "monuser,${NUT_MON_PASSWORD},slave,,"
+            "admin,${NUT_ADMIN_PASSWORD},master,FSD SET"
+            "monuser,${NUT_MON_PASSWORD},slave,"
         )
     }
-    GenerateNutConf() {
-        printf 'MODE=%s\n' "${NUT_MODE:-none}" > /etc/nut/nut.conf
+    WriteNutConf() { # args: mode
+        printf 'MODE=%s\n' "$1" > /etc/nut/nut.conf
     }
-    GenerateUpsConf() {
+    WriteUpsConf() {
         local ups_driver_list=(
             "ups,usbhid-ups,auto"
         )
@@ -980,14 +972,14 @@ ConfigureNut() {
             done
         } > /etc/nut/ups.conf
     }
-    GenerateUpsdConf() {
+    WriteUpsdConf() { # args: mode (standalone listens on loopback only)
         local upsd_config_list=(
             "MAXAGE 15"
             "MAXCONN 1024"
             "STATEPATH /var/run/nut"
         )
         {
-            if [ "${NUT_MODE}" = "standalone" ]; then
+            if [ "$1" = "standalone" ]; then
                 printf '%s\n' "LISTEN 127.0.0.1 3493" "LISTEN ::1 3493"
             else
                 printf '%s\n' "LISTEN 0.0.0.0 3493"
@@ -995,23 +987,30 @@ ConfigureNut() {
             printf '%s\n' "${upsd_config_list[@]}"
         } > /etc/nut/upsd.conf
     }
-    GenerateUpsdUsers() {
-        local entry upsd_username upsd_password upsd_role upsd_actions
+    WriteUpsdUsers() { # args: upsd user entries
+        local entry username password role actions
         {
-            for entry in "${upsd_user_list[@]}"; do
-                upsd_username=$(printf '%s' "$entry" | cut -d ',' -f 1)
-                upsd_password=$(printf '%s' "$entry" | cut -d ',' -f 2)
-                upsd_role=$(printf '%s' "$entry" | cut -d ',' -f 3)
-                upsd_actions=$(printf '%s' "$entry" | cut -d ',' -f 4-5 | tr ',' ' ' | sed 's/^ //g;s/ $//g')
-                printf '[%s]\n' "$upsd_username"
-                if [ -n "$upsd_actions" ]; then
-                    printf '    actions = %s\n    instcmds = ALL\n' "$upsd_actions"
+            for entry in "$@"; do
+                username="${entry%%,*}"
+                entry="${entry#*,}"
+                password="${entry%%,*}"
+                entry="${entry#*,}"
+                role="${entry%%,*}"
+                actions="${entry#*,}"
+                printf '[%s]\n' "$username"
+                if [ -n "$actions" ]; then
+                    printf '    actions = %s\n    instcmds = ALL\n' "$actions"
                 fi
-                printf '    password = %s\n    upsmon %s\n' "$upsd_password" "$upsd_role"
+                printf '    password = %s\n    upsmon %s\n' "$password" "$role"
             done
         } > /etc/nut/upsd.users
     }
-    GenerateUpsmonConf() {
+    WriteUpsmonConf() { # args: monitor_system, upsd user entry
+        local monitor_system="$1" user_entry="$2" username password role
+        username="${user_entry%%,*}"
+        user_entry="${user_entry#*,}"
+        password="${user_entry%%,*}"
+        role="${user_entry#*,}"
         local upsmon_list=(
             "DEADTIME 15"
             "FINALDELAY 5"
@@ -1023,65 +1022,59 @@ ConfigureNut() {
             "POWERDOWNFLAG /etc/killpower"
             "RBWARNTIME 43200"
             'SHUTDOWNCMD "/sbin/shutdown -h +0"'
-            "MONITOR ${UPSMON_SYSTEM} 1 ${UPSMON_USERNAME} ${UPSMON_PASSWORD} ${UPSMON_ROLE}"
+            "MONITOR ${monitor_system} 1 ${username} ${password} ${role}"
         )
         printf '%s\n' "${upsmon_list[@]}" > /etc/nut/upsmon.conf
     }
-    NUT_MODE="${NUT_MODE:-}" # netclient | netserver | none | standalone
-    NUT_HOST="${NUT_HOST:-}" # localhost
-    rm -f /etc/nut/*.*
-    local nut_service_list=()
-    case "${NUT_MODE:-none}" in
+
+    local mode="$NUT_MODE" upsd_user_list=() service_list=()
+    rm -f /etc/nut/*
+    case "$mode" in
         netclient)
-            CreateUpsdUsers
-            UPSMON_USERNAME=$(printf '%s' "${upsd_user_list[1]}" | cut -d ',' -f 1)
-            UPSMON_PASSWORD=$(printf '%s' "${upsd_user_list[1]}" | cut -d ',' -f 2)
-            UPSMON_ROLE=$(printf '%s' "${upsd_user_list[1]}" | cut -d ',' -f 3)
-            UPSMON_SYSTEM="${UPS_NAME:-ups}@${NUT_HOST:-localhost}"
-            nut_service_list=(
+            BuildUpsdUserList
+            service_list=(
                 "nut-client,enable"
                 "nut-driver,disable"
                 "nut-monitor,enable"
                 "nut-server,disable"
             )
-            GenerateNutConf
-            GenerateUpsmonConf
+            WriteNutConf "$mode"
+            WriteUpsmonConf "${UPS_NAME}@${NUT_HOST}" "${upsd_user_list[1]}"
             ;;
         netserver|standalone)
-            CreateUpsdUsers
-            UPSMON_USERNAME=$(printf '%s' "${upsd_user_list[0]}" | cut -d ',' -f 1)
-            UPSMON_PASSWORD=$(printf '%s' "${upsd_user_list[0]}" | cut -d ',' -f 2)
-            UPSMON_ROLE=$(printf '%s' "${upsd_user_list[0]}" | cut -d ',' -f 3)
-            UPSMON_SYSTEM="${UPS_NAME:-ups}@localhost"
-            nut_service_list=(
+            BuildUpsdUserList
+            service_list=(
                 "nut-client,enable"
                 "nut-driver,enable"
                 "nut-monitor,enable"
                 "nut-server,enable"
             )
-            GenerateNutConf
-            GenerateUpsConf
-            GenerateUpsdConf
-            GenerateUpsdUsers
-            GenerateUpsmonConf
+            WriteNutConf "$mode"
+            WriteUpsConf
+            WriteUpsdConf "$mode"
+            WriteUpsdUsers "${upsd_user_list[@]}"
+            WriteUpsmonConf "${UPS_NAME}@localhost" "${upsd_user_list[0]}"
             ;;
         none)
-            nut_service_list=(
+            service_list=(
                 "nut-client,disable"
                 "nut-driver,disable"
                 "nut-monitor,disable"
                 "nut-server,disable"
             )
-            GenerateNutConf
+            WriteNutConf "$mode"
+            ;;
+        *)
+            Die "unsupported NUT_MODE: ${mode} (supported: netclient | netserver | none | standalone)"
             ;;
     esac
     chown -R root:nut /etc/nut
-    chmod 640 /etc/nut/*.*
-    local entry service_name service_status
-    for entry in "${nut_service_list[@]}"; do
+    chmod 640 /etc/nut/*
+    local entry service_name service_action
+    for entry in "${service_list[@]}"; do
         service_name="${entry%%,*}"
-        service_status="${entry##*,}"
-        systemctl "$service_status" "$service_name" > /dev/null 2>&1 || true
+        service_action="${entry##*,}"
+        systemctl "$service_action" "$service_name" > /dev/null 2>&1 || LogWarn "systemctl ${service_action} ${service_name} failed"
     done
 }
 
@@ -1383,8 +1376,8 @@ CreateZRamSWAP() {
 # ============================================================================
 # modules/debian/system.sh - system information gathering for Debian family
 # (Ubuntu / Proxmox VE, bash 4.4+)
-# Sets: NEW_DOMAIN, NEW_HOSTNAME, OLD_HOSTNAME, CURRENT_DNS, DHCP_DNS,
-# CUSTOM_DNS, DNS_LINE, CPU_VENDOR_ID, ENABLE_IOMMU, MICROCODE,
+# Sets: NEW_DOMAIN, NEW_HOSTNAME, OLD_HOSTNAME, CURRENT_DNS, DNS_SERVERS,
+# DNS_LINE, CPU_VENDOR_ID, ENABLE_IOMMU, MICROCODE,
 # INTEL_GVT_MODULES, INTEL_HDMI_AUDIO_MODULE, NESTED_MODULES,
 # OS_ARCHITECTURE, plus the Debian structural globals via SetDebianGlobals.
 # ============================================================================
@@ -1431,26 +1424,21 @@ GenerateHostname() {
     fi
 }
 
-# Sets CUSTOM_DNS / CURRENT_DNS / DHCP_DNS / DNS_LINE (first three, space joined)
+# Parses CUSTOM_DNS and collects the nameservers still in use. Sets
+# DNS_SERVERS / CURRENT_DNS / DNS_LINE (first three, space joined).
 CollectDNS() {
-    USE_GLOBAL_DNS="${USE_GLOBAL_DNS:-false}"
-    if [ "$USE_GLOBAL_DNS" = "true" ]; then
-        CUSTOM_DNS=("${CUSTOM_DNS_GLOBAL[@]}")
-    else
-        CUSTOM_DNS=("${CUSTOM_DNS_CN[@]}")
-    fi
-    DHCP_DNS=()
+    read -r -a DNS_SERVERS <<< "$CUSTOM_DNS"
     CURRENT_DNS=()
     local resolv_conf="${RESOLV_CONF:-/etc/resolv.conf}" ns
     if [ -f "$resolv_conf" ]; then
         while IFS= read -r ns; do
-            case " ${CUSTOM_DNS[*]} ${DHCP_DNS[*]:-} 127.0.0.53 " in
+            case " ${DNS_SERVERS[*]} 127.0.0.53 " in
                 *" ${ns} "*) ;;
                 *) CURRENT_DNS+=("$ns") ;;
             esac
         done < <(awk '/^nameserver/ {print $2}' "$resolv_conf")
     fi
-    DNS_LINE=$(printf '%s\n' ${CURRENT_DNS[@]+"${CURRENT_DNS[@]}"} "${CUSTOM_DNS[@]}" | head -n 3 | tr '\n' ' ')
+    DNS_LINE=$(printf '%s\n' ${CURRENT_DNS[@]+"${CURRENT_DNS[@]}"} "${DNS_SERVERS[@]}" | head -n 3 | tr '\n' ' ')
     DNS_LINE="${DNS_LINE% }"
 }
 
@@ -1499,7 +1487,7 @@ ComputeFullDomain() {
 WriteResolvConf() {
     local resolv_conf_list=()
     resolv_conf_list+=(${CURRENT_DNS[@]+"${CURRENT_DNS[@]}"})
-    resolv_conf_list+=("${CUSTOM_DNS[@]}")
+    resolv_conf_list+=("${DNS_SERVERS[@]}")
     local count=0 entry
     chattr -i /etc/resolv.conf > /dev/null 2>&1 || true
     rm -f /etc/resolv.conf
@@ -1684,8 +1672,8 @@ GetSystemInformation() {
     GetUbuntuMirror() {
         GetOSArchitecture
         case "${OS_ARCHITECTURE:-}" in
-            arm64) MIRROR_URL="ubuntu-ports" ;;
-            amd64) MIRROR_URL="ubuntu" ;;
+            arm64) APT_MIRROR_REPO="ubuntu-ports" ;;
+            amd64) APT_MIRROR_REPO="ubuntu" ;;
         esac
     }
     CollectDNS
@@ -1701,16 +1689,16 @@ GetSystemInformation() {
 # Set Repository Mirror
 SetRepositoryMirror() {
     local mirror_list=(
-        "deb ${TRANSPORT_PROTOCOL}://mirrors.cernet.edu.cn/${MIRROR_URL} ${LSB_CODENAME} main multiverse restricted universe"
-        "deb ${TRANSPORT_PROTOCOL}://mirrors.cernet.edu.cn/${MIRROR_URL} ${LSB_CODENAME}-backports main multiverse restricted universe"
-        "deb ${TRANSPORT_PROTOCOL}://mirrors.cernet.edu.cn/${MIRROR_URL} ${LSB_CODENAME}-proposed main multiverse restricted universe"
-        "deb ${TRANSPORT_PROTOCOL}://mirrors.cernet.edu.cn/${MIRROR_URL} ${LSB_CODENAME}-security main multiverse restricted universe"
-        "deb ${TRANSPORT_PROTOCOL}://mirrors.cernet.edu.cn/${MIRROR_URL} ${LSB_CODENAME}-updates main multiverse restricted universe"
-        "deb-src ${TRANSPORT_PROTOCOL}://mirrors.cernet.edu.cn/${MIRROR_URL} ${LSB_CODENAME} main multiverse restricted universe"
-        "deb-src ${TRANSPORT_PROTOCOL}://mirrors.cernet.edu.cn/${MIRROR_URL} ${LSB_CODENAME}-backports main multiverse restricted universe"
-        "deb-src ${TRANSPORT_PROTOCOL}://mirrors.cernet.edu.cn/${MIRROR_URL} ${LSB_CODENAME}-proposed main multiverse restricted universe"
-        "deb-src ${TRANSPORT_PROTOCOL}://mirrors.cernet.edu.cn/${MIRROR_URL} ${LSB_CODENAME}-security main multiverse restricted universe"
-        "deb-src ${TRANSPORT_PROTOCOL}://mirrors.cernet.edu.cn/${MIRROR_URL} ${LSB_CODENAME}-updates main multiverse restricted universe"
+        "deb ${TRANSPORT_PROTOCOL}://mirrors.cernet.edu.cn/${APT_MIRROR_REPO} ${LSB_CODENAME} main multiverse restricted universe"
+        "deb ${TRANSPORT_PROTOCOL}://mirrors.cernet.edu.cn/${APT_MIRROR_REPO} ${LSB_CODENAME}-backports main multiverse restricted universe"
+        "deb ${TRANSPORT_PROTOCOL}://mirrors.cernet.edu.cn/${APT_MIRROR_REPO} ${LSB_CODENAME}-proposed main multiverse restricted universe"
+        "deb ${TRANSPORT_PROTOCOL}://mirrors.cernet.edu.cn/${APT_MIRROR_REPO} ${LSB_CODENAME}-security main multiverse restricted universe"
+        "deb ${TRANSPORT_PROTOCOL}://mirrors.cernet.edu.cn/${APT_MIRROR_REPO} ${LSB_CODENAME}-updates main multiverse restricted universe"
+        "deb-src ${TRANSPORT_PROTOCOL}://mirrors.cernet.edu.cn/${APT_MIRROR_REPO} ${LSB_CODENAME} main multiverse restricted universe"
+        "deb-src ${TRANSPORT_PROTOCOL}://mirrors.cernet.edu.cn/${APT_MIRROR_REPO} ${LSB_CODENAME}-backports main multiverse restricted universe"
+        "deb-src ${TRANSPORT_PROTOCOL}://mirrors.cernet.edu.cn/${APT_MIRROR_REPO} ${LSB_CODENAME}-proposed main multiverse restricted universe"
+        "deb-src ${TRANSPORT_PROTOCOL}://mirrors.cernet.edu.cn/${APT_MIRROR_REPO} ${LSB_CODENAME}-security main multiverse restricted universe"
+        "deb-src ${TRANSPORT_PROTOCOL}://mirrors.cernet.edu.cn/${APT_MIRROR_REPO} ${LSB_CODENAME}-updates main multiverse restricted universe"
     )
     mkdir -p "/etc/apt/sources.list.d"
     rm -f /etc/apt/sources.list.d/*.*
@@ -1836,7 +1824,6 @@ ConfigurePackages() {
             -e 's/MANAGE_BUILTINS=yes/MANAGE_BUILTINS=no/g' \
             -e 's/IPV6=no/IPV6=yes/g' \
             "/etc/default/ufw"
-        ufw reload
         ufw --force reset
         ufw allow 123/udp
         ufw allow 161/udp
@@ -1963,12 +1950,10 @@ ConfigureSystem() {
             done < <(awk 'NR>1 {print $1}' /proc/swaps)
         }
         UpdateFSTAB() {
-            grep -v "swap" /etc/fstab > "/tmp/fstab.autodeploy" || true
+            sed -i '/swap/d' /etc/fstab
             if [ -f "/swapfile" ] && [ "$DISABLE_SWAP" = "false" ]; then
-                printf '%s\n' "/swapfile none swap sw 0 0" >> "/tmp/fstab.autodeploy"
+                printf '%s\n' "/swapfile none swap sw 0 0" >> "/etc/fstab"
             fi
-            cat "/tmp/fstab.autodeploy" > "/etc/fstab"
-            rm -f "/tmp/fstab.autodeploy"
         }
         ClearSWAP
         RemoveSWAP

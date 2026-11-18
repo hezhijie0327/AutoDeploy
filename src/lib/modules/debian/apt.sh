@@ -52,7 +52,7 @@ ConfigureCrontab() {
 InstallAptRepo() {
     local name="$1" key_url="$2" repo_line="$3"
     rm -f "/usr/share/keyrings/${name}-archive-keyring.gpg"
-    curl -fsSL "$key_url" | gpg --dearmor -o "/usr/share/keyrings/${name}-archive-keyring.gpg"
+    curl -fsSL "$key_url" | gpg --batch --yes --dearmor -o "/usr/share/keyrings/${name}-archive-keyring.gpg"
     printf '%s\n' "$repo_line" > "/etc/apt/sources.list.d/${name}.list"
 }
 
@@ -122,8 +122,10 @@ CleanupOutageKernels() {
             kernel_list+=("$kernel")
         fi
     done < <(dpkg -l | grep -E "$KERNEL_PATTERN" | awk '{print $2}' | sort -V || true)
-    for kernel in ${kernel_list[@]+"${kernel_list[@]}"}; do
-        apt purge -qy "$kernel"
-    done
-    apt autoremove -qy --purge
+    if [ "${#kernel_list[@]}" -gt 0 ]; then
+        # One apt pass for all outdated kernels, matching the batching in
+        # InstallAptPackages.
+        apt purge -qy "${kernel_list[@]}"
+        apt autoremove -qy --purge
+    fi
 }

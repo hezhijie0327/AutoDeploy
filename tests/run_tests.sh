@@ -91,18 +91,20 @@ unset CUSTOM_DOMAIN RESET_DOMAIN
 
 printf '== CollectDNS ==\n'
 # Normally provided by the Configuration block; set them here for the unit test.
-CUSTOM_DNS_CN=("223.5.5.5" "223.6.6.6" "2400:3200::1" "2400:3200:baba::1")
-CUSTOM_DNS_GLOBAL=("8.8.4.4" "8.8.8.8" "2001:4860:4860::8844" "2001:4860:4860::8888")
+CUSTOM_DNS="223.5.5.5 223.6.6.6 2400:3200::1 2400:3200:baba::1"
 RESOLV_CONF="${TMPDIR_TESTS}/resolv.conf"
-printf 'nameserver 1.1.1.1\nnameserver 223.5.5.5\nnameserver 127.0.0.53\nnameserver 9.9.9.9\n' > "$RESOLV_CONF"
+printf 'nameserver 1.1.1.1
+nameserver 223.5.5.5
+nameserver 127.0.0.53
+nameserver 9.9.9.9
+' > "$RESOLV_CONF"
 CollectDNS
 AssertEq "excludes custom and stub resolvers" "1.1.1.1 9.9.9.9" "${CURRENT_DNS[*]}"
 AssertEq "DNS_LINE keeps first three" "1.1.1.1 9.9.9.9 223.5.5.5" "$DNS_LINE"
-AssertEq "default DNS is AliDNS" "223.5.5.5" "${CUSTOM_DNS[0]}"
+AssertEq "parses the CUSTOM_DNS knob" "223.5.5.5" "${DNS_SERVERS[0]}"
 
-USE_GLOBAL_DNS="true" CollectDNS
-AssertEq "USE_GLOBAL_DNS switches to Google" "8.8.4.4" "${CUSTOM_DNS[0]}"
-unset USE_GLOBAL_DNS
+CUSTOM_DNS="8.8.8.8" CollectDNS
+AssertEq "CUSTOM_DNS is env-overridable" "8.8.8.8" "${DNS_SERVERS[0]}"
 
 printf '== ComputeSwapSize ==\n'
 AssertEq "1 GiB RAM -> 2 GiB swap" "2048" "$(ComputeSwapSize 1024)"
