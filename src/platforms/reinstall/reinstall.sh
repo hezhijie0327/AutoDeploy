@@ -16,6 +16,18 @@ GetUbuntuCodename() {
     esac
 }
 
+MaskFromPrefix() {
+    # /19 -> 255.255.224.0 (dotted quad for the ip= boot parameter).
+    local bits="${1:-24}" full out="" i
+    case "$bits" in '' | *[!0-9]*) bits=24 ;; esac
+    [ "$bits" -le 32 ] || bits=32
+    full=$(( (0xFFFFFFFF << (32 - bits)) & 0xFFFFFFFF ))
+    for i in 24 16 8 0; do
+        out="${out}.$(( (full >> i) & 255 ))"
+    done
+    printf '%s\n' "${out#.}"
+}
+
 # CheckReinstallEnvironment
 # Only Debian/Ubuntu hosts with apt, grub and a supported architecture.
 CheckReinstallEnvironment() {
@@ -43,16 +55,19 @@ CollectReinstallFacts() {
     [ -n "$MGMT_IFACE" ] || Die "no default IPv4 route found"
     MGMT_MAC=$(cat "/sys/class/net/${MGMT_IFACE}/address")
     MGMT_IPV4=$(ip -4 addr show "$MGMT_IFACE" scope global | awk '/inet / {print $2; exit}')
-    MGMT_IPV4_GW=$(ip -4 route show default | awk '{print $3; exit}')
+    MGMT_IPV4_GW=$(ip -4 route show default | awk '$1 == "default" && $2 == "via" {print $3; exit}')
     MGMT_IPV6=$(ip -6 addr show "$MGMT_IFACE" scope global 2>/dev/null | awk '/inet6/ && !/temporary/ {print $2; exit}')
-    MGMT_IPV6_GW=$(ip -6 route show default 2>/dev/null | awk '/default/ {print $3; exit}')
+    MGMT_IPV6_GW=$(ip -6 route show default 2>/dev/null | awk '$1 == "default" && $2 == "via" {print $3; exit}')
     DNS_SERVERS=$(awk '/^nameserver/ {print $2}' /etc/resolv.conf | grep -v '^127\.' | head -n 3 | paste -sd, -)
     [ -n "$DNS_SERVERS" ] || DNS_SERVERS="223.5.5.5,223.6.6.6"
 
     root_source=$(findmnt -no SOURCE /)
     REINSTALL_DISK="/dev/$(lsblk -no PKNAME "$root_source" | head -n 1)"
     [ -b "$REINSTALL_DISK" ] || Die "could not resolve the boot disk from ${root_source}"
-    MAIN_DISK_PTSIGN=$(lsblk -no PTUUID "$REINSTALL_DISK")
+    # head -1: some lsblk versions repeat the parent PTUUID on every tree
+    # row, and the raw multiline value once split the grub linux line into
+    # three lines - grub then executed the bare disk UUID as a command.
+    MAIN_DISK_PTSIGN=$(lsblk -no PTUUID "$REINSTALL_DISK" | head -n 1)
     [ -n "$MAIN_DISK_PTSIGN" ] || Die "disk ${REINSTALL_DISK} has no partition table signature"
 
     # modloop provides the kernel modules (nbd, filesystems) inside Alpine.
@@ -113,12 +128,14 @@ DownloadInstallerFiles() {
     REINSTALL_CLOUD_IMAGE="${IMAGE_MIRROR}/${UBUNTU_CODENAME}/current/${UBUNTU_CODENAME}-server-cloudimg-${OS_ARCHITECTURE}.img"
     ALPINE_REPO="${ALPINE_MIRROR}/latest-stable/main"
 
-    curl -fsSL -o /reinstall-vmlinuz "${ALPINE_BASE}/vmlinuz-${ALPINE_FLAVOUR}"
-    curl -fsSL -o /reinstall-initrd "${ALPINE_BASE}/initramfs-${ALPINE_FLAVOUR}"
-    curl -fsSL -o /reinstall-modloop "${ALPINE_BASE}/modloop-${ALPINE_FLAVOUR}"
+    LogInfo "downloading the alpine kernel (${ALPINE_FLAVOUR})"
+    curl -fL --progress-bar -o /reinstall-vmlinuz "${ALPINE_BASE}/vmlinuz-${ALPINE_FLAVOUR}"
+    LogInfo "downloading the alpine initramfs"
+    curl -fL --progress-bar -o /reinstall-initrd "${ALPINE_BASE}/initramfs-${ALPINE_FLAVOUR}"
+    LogInfo "downloading the phase-2 installer script"
     curl -fsSL -o /reinstall-trans.sh "${REINSTALL_CONFHOME}/trans.sh"
     [ -s /reinstall-trans.sh ] || Die "failed to download the installer script from ${REINSTALL_CONFHOME}/trans.sh"
-    for file in /reinstall-vmlinuz /reinstall-initrd /reinstall-modloop; do
+    for file in /reinstall-vmlinuz /reinstall-initrd; do
         [ -s "$file" ] || Die "failed to download ${file}"
     done
     LogInfo "staged alpine latest-stable (${ALPINE_FLAVOUR}) and Ubuntu ${REINSTALL_RELEASE} (${UBUNTU_CODENAME}) cloud image"
@@ -147,7 +164,8 @@ BuildInstallerInitrd() {
     cp /reinstall-trans.sh "$workdir/trans.sh"
     chmod +x "$workdir/trans.sh"
     awk '
-        { print }
+        # Inject BEFORE the exec line: exec replaces the init process, so
+        # anything printed after it would never run.
         /^exec switch_root/ && !injected {
             print "mkdir -p /sysroot/etc/local.d /sysroot/etc/runlevels/default"
             print "cp /trans.sh /sysroot/etc/local.d/trans.start"
@@ -156,6 +174,7 @@ BuildInstallerInitrd() {
             print "ln -sf /etc/init.d/local /sysroot/etc/runlevels/default/local"
             injected = 1
         }
+        { print }
     ' "$workdir/init" > "$workdir/init.zjdeploy"
     mv "$workdir/init.zjdeploy" "$workdir/init"
     chmod +x "$workdir/init"
@@ -176,6 +195,22 @@ InstallBootEntry() {
     grub-mkconfig -o /boot/grub/grub.cfg > /dev/null
 
     cmdline="quiet"
+    # Alpine netboot bootstrap - without these the initramfs has no
+    # network, cannot fetch alpine-base nor the modloop (the nbd and
+    # filesystem modules live in it) and panics with "can't execute /sbin/init".
+    # ip= follows nfsroot.txt: client:server:gateway:netmask:hostname:
+    # device:autoconf:dns0:dns1:ntp.
+    cmdline="${cmdline} modules=loop,squashfs,sd-mod,usb-storage"
+    cmdline="${cmdline} alpine_repo=${ALPINE_REPO}"
+    cmdline="${cmdline} modloop=${ALPINE_BASE}/modloop-${ALPINE_FLAVOUR}"
+    if [ -n "$MGMT_IPV4" ]; then
+        dns1="${DNS_SERVERS%%,*}"
+        dns2="${DNS_SERVERS#*,}"
+        dns2="${dns2%%,*}"
+        cmdline="${cmdline} ip=${MGMT_IPV4%%/*}::${MGMT_IPV4_GW}:$(MaskFromPrefix "${MGMT_IPV4#*/}")::::${dns1}:${dns2}:"
+    else
+        cmdline="${cmdline} ip=dhcp"
+    fi
     cmdline="${cmdline} extra_img=${REINSTALL_CLOUD_IMAGE}"
     cmdline="${cmdline} extra_repo=${ALPINE_REPO}"
     cmdline="${cmdline} extra_mac=${MGMT_MAC}"
@@ -198,9 +233,13 @@ InstallBootEntry() {
         cmdline="${cmdline} extra_ipv4=${MGMT_IPV4} extra_ipv4_gw=${MGMT_IPV4_GW}"
     fi
     if [ -n "$MGMT_IPV6" ]; then
-        cmdline="${cmdline} extra_ipv6=${MGMT_IPV6} extra_ipv6_gw=${MGMT_IPV6_GW}"
+        cmdline="${cmdline} extra_ipv6=${MGMT_IPV6}"
+        [ -n "$MGMT_IPV6_GW" ] && cmdline="${cmdline} extra_ipv6_gw=${MGMT_IPV6_GW}"
     fi
     cmdline="${cmdline} extra_dns=${DNS_SERVERS}"
+    # Never let a mangled fact smuggle a newline into the grub script - a
+    # split linux line makes grub execute the raw disk UUID as a command.
+    cmdline=$(printf '%s' "$cmdline" | tr '\n' ' ')
 
     {
         printf '%s\n' 'menuentry "ZJDeploy Reinstall" --id zjdeploy-reinstall {'
@@ -214,6 +253,13 @@ InstallBootEntry() {
 }
 
 RenderSummary() {
+    # A fully-resumed run skips every step, so the globals the summary
+    # quotes (codename, disk, credentials) were never set in this run -
+    # and under set -u the old lines aborted the script outright.
+    if [ -z "${UBUNTU_CODENAME:-}" ]; then
+        LogInfo "all steps already complete; the staged reinstall starts on the next reboot"
+        return 0
+    fi
     LogSeparator
     LogInfo "reinstall prepared: Ubuntu ${REINSTALL_RELEASE} (${UBUNTU_CODENAME}) on ${REINSTALL_DISK}"
     LogInfo "login: root"
@@ -241,7 +287,7 @@ CancelReinstall() {
     if HaveCommand grub-editenv && [ -f /boot/grub/grubenv ]; then
         grub-editenv /boot/grub/grubenv unset next_entry || true
     fi
-    rm -f /boot/grub/custom.cfg /reinstall-vmlinuz /reinstall-initrd /reinstall-modloop
+    rm -f /boot/grub/custom.cfg /reinstall-vmlinuz /reinstall-initrd
     rm -f "$(StateFile)"
     LogInfo "staged reinstall cancelled; the host boots its default entry again"
 }

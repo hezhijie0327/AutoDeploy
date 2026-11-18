@@ -21,13 +21,19 @@
 #   extra_efi=      1 when the installed system should boot via UEFI
 #                   (auto-detected, or forced by REINSTALL_BOOT_MODE)
 #   extra_arch=     amd64 | arm64
-#   extra_codename= Ubuntu codename (apt mirror rewrite)
+#   extra_codename= Ubuntu codename of the installed release
 #   extra_partsize= installer staging partition size in MiB
-# /configs (baked into the initramfs) carries password / ssh_keys.
+# The initramfs carries /configs; the injection copies it to
+# /etc/configs in the booted installer, which is what runs.
 # ============================================================================
 
 CMDLINE="$(cat /proc/cmdline)"
 DONE_BANNER=""
+
+# The whole install runs through "main | tee" so the progress is also
+# readable over ssh. busybox ash has no PIPESTATUS and die() then only
+# exits the pipeline's subshell, so it leaves this marker for the tail.
+LOG_FILE="/zjdeploy.log"
 
 log() {
     printf '[ZJDeploy] %s\n' "$*"
@@ -40,6 +46,7 @@ separator() {
 }
 
 die() {
+    : > /zjdeploy.fail
     printf '[ZJDeploy] ERROR: %s\n' "$*" >&2
     exit 1
 }
@@ -97,6 +104,8 @@ setup_network() {
     iface=""
     for sys_path in /sys/class/net/*; do
         dev="${sys_path##*/}"
+        # bonding_masters and friends are pseudo files, not interfaces.
+        [ -d "$sys_path" ] || continue
         [ "$dev" = "lo" ] && continue
         if [ -n "$mgmt_mac" ] && [ "$(cat "$sys_path/address")" = "$mgmt_mac" ]; then
             iface="$dev"
@@ -111,18 +120,17 @@ setup_network() {
     ipv4_addr=$(get_extra ipv4 "")
     ipv4_gw=$(get_extra ipv4_gw "")
     if [ -n "$ipv4_addr" ]; then
-        if ! udhcpc -i "$iface" -q -t 8 -T 2 > /dev/null 2>&1; then
-            log "dhcp failed on ${iface}; falling back to the previous static address"
-        fi
-        if ! ip -4 addr show dev "$iface" | grep -q inet; then
-            ip -4 addr flush dev "$iface"
-            ip -4 addr add "$ipv4_addr" dev "$iface"
-            [ -n "$ipv4_gw" ] && ip -4 route add default via "$ipv4_gw" dev "$iface"
-        fi
-        ip -4 addr show dev "$iface" | grep -q inet || die "no IPv4 address on ${iface}"
+        # The facts were collected from this very machine minutes ago, so
+        # reassert them (the initramfs ip= already did) - running udhcpc
+        # here would move the installer to a lease address and the
+        # operator's ssh target with it.
+        ip -4 addr flush dev "$iface"
+        ip -4 addr add "$ipv4_addr" dev "$iface"
+        [ -n "$ipv4_gw" ] && ip -4 route add default via "$ipv4_gw" dev "$iface"
     else
         udhcpc -i "$iface" -q -t 8 -T 2 > /dev/null 2>&1 || die "dhcp failed on ${iface} and no static IPv4 is known"
     fi
+    ip -4 addr show dev "$iface" | grep -q inet || die "no IPv4 address on ${iface}"
 
     ipv6_addr=$(get_extra ipv6 "")
     ipv6_gw=$(get_extra ipv6_gw "")
@@ -144,6 +152,31 @@ wait_for_upstream() {
         sleep 2
     done
     die "no upstream connectivity via ${repo_url} - check the network and reboot to retry"
+}
+
+# Start dropbear so the operator can watch or repair the install over ssh.
+# Credentials are the same ones the final system gets - /configs is baked
+# into the initramfs by dist/Reinstall.sh (phase 1).
+setup_installer_ssh() {
+    if [ -f /etc/configs/password ]; then
+        chpasswd -e < /etc/configs/password
+    fi
+    if [ -f /etc/configs/ssh_keys ]; then
+        mkdir -p /root/.ssh
+        cp /etc/configs/ssh_keys /root/.ssh/authorized_keys
+        chmod 700 /root/.ssh
+        chmod 600 /root/.ssh/authorized_keys
+    fi
+    # -R generates the host keys on first connection; no openrc involved.
+    # dropbear listens on both families; announce every address it serves.
+    if dropbear -R 2> /dev/null; then
+        addr="root@$(ip -4 addr show "$iface" | awk '/inet / {print $2; exit}' | cut -d/ -f1)"
+        v6=$(ip -6 addr show "$iface" 2> /dev/null | awk '/inet6/ && !/temporary/ {print $2; exit}')
+        [ -n "$v6" ] && addr="${addr} / root@${v6}"
+        log "installer ssh ready: ${addr} (log: tail -f ${LOG_FILE})"
+    else
+        log "installer ssh failed to start; continue on the console"
+    fi
 }
 
 ## Disk helpers
@@ -187,6 +220,21 @@ find_target_disk() {
 # Partition the disk: ESP/bios_grub + root + trailing installer staging area.
 partition_disk() {
     partsize=$(get_extra partsize "2048")
+    # Same-session reruns and manual diagnosis can leave target partitions
+    # mounted; mkfs refuses busy devices, so clear strays first. sort -r
+    # unmounts nested children (e.g. /os/boot/efi) before their parents.
+    # p? covers both naming styles: vda1 vs nvme0n1p1.
+    umount /os/boot/efi /os /img /installer /mnt 2> /dev/null || true
+    disk_name=${target_disk##*/}
+    grep -oE "^/dev/${disk_name}p?[0-9]* [^ ]*" /proc/mounts | cut -d" " -f2 | sort -r |
+        while IFS= read -r mp; do
+            umount "$mp" 2> /dev/null || true
+        done
+    # Absolute MiB positions instead of negative sizes: getopt keeps
+    # scanning arguments after the device name, so '-2048MiB' was eaten as
+    # a short-option cluster and both mkpart calls died.
+    disk_mib=$(( $(cat "/sys/block/${target_disk##*/}/size") * 512 / 1048576 ))
+    part_end=$(( disk_mib - partsize ))
     parted -s "$target_disk" mklabel gpt
     if [ "$(get_extra efi 0)" = "1" ]; then
         parted -s "$target_disk" mkpart esp fat32 1MiB 101MiB
@@ -197,12 +245,15 @@ partition_disk() {
         parted -s "$target_disk" set 1 bios_grub on
         root_start="2MiB"
     fi
-    parted -s "$target_disk" mkpart root ext4 "$root_start" "-${partsize}MiB"
-    parted -s "$target_disk" mkpart installer ext4 "-${partsize}MiB" 100%
+    parted -s "$target_disk" mkpart root ext4 "$root_start" "${part_end}MiB"
+    parted -s "$target_disk" mkpart installer ext4 "${part_end}MiB" 100%
     partprobe "$target_disk"
     sleep 1
+    # devtmpfs occasionally skips partition nodes after a re-scan (vda1
+    # vanished while vda2/vda3 existed); mdev -s rebuilds them from sysfs.
+    mdev -s 2> /dev/null || true
     installer_part=$(part_dev "$target_disk" 3)
-    mkfs.ext4 -F -L installer "$installer_part" > /dev/null 2>&1 || die "mkfs.ext4 on the installer partition failed"
+    mkfs.ext4 -F -L installer "$installer_part" || die "mkfs.ext4 on the installer partition failed"
     mkdir -p /installer
     mount "$installer_part" /installer || die "cannot mount the installer partition"
 }
@@ -227,8 +278,10 @@ attach_and_probe_image() {
     img_root_part=""
     img_boot_part=""
     img_efi_part=""
-    for part_num in 1 2 3 4 5; do
-        part="/dev/nbd0p${part_num}"
+    # Iterate every partition: ubuntu cloud images keep their ESP at
+    # partition 15 and a bios_grub filler at 14, so a 1..5 loop silently
+    # missed the ESP and the installed system lost its bootloader.
+    for part in /dev/nbd0p[0-9]*; do
         [ -b "$part" ] || continue
         kind=$(probe_image_partition "$part")
         case "$kind" in
@@ -250,8 +303,8 @@ format_and_copy() {
     mkfs_args=""
     [ -n "$root_uuid" ] && mkfs_args="-U $root_uuid"
     [ -n "$root_label" ] && mkfs_args="$mkfs_args -L $root_label"
-    mkfs.ext4 -F $mkfs_args "$root_part" > /dev/null 2>&1 || die "mkfs.ext4 on ${root_part} failed"
     mkdir -p /os
+    mkfs.ext4 -F $mkfs_args "$root_part" || die "mkfs.ext4 on ${root_part} failed"
     mount "$root_part" /os || die "cannot mount the new root partition"
 
     if [ -n "$img_boot_part" ]; then
@@ -263,7 +316,7 @@ format_and_copy() {
     fi
     if [ "$(get_extra efi 0)" = "1" ]; then
         esp_part=$(part_dev "$target_disk" 1)
-        mkfs.vfat -F 32 -n ESP "$esp_part" > /dev/null 2>&1 || die "mkfs.vfat on ${esp_part} failed"
+        mkfs.vfat -F 32 -n ESP "$esp_part" || die "mkfs.vfat on ${esp_part} failed"
         mkdir -p /os/boot/efi
         mount "$esp_part" /os/boot/efi || die "cannot mount the ESP"
         if [ -n "$img_efi_part" ]; then
@@ -272,6 +325,20 @@ format_and_copy() {
             cp -a /img/. /os/boot/efi/
             umount /img
         fi
+        # Without the image's signed grub the ESP stays empty and the
+        # firmware drops into its setup UI on the next boot.
+        find /os/boot/efi -iname '*.efi' | grep -q . || die "the cloud image carries no esp to copy"
+        # The image's own grub.cfg keys the root on its PARTUUID, which a
+        # fresh partition table does not preserve - rewrite both copies to
+        # look the root up by filesystem UUID (kept verbatim above).
+        for cfg_dir in /os/boot/efi/EFI/ubuntu /os/boot/efi/EFI/BOOT; do
+            if [ -d "$cfg_dir" ]; then
+                printf '%s\n' \
+                    "search --no-floppy --set=root --fs-uuid ${root_uuid}" \
+                    "set prefix=(\$root)'/boot/grub'" \
+                    'configfile $prefix/grub.cfg' > "$cfg_dir/grub.cfg"
+            fi
+        done
     fi
 
     mkdir -p /img
@@ -283,7 +350,7 @@ format_and_copy() {
 
 # Configure the freshly copied system inside a chroot.
 chroot_configure() {
-    codename=$(get_extra codename "noble")
+    codename=$(get_extra codename "resolute")
     arch=$(get_extra arch "amd64")
     for mount_path in dev proc sys run; do
         mkdir -p "/os/${mount_path}"
@@ -307,8 +374,14 @@ chroot_configure() {
     done
 
     # Credentials: hashed password and/or ssh keys baked into /configs.
-    if [ -f /configs/password ]; then
-        chroot /os chpasswd -e < /configs/password
+    if [ -f /etc/configs/password ]; then
+        chroot /os chpasswd -e < /etc/configs/password
+        # Cloud images ship sshd_config.d snippets (60-cloudimg-settings.conf
+        # sets PasswordAuthentication no); sshd keeps the first value it reads
+        # and sshd_config.d is included before the main file, so the snippets
+        # would override the sed below. Clear them like ConfigureSshd does in
+        # the deployment scripts.
+        rm -f /os/etc/ssh/sshd_config.d/*.conf
         sed -i -E \
             -e 's/^#?PermitRootLogin .*/PermitRootLogin yes/' \
             -e 's/^#?PasswordAuthentication .*/PasswordAuthentication yes/' \
@@ -317,15 +390,15 @@ chroot_configure() {
         grep -q '^PasswordAuthentication' /os/etc/ssh/sshd_config || printf '%s\n' 'PasswordAuthentication yes' >> /os/etc/ssh/sshd_config
         log "root password applied; ssh password login enabled"
     fi
-    if [ -f /configs/ssh_keys ]; then
+    if [ -f /etc/configs/ssh_keys ]; then
         mkdir -p /os/root/.ssh
-        cp /configs/ssh_keys /os/root/.ssh/authorized_keys
+        cp /etc/configs/ssh_keys /os/root/.ssh/authorized_keys
         chmod 700 /os/root/.ssh
         chmod 600 /os/root/.ssh/authorized_keys
         chown root:root /os/root/.ssh /os/root/.ssh/authorized_keys
         log "ssh keys installed for root"
     fi
-    if [ ! -f /configs/password ] && [ -f /os/root/.ssh/authorized_keys ]; then
+    if [ ! -f /etc/configs/password ] && [ -f /os/root/.ssh/authorized_keys ]; then
         chroot /os passwd -l root > /dev/null 2>&1 || true
         log "key-only install: root password locked"
     fi
@@ -349,8 +422,11 @@ chroot_configure() {
     if [ -n "$ipv4_addr" ]; then
         addr_lines="${addr_lines}        - ${ipv4_addr}"$'\n'
         if [ -n "$ipv4_gw" ]; then
+            # on-link keeps the route usable when the gateway is outside the
+            # interface subnet (VPS /32, /30); harmless when it is not.
             route_lines="${route_lines}        - to: 0.0.0.0/0"$'\n'
             route_lines="${route_lines}          via: ${ipv4_gw}"$'\n'
+            route_lines="${route_lines}          on-link: true"$'\n'
         fi
     fi
     if [ -n "$ipv6_addr" ]; then
@@ -358,6 +434,7 @@ chroot_configure() {
         if [ -n "$ipv6_gw" ]; then
             route_lines="${route_lines}        - to: ::/0"$'\n'
             route_lines="${route_lines}          via: ${ipv6_gw}"$'\n'
+            route_lines="${route_lines}          on-link: true"$'\n'
         fi
     fi
     {
@@ -393,24 +470,33 @@ chroot_configure() {
         fi
     } > /os/etc/fstab
 
-    # Bootloader: reinstall grub so NVRAM/MBR reference this disk for sure.
+    # Bootloader: on EFI, chroot grub-install is the canonical writer -
+    # it lays down the shim+grub pair and registers the NVRAM entry. The
+    # image's ESP (copied in format_and_copy) stays underneath as a
+    # fallback, and the installer env re-registers the entry if the chroot
+    # could not (missing efibootmgr). BIOS still installs grub to the MBR
+    # gap.
     if [ "$(get_extra efi 0)" = "1" ]; then
+        # Wipe every firmware entry (template leftovers, previous installs)
+        # before the new one is written.
+        for entry in $(efibootmgr 2> /dev/null | awk '$1 ~ /^Boot[0-9]/ {print $1}'); do
+            bootnum="${entry#Boot}"
+            bootnum="${bootnum%\*}"
+            efibootmgr --delete-bootnum --bootnum "$bootnum" > /dev/null 2>&1 || true
+        done
         case "$arch" in
             arm64) grub_target="arm64-efi" ;;
             *) grub_target="x86_64-efi" ;;
         esac
-        if [ -d /sys/firmware/efi ]; then
-            chroot /os grub-install "--target=${grub_target}" --efi-directory=/boot/efi --bootloader-id=ubuntu --recheck > /dev/null 2>&1 || die "grub-install (efi) failed"
-        else
-            # Forced-EFI install from a CSM-booted host: efivarfs is
-            # absent, so no NVRAM entry can be registered - the operator
-            # must switch the firmware to UEFI boot by hand after reboot.
-            log "WARNING: no efivars (CSM boot); the firmware must be switched to UEFI boot manually after reboot"
+        if ! chroot /os grub-install "--target=${grub_target}" --efi-directory=/boot/efi \
+            --bootloader-id=ubuntu --recheck > /dev/null 2>&1; then
+            log "WARNING: chroot grub-install (efi) failed; relying on the copied image ESP"
         fi
-        # The removable fallback (\EFI\BOOT\BOOTX64.EFI) boots even when
-        # the NVRAM entry is missing (forced install) or wiped (firmware
-        # reset); the image carries grub-efi-*-bin, so this always works.
-        chroot /os grub-install "--target=${grub_target}" --efi-directory=/boot/efi --removable --recheck > /dev/null 2>&1 || die "grub-install (efi, removable) failed"
+        # Belt: re-register the entry from the installer env when the
+        # chroot could not (no efibootmgr inside the image).
+        efibootmgr 2> /dev/null | grep -qi ubuntu || \
+            efibootmgr --create --disk "$target_disk" --part 1 \
+                --label ubuntu --loader '\EFI\ubuntu\shimx64.efi' > /dev/null 2>&1 || true
     else
         chroot /os grub-install --target=i386-pc --recheck "$target_disk" > /dev/null 2>&1 || die "grub-install (bios) failed"
     fi
@@ -438,36 +524,54 @@ resize_rootfs() {
 }
 
 ## Process
-log "installer started: $(date -u '+%Y-%m-%d %H:%M:%S UTC')"
-# Last-second escape hatch: typing CANCEL on the console within 10s aborts
-# and reboots back to the old system - the disk is untouched until
-# partition_disk. Unattended boots fall through after the timeout; stdin
-# must be /dev/console because OpenRC services have no controlling terminal.
-printf '%s' 'Reinstall starts in 10s - type CANCEL to abort: '
-if read -t 10 answer < /dev/console && [ "$answer" = "CANCEL" ]; then
-    log "cancelled; rebooting back to the old system"
-    sync
+main() {
+    log "installer started: $(date -u '+%Y-%m-%d %H:%M:%S UTC')"
+    # Last-second escape hatch: typing CANCEL on the console within 10s aborts
+    # and reboots back to the old system - the disk is untouched until
+    # partition_disk. Unattended boots fall through after the timeout; stdin
+    # must be /dev/console because OpenRC services have no controlling terminal.
+    printf '%s' 'Reinstall starts in 10s - type CANCEL to abort: '
+    if read -t 10 answer < /dev/console && [ "$answer" = "CANCEL" ]; then
+        log "cancelled; rebooting back to the old system"
+        sync
+        reboot
+        exit 0
+    fi
+    printf '%s\n' ''
+    setup_network
+    apk_arch=$(get_extra arch "amd64")
+    case "$apk_arch" in
+        arm64) apk_arch="aarch64" ;;
+        *) apk_arch="x86_64" ;;
+    esac
+    repo_url=$(get_extra repo "http://mirrors.cernet.edu.cn/alpine/latest-stable/main")
+    printf '%s\n' "$repo_url" > /etc/apk/repositories
+    # qemu-img lives in community, not main; derive the sibling repo from the
+    # main URL the same way the upstream installer does.
+    printf '%s\n' "${repo_url%/main}/community" >> /etc/apk/repositories
+    wait_for_upstream "$repo_url" "$apk_arch"
+    # Output stays visible: it is tee'd into $LOG_FILE and apk failures
+    # used to be invisible behind a redirect here.
+    apk add --no-cache parted e2fsprogs e2fsprogs-extra dosfstools util-linux qemu-img dropbear efibootmgr || die "apk install failed"
+    setup_installer_ssh
+    find_target_disk
+    partition_disk
+    download_image
+    attach_and_probe_image
+    format_and_copy
+    chroot_configure
+    resize_rootfs
+    log "============================================================"
+    log "Ubuntu installed successfully; rebooting into the new system"
+    log "============================================================"
+    sleep 3
     reboot
+}
+
+# tee also writes /dev/console: openrc swallows service stdout, so without
+# it the install would only ever be visible in the log file.
+main 2>&1 | tee "$LOG_FILE" /dev/console
+if [ -f /zjdeploy.fail ]; then
+    exit 1
 fi
-printf '%s\n' ''
-setup_network
-apk_arch=$(get_extra arch "amd64")
-case "$apk_arch" in
-    arm64) apk_arch="aarch64" ;;
-    *) apk_arch="x86_64" ;;
-esac
-repo_url=$(get_extra repo "http://mirrors.cernet.edu.cn/alpine/latest-stable/main")
-printf '%s\n' "$repo_url" > /etc/apk/repositories
-wait_for_upstream "$repo_url" "$apk_arch"
-apk add --no-cache parted e2fsprogs e2fsprogs-extra dosfstools util-linux qemu-img > /dev/null 2>&1 || die "apk install failed"
-find_target_disk
-partition_disk
-download_image
-attach_and_probe_image
-format_and_copy
-chroot_configure
-resize_rootfs
-log "============================================================"
-log "Ubuntu installed successfully; reboot to boot the new system"
-log "============================================================"
 exit 0

@@ -273,8 +273,10 @@ Each orchestration leaf runs through `RunStep "<id>" <function>`. A step is appe
 - Target releases are LTS-only (20.04 / 22.04 / 24.04 / 26.04), mapped to codenames in `GetUbuntuCodename`
 - Boot mode (`REINSTALL_BOOT_MODE`) defaults to following the running host; forcing `efi` from a CSM-booted host skips NVRAM registration (no efivarfs) and needs the firmware switched to UEFI by hand afterwards; the EFI bootloader is always also installed to the removable fallback path (`\EFI\BOOT\BOOTX64.EFI`) so it survives NVRAM wipes
 - Phase 2 (`src/platforms/reinstall/trans.sh`) partitions the disk (ESP/bios_grub + root + trailing installer staging partition), copies the Ubuntu cloud image out of a qemu-nbd-attached qcow2 (never dd — 24.04+ images carry a separate /boot partition), and preserves the root UUID/label so baked-in grub references stay valid
+- The target root filesystem is ext4 only: the image content is copied onto a freshly formatted partition that preserves the image's UUID/label, and the ESP carries the image's own signed shim+grub (copied from the image's ESP, partition 15 on ubuntu cloud images) with a matching efibootmgr entry - mirroring the upstream reinstall project
 - All installer-phase mirrors use http, not https: the Alpine RAM system may boot with an unsynced clock, which breaks TLS certificate validation
 - The netplan written into the new system matches the NIC by MAC address and re-applies the previous IPv4/IPv6 addressing
+- The installer starts dropbear (same credentials as the final system, from the baked-in /configs) and tees its log to /zjdeploy.log (/zjdeploy.fail marks a failed run) so the install can be watched or repaired over ssh; the CANCEL abort stays console-only
 - Cloud-init is disabled (`/etc/cloud/cloud-init.disabled`); run the matching deployment script after the first boot for full ZJDeploy configuration
 - Requires a real-machine test round before trusting: GRUB one-time entry, initramfs init injection, and netplan replay are environment-sensitive
 
@@ -325,6 +327,8 @@ curl "https://source.zhijie.online/ZJDeploy/main/dist/SCRIPT.sh" | sudo bash
 ```
 
 `Reinstall.sh` additionally accepts `REINSTALL_RELEASE` and `REINSTALL_PASSWORD` and wipes the machine on the next reboot — read the Platform-Specific Considerations first.
+
+`REINSTALL_*` knobs must be passed as `sudo VAR=value bash Reinstall.sh` (or `curl ... | sudo VAR=value bash`): sudo strips exported environment variables, so `export VAR && sudo bash` silently runs with defaults.
 
 ## Key Docs
 

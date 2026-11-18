@@ -47,11 +47,11 @@ curl "https://source.zhijie.online/ZJDeploy/main/dist/<脚本名>.sh" | sudo bas
 /bin/bash -c "$(curl -fsSL 'https://source.zhijie.online/ZJDeploy/main/dist/macOS.sh')"
 ```
 
-网络重装指定版本与密码（默认生成随机 root 密码并打印）：
+网络重装指定版本与密码（默认生成随机 root 密码并打印）。注意 `sudo` 会过滤 export 的环境变量，变量必须以 `sudo VAR=...` 形式直接传给 bash：
 
 ```bash
-REINSTALL_RELEASE='26.04' REINSTALL_PASSWORD='MyS3cure!Pass' \
-  curl "https://source.zhijie.online/ZJDeploy/main/dist/Reinstall.sh" | sudo bash
+curl "https://source.zhijie.online/ZJDeploy/main/dist/Reinstall.sh" \
+  | sudo REINSTALL_RELEASE='26.04' REINSTALL_PASSWORD='MyS3cure!Pass' bash
 ```
 
 ## 配置
@@ -150,6 +150,8 @@ curl "https://source.zhijie.online/ZJDeploy/main/dist/Ubuntu.sh" | sudo bash
 | `REINSTALL_BOOT_MODE` | `auto` | 目标系统引导方式：`auto` 跟随源系统；`efi` / `bios` 强制指定。**BIOS 转 EFI 需固件支持 UEFI**，且 CSM 启动下安装器写不了 NVRAM，重装后需手动进固件切换 UEFI 启动 |
 
 流程：脚本在本机备好 Alpine netboot 内核与安装器（写入 initramfs），注册一次性 GRUB 引导项；重启后自动分区、下载 Ubuntu 云镜像并复制安装、按原网卡 MAC 还原网络配置、写入密码 / 密钥并禁用 cloud-init。**目标磁盘会被清空**，仅支持 Ubuntu 源系统、GRUB 引导。重装完成后建议再跑一次 `dist/Ubuntu.sh` 完成完整配置。
+
+安装期间可通过 SSH（root，凭据与最终系统相同）连入安装器查看进度：日志实时写入安装器内的 `/zjdeploy.log`（失败时留有 `/zjdeploy.fail` 标记），装坏也能进 SSH 手动排查。
 
 取消：重启前任何时刻跑 `REINSTALL_CANCEL=true ... Reinstall.sh` 即可撤销（清除一次性引导项与安装文件）；重启进安装器后的最初 10 秒内在**控制台**输入 `CANCEL` 也会中止并回退到原系统（此时尚未动盘），无人值守超时后自动继续。
 
