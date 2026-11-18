@@ -124,7 +124,7 @@ Deployment scripts share the same phases: system information gathering → repos
 # Regenerate dist/ scripts from src/ (run after every source change)
 ./build.sh
 
-# Full validation: bash -n + shellcheck + step-count + build freshness
+# Full validation: bash -n + shellcheck + step-count + dependency order + build freshness
 ./lint.sh
 
 # Unit tests for pure functions (runs on bash 3.2 and 5.x)

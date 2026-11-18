@@ -85,7 +85,9 @@ ConfigureSNMPBase() {
     fi
     SNMP_SYS_CONTACT="${DEFAULT_FULLNAME}"
     SNMP_SYS_LOCATION="${NEW_HOSTNAME}"
-    SNMP_SYS_NAME="${NEW_FULL_DOMAIN}"
+    # NEW_FULL_DOMAIN only exists on DSM (its domain pipeline is not part
+    # of the ubuntu flow) - fall back to the plain hostname.
+    SNMP_SYS_NAME="${NEW_FULL_DOMAIN:-${NEW_HOSTNAME}}"
     local snmp_list=(
         "agentaddress udp:161,udp6:161"
         "master agentx"

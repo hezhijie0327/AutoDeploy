@@ -6,6 +6,7 @@
 #   1. bash -n syntax check on every shell file
 #   2. shellcheck on the generated single-file scripts (if installed)
 #   3. generated dist/ scripts match a fresh build (no forgotten rebuilds)
+#   4. dependency-order check on the generated scripts (needs python3)
 
 set -Eeuo pipefail
 cd "$(dirname "$0")" || exit 1
@@ -47,6 +48,19 @@ for file in dist/DSM.sh dist/macOS.sh dist/Ubuntu.sh dist/ProxmoxVE.sh dist/Rein
         status=1
     fi
 done
+
+printf '\n== dependency order ==\n'
+if command -v python3 > /dev/null 2>&1; then
+    if python3 tests/check_dependencies.py \
+        dist/DSM.sh dist/macOS.sh dist/Ubuntu.sh dist/ProxmoxVE.sh dist/Reinstall.sh; then
+        printf 'ok   dependency order\n'
+    else
+        printf 'FAIL dependency order\n'
+        status=1
+    fi
+else
+    printf 'skipped (python3 not installed)\n'
+fi
 
 printf '\n== build freshness ==\n'
 tmpdir=$(mktemp -d)
