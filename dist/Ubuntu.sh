@@ -2109,8 +2109,9 @@ ConfigureSystem() {
         rm -f "/etc/localtime"
         ln -s "/usr/share/zoneinfo/Asia/Shanghai" "/etc/localtime"
     }
-    RunStep "ConfigureDefaultShell" ConfigureDefaultShell
+    # The user must exist before its login shell is modified.
     RunStep "ConfigureDefaultUser" ConfigureDefaultUser
+    RunStep "ConfigureDefaultShell" ConfigureDefaultShell
     RunStep "ConfigureGAI" ConfigureGAI
     RunStep "ConfigureHostfile" ConfigureHostfile
     RunStep "ConfigureLocales" ConfigureLocales

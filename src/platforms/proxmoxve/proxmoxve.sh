@@ -421,8 +421,9 @@ ConfigureSystem() {
         CreateZRamSWAP
         UpdateFSTAB
     }
-    RunStep "ConfigureDefaultShell" ConfigureDefaultShell
+    # The user must exist before its login shell is modified.
     RunStep "ConfigureDefaultUser" ConfigureDefaultUser
+    RunStep "ConfigureDefaultShell" ConfigureDefaultShell
     RunStep "ConfigureGAI" ConfigureGAI
     RunStep "ConfigureHostfile" ConfigureHostfile
     RunStep "ConfigureProxmoxVENode" ConfigureProxmoxVENode
