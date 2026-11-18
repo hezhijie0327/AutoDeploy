@@ -1319,13 +1319,21 @@ deb-src [arch=${OS_ARCHITECTURE:-amd64} signed-by=/usr/share/keyrings/crowdsec-a
 ConfigureSshd() {
     [ -f /usr/share/openssh/sshd_config ] || return 0
     sed -E \
-        -e "s/^#?Port .*/Port ${SSH_PORT:-22}/" \
+        -e '/^#?[[:space:]]*Port[[:space:]]/d' \
         -e 's/^#?PasswordAuthentication .*/PasswordAuthentication yes/' \
         -e 's/^#?PermitRootLogin .*/PermitRootLogin yes/' \
         -e 's/^#?PubkeyAuthentication .*/PubkeyAuthentication yes/' \
         /usr/share/openssh/sshd_config > /etc/ssh/sshd_config
-    grep -q '^Port ' /etc/ssh/sshd_config || printf 'Port %s\n' "${SSH_PORT:-22}" >> /etc/ssh/sshd_config
+    printf 'Port %s\n' "${SSH_PORT:-22}" >> /etc/ssh/sshd_config
     rm -f /etc/ssh/sshd_config.d/*
+    # Ubuntu 25.10+/PVE 9: sshd runs behind ssh.socket, and after changing
+    # Port the socket configuration must be regenerated and the socket
+    # restarted (the notice in the vendor sshd_config documents exactly
+    # this); restarting the service alone does not move the port.
+    if systemctl is-enabled ssh.socket > /dev/null 2>&1 || systemctl is-active ssh.socket > /dev/null 2>&1; then
+        systemctl daemon-reload
+        systemctl restart ssh.socket
+    fi
 }
 
 # Platform wrapper sets SNMP_USER, then calls this.
