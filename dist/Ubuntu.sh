@@ -162,7 +162,7 @@ DEPENDENCY_PACKAGES_BASE=(
 # ============================================================================
 
 ## Resume / progress
-AUTODEPLOY_STEP_TOTAL=49 # must match the RunStep count (lint.sh checks)
+AUTODEPLOY_STEP_TOTAL=51 # must match the RunStep count (lint.sh checks)
 
 ## Credentials
 DEFAULT_PASSWORD_DEFAULT='*Ubuntu123*' # baseline for the default-password warning
@@ -176,6 +176,8 @@ DEFAULT_LASTNAME="${DEFAULT_LASTNAME:-Ubuntu}"
 ## Behavior switches
 DISABLE_SWAP="${DISABLE_SWAP:-false}"
 XANMOD_BRANCH="${XANMOD_BRANCH:-edge}" # disable | main | edge | lts | rt
+INSTALL_CLOUDFLARE_WARP="${INSTALL_CLOUDFLARE_WARP:-false}" # install cloudflare-warp from the Cloudflare repo
+INSTALL_TOR="${INSTALL_TOR:-false}" # install tor from the torproject repo
 SSH_PORT="${SSH_PORT:-9022}" # sshd listen port (fail2ban jail + ufw follow this)
 COCKPIT_PORT="${COCKPIT_PORT:-9090}" # cockpit web UI port (cockpit.socket override)
 
@@ -2066,11 +2068,13 @@ ConfigureSystem() {
 # Install Custom Packages
 InstallCustomPackages() {
     InstallCloudflareWARP() {
+        [ "$INSTALL_CLOUDFLARE_WARP" = "true" ] || { LogInfo "INSTALL_CLOUDFLARE_WARP=false - skipped"; return 0; }
         InstallAptRepo "cloudflare-warp" "https://pkg.cloudflareclient.com/pubkey.gpg" \
             "deb [arch=${OS_ARCHITECTURE} signed-by=/usr/share/keyrings/cloudflare-warp-archive-keyring.gpg] https://pkg.cloudflareclient.com ${LSB_CODENAME} main"
         InstallAptPackages "cloudflare-warp"
     }
     InstallTor() {
+        [ "$INSTALL_TOR" = "true" ] || { LogInfo "INSTALL_TOR=false - skipped"; return 0; }
         InstallAptRepo "tor" "https://deb.torproject.org/torproject.org/A3C4F0F979CAA22CDBA8F512EE8CBC9E886DDD89.asc" \
             "deb [arch=${OS_ARCHITECTURE} signed-by=/usr/share/keyrings/tor-archive-keyring.gpg] https://deb.torproject.org/torproject.org stable main"
         InstallAptPackages "tor"
@@ -2104,12 +2108,12 @@ InstallCustomPackages() {
     }
     OMZ_HOME="/home/${DEFAULT_USERNAME}"
     OMZ_OWNER="${DEFAULT_USERNAME}:${DEFAULT_USERNAME}"
-    #RunStep "InstallCloudflareWARP" InstallCloudflareWARP
+    RunStep "InstallCloudflareWARP" InstallCloudflareWARP
     RunStep "InstallCrowdSec" InstallCrowdSec
     RunStep "InstallDockerEngine" InstallDockerEngine
     RunStep "InstallFRRouting" InstallFRRouting
     RunStep "InstallOhMyZsh" InstallOhMyZsh
-    #RunStep "InstallTor" InstallTor
+    RunStep "InstallTor" InstallTor
     RunStep "InstallXanModKernel" InstallXanModKernel
 }
 

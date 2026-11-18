@@ -6,7 +6,7 @@
 # ============================================================================
 
 ## Resume / progress
-AUTODEPLOY_STEP_TOTAL=49 # must match the RunStep count (lint.sh checks)
+AUTODEPLOY_STEP_TOTAL=51 # must match the RunStep count (lint.sh checks)
 
 ## Credentials
 DEFAULT_PASSWORD_DEFAULT='*Ubuntu123*' # baseline for the default-password warning
@@ -20,6 +20,8 @@ DEFAULT_LASTNAME="${DEFAULT_LASTNAME:-Ubuntu}"
 ## Behavior switches
 DISABLE_SWAP="${DISABLE_SWAP:-false}"
 XANMOD_BRANCH="${XANMOD_BRANCH:-edge}" # disable | main | edge | lts | rt
+INSTALL_CLOUDFLARE_WARP="${INSTALL_CLOUDFLARE_WARP:-false}" # install cloudflare-warp from the Cloudflare repo
+INSTALL_TOR="${INSTALL_TOR:-false}" # install tor from the torproject repo
 SSH_PORT="${SSH_PORT:-9022}" # sshd listen port (fail2ban jail + ufw follow this)
 COCKPIT_PORT="${COCKPIT_PORT:-9090}" # cockpit web UI port (cockpit.socket override)
 

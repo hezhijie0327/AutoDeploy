@@ -90,6 +90,8 @@ REINSTALL_RELEASE='24.04' REINSTALL_PASSWORD='MyS3cure!Pass' \
 | `ZFS_ARC_MAX` | `1` | ZFS ARC 上限，GiB（PVE） |
 | `I915_GUC_OPTION` | `3` | i915 GuC/HuC 加载策略：0 关闭 / 1 GuC / 2 HuC / 3 GuC+HuC |
 | `NUT_MODE` / `NUT_HOST` / `UPS_NAME` | `none` / `localhost` / `ups` | NUT UPS 模式、服务端地址（netclient 模式）、设备名 |
+| `INSTALL_CLOUDFLARE_WARP` / `INSTALL_TOR` | `false` | 安装 cloudflare-warp / tor（Ubuntu，env 置 `true` 启用） |
+| `INSTALL_APP_FROM_CASK` / `INSTALL_APP_FROM_MAS` | `false` | 安装 CASK_APPS / MAS_APPS 应用列表（macOS；MAS 需先登录 App Store） |
 | `SSH_PORT` | `9022`（Ubuntu）/ `22`（PVE） | sshd 监听端口，fail2ban jail 与 ufw 规则联动（PVE 保持 22 以兼容集群内部 SSH） |
 | `COCKPIT_PORT` | `9090` | Cockpit Web UI 端口（Ubuntu，自动生成 cockpit.socket 覆盖） |
 
