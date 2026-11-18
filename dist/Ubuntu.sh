@@ -57,9 +57,6 @@ NUT_MON_PASSWORD="${NUT_MON_PASSWORD:-secret}"
 SNMP_AUTH_PASS="${SNMP_AUTH_PASS:-}" # empty -> root password (warns)
 SNMP_PRIV_PASS="${SNMP_PRIV_PASS:-}" # empty -> hostname (warns)
 
-## Identity
-DEFAULT_FIRSTNAME="${DEFAULT_FIRSTNAME:-User}"
-
 ## Behavior switches
 PURGE_OTHER_USERS="${PURGE_OTHER_USERS:-true}" # remove other /home users (fresh-install assumption)
 RESET_DOMAIN="${RESET_DOMAIN:-false}"
@@ -173,6 +170,7 @@ DEFAULT_PASSWORD="${DEFAULT_PASSWORD:-${DEFAULT_PASSWORD_DEFAULT}}"
 
 ## Identity
 DEFAULT_USERNAME="${DEFAULT_USERNAME:-ubuntu}"
+DEFAULT_FIRSTNAME="${DEFAULT_FIRSTNAME:-User}"
 DEFAULT_LASTNAME="${DEFAULT_LASTNAME:-Ubuntu}"
 HOSTNAME_PREFIX="${HOSTNAME_PREFIX:-Ubuntu}"
 
