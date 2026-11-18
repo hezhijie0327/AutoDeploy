@@ -145,6 +145,7 @@ curl "https://source.zhijie.online/AutoDeploy/main/dist/Ubuntu.sh" | sudo bash
 | `REINSTALL_SSH_KEYS` | 复用本机 root 公钥 | authorized_keys 内容或文件路径 |
 | `REINSTALL_INSTALLER_PART_SIZE_MB` | `2048` | 安装暂存分区大小 |
 | `REINSTALL_CANCEL` | `false` | `true` 时撤销已 staged 的重装：清除一次性 GRUB 引导项、删除安装文件并重置状态，然后退出 |
+| `REINSTALL_BOOT_MODE` | `auto` | 目标系统引导方式：`auto` 跟随源系统；`efi` / `bios` 强制指定。**BIOS 转 EFI 需固件支持 UEFI**，且 CSM 启动下安装器写不了 NVRAM，重装后需手动进固件切换 UEFI 启动 |
 
 流程：脚本在本机备好 Alpine netboot 内核与安装器（写入 initramfs），注册一次性 GRUB 引导项；重启后自动分区、下载 Ubuntu 云镜像并复制安装、按原网卡 MAC 还原网络配置、写入密码 / 密钥并禁用 cloud-init。**目标磁盘会被清空**，仅支持 Ubuntu 源系统、GRUB 引导。重装完成后建议再跑一次 `dist/Ubuntu.sh` 完成完整配置。
 

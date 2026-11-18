@@ -184,7 +184,16 @@ InstallBootEntry() {
     cmdline="${cmdline} extra_arch=${OS_ARCHITECTURE}"
     cmdline="${cmdline} extra_codename=${UBUNTU_CODENAME}"
     cmdline="${cmdline} extra_partsize=${REINSTALL_INSTALLER_PART_SIZE_MB}"
-    cmdline="${cmdline} extra_efi=$([ -d /sys/firmware/efi ] && echo 1 || echo 0)"
+    # Boot mode: auto follows the running host; efi/bios force it (only
+    # sane when the firmware actually supports the chosen mode - a forced
+    # efi on a CSM-booted host skips NVRAM registration, see trans.sh).
+    case "${REINSTALL_BOOT_MODE:-auto}" in
+        auto) extra_efi=$([ -d /sys/firmware/efi ] && echo 1 || echo 0) ;;
+        efi) extra_efi=1 ;;
+        bios) extra_efi=0 ;;
+        *) Die "REINSTALL_BOOT_MODE must be auto, efi or bios" ;;
+    esac
+    cmdline="${cmdline} extra_efi=${extra_efi}"
     if [ -n "$MGMT_IPV4" ]; then
         cmdline="${cmdline} extra_ipv4=${MGMT_IPV4} extra_ipv4_gw=${MGMT_IPV4_GW}"
     fi

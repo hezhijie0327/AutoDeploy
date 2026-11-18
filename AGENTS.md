@@ -268,6 +268,7 @@ Each orchestration leaf runs through `RunStep "<id>" <function>`. A step is appe
 ### Reinstall.sh
 - Ubuntu-only source host (needs apt + GRUB); the target disk is located by partition-table UUID and wiped on the next reboot
 - Target releases are LTS-only (20.04 / 22.04 / 24.04 / 26.04), mapped to codenames in `GetUbuntuCodename`
+- Boot mode (`REINSTALL_BOOT_MODE`) defaults to following the running host; forcing `efi` from a CSM-booted host skips NVRAM registration (no efivarfs) and needs the firmware switched to UEFI by hand afterwards; the EFI bootloader is always also installed to the removable fallback path (`\EFI\BOOT\BOOTX64.EFI`) so it survives NVRAM wipes
 - Phase 2 (`src/platforms/reinstall/trans.sh`) partitions the disk (ESP/bios_grub + root + trailing installer staging partition), copies the Ubuntu cloud image out of a qemu-nbd-attached qcow2 (never dd — 24.04+ images carry a separate /boot partition), and preserves the root UUID/label so baked-in grub references stay valid
 - All installer-phase mirrors use http, not https: the Alpine RAM system may boot with an unsynced clock, which breaks TLS certificate validation
 - The netplan written into the new system matches the NIC by MAC address and re-applies the previous IPv4/IPv6 addressing

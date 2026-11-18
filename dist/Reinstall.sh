@@ -60,6 +60,11 @@ AUTODEPLOY_STEP_TOTAL=6 # must match the RunStep count (lint.sh checks)
 REINSTALL_RELEASE="${REINSTALL_RELEASE:-26.04}"
 REINSTALL_INSTALLER_PART_SIZE_MB="${REINSTALL_INSTALLER_PART_SIZE_MB:-2048}" # staging partition for the cloud image
 REINSTALL_CANCEL="${REINSTALL_CANCEL:-false}" # true = undo a staged reinstall (clears the one-time boot entry) and exit
+# Boot mode of the installed system: auto follows the running host; efi/bios
+# force it. Forcing efi only makes sense when the firmware supports UEFI -
+# on a CSM-booted host the installer cannot write NVRAM, so the firmware
+# must be switched to UEFI boot by hand after the reboot.
+REINSTALL_BOOT_MODE="${REINSTALL_BOOT_MODE:-auto}"
 
 ## Installer bootstrap (Alpine netboot files run the install after reboot)
 REINSTALL_CONFHOME="${REINSTALL_CONFHOME:-https://source.zhijie.online/AutoDeploy/main/src/platforms/reinstall}" # trans.sh location
@@ -412,7 +417,16 @@ InstallBootEntry() {
     cmdline="${cmdline} extra_arch=${OS_ARCHITECTURE}"
     cmdline="${cmdline} extra_codename=${UBUNTU_CODENAME}"
     cmdline="${cmdline} extra_partsize=${REINSTALL_INSTALLER_PART_SIZE_MB}"
-    cmdline="${cmdline} extra_efi=$([ -d /sys/firmware/efi ] && echo 1 || echo 0)"
+    # Boot mode: auto follows the running host; efi/bios force it (only
+    # sane when the firmware actually supports the chosen mode - a forced
+    # efi on a CSM-booted host skips NVRAM registration, see trans.sh).
+    case "${REINSTALL_BOOT_MODE:-auto}" in
+        auto) extra_efi=$([ -d /sys/firmware/efi ] && echo 1 || echo 0) ;;
+        efi) extra_efi=1 ;;
+        bios) extra_efi=0 ;;
+        *) Die "REINSTALL_BOOT_MODE must be auto, efi or bios" ;;
+    esac
+    cmdline="${cmdline} extra_efi=${extra_efi}"
     if [ -n "$MGMT_IPV4" ]; then
         cmdline="${cmdline} extra_ipv4=${MGMT_IPV4} extra_ipv4_gw=${MGMT_IPV4_GW}"
     fi

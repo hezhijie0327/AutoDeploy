@@ -15,6 +15,11 @@ AUTODEPLOY_STEP_TOTAL=6 # must match the RunStep count (lint.sh checks)
 REINSTALL_RELEASE="${REINSTALL_RELEASE:-26.04}"
 REINSTALL_INSTALLER_PART_SIZE_MB="${REINSTALL_INSTALLER_PART_SIZE_MB:-2048}" # staging partition for the cloud image
 REINSTALL_CANCEL="${REINSTALL_CANCEL:-false}" # true = undo a staged reinstall (clears the one-time boot entry) and exit
+# Boot mode of the installed system: auto follows the running host; efi/bios
+# force it. Forcing efi only makes sense when the firmware supports UEFI -
+# on a CSM-booted host the installer cannot write NVRAM, so the firmware
+# must be switched to UEFI boot by hand after the reboot.
+REINSTALL_BOOT_MODE="${REINSTALL_BOOT_MODE:-auto}"
 
 ## Installer bootstrap (Alpine netboot files run the install after reboot)
 REINSTALL_CONFHOME="${REINSTALL_CONFHOME:-https://source.zhijie.online/AutoDeploy/main/src/platforms/reinstall}" # trans.sh location

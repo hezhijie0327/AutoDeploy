@@ -18,7 +18,8 @@
 #   extra_ipv6_gw=  IPv6 default gateway
 #   extra_dns=      comma-separated resolvers
 #   extra_disk=     partition-table UUID (PTUUID) of the boot disk
-#   extra_efi=      1 when the host booted via UEFI
+#   extra_efi=      1 when the installed system should boot via UEFI
+#                   (auto-detected, or forced by REINSTALL_BOOT_MODE)
 #   extra_arch=     amd64 | arm64
 #   extra_codename= Ubuntu codename (apt mirror rewrite)
 #   extra_partsize= installer staging partition size in MiB
@@ -392,7 +393,18 @@ chroot_configure() {
             arm64) grub_target="arm64-efi" ;;
             *) grub_target="x86_64-efi" ;;
         esac
-        chroot /os grub-install "--target=${grub_target}" --efi-directory=/boot/efi --bootloader-id=ubuntu --recheck > /dev/null 2>&1 || die "grub-install (efi) failed"
+        if [ -d /sys/firmware/efi ]; then
+            chroot /os grub-install "--target=${grub_target}" --efi-directory=/boot/efi --bootloader-id=ubuntu --recheck > /dev/null 2>&1 || die "grub-install (efi) failed"
+        else
+            # Forced-EFI install from a CSM-booted host: efivarfs is
+            # absent, so no NVRAM entry can be registered - the operator
+            # must switch the firmware to UEFI boot by hand after reboot.
+            log "WARNING: no efivars (CSM boot); the firmware must be switched to UEFI boot manually after reboot"
+        fi
+        # The removable fallback (\EFI\BOOT\BOOTX64.EFI) boots even when
+        # the NVRAM entry is missing (forced install) or wiped (firmware
+        # reset); the image carries grub-efi-*-bin, so this always works.
+        chroot /os grub-install "--target=${grub_target}" --efi-directory=/boot/efi --removable --recheck > /dev/null 2>&1 || die "grub-install (efi, removable) failed"
     else
         chroot /os grub-install --target=i386-pc --recheck "$target_disk" > /dev/null 2>&1 || die "grub-install (bios) failed"
     fi
