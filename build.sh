@@ -77,3 +77,11 @@ BuildScript "dist/ProxmoxVE.sh" \
     src/lib/modules/debian/security.sh src/lib/modules/debian/storage.sh \
     src/lib/modules/debian/system.sh src/lib/modules/debian/users.sh \
     src/platforms/proxmoxve/proxmoxve.sh
+
+BuildScript "dist/Reinstall.sh" \
+    '# curl "https://source.zhijie.online/AutoDeploy/main/dist/Reinstall.sh" | sudo bash
+# wget -qO- "https://source.zhijie.online/AutoDeploy/main/dist/Reinstall.sh" | sudo bash' \
+    src/config/common.sh src/platforms/reinstall/config.sh \
+    src/lib/core.sh \
+    src/lib/modules/debian/system.sh \
+    src/platforms/reinstall/reinstall.sh

@@ -11,15 +11,17 @@
 - **macOS.sh** - macOS（自动识别 ARM / Intel）
 - **ProxmoxVE.sh** - Proxmox VE 虚拟化平台（amd64 / arm64）
 - **Ubuntu.sh** - Ubuntu
+- **Reinstall.sh** - Ubuntu 网络重装（重启后自动完成，仅限 Ubuntu 源系统）
 
 ## 特性
 
 - **单文件分发**：`curl | bash` 直接执行，无需克隆仓库
 - **模块化构建**：`src/lib/modules/` 按主题拆分（git / gpg / ssh / zsh / apt / security…），`build.sh` 按平台显式挑选模块拼装
-- **国内镜像加速**：CERNET 镜像源（APT / Homebrew / PyPI / Docker CE），可选 GitHub 代理
+- **国内镜像加速**：CERNET 镜像源（APT / Homebrew / PyPI / Docker CE / Alpine / Ubuntu Cloud Images），可选 GitHub 代理
 - **开发环境**：oh-my-zsh + 常用插件、Git、GPG（SSH 认证支持）
 - **安全加固**：UFW / PVE 防火墙、Fail2Ban、CrowdSec、SSH 密钥自动生成（ecdsa / ed25519 / rsa）
 - **系统优化**：BBR、sysctl 调优、ZRAM swap、chrony 时间同步、XanMod 内核（按 CPU psABI 级别选择）
+- **一键重装**：`Reinstall.sh` 备好 Alpine 安装环境与一次性 GRUB 引导项，重启即重装为全新 Ubuntu（云镜像复制安装，保留原网络配置）
 - **可重复执行**：已有密钥和配置自动备份为 `*.bak.<时间戳>`，不会直接覆盖
 - **断点续跑**：每个步骤成功后记录到 `~/.autodeploy/state`，中断后重跑自动跳过已完成步骤；`AUTODEPLOY_FORCE=true` 全部重来
 - **进度可视**：每步打印 `[####----------------] 8/48 (16%) ConfigureChrony` 进度条
@@ -42,6 +44,11 @@ curl "https://source.zhijie.online/AutoDeploy/main/dist/ProxmoxVE.sh" | sudo bas
 # Ubuntu
 curl "https://source.zhijie.online/AutoDeploy/main/dist/Ubuntu.sh" | sudo bash
 
+# Ubuntu 网络重装（危险：下次重启清盘重装，默认生成随机 root 密码并打印）
+curl "https://source.zhijie.online/AutoDeploy/main/dist/Reinstall.sh" | sudo bash
+# 指定版本与密码：
+REINSTALL_RELEASE='24.04' REINSTALL_PASSWORD='MyS3cure!Pass' \
+  curl "https://source.zhijie.online/AutoDeploy/main/dist/Reinstall.sh" | sudo bash
 ```
 
 ## 配置
@@ -93,6 +100,19 @@ export DEFAULT_PASSWORD='MyUser!Pass'
 export PURGE_OTHER_USERS=false
 curl "https://source.zhijie.online/AutoDeploy/main/dist/Ubuntu.sh" | sudo bash
 ```
+
+### 重装（Reinstall.sh）
+
+| 变量 | 默认值 | 说明 |
+|------|--------|------|
+| `REINSTALL_RELEASE` | `26.04` | 目标 Ubuntu **LTS** 版本（`20.04` / `22.04` / `24.04` / `26.04`） |
+| `REINSTALL_PASSWORD` | 随机生成并打印 | 新系统 root 密码；留空时若检测到本机 SSH 公钥则同时安装密钥 |
+| `REINSTALL_SSH_KEYS` | 复用本机 root 公钥 | authorized_keys 内容或文件路径 |
+| `REINSTALL_CN_MIRROR` | `true` | `false` 时使用 Ubuntu / Alpine 官方源 |
+| `REINSTALL_ALPINE_VERSION` | `auto` | 固定 Alpine 版本（如 `3.22`） |
+| `REINSTALL_INSTALLER_PART_SIZE_MB` | `2048` | 安装暂存分区大小 |
+
+流程：脚本在本机备好 Alpine netboot 内核与安装器（写入 initramfs），注册一次性 GRUB 引导项；重启后自动分区、下载 Ubuntu 云镜像并复制安装、按原网卡 MAC 还原网络配置、写入密码 / 密钥并禁用 cloud-init。**目标磁盘会被清空**，仅支持 Ubuntu 源系统、GRUB 引导。重装完成后建议再跑一次 `dist/Ubuntu.sh` 完成完整配置。
 
 ## 开发
 

@@ -1,6 +1,6 @@
 # AGENTS.md
 
-AutoDeploy is a collection of shell scripts for automated system deployment across Synology DSM, macOS, Proxmox VE, and Ubuntu. See [README.md](README.md) for the Chinese overview.
+AutoDeploy is a collection of shell scripts for automated system deployment across Synology DSM, macOS, Proxmox VE, and Ubuntu, plus a network reinstall entry for Ubuntu hosts. See [README.md](README.md) for the Chinese overview.
 
 ## HANDOVER.md
 
@@ -111,11 +111,11 @@ Family-wide Markdown rules, shared verbatim across all ZJ projects:
 
 ## Project
 
-Four generated deployment scripts, one per platform: `DSM.sh`, `macOS.sh`, `ProxmoxVE.sh`, `Ubuntu.sh`.
+Five generated scripts: platform deployments (`DSM.sh`, `macOS.sh`, `ProxmoxVE.sh`, `Ubuntu.sh`) plus the Ubuntu network reinstall (`Reinstall.sh`).
 
 The `dist/*.sh` files are **generated distribution artifacts** — they are what `curl | bash` fetches. Edit the sources under `src/`, then run `./build.sh` to regenerate them. Never hand-edit the dist scripts; `lint.sh` fails if they are stale.
 
-Deployment scripts share the same phases: system information gathering → repository mirrors → dependency packages → custom packages → system configuration → package configuration → cleanup.
+Deployment scripts share the same phases: system information gathering → repository mirrors → dependency packages → custom packages → system configuration → package configuration → cleanup. `Reinstall.sh` has its own two-phase flow: host-side preparation (facts, credentials, Alpine netboot initramfs, one-time GRUB entry), then the actual install runs after reboot inside an Alpine RAM system (`src/platforms/reinstall/trans.sh`).
 
 ## Commands
 
@@ -169,7 +169,8 @@ src/
     ├── dsm/            #   config.sh + dsm.sh
     ├── macos/          #   config.sh + macos.sh
     ├── ubuntu/         #   config.sh + ubuntu.sh
-    └── proxmoxve/      #   config.sh + proxmoxve.sh
+    ├── proxmoxve/      #   config.sh + proxmoxve.sh
+    └── reinstall/      #   config.sh + reinstall.sh (phase 1) + trans.sh (phase 2, busybox ash)
 build.sh                # assembles each dist/<Script>.sh from an explicit module list
 lint.sh                 # bash -n, shellcheck, step-count, build-freshness checks
 tests/run_tests.sh      # unit tests for the pure functions
@@ -185,7 +186,7 @@ All scripts run under `set -Eeuo pipefail` with an `ERR` trap that reports the f
 
 ### Resume and progress
 
-Each orchestration leaf runs through `RunStep "<id>" <function>`. A step is appended to the state file (`$AUTODEPLOY_STATE_DIR/state`, default `~/.autodeploy`) only after it succeeds, so an interrupted run resumes at the first unfinished step. Container functions (`ConfigurePackages`, `ConfigureSystem`, `InstallCustomPackages`) always run — they set globals and dispatch their children, which skip individually if already done. `GetSystemInformation` always runs because later steps depend on the globals it sets. `AUTODEPLOY_FORCE=true` clears the state and re-runs everything. `RenderProgress` prints a `[####----] done/total (pct%)` line per step; `AUTODEPLOY_STEP_TOTAL` must equal the number of `RunStep` calls (lint.sh enforces this).
+Each orchestration leaf runs through `RunStep "<id>" <function>`. A step is appended to the state file (`$AUTODEPLOY_STATE_DIR/state`, default `~/.autodeploy`) only after it succeeds, so an interrupted run resumes at the first unfinished step. Container functions (`ConfigurePackages`, `ConfigureSystem`, `InstallCustomPackages`) always run — they set globals and dispatch their children, which skip individually if already done. `GetSystemInformation` always runs because later steps depend on the globals it sets. `AUTODEPLOY_FORCE=true` clears the state and re-runs everything. `RenderProgress` prints a `[####----] done/total (pct%)` line per step; `AUTODEPLOY_STEP_TOTAL` must equal the number of `RunStep` calls (lint.sh enforces this). `Reinstall.sh` uses the same machinery; its state only helps re-running a failed preparation, since the reboot wipes the host.
 
 ## Conventions
 
@@ -197,6 +198,7 @@ Each orchestration leaf runs through `RunStep "<id>" <function>`. A step is appe
 - Platform-specific helpers are nested inside their parent function; shared helpers live in `src/lib/modules/`
 - Modules are selected per platform by the explicit file lists in `build.sh`; a module a platform uses must be listed there
 - `lib/core.sh` and `lib/modules/*.sh` must stay bash 3.2-compatible (macOS); `lib/modules/debian/*` targets bash 4.4+
+- `src/platforms/reinstall/trans.sh` runs under busybox ash in the Alpine installer: no arrays, no `[[ ]]`, no process substitution
 
 ### Variable Naming
 - UPPERCASE_SNAKE_CASE for globals: `NEW_HOSTNAME`, `GHPROXY_URL`, `DEFAULT_USERNAME`
@@ -217,12 +219,12 @@ Each orchestration leaf runs through `RunStep "<id>" <function>`. A step is appe
 - Sensitive files 600, SSH dirs 700, private keys 400
 
 ### Gotchas
-- **macOS ships bash 3.2**: `lib/core.sh` and `lib/modules/*.sh` must stay 3.2-compatible — no associative arrays, no namerefs, guard empty-array expansions with `${arr[@]+"${arr[@]}"}`. `lib/modules/debian/*` targets bash 4.4+ only.
+- **macOS ships bash 3.2**: `lib/core.sh` and `lib/modules/*.sh` must stay 3.2-compatible — no associative arrays, no namerefs, guard empty-array expansions with `${arr[@]+"${arr[@]}"}`. `lib/modules/debian/*` targets bash 4.4+ only; `src/platforms/reinstall/trans.sh` is busybox ash only.
 - **Module composition lives in build.sh**: adding a shared function to a new platform means adding its module file to that platform's build list — lint.sh does not verify module selection, only freshness.
 - **Generated files**: commit the regenerated `dist/` scripts together with the `src/` change; `lint.sh` enforces freshness.
 - **Step total**: when adding/removing a `RunStep` call, update `AUTODEPLOY_STEP_TOTAL` in the platform's `src/platforms/<name>/config.sh`; `lint.sh` fails on a mismatch.
 - **Configuration is authoritative**: edit tunable defaults in `src/config/`, not inside functions. Keep new knobs env-overridable. Structural globals a module needs (e.g. `DOCKER_APT_DISTRO`, `FRR_APT_LINE`) are documented above that function and set by the platform's `ConfigurePackages`.
-- **Release pinning is intentional**: `LSB_CODENAME`/`LSB_VERSION` (Ubuntu) and `LSB_CODENAME`/`CEPH_CODENAME` (PVE) are hardcoded to the latest release by design. Bump them each release in the config block; do not switch to auto-detection. PVE package picks are arch-aware: the `grub-efi-*-signed` swap happens in `src/platforms/proxmoxve/config.sh`.
+- **Release pinning is intentional**: `LSB_CODENAME`/`LSB_VERSION` (Ubuntu) and `LSB_CODENAME`/`CEPH_CODENAME` (PVE) are hardcoded to the latest release by design. `REINSTALL_RELEASE` (Reinstall) pins the latest LTS but stays env-overridable to the other LTS releases. Bump them each release in the config block; do not switch to auto-detection. PVE package picks are arch-aware: the `grub-efi-*-signed` swap happens in `src/platforms/proxmoxve/config.sh`.
 - **Single quotes in generated snippets** (e.g. `plugin_upgrade_list`) are deliberate — they must not expand at generation time.
 - `pcie_acs_override` is a patched-kernel parameter; mainline kernels ignore it. Kept intentionally for homelab IOMMU grouping.
 - macOS has no `shuf`; use `$((RANDOM % 256))` for random octets.
@@ -248,6 +250,15 @@ Each orchestration leaf runs through `RunStep "<id>" <function>`. A step is appe
 - APT with CERNET mirrors; Netplan for network; systemd-resolved for DNS
 - XanMod kernel selection respects CPU psABI level (`PSABI_LEVEL`); v1 CPUs fall back to the main branch
 - UFW firewall; `ufw --force reset/enable` to stay non-interactive
+
+### Reinstall.sh
+- Ubuntu-only source host (needs apt + GRUB); the target disk is located by partition-table UUID and wiped on the next reboot
+- Target releases are LTS-only (20.04 / 22.04 / 24.04 / 26.04), mapped to codenames in `GetUbuntuCodename`
+- Phase 2 (`src/platforms/reinstall/trans.sh`) partitions the disk (ESP/bios_grub + root + trailing installer staging partition), copies the Ubuntu cloud image out of a qemu-nbd-attached qcow2 (never dd — 24.04+ images carry a separate /boot partition), and preserves the root UUID/label so baked-in grub references stay valid
+- All installer-phase mirrors use http, not https: the Alpine RAM system may boot with an unsynced clock, which breaks TLS certificate validation
+- The netplan written into the new system matches the NIC by MAC address and re-applies the previous IPv4/IPv6 addressing
+- Cloud-init is disabled (`/etc/cloud/cloud-init.disabled`); run the matching deployment script after the first boot for full AutoDeploy configuration
+- Requires a real-machine test round before trusting: GRUB one-time entry, initramfs init injection, and netplan replay are environment-sensitive
 
 ## Common Patterns
 
@@ -295,6 +306,7 @@ Default passwords are kept on purpose (operators change them after deployment). 
 curl "https://source.zhijie.online/AutoDeploy/main/dist/SCRIPT.sh" | sudo bash
 ```
 
+`Reinstall.sh` additionally accepts `REINSTALL_RELEASE` and `REINSTALL_PASSWORD` and wipes the machine on the next reboot — read the Platform-Specific Considerations first.
 
 ## Key Docs
 

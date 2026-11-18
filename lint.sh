@@ -24,7 +24,7 @@ done < <(find src dist -name '*.sh' -not -path '*/.git/*' | sort)
 
 if command -v shellcheck > /dev/null 2>&1; then
     printf '\n== shellcheck ==\n'
-    for file in dist/DSM.sh dist/macOS.sh dist/Ubuntu.sh dist/ProxmoxVE.sh; do
+    for file in dist/DSM.sh dist/macOS.sh dist/Ubuntu.sh dist/ProxmoxVE.sh dist/Reinstall.sh; do
         if shellcheck --shell=bash --severity=warning "$file"; then
             printf 'ok   %s\n' "$file"
         else
@@ -37,7 +37,7 @@ else
 fi
 
 printf '\n== step count ==\n'
-for file in dist/DSM.sh dist/macOS.sh dist/Ubuntu.sh dist/ProxmoxVE.sh; do
+for file in dist/DSM.sh dist/macOS.sh dist/Ubuntu.sh dist/ProxmoxVE.sh dist/Reinstall.sh; do
     count=$(grep -cE '^[[:space:]]*RunStep "' "$file" || true)
     total=$(sed -n 's/^AUTODEPLOY_STEP_TOTAL=\([0-9][0-9]*\).*/\1/p' "$file")
     if [ "$count" = "$total" ]; then
@@ -53,7 +53,7 @@ tmpdir=$(mktemp -d)
 trap 'rm -rf "$tmpdir"' EXIT
 cp -R src build.sh "$tmpdir/"
 (cd "$tmpdir" && ./build.sh > /dev/null)
-for file in dist/DSM.sh dist/macOS.sh dist/Ubuntu.sh dist/ProxmoxVE.sh; do
+for file in dist/DSM.sh dist/macOS.sh dist/Ubuntu.sh dist/ProxmoxVE.sh dist/Reinstall.sh; do
     if diff -q "$file" "$tmpdir/$file" > /dev/null 2>&1; then
         printf 'ok   %s\n' "$file"
     else
