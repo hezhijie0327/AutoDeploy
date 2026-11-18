@@ -2,12 +2,17 @@
 # Copyright 2026 Zhijie He
 # Licensed under Apache-2.0 WITH Commons-Clause-1.0. See LICENSE.
 #
-# Assemble the single-file distribution scripts from src/.
-# The generated root scripts are what `curl | bash` fetches; commit them
+# Assemble the single-file distribution scripts from src/ into dist/.
+# The generated dist/ scripts are what `curl | bash` fetches; commit them
 # together with any src/ change (lint.sh verifies they stay in sync).
+# Module composition per platform is explicit below: config layer first,
+# then the core library, then the selected lib modules, then the platform
+# orchestration file.
 
 set -Eeuo pipefail
 cd "$(dirname "$0")" || exit 1
+
+mkdir -p dist
 
 BuildScript() {
     local output="$1" usage="$2"
@@ -29,22 +34,46 @@ BuildScript() {
     printf 'built %s\n' "$output"
 }
 
-BuildScript "DSM.sh" \
-    '# curl "https://source.zhijie.online/AutoDeploy/main/DSM.sh" | sudo bash
-# wget -qO- "https://source.zhijie.online/AutoDeploy/main/DSM.sh" | sudo bash' \
-    src/config/DSM.sh src/lib/common.sh src/DSM.sh
+BuildScript "dist/DSM.sh" \
+    '# curl "https://source.zhijie.online/AutoDeploy/main/dist/DSM.sh" | sudo bash
+# wget -qO- "https://source.zhijie.online/AutoDeploy/main/dist/DSM.sh" | sudo bash' \
+    src/config/common.sh src/platforms/dsm/config.sh \
+    src/lib/core.sh \
+    src/lib/modules/git.sh src/lib/modules/gpg.sh src/lib/modules/ssh.sh src/lib/modules/zsh.sh \
+    src/platforms/dsm/dsm.sh
 
-BuildScript "macOS.sh" \
-    "# /bin/bash -c \"\$(curl -fsSL 'https://source.zhijie.online/AutoDeploy/main/macOS.sh')\"
-# /bin/bash -c \"\$(wget -qO- 'https://source.zhijie.online/AutoDeploy/main/macOS.sh')\"" \
-    src/config/macOS.sh src/lib/common.sh src/macOS.sh
+BuildScript "dist/macOS.sh" \
+    "# /bin/bash -c \"\$(curl -fsSL 'https://source.zhijie.online/AutoDeploy/main/dist/macOS.sh')\"
+# /bin/bash -c \"\$(wget -qO- 'https://source.zhijie.online/AutoDeploy/main/dist/macOS.sh')\"" \
+    src/config/common.sh src/platforms/macos/config.sh \
+    src/lib/core.sh \
+    src/lib/modules/crontab.sh src/lib/modules/git.sh src/lib/modules/gpg.sh src/lib/modules/hosts.sh \
+    src/lib/modules/proxychains.sh src/lib/modules/pypi.sh src/lib/modules/ssh.sh \
+    src/lib/modules/wireguard.sh src/lib/modules/zsh.sh \
+    src/platforms/macos/macos.sh
 
-BuildScript "Ubuntu.sh" \
-    '# curl "https://source.zhijie.online/AutoDeploy/main/Ubuntu.sh" | sudo bash
-# wget -qO- "https://source.zhijie.online/AutoDeploy/main/Ubuntu.sh" | sudo bash' \
-    src/config/Ubuntu.sh src/lib/common.sh src/lib/debian.sh src/Ubuntu.sh
+BuildScript "dist/Ubuntu.sh" \
+    '# curl "https://source.zhijie.online/AutoDeploy/main/dist/Ubuntu.sh" | sudo bash
+# wget -qO- "https://source.zhijie.online/AutoDeploy/main/dist/Ubuntu.sh" | sudo bash' \
+    src/config/common.sh src/config/debian.sh src/platforms/ubuntu/config.sh \
+    src/lib/core.sh \
+    src/lib/modules/crontab.sh src/lib/modules/git.sh src/lib/modules/gpg.sh src/lib/modules/hosts.sh \
+    src/lib/modules/proxychains.sh src/lib/modules/pypi.sh src/lib/modules/ssh.sh \
+    src/lib/modules/wireguard.sh src/lib/modules/zsh.sh \
+    src/lib/modules/debian/apt.sh src/lib/modules/debian/daemons.sh src/lib/modules/debian/kernel.sh \
+    src/lib/modules/debian/security.sh src/lib/modules/debian/storage.sh \
+    src/lib/modules/debian/system.sh src/lib/modules/debian/users.sh \
+    src/platforms/ubuntu/ubuntu.sh
 
-BuildScript "ProxmoxVE.sh" \
-    '# curl "https://source.zhijie.online/AutoDeploy/main/ProxmoxVE.sh" | sudo bash
-# wget -qO- "https://source.zhijie.online/AutoDeploy/main/ProxmoxVE.sh" | sudo bash' \
-    src/config/ProxmoxVE.sh src/lib/common.sh src/lib/debian.sh src/ProxmoxVE.sh
+BuildScript "dist/ProxmoxVE.sh" \
+    '# curl "https://source.zhijie.online/AutoDeploy/main/dist/ProxmoxVE.sh" | sudo bash
+# wget -qO- "https://source.zhijie.online/AutoDeploy/main/dist/ProxmoxVE.sh" | sudo bash' \
+    src/config/common.sh src/config/debian.sh src/platforms/proxmoxve/config.sh \
+    src/lib/core.sh \
+    src/lib/modules/crontab.sh src/lib/modules/git.sh src/lib/modules/gpg.sh src/lib/modules/hosts.sh \
+    src/lib/modules/proxychains.sh src/lib/modules/pypi.sh src/lib/modules/ssh.sh \
+    src/lib/modules/zsh.sh \
+    src/lib/modules/debian/apt.sh src/lib/modules/debian/daemons.sh src/lib/modules/debian/kernel.sh \
+    src/lib/modules/debian/security.sh src/lib/modules/debian/storage.sh \
+    src/lib/modules/debian/system.sh src/lib/modules/debian/users.sh \
+    src/platforms/proxmoxve/proxmoxve.sh

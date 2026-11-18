@@ -9,12 +9,13 @@
 
 - **DSM.sh** - 群晖 NAS (Synology DSM)
 - **macOS.sh** - macOS（自动识别 ARM / Intel）
-- **ProxmoxVE.sh** - Proxmox VE 虚拟化平台
+- **ProxmoxVE.sh** - Proxmox VE 虚拟化平台（amd64 / arm64）
 - **Ubuntu.sh** - Ubuntu
 
 ## 特性
 
 - **单文件分发**：`curl | bash` 直接执行，无需克隆仓库
+- **模块化构建**：`src/lib/modules/` 按主题拆分（git / gpg / ssh / zsh / apt / security…），`build.sh` 按平台显式挑选模块拼装
 - **国内镜像加速**：CERNET 镜像源（APT / Homebrew / PyPI / Docker CE），可选 GitHub 代理
 - **开发环境**：oh-my-zsh + 常用插件、Git、GPG（SSH 认证支持）
 - **安全加固**：UFW / PVE 防火墙、Fail2Ban、CrowdSec、SSH 密钥自动生成（ecdsa / ed25519 / rsa）
@@ -30,16 +31,17 @@
 
 ```bash
 # DSM 群晖
-curl "https://source.zhijie.online/AutoDeploy/main/DSM.sh" | sudo bash
+curl "https://source.zhijie.online/AutoDeploy/main/dist/DSM.sh" | sudo bash
 
 # macOS（普通用户执行，内部按需 sudo）
-/bin/bash -c "$(curl -fsSL 'https://source.zhijie.online/AutoDeploy/main/macOS.sh')"
+/bin/bash -c "$(curl -fsSL 'https://source.zhijie.online/AutoDeploy/main/dist/macOS.sh')"
 
 # Proxmox VE
-curl "https://source.zhijie.online/AutoDeploy/main/ProxmoxVE.sh" | sudo bash
+curl "https://source.zhijie.online/AutoDeploy/main/dist/ProxmoxVE.sh" | sudo bash
 
 # Ubuntu
-curl "https://source.zhijie.online/AutoDeploy/main/Ubuntu.sh" | sudo bash
+curl "https://source.zhijie.online/AutoDeploy/main/dist/Ubuntu.sh" | sudo bash
+
 ```
 
 ## 配置
@@ -89,15 +91,15 @@ curl "https://source.zhijie.online/AutoDeploy/main/Ubuntu.sh" | sudo bash
 export ROOT_PASSWORD='MyS3cure!Pass'
 export DEFAULT_PASSWORD='MyUser!Pass'
 export PURGE_OTHER_USERS=false
-curl "https://source.zhijie.online/AutoDeploy/main/Ubuntu.sh" | sudo bash
+curl "https://source.zhijie.online/AutoDeploy/main/dist/Ubuntu.sh" | sudo bash
 ```
 
 ## 开发
 
-根目录的 `*.sh` 是**构建产物**（`curl | bash` 直接拉取），源码在 `src/`：顶部配置块在 `src/config/<平台>.sh`，共享函数在 `src/lib/common.sh`（全平台，bash 3.2 兼容）和 `src/lib/debian.sh`（Ubuntu / PVE），平台差异与编排在 `src/<平台>.sh`。`build.sh` 按「头部 → 配置 → 共享库 → 平台」拼装成单文件。
+`dist/` 下的 `*.sh` 是**构建产物**（`curl | bash` 直接拉取），源码在 `src/`：共享配置在 `src/config/`（`common.sh` 全平台共享、`debian.sh` Ubuntu / PVE 共享），每个平台一个目录 `src/platforms/<平台>/`（`config.sh` 增量配置 + 同名编排脚本）；共享函数按主题拆成 `src/lib/modules/*.sh`（跨平台，bash 3.2 兼容）与 `src/lib/modules/debian/*.sh`（Ubuntu / PVE，bash 4.4+）。`build.sh` 按平台显式列出模块清单，按「头部 → 配置 → 核心 → 模块 → 平台」拼装进 `dist/` 单文件。
 
 ```bash
-./build.sh              # 修改 src/ 后重新生成根脚本（需一并提交）
+./build.sh              # 修改 src/ 后重新生成 dist/ 脚本（需一并提交）
 ./lint.sh               # bash -n + shellcheck + 构建一致性检查
 bash tests/run_tests.sh # 纯函数单元测试
 ```

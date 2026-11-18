@@ -1,7 +1,7 @@
 ## Function
 # Get System Information
-function GetSystemInformation() {
-    function SetBrewPrefix() {
+GetSystemInformation() {
+    SetBrewPrefix() {
         case "$(uname -m)" in
             arm64) BREW_PREFIX="/opt/homebrew" ;;
             *) BREW_PREFIX="/usr/local" ;;
@@ -15,8 +15,8 @@ function GetSystemInformation() {
 }
 
 # Configure Packages
-function ConfigurePackages() {
-    function ConfigureCrontab() {
+ConfigurePackages() {
+    ConfigureCrontab() {
         CRONTAB_USER="$CURRENT_USERNAME"
         CRONTAB_ENTRIES=(
             "PATH=\"${DEFAULT_PATH}:\$PATH\""
@@ -25,7 +25,7 @@ function ConfigurePackages() {
         )
         InstallCrontab
     }
-    function ConfigureOpenSSH() {
+    ConfigureOpenSSH() {
         HaveCommand ssh-keygen || return 0
         if [ -d "${BREW_PREFIX}/etc/ssh" ]; then
             if [ -d "/etc/ssh" ] && [ ! -L "/etc/ssh" ]; then
@@ -38,20 +38,13 @@ function ConfigurePackages() {
             chown "${CURRENT_USERNAME}:admin" "${BREW_PREFIX}/etc/ssh"/ssh_host_*
         fi
         local user_ssh="/Users/${CURRENT_USERNAME}/.ssh"
-        BackupPath "$user_ssh"
-        mkdir -p "$user_ssh"
+        InitUserSSHDir "$user_ssh" "${CURRENT_USERNAME}@$(hostname)"
         if [ -f "${GPG_HOME}/authorized_keys" ]; then
             mv "${GPG_HOME}/authorized_keys" "${user_ssh}/authorized_keys"
-        else
-            touch "${user_ssh}/authorized_keys"
+            chmod 600 "${user_ssh}/authorized_keys"
         fi
-        touch "${user_ssh}/known_hosts"
-        GenerateSSHKeys "$user_ssh" "${CURRENT_USERNAME}@$(hostname)"
-        chmod 600 "${user_ssh}/authorized_keys"
-        chmod 644 "${user_ssh}/known_hosts"
-        chmod 700 "$user_ssh"
     }
-    function ConfigureSshd() {
+    ConfigureSshd() {
         # Root password login is intentional; the account is locked down later.
         local sshd_config="${BREW_PREFIX}/etc/ssh/sshd_config"
         [ -f "$sshd_config" ] || return 0
@@ -69,7 +62,7 @@ function ConfigurePackages() {
         chown "${CURRENT_USERNAME}:admin" "$sshd_config"
         chmod 644 "$sshd_config"
     }
-    function ConfigureWireGuard() {
+    ConfigureWireGuard() {
         HaveCommand wg || return 0
         if [ ! -d "/etc/wireguard" ]; then
             sudo mkdir "/etc/wireguard"
@@ -110,23 +103,13 @@ function ConfigurePackages() {
 }
 
 # Configure System
-function ConfigureSystem() {
-    function ConfigureHostfile() {
-        local host_list=(
-            "127.0.0.1 localhost"
-            "255.255.255.255 broadcasthost"
-            "::1 ip6-localhost ip6-loopback localhost"
-            "fe00::0 ip6-localnet"
-            "ff00::0 ip6-mcastprefix"
-            "ff02::1 ip6-allnodes"
-            "ff02::2 ip6-allrouters"
-            "ff02::3 ip6-allhosts"
-        )
+ConfigureSystem() {
+    ConfigureHostfile() {
         # tee runs under sudo; a plain `sudo cat > /etc/hosts` would redirect
         # in the unprivileged shell and fail.
-        printf '%s\n' "${host_list[@]}" | sudo tee /etc/hosts > /dev/null
+        printf '%s\n' "${HOSTS_BASE_ENTRIES[@]}" | sudo tee /etc/hosts > /dev/null
     }
-    function ConfigureSystemDefault() {
+    ConfigureSystemDefault() {
         defaults write com.apple.desktopservices DSDontWriteNetworkStores -bool true
         defaults write com.apple.desktopservices DSDontWriteUSBStores -bool true
     }
@@ -135,8 +118,8 @@ function ConfigureSystem() {
 }
 
 # Install Custom Packages
-function InstallCustomPackages() {
-    function InstallAppFromCask() {
+InstallCustomPackages() {
+    InstallAppFromCask() {
         local app_list=("${CASK_APPS[@]}")
         HaveCommand brew || return 0
         local app available=()
@@ -151,7 +134,7 @@ function InstallCustomPackages() {
             brew install --cask "${available[@]}"
         fi
     }
-    function InstallAppFromMAS() {
+    InstallAppFromMAS() {
         local app_list=("${MAS_APPS[@]}")
         HaveCommand mas || return 0
         local app
@@ -171,7 +154,7 @@ function InstallCustomPackages() {
 }
 
 # Install Dependency Packages
-function InstallDependencyPackages() {
+InstallDependencyPackages() {
     REINSTALL_BREW="${REINSTALL_BREW:-false}"
     export HOMEBREW_API_DOMAIN="https://mirrors.cernet.edu.cn/homebrew-bottles/api"
     export HOMEBREW_BOTTLE_DOMAIN="https://mirrors.cernet.edu.cn/homebrew-bottles/bottles"
@@ -207,7 +190,7 @@ function InstallDependencyPackages() {
 }
 
 # Upgrade Packages
-function UpgradePackages() {
+UpgradePackages() {
     brew update
     brew upgrade --greedy
     mas upgrade || LogWarn "mas upgrade failed (sign in to the App Store first)"
@@ -215,7 +198,7 @@ function UpgradePackages() {
 }
 
 # Cleanup Temp Files
-function CleanupTempFiles() {
+CleanupTempFiles() {
     brew cleanup
     rm -f "/Users/${CURRENT_USERNAME}/".*_history /tmp/*.autodeploy
 }

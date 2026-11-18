@@ -1,23 +1,14 @@
 ## Function
 # Get System Information
-function GetSystemInformation() {
+GetSystemInformation() {
     # Identity, credentials and release pinning live in the Configuration block.
     DEFAULT_FULLNAME="${DEFAULT_LASTNAME} ${DEFAULT_FIRSTNAME}"
 
-    function GenerateResolv() {
+    GenerateResolv() {
         CollectDNS
         WriteResolvConf
     }
-    function GetHostname() {
-        OLD_HOSTNAME=""
-        if [ -f "/etc/hostname" ]; then
-            OLD_HOSTNAME=$(awk '{print $1; exit}' "/etc/hostname")
-        fi
-        if [ -z "$OLD_HOSTNAME" ] && HaveCommand hostname; then
-            OLD_HOSTNAME=$(hostname)
-        fi
-    }
-    function GetManagementIPAddress() {
+    GetManagementIPAddress() {
         CURRENT_MANAGEMENT_IP=""
         if ip link show vmbr0 > /dev/null 2>&1; then
             CURRENT_MANAGEMENT_IP=$(ip address show vmbr0 | awk '/inet / {print $2}' | sort | head -n 1 | sed 's/\/.*//')
@@ -30,13 +21,13 @@ function GetSystemInformation() {
     GenerateHostname
     GenerateResolv
     GetCPUVendorID
-    GetHostname
+    GetOSArchitecture
     GetManagementIPAddress
     SetGHProxyDomain
 }
 
 # Set Repository Mirror
-function SetRepositoryMirror() {
+SetRepositoryMirror() {
     local mirror_list=(
         "deb ${TRANSPORT_PROTOCOL}://mirrors.cernet.edu.cn/debian-security ${LSB_CODENAME}-security contrib main non-free non-free-firmware"
         "deb ${TRANSPORT_PROTOCOL}://mirrors.cernet.edu.cn/debian ${LSB_CODENAME} contrib main non-free non-free-firmware"
@@ -57,18 +48,15 @@ function SetRepositoryMirror() {
         "deb ${TRANSPORT_PROTOCOL}://mirrors.cernet.edu.cn/proxmox/debian ${LSB_CODENAME} pve-no-subscription pve-test"
         "deb ${TRANSPORT_PROTOCOL}://mirrors.cernet.edu.cn/proxmox/debian/ceph-${CEPH_CODENAME} ${LSB_CODENAME} no-subscription test"
     )
-    if [ ! -d "/etc/apt/sources.list.d" ]; then
-        mkdir "/etc/apt/sources.list.d"
-    else
-        rm -f /etc/apt/sources.list.d/*.*
-    fi
+    mkdir -p "/etc/apt/sources.list.d"
+    rm -f /etc/apt/sources.list.d/*.*
     printf '%s\n' "${mirror_list[@]}" > "/etc/apt/sources.list"
     printf '%s\n' "${proxmox_mirror_list[@]}" > "/etc/apt/sources.list.d/proxmox.list"
 }
 
 # Configure Packages
-function ConfigurePackages() {
-    function ConfigureAPTPVEExtras() {
+ConfigurePackages() {
+    ConfigureAPTPVEExtras() {
         local pve_repo_preference_list=(
             "pve-enterprise 1000"
             "pve-no-subscription 990"
@@ -91,21 +79,12 @@ function ConfigurePackages() {
             sed -i 's|Signed-By:.*|Signed-By: /usr/share/keyrings/debian-archive-keyring.gpg|g' "/etc/apt/sources.list.d/debian-backports.sources"
         fi
     }
-    function ConfigureCrontab() {
-        CRONTAB_USER="root"
-        CRONTAB_ENTRIES=(
-            "0 0 * * 7 sudo apt update && sudo apt full-upgrade -qy && sudo apt autoremove -qy --purge"
-            "# 0 4 * * 7 sudo reboot"
-            "@reboot sudo rm -rf ~/.*_history ~/.ssh/known_hosts*"
-        )
-        InstallCrontab
-    }
-    function ConfigureGrub() {
+    ConfigureGrub() {
         local display_option="" sfp_option="" btrfs_option=""
-        if [ "${DISABLE_DISPLAY:-false}" = "true" ]; then
+        if [ "$DISABLE_DISPLAY" = "true" ]; then
             display_option=" video=efifb:off,vesafb:off"
         fi
-        if [ "${PATCH_INTEL_82599_SFP:-false}" = "true" ]; then
+        if [ "$PATCH_INTEL_82599_SFP" = "true" ]; then
             sfp_option=" ixgbe.allow_unsupported_sfp=1"
         fi
         if [ "$(findmnt -no FSTYPE / 2>/dev/null || true)" = "btrfs" ]; then
@@ -129,9 +108,8 @@ function ConfigurePackages() {
             proxmox-boot-tool refresh
         fi
     }
-    function ConfigureZfsModules() {
+    ConfigureZfsModules() {
         if HaveCommand arcstat; then
-            ZFS_ARC_MAX="${ZFS_ARC_MAX:-1}" # GiB
             printf 'options zfs zfs_arc_max=%s\n' "$((ZFS_ARC_MAX * 1024 * 1024 * 1024))" > "/etc/modprobe.d/zfs.conf"
             update-initramfs -u -k all
         fi
@@ -139,13 +117,13 @@ function ConfigurePackages() {
             printf '%s\n' "options ixgbe allow_unsupported_sfp=1" > "/etc/modprobe.d/ixgbe.conf"
         fi
     }
-    function ConfigurePVEPrivKeys() {
+    ConfigurePVEPrivKeys() {
         [ -d "/etc/pve/priv" ] || return 0
         rm -f "/etc/pve/priv/authorized_keys" "/etc/pve/priv/known_hosts"
         touch "/etc/pve/priv/authorized_keys" "/etc/pve/priv/known_hosts"
         chmod 600 "/etc/pve/priv/authorized_keys" "/etc/pve/priv/known_hosts"
     }
-    function ConfigurePVECeph() {
+    ConfigurePVECeph() {
         if [ -d "/etc/systemd/system/ceph-mon.target.wants" ]; then
             local mon_path mon
             for mon_path in "/etc/systemd/system/ceph-mon.target.wants"/ceph-mon@*; do
@@ -159,8 +137,7 @@ function ConfigurePackages() {
             mkdir -p "/etc/ceph" "/var/lib/ceph/mgr" "/var/lib/ceph/mon"
         fi
     }
-    function ConfigurePVECluster() {
-        RESET_CLUSTER="${RESET_CLUSTER:-true}"
+    ConfigurePVECluster() {
         if [ "$RESET_CLUSTER" != "true" ]; then
             LogInfo "RESET_CLUSTER=false: leaving cluster configuration untouched"
             return 0
@@ -174,16 +151,16 @@ function ConfigurePackages() {
         killall pmxcfs || true
         systemctl start pve-cluster
     }
-    function ConfigurePVEContainer() {
+    ConfigurePVEContainer() {
         sed -Ezi.bak 's|http://download.proxmox.com|https://mirrors.cernet.edu.cn/proxmox|g' "/usr/share/perl5/PVE/APLInfo.pm"
         systemctl restart pvedaemon
     }
-    function ConfigurePVEDashboard() {
+    ConfigurePVEDashboard() {
         # Removes the "No valid subscription" nag; re-run after proxmox-widget-toolkit updates.
         sed -Ezi.bak "s/(Ext.Msg.show\(\{\s+title: gettext\('No valid sub)/void\(\{ \/\/\1/g" "/usr/share/javascript/proxmox-widget-toolkit/proxmoxlib.js"
         systemctl restart pveproxy
     }
-    function ConfigurePVEFirewall() {
+    ConfigurePVEFirewall() {
         local cluster_fw_list=(
             "[OPTIONS]"
             "ebtables: 1"
@@ -269,14 +246,10 @@ function ConfigurePackages() {
                 done
             fi
         done
-        if [ ! -d "/etc/pve/firewall" ]; then
-            mkdir "/etc/pve/firewall"
-            chown -R root:www-data "/etc/pve/firewall"
-        fi
-        if [ ! -d "/etc/pve/nodes" ]; then
-            mkdir "/etc/pve/nodes"
-            chown -R root:www-data "/etc/pve/nodes"
-        fi
+        mkdir -p "/etc/pve/firewall"
+        chown -R root:www-data "/etc/pve/firewall"
+        mkdir -p "/etc/pve/nodes"
+        chown -R root:www-data "/etc/pve/nodes"
         printf '%s\n' "${cluster_fw_list[@]}" > "/etc/pve/firewall/cluster.fw"
         printf '%s\n' "${host_fw_list[@]}" > "/etc/pve/nodes/${NEW_HOSTNAME}/host.fw"
         local vm
@@ -284,7 +257,7 @@ function ConfigurePackages() {
             printf '%s\n' "${vm_container_fw_list[@]}" > "/etc/pve/firewall/${vm}.fw"
         done
     }
-    function ConfigureZfs() {
+    ConfigureZfs() {
         HaveCommand zpool || return 0
         local pool
         while IFS= read -r pool; do
@@ -330,16 +303,10 @@ function ConfigurePackages() {
     MODULE_LIST_EXTRA=("ip_conntrack_ftp" "nfnetlink_queue")
     SYSCTL_INTERFACE_MODE="include"
     SYSCTL_INTERFACE_PATTERN='^vmbr'
-    PROXYCHAINS_CONF="/etc/proxychains4.conf"
-    GPG_HOME="/home/${DEFAULT_USERNAME}/.gnupg"
-    GPG_KEYSERVER="hkps://keyserver.ubuntu.com:443"
-    GPG_PINENTRY="/usr/bin/pinentry-tty"
-    GPG_HOME_OWNER="${DEFAULT_USERNAME}:${DEFAULT_USERNAME}"
-    ZSH_HOME="/home/${DEFAULT_USERNAME}"
-    ZSH_OWNER="${DEFAULT_USERNAME}:${DEFAULT_USERNAME}"
-    ZSH_PATH_LIST=("/bin" "/sbin" "/usr/bin" "/usr/sbin" "/usr/local/bin" "/usr/local/sbin" "/usr/lib/cargo/bin")
-    ZSH_EXTRA_EXPORTS=("export DEBIAN_FRONTEND=\"noninteractive\"")
-    ZSH_TRAPEXIT="false"
+    DOCKER_APT_DISTRO="debian"
+    FRR_APT_LINE="deb [arch=${OS_ARCHITECTURE} signed-by=/usr/share/keyrings/frrouting-archive-keyring.gpg] https://deb.frrouting.org/frr ${LSB_CODENAME} frr-stable"
+    SetDebianGlobals
+    ZSH_PATH_LIST+=("/usr/lib/cargo/bin")
 
     RunStep "ConfigureAPT" ConfigureAPT
     RunStep "ConfigureAPTPVEExtras" ConfigureAPTPVEExtras
@@ -376,73 +343,16 @@ function ConfigurePackages() {
 }
 
 # Configure System
-function ConfigureSystem() {
-    function ConfigureDefaultUser() {
-        WarnDefaultPassword "DEFAULT_PASSWORD" "$DEFAULT_PASSWORD" '*Proxmox123*'
-        PURGE_OTHER_USERS="${PURGE_OTHER_USERS:-true}"
-        if [ "$PURGE_OTHER_USERS" = "true" ]; then
-            LogWarn "PURGE_OTHER_USERS=true: removing every other user under /home (set PURGE_OTHER_USERS=false to keep them)"
-            local home_dir user
-            for home_dir in /home/*; do
-                if [ -d "$home_dir" ]; then
-                    user="${home_dir##*/}"
-                    if [ "$user" != "$DEFAULT_USERNAME" ]; then
-                        userdel -rf "$user" > /dev/null 2>&1 || true
-                        if HaveCommand pveum; then
-                            pveum userdel "${user}@pam" > /dev/null 2>&1 || true
-                        fi
-                    fi
-                fi
-            done
-        fi
-        if id "$DEFAULT_USERNAME" > /dev/null 2>&1; then
-            userdel -rf "$DEFAULT_USERNAME" > /dev/null 2>&1 || true
-        fi
-        useradd -c "$DEFAULT_FULLNAME" -d "/home/${DEFAULT_USERNAME}" -s "/bin/zsh" -m "$DEFAULT_USERNAME"
-        printf '%s:%s\n' "$DEFAULT_USERNAME" "$DEFAULT_PASSWORD" | chpasswd
-        adduser "$DEFAULT_USERNAME" "docker"
-        adduser "$DEFAULT_USERNAME" "sudo"
-        CRONTAB_USER="$DEFAULT_USERNAME"
-        CRONTAB_ENTRIES=(
-            "@reboot rm -rf ~/.*_history ~/.ssh/known_hosts*"
-        )
-        InstallCrontab
-        if HaveCommand pveum; then
-            if pveum group list | grep -q 'LADM'; then
-                pveum group modify "LADM" -comment "Local Administrators"
-            else
-                pveum groupadd "LADM" -comment "Local Administrators"
-            fi
-            pveum aclmod "/" -group "LADM" -role "Administrator"
-            if pveum user list | grep -q "${DEFAULT_USERNAME}@pam"; then
-                pveum usermod "${DEFAULT_USERNAME}@pam" -comment "$DEFAULT_FULLNAME" -firstname "$DEFAULT_FIRSTNAME" -group "LADM" -lastname "$DEFAULT_LASTNAME"
-            else
-                pveum useradd "${DEFAULT_USERNAME}@pam" -comment "$DEFAULT_FULLNAME" -firstname "$DEFAULT_FIRSTNAME" -group "LADM" -lastname "$DEFAULT_LASTNAME"
-            fi
-            pveum usermod "root@pam" -comment "Proxmox Root" -firstname "Root" -group "LADM" -lastname "Proxmox"
-        fi
-    }
-    function ConfigureHostfile() {
+ConfigureSystem() {
+    ConfigureHostfile() {
         ComputeFullDomain
-        local host_list=()
+        local mgmt_entry=""
         if [ -n "$CURRENT_MANAGEMENT_IP" ]; then
-            host_list+=("${CURRENT_MANAGEMENT_IP} ${NEW_FULL_DOMAIN} ${NEW_HOSTNAME}")
+            mgmt_entry="${CURRENT_MANAGEMENT_IP} ${NEW_FULL_DOMAIN} ${NEW_HOSTNAME}"
         fi
-        host_list+=(
-            "127.0.0.1 localhost"
-            "255.255.255.255 broadcasthost"
-            "::1 ip6-localhost ip6-loopback localhost"
-            "fe00::0 ip6-localnet"
-            "ff00::0 ip6-mcastprefix"
-            "ff02::1 ip6-allnodes"
-            "ff02::2 ip6-allrouters"
-            "ff02::3 ip6-allhosts"
-        )
-        printf '%s\n' "${host_list[@]}" > "/etc/hosts"
-        printf '%s\n' "$NEW_HOSTNAME" > "/etc/hostname"
-        hostnamectl set-hostname "$NEW_HOSTNAME"
+        WriteHostfile ${mgmt_entry:+"$mgmt_entry"}
     }
-    function ConfigureProxmoxVENode() {
+    ConfigureProxmoxVENode() {
         if [ "$OLD_HOSTNAME" != "$NEW_HOSTNAME" ]; then
             if [ -d "/etc/pve/nodes/${OLD_HOSTNAME}" ]; then
                 tar -czvf "/etc/pve/nodes/${OLD_HOSTNAME}.tar.gz" "/etc/pve/nodes/${OLD_HOSTNAME}"
@@ -464,7 +374,7 @@ function ConfigureSystem() {
             fi
         fi
     }
-    function ConfigureSecureBoot() {
+    ConfigureSecureBoot() {
         if [ "$(findmnt -n -o FSTYPE / 2>/dev/null || true)" = "zfs" ]; then
             local esp
             while IFS= read -r esp; do
@@ -472,23 +382,8 @@ function ConfigureSystem() {
             done < <(lsblk -nr -o NAME,FSTYPE,SIZE | grep -v '^zd' | awk '$2=="vfat" {print "/dev/"$1}' || true)
         fi
     }
-    function ConfigureSWAP() {
-        function ClearSWAP() {
-            HaveCommand sysctl || return 0
-            sync
-            sysctl -w vm.drop_caches=3 vm.overcommit_memory=0 vm.swappiness=0
-        }
-        function CreateSWAP() {
-            local zram_conf_list=(
-                "[zram0]"
-                "compression-algorithm = zstd"
-                "zram-size = min(ram / 2, 8192)"
-            )
-            rm -rf "/etc/systemd/zram-generator.conf.d"
-            mkdir -p "/etc/systemd/zram-generator.conf.d"
-            printf '%s\n' "${zram_conf_list[@]}" > "/etc/systemd/zram-generator.conf.d/zram.conf"
-        }
-        function RemoveSWAP() {
+    ConfigureSWAP() {
+        RemoveSWAP() {
             local swapfile
             while IFS= read -r swapfile; do
                 swapoff "$swapfile" > /dev/null 2>&1 || true
@@ -500,14 +395,14 @@ function ConfigureSystem() {
                 fi
             done < <(awk 'NR>1 {print $1}' /proc/swaps)
         }
-        function UpdateFSTAB() {
+        UpdateFSTAB() {
             grep -v "swap" /etc/fstab > "/tmp/fstab.autodeploy" || true
             cat "/tmp/fstab.autodeploy" > "/etc/fstab"
             rm -f "/tmp/fstab.autodeploy"
         }
         ClearSWAP
         RemoveSWAP
-        CreateSWAP
+        CreateZRamSWAP
         UpdateFSTAB
     }
     RunStep "ConfigureDefaultShell" ConfigureDefaultShell
@@ -521,44 +416,13 @@ function ConfigureSystem() {
 }
 
 # Install Custom Packages
-function InstallCustomPackages() {
-    function InstallCrowdSec() {
-        InstallAptRepo "crowdsec" "https://packagecloud.io/crowdsec/crowdsec/gpgkey" \
-            "deb [arch=amd64 signed-by=/usr/share/keyrings/crowdsec-archive-keyring.gpg] https://packagecloud.io/crowdsec/crowdsec/any any main
-deb-src [arch=amd64 signed-by=/usr/share/keyrings/crowdsec-archive-keyring.gpg] https://packagecloud.io/crowdsec/crowdsec/any any main"
-        if HaveCommand cscli; then
-            local bouncer
-            while IFS= read -r bouncer; do
-                cscli bouncers delete "$bouncer"
-            done < <(cscli bouncers list | grep 'FirewallBouncer' | awk '{print $1}' || true)
-        fi
-        InstallAptPackages "crowdsec" "crowdsec-firewall-bouncer-nftables"
-    }
-    function InstallDockerEngine() {
-        InstallAptRepo "docker" "https://mirrors.cernet.edu.cn/docker-ce/linux/debian/gpg" \
-            "deb [arch=amd64 signed-by=/usr/share/keyrings/docker-archive-keyring.gpg] https://mirrors.cernet.edu.cn/docker-ce/linux/debian ${LSB_CODENAME} stable"
-        apt update
-        apt purge -qy containerd docker-compose docker-doc docker.io podman-docker runc || true
-        InstallAptPackages "containerd.io" "docker-buildx-plugin" "docker-ce" "docker-ce-cli" "docker-compose-plugin"
-    }
-    function InstallFRRouting() {
-        InstallAptRepo "frrouting" "https://deb.frrouting.org/frr/keys.gpg" \
-            "deb [arch=amd64 signed-by=/usr/share/keyrings/frrouting-archive-keyring.gpg] https://deb.frrouting.org/frr ${LSB_CODENAME} frr-stable"
-        InstallAptPackages "frr" "frr-pythontools" "frr-snmp"
-    }
+InstallCustomPackages() {
     OMZ_HOME="/home/${DEFAULT_USERNAME}"
     OMZ_OWNER="${DEFAULT_USERNAME}:${DEFAULT_USERNAME}"
     RunStep "InstallCrowdSec" InstallCrowdSec
     RunStep "InstallDockerEngine" InstallDockerEngine
     RunStep "InstallFRRouting" InstallFRRouting
     RunStep "InstallOhMyZsh" InstallOhMyZsh
-}
-
-# Install Dependency Packages
-function InstallDependencyPackages() {
-    local apt_list=("${DEPENDENCY_PACKAGES[@]}")
-    apt_list+=(${MICROCODE[@]+"${MICROCODE[@]}"})
-    InstallAptPackages "${apt_list[@]}"
 }
 
 ## Process

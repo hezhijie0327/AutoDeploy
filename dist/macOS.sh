@@ -6,19 +6,18 @@
 # For a one-off tweak you may edit the Configuration block below.
 #
 ## How to get and use?
-# /bin/bash -c "$(curl -fsSL 'https://source.zhijie.online/AutoDeploy/main/macOS.sh')"
-# /bin/bash -c "$(wget -qO- 'https://source.zhijie.online/AutoDeploy/main/macOS.sh')"
+# /bin/bash -c "$(curl -fsSL 'https://source.zhijie.online/AutoDeploy/main/dist/macOS.sh')"
+# /bin/bash -c "$(wget -qO- 'https://source.zhijie.online/AutoDeploy/main/dist/macOS.sh')"
 # ============================================================================
-# Configuration - macOS
-# The single place to tune a deployment. Edit defaults here, or override any
-# knob via environment variable before running. Runs as the operator (no root).
+# Configuration - shared across all platforms
+# Common knobs shared by every generated script. Platform config files add
+# platform-specific defaults on top of these. Every knob is env-overridable.
 # ============================================================================
 
 ## Resume / progress
 # State lives under the running user's home. AUTODEPLOY_FORCE=true re-runs all.
 AUTODEPLOY_STATE_DIR="${AUTODEPLOY_STATE_DIR:-${HOME}/.autodeploy}"
 AUTODEPLOY_FORCE="${AUTODEPLOY_FORCE:-false}"
-AUTODEPLOY_STEP_TOTAL=14 # must match the RunStep count (lint.sh checks)
 
 ## Credentials
 OPENSSH_PASSWORD="${OPENSSH_PASSWORD:-}"
@@ -33,9 +32,6 @@ GIT_GPG_PROGRAM="${GIT_GPG_PROGRAM:-gpg}"
 GIT_HTTP_PROXY="${GIT_HTTP_PROXY:-}"
 GIT_HTTPS_PROXY="${GIT_HTTPS_PROXY:-}"
 
-## Behavior switches
-REINSTALL_BREW="${REINSTALL_BREW:-false}" # true wipes and reinstalls Homebrew
-
 ## Proxy / mirrors
 GHPROXY_URL="${GHPROXY_URL:-}" # GitHub proxy: bare domain or full URL (scheme optional)
 PROXY_URL="${PROXY_URL:-http://vpn.zhijie.online:7890}" # zsh proxy_on helper
@@ -47,6 +43,19 @@ PROXY_PASSWORD="${PROXY_PASSWORD:-}"
 
 ## Zsh
 ZSH_THEME="${ZSH_THEME:-ys}"
+# ============================================================================
+# Configuration - macOS
+# Platform additions on top of config/common.sh. Runs as the operator (no
+# root). Override any knob via environment variable before running.
+# ============================================================================
+
+## Resume / progress
+AUTODEPLOY_STEP_TOTAL=14 # must match the RunStep count (lint.sh checks)
+
+## Behavior switches
+REINSTALL_BREW="${REINSTALL_BREW:-false}" # true wipes and reinstalls Homebrew
+
+## Zsh
 ZSH_BUILD_IN_PLUGINS="${ZSH_BUILD_IN_PLUGINS:-aliases brew colored-man-pages command-not-found common-aliases docker docker-compose extract git history macos ssh sudo}"
 
 ## Homebrew formulae
@@ -138,7 +147,8 @@ MAS_APPS=(
     "985367838" # Microsoft Outlook
 )
 # ============================================================================
-# common.sh - shared across all platforms (DSM / macOS / Ubuntu / Proxmox VE)
+# core.sh - logging, error handling and the resume/progress state machine
+# Shared across all platforms (DSM / macOS / Ubuntu / Proxmox VE / Reinstall).
 # Part of the generated single-file scripts; not executable on its own.
 # Compatible with bash 3.2 (macOS system bash) - avoid bash 4+ features here.
 # ============================================================================
@@ -183,6 +193,30 @@ WarnDefaultPassword() {
     local name="$1" value="$2" default_value="$3"
     if [ "$value" = "$default_value" ]; then
         LogWarn "${name} is using the built-in default. Change it after deployment, or override it with ${name}=<value> before running."
+    fi
+}
+
+# Under `curl | sudo bash`, whoami is root; SUDO_USER is the real operator.
+# Used by DSM/macOS; debian platforms use DEFAULT_USERNAME instead.
+GetCurrentUsername() {
+    # shellcheck disable=SC2034
+    CURRENT_USERNAME="${SUDO_USER:-$(whoami)}"
+}
+
+SetGHProxyDomain() {
+    GHPROXY_URL="${GHPROXY_URL:-}"
+    if [ -n "$GHPROXY_URL" ]; then
+        # Accept a bare domain (proxy.example.com) or a full URL
+        # (https://proxy.example.com[/]); keep any given scheme.
+        case "$GHPROXY_URL" in
+            *://*) ;;
+            *) GHPROXY_URL="https://${GHPROXY_URL}" ;;
+        esac
+        # Normalize to exactly one trailing slash.
+        while [ "$GHPROXY_URL" != "${GHPROXY_URL%/}" ]; do
+            GHPROXY_URL="${GHPROXY_URL%/}"
+        done
+        export GHPROXY_URL="${GHPROXY_URL}/"
     fi
 }
 
@@ -255,34 +289,25 @@ InitRun() {
 }
 
 trap 'Die "failed at line ${LINENO}: ${BASH_COMMAND}"' ERR
+# ============================================================================
+# modules/crontab.sh - crontab installation helper (all platforms, bash 3.2+)
+# Caller must set: CRONTAB_USER, CRONTAB_ENTRIES (array)
+# ============================================================================
 
-## Function
-# Get System Information (shared parts)
-GetCurrentUsername() {
-    # Under `curl | sudo bash`, whoami is root; SUDO_USER is the real operator.
-    # Used by DSM/macOS; debian platforms use DEFAULT_USERNAME instead.
-    # shellcheck disable=SC2034
-    CURRENT_USERNAME="${SUDO_USER:-$(whoami)}"
-}
-
-SetGHProxyDomain() {
-    GHPROXY_URL="${GHPROXY_URL:-}"
-    if [ -n "$GHPROXY_URL" ]; then
-        # Accept a bare domain (proxy.example.com) or a full URL
-        # (https://proxy.example.com[/]); keep any given scheme.
-        case "$GHPROXY_URL" in
-            *://*) ;;
-            *) GHPROXY_URL="https://${GHPROXY_URL}" ;;
-        esac
-        # Normalize to exactly one trailing slash.
-        while [ "$GHPROXY_URL" != "${GHPROXY_URL%/}" ]; do
-            GHPROXY_URL="${GHPROXY_URL%/}"
-        done
-        export GHPROXY_URL="${GHPROXY_URL}/"
+InstallCrontab() {
+    HaveCommand crontab || return 0
+    local sudo_prefix=()
+    if [ "$(id -u)" -ne 0 ]; then
+        sudo_prefix=(sudo)
     fi
+    printf '%s\n' "${CRONTAB_ENTRIES[@]}" | ${sudo_prefix[@]+"${sudo_prefix[@]}"} crontab -u "$CRONTAB_USER" -
+    ${sudo_prefix[@]+"${sudo_prefix[@]}"} crontab -lu "$CRONTAB_USER"
 }
+# ============================================================================
+# modules/git.sh - global git configuration (all platforms, bash 3.2+)
+# Uses the GIT_* knobs from config/common.sh.
+# ============================================================================
 
-# Configure Packages (shared)
 ApplyGitConfig() {
     local gitconfig_key_list=(
         "commit.gpgsign"
@@ -326,9 +351,13 @@ ConfigureGit() {
         chown "$DEFAULT_USERNAME:$DEFAULT_USERNAME" "$user_gitconfig"
     fi
 }
-
+# ============================================================================
+# modules/gpg.sh - GPG key setup with SSH authentication support
+# (all platforms, bash 3.2+)
 # Platform must set: GPG_HOME, GPG_KEYSERVER, GPG_PINENTRY (may be empty),
 # and optionally GPG_HOME_OWNER (user:group) when running as root.
+# ============================================================================
+
 ConfigureGPG() {
     HaveCommand gpg || return 0
     GPG_PUBKEY="${GPG_PUBKEY:-DD982DAAB9C71C78F9563E5207EB56787030D792}"
@@ -359,6 +388,69 @@ ConfigureGPG() {
     find "$GPG_HOME" -type d -exec chmod 700 {} +
     find "$GPG_HOME" -type f -exec chmod 600 {} +
 }
+# ============================================================================
+# modules/hosts.sh - standard /etc/hosts entries (all platforms, bash 3.2+)
+# Pure data table. Debian platforms append platform extras via WriteHostfile
+# (modules/debian/users.sh); macOS writes the table with sudo tee directly.
+# ============================================================================
+
+HOSTS_BASE_ENTRIES=(
+    "127.0.0.1 localhost"
+    "255.255.255.255 broadcasthost"
+    "::1 ip6-localhost ip6-loopback localhost"
+    "fe00::0 ip6-localnet"
+    "ff00::0 ip6-mcastprefix"
+    "ff02::1 ip6-allnodes"
+    "ff02::2 ip6-allrouters"
+    "ff02::3 ip6-allhosts"
+)
+# ============================================================================
+# modules/proxychains.sh - proxychains-ng client configuration
+# (all platforms, bash 3.2+)
+# Platform must set: PROXYCHAINS_CONF
+# ============================================================================
+
+ConfigureProxyChains() {
+    local proxychains_list=(
+        'localnet 127.0.0.0/255.0.0.0'
+        'localnet 10.0.0.0/255.0.0.0'
+        'localnet 172.16.0.0/255.240.0.0'
+        'localnet 192.168.0.0/255.255.0.0'
+        'localnet ::1/128'
+        'proxy_dns'
+        'remote_dns_subnet 224'
+        'strict_chain'
+        'tcp_connect_time_out 8000'
+        'tcp_read_time_out 15000'
+        '[ProxyList]'
+        "${PROXY_PROTOCOL:-socks5} ${PROXY_IP:-127.0.0.1} ${PROXY_PORT:-7891}${PROXY_USERNAME:+ ${PROXY_USERNAME} ${PROXY_PASSWORD:-}}"
+    )
+    printf '%s\n' "${proxychains_list[@]}" > "$PROXYCHAINS_CONF"
+}
+# ============================================================================
+# modules/pypi.sh - pip mirror configuration (all platforms, bash 3.2+)
+# On root-run platforms the resulting config is copied to DEFAULT_USERNAME.
+# ============================================================================
+
+ConfigurePythonPyPI() {
+    local which_pip=""
+    if HaveCommand pip3; then
+        which_pip="pip3"
+    elif HaveCommand pip; then
+        which_pip="pip"
+    else
+        return 0
+    fi
+    "$which_pip" config set global.index-url "https://mirrors.cernet.edu.cn/pypi/web/simple"
+    if [ "$(id -u)" -eq 0 ] && [ -n "${DEFAULT_USERNAME:-}" ] && [ -f "/root/.config/pip/pip.conf" ]; then
+        install -D -m 644 -o "$DEFAULT_USERNAME" -g "$DEFAULT_USERNAME" \
+            "/root/.config/pip/pip.conf" "/home/${DEFAULT_USERNAME}/.config/pip/pip.conf"
+    fi
+}
+# ============================================================================
+# modules/ssh.sh - SSH key pair generation and per-user .ssh initialization
+# (all platforms, bash 3.2+)
+# ============================================================================
 
 # Generate the user key pairs (ecdsa/ed25519/rsa) inside an existing .ssh dir.
 # DSA is intentionally gone: OpenSSH >= 9.8 disables it, 10.x removed it.
@@ -381,42 +473,62 @@ GenerateHostSSHKeys() {
     chmod 644 "${ssh_dir}"/ssh_host_*.pub
 }
 
-# Platform must set: PROXYCHAINS_CONF
-ConfigureProxyChains() {
-    local proxychains_list=(
-        'localnet 127.0.0.0/255.0.0.0'
-        'localnet 10.0.0.0/255.0.0.0'
-        'localnet 172.16.0.0/255.240.0.0'
-        'localnet 192.168.0.0/255.255.0.0'
-        'localnet ::1/128'
-        'proxy_dns'
-        'remote_dns_subnet 224'
-        'strict_chain'
-        'tcp_connect_time_out 8000'
-        'tcp_read_time_out 15000'
-        '[ProxyList]'
-        "${PROXY_PROTOCOL:-socks5} ${PROXY_IP:-127.0.0.1} ${PROXY_PORT:-7891}${PROXY_USERNAME:+ ${PROXY_USERNAME} ${PROXY_PASSWORD:-}}"
+# Initialize a user .ssh dir: back up any existing one, create the skeleton,
+# generate the key pairs, fix permissions. Callers that import authorized_keys
+# from GPG_HOME do so afterwards (the mv replaces the placeholder file).
+# Pass owner (user:group) when running as root; empty owner = skip chown.
+InitUserSSHDir() {
+    local ssh_dir="$1" comment="$2" owner="${3:-}"
+    BackupPath "$ssh_dir"
+    mkdir -p "$ssh_dir"
+    touch "${ssh_dir}/authorized_keys" "${ssh_dir}/known_hosts"
+    GenerateSSHKeys "$ssh_dir" "$comment"
+    chmod 600 "${ssh_dir}/authorized_keys"
+    chmod 644 "${ssh_dir}/known_hosts"
+    chmod 700 "$ssh_dir"
+    if [ -n "$owner" ]; then
+        chown -R "$owner" "$ssh_dir"
+    fi
+}
+# ============================================================================
+# modules/wireguard.sh - wg0 client configuration writer
+# (all platforms, bash 3.2+)
+# Writes /etc/wireguard/wg0.conf. The private key never touches a temp file.
+# Platform handles directory ownership and bringing the interface up.
+# ============================================================================
+
+GenerateWireGuardConfig() {
+    TUNNEL_CLIENT_IPADDR="10.172.$((RANDOM % 256)).$((RANDOM % 256))/32"
+    local private_key public_key preshared_key
+    private_key=$(wg genkey)
+    public_key=$(printf '%s' "$private_key" | wg pubkey)
+    preshared_key=$(wg genpsk)
+    local wireguard_list=(
+        "[Interface]"
+        "Address = ${TUNNEL_CLIENT_IPADDR}"
+        "# DNS = 127.0.0.1, ::1"
+        "ListenPort = 51820"
+        "MTU = 1420"
+        "PrivateKey = ${private_key}"
+        "# [Peer]"
+        "# AllowedIPs = ${TUNNEL_CLIENT_IPADDR}"
+        "# Endpoint = 127.0.0.1:51820"
+        "# PersistentKeepalive = 5"
+        "# PresharedKey = ${preshared_key}"
+        "# PublicKey = ${public_key}"
     )
-    printf '%s\n' "${proxychains_list[@]}" > "$PROXYCHAINS_CONF"
+    printf '%s\n' "${wireguard_list[@]}" > "/etc/wireguard/wg0.conf"
+    chmod 600 "/etc/wireguard/wg0.conf"
 }
+# ============================================================================
+# modules/zsh.sh - oh-my-zsh installation and .zshrc generation
+# (all platforms, bash 3.2+)
+# Platform must set: ZSH_PATH_LIST (array). ConfigureZsh additionally needs
+# ZSH_HOME, ZSH_BUILD_IN_PLUGINS, ZSH_EXTRA_EXPORTS (array, may be empty),
+# ZSH_TRAPEXIT (true/false), ZSH_OWNER (may be empty); InstallOhMyZsh needs
+# OMZ_HOME, OMZ_OWNER (may be empty).
+# ============================================================================
 
-ConfigurePythonPyPI() {
-    local which_pip=""
-    if HaveCommand pip3; then
-        which_pip="pip3"
-    elif HaveCommand pip; then
-        which_pip="pip"
-    else
-        return 0
-    fi
-    "$which_pip" config set global.index-url "https://mirrors.cernet.edu.cn/pypi/web/simple"
-    if [ "$(id -u)" -eq 0 ] && [ -n "${DEFAULT_USERNAME:-}" ] && [ -f "/root/.config/pip/pip.conf" ]; then
-        install -D -m 644 -o "$DEFAULT_USERNAME" -g "$DEFAULT_USERNAME" \
-            "/root/.config/pip/pip.conf" "/home/${DEFAULT_USERNAME}/.config/pip/pip.conf"
-    fi
-}
-
-# Platform must set: ZSH_PATH_LIST (array)
 GenerateCommandPath() {
     DEFAULT_PATH=""
     local path_entry
@@ -426,8 +538,6 @@ GenerateCommandPath() {
     DEFAULT_PATH="${DEFAULT_PATH%:}"
 }
 
-# Platform must set: ZSH_HOME, ZSH_BUILD_IN_PLUGINS, ZSH_EXTRA_EXPORTS (array,
-# may be empty), ZSH_TRAPEXIT (true/false), ZSH_OWNER (may be empty).
 GenerateOMZProfile() {
     local proxy_url="${PROXY_URL:-http://vpn.zhijie.online:7890}"
     local no_proxy='localhost,127.0.0.1,::1'
@@ -481,7 +591,6 @@ ConfigureZsh() {
     GenerateOMZProfile
 }
 
-# Platform must set: OMZ_HOME, OMZ_OWNER (may be empty)
 InstallOhMyZsh() {
     HaveCommand git || Die "git is required to install oh-my-zsh"
     local plugin_list=(
@@ -511,47 +620,10 @@ InstallOhMyZsh() {
         chown -R "$OMZ_OWNER" "$omz_dir"
     fi
 }
-
-# Write /etc/wireguard/wg0.conf. The private key never touches a temp file.
-# Platform handles directory ownership and bringing the interface up.
-GenerateWireGuardConfig() {
-    TUNNEL_CLIENT_IPADDR="10.172.$((RANDOM % 256)).$((RANDOM % 256))/32"
-    local private_key public_key preshared_key
-    private_key=$(wg genkey)
-    public_key=$(printf '%s' "$private_key" | wg pubkey)
-    preshared_key=$(wg genpsk)
-    local wireguard_list=(
-        "[Interface]"
-        "Address = ${TUNNEL_CLIENT_IPADDR}"
-        "# DNS = 127.0.0.1, ::1"
-        "ListenPort = 51820"
-        "MTU = 1420"
-        "PrivateKey = ${private_key}"
-        "# [Peer]"
-        "# AllowedIPs = ${TUNNEL_CLIENT_IPADDR}"
-        "# Endpoint = 127.0.0.1:51820"
-        "# PersistentKeepalive = 5"
-        "# PresharedKey = ${preshared_key}"
-        "# PublicKey = ${public_key}"
-    )
-    printf '%s\n' "${wireguard_list[@]}" > "/etc/wireguard/wg0.conf"
-    chmod 600 "/etc/wireguard/wg0.conf"
-}
-
-# Platform must set: CRONTAB_USER, CRONTAB_ENTRIES (array)
-InstallCrontab() {
-    HaveCommand crontab || return 0
-    local sudo_prefix=()
-    if [ "$(id -u)" -ne 0 ]; then
-        sudo_prefix=(sudo)
-    fi
-    printf '%s\n' "${CRONTAB_ENTRIES[@]}" | ${sudo_prefix[@]+"${sudo_prefix[@]}"} crontab -u "$CRONTAB_USER" -
-    ${sudo_prefix[@]+"${sudo_prefix[@]}"} crontab -lu "$CRONTAB_USER"
-}
 ## Function
 # Get System Information
-function GetSystemInformation() {
-    function SetBrewPrefix() {
+GetSystemInformation() {
+    SetBrewPrefix() {
         case "$(uname -m)" in
             arm64) BREW_PREFIX="/opt/homebrew" ;;
             *) BREW_PREFIX="/usr/local" ;;
@@ -565,8 +637,8 @@ function GetSystemInformation() {
 }
 
 # Configure Packages
-function ConfigurePackages() {
-    function ConfigureCrontab() {
+ConfigurePackages() {
+    ConfigureCrontab() {
         CRONTAB_USER="$CURRENT_USERNAME"
         CRONTAB_ENTRIES=(
             "PATH=\"${DEFAULT_PATH}:\$PATH\""
@@ -575,7 +647,7 @@ function ConfigurePackages() {
         )
         InstallCrontab
     }
-    function ConfigureOpenSSH() {
+    ConfigureOpenSSH() {
         HaveCommand ssh-keygen || return 0
         if [ -d "${BREW_PREFIX}/etc/ssh" ]; then
             if [ -d "/etc/ssh" ] && [ ! -L "/etc/ssh" ]; then
@@ -588,20 +660,13 @@ function ConfigurePackages() {
             chown "${CURRENT_USERNAME}:admin" "${BREW_PREFIX}/etc/ssh"/ssh_host_*
         fi
         local user_ssh="/Users/${CURRENT_USERNAME}/.ssh"
-        BackupPath "$user_ssh"
-        mkdir -p "$user_ssh"
+        InitUserSSHDir "$user_ssh" "${CURRENT_USERNAME}@$(hostname)"
         if [ -f "${GPG_HOME}/authorized_keys" ]; then
             mv "${GPG_HOME}/authorized_keys" "${user_ssh}/authorized_keys"
-        else
-            touch "${user_ssh}/authorized_keys"
+            chmod 600 "${user_ssh}/authorized_keys"
         fi
-        touch "${user_ssh}/known_hosts"
-        GenerateSSHKeys "$user_ssh" "${CURRENT_USERNAME}@$(hostname)"
-        chmod 600 "${user_ssh}/authorized_keys"
-        chmod 644 "${user_ssh}/known_hosts"
-        chmod 700 "$user_ssh"
     }
-    function ConfigureSshd() {
+    ConfigureSshd() {
         # Root password login is intentional; the account is locked down later.
         local sshd_config="${BREW_PREFIX}/etc/ssh/sshd_config"
         [ -f "$sshd_config" ] || return 0
@@ -619,7 +684,7 @@ function ConfigurePackages() {
         chown "${CURRENT_USERNAME}:admin" "$sshd_config"
         chmod 644 "$sshd_config"
     }
-    function ConfigureWireGuard() {
+    ConfigureWireGuard() {
         HaveCommand wg || return 0
         if [ ! -d "/etc/wireguard" ]; then
             sudo mkdir "/etc/wireguard"
@@ -660,23 +725,13 @@ function ConfigurePackages() {
 }
 
 # Configure System
-function ConfigureSystem() {
-    function ConfigureHostfile() {
-        local host_list=(
-            "127.0.0.1 localhost"
-            "255.255.255.255 broadcasthost"
-            "::1 ip6-localhost ip6-loopback localhost"
-            "fe00::0 ip6-localnet"
-            "ff00::0 ip6-mcastprefix"
-            "ff02::1 ip6-allnodes"
-            "ff02::2 ip6-allrouters"
-            "ff02::3 ip6-allhosts"
-        )
+ConfigureSystem() {
+    ConfigureHostfile() {
         # tee runs under sudo; a plain `sudo cat > /etc/hosts` would redirect
         # in the unprivileged shell and fail.
-        printf '%s\n' "${host_list[@]}" | sudo tee /etc/hosts > /dev/null
+        printf '%s\n' "${HOSTS_BASE_ENTRIES[@]}" | sudo tee /etc/hosts > /dev/null
     }
-    function ConfigureSystemDefault() {
+    ConfigureSystemDefault() {
         defaults write com.apple.desktopservices DSDontWriteNetworkStores -bool true
         defaults write com.apple.desktopservices DSDontWriteUSBStores -bool true
     }
@@ -685,8 +740,8 @@ function ConfigureSystem() {
 }
 
 # Install Custom Packages
-function InstallCustomPackages() {
-    function InstallAppFromCask() {
+InstallCustomPackages() {
+    InstallAppFromCask() {
         local app_list=("${CASK_APPS[@]}")
         HaveCommand brew || return 0
         local app available=()
@@ -701,7 +756,7 @@ function InstallCustomPackages() {
             brew install --cask "${available[@]}"
         fi
     }
-    function InstallAppFromMAS() {
+    InstallAppFromMAS() {
         local app_list=("${MAS_APPS[@]}")
         HaveCommand mas || return 0
         local app
@@ -721,7 +776,7 @@ function InstallCustomPackages() {
 }
 
 # Install Dependency Packages
-function InstallDependencyPackages() {
+InstallDependencyPackages() {
     REINSTALL_BREW="${REINSTALL_BREW:-false}"
     export HOMEBREW_API_DOMAIN="https://mirrors.cernet.edu.cn/homebrew-bottles/api"
     export HOMEBREW_BOTTLE_DOMAIN="https://mirrors.cernet.edu.cn/homebrew-bottles/bottles"
@@ -757,7 +812,7 @@ function InstallDependencyPackages() {
 }
 
 # Upgrade Packages
-function UpgradePackages() {
+UpgradePackages() {
     brew update
     brew upgrade --greedy
     mas upgrade || LogWarn "mas upgrade failed (sign in to the App Store first)"
@@ -765,7 +820,7 @@ function UpgradePackages() {
 }
 
 # Cleanup Temp Files
-function CleanupTempFiles() {
+CleanupTempFiles() {
     brew cleanup
     rm -f "/Users/${CURRENT_USERNAME}/".*_history /tmp/*.autodeploy
 }

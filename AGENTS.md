@@ -111,34 +111,29 @@ Family-wide Markdown rules, shared verbatim across all ZJ projects:
 
 ## Project
 
-Four deployment scripts, one per platform:
+Four generated deployment scripts, one per platform: `DSM.sh`, `macOS.sh`, `ProxmoxVE.sh`, `Ubuntu.sh`.
 
-- `DSM.sh` - Synology DSM deployment script
-- `macOS.sh` - macOS deployment script
-- `ProxmoxVE.sh` - Proxmox VE deployment script
-- `Ubuntu.sh` - Ubuntu deployment script
+The `dist/*.sh` files are **generated distribution artifacts** — they are what `curl | bash` fetches. Edit the sources under `src/`, then run `./build.sh` to regenerate them. Never hand-edit the dist scripts; `lint.sh` fails if they are stale.
 
-The root `*.sh` files are **generated distribution artifacts** — they are what `curl | bash` fetches. Edit the sources under `src/`, then run `./build.sh` to regenerate them. Never hand-edit the root scripts; `lint.sh` fails if they are stale.
-
-Each script follows the same phases: system information gathering → repository mirrors → dependency packages → custom packages → system configuration → package configuration → cleanup.
+Deployment scripts share the same phases: system information gathering → repository mirrors → dependency packages → custom packages → system configuration → package configuration → cleanup.
 
 ## Commands
 
 ```bash
-# Regenerate root scripts from src/ (run after every source change)
+# Regenerate dist/ scripts from src/ (run after every source change)
 ./build.sh
 
-# Full validation: bash -n + shellcheck + build freshness
+# Full validation: bash -n + shellcheck + step-count + build freshness
 ./lint.sh
 
 # Unit tests for pure functions (runs on bash 3.2 and 5.x)
 bash tests/run_tests.sh
 
 # Syntax check one script
-bash -n Ubuntu.sh
+bash -n dist/Ubuntu.sh
 
 # Static analysis (warning severity must stay clean)
-shellcheck --shell=bash --severity=warning Ubuntu.sh
+shellcheck --shell=bash --severity=warning dist/Ubuntu.sh
 ```
 
 There is no dry-run mode. The scripts modify the live system; test in a VM or spare machine, never on a host you care about.
@@ -148,41 +143,60 @@ There is no dry-run mode. The scripts modify the live system; test in a VM or sp
 ```text
 src/
 ├── config/
-│   ├── DSM.sh       # top-of-script Configuration block (tunable defaults)
-│   ├── macOS.sh
-│   ├── Ubuntu.sh
-│   └── ProxmoxVE.sh
+│   ├── common.sh       # knobs shared by every platform (credentials, git, proxy, zsh)
+│   └── debian.sh       # knobs shared by Ubuntu + Proxmox VE (+ DEPENDENCY_PACKAGES_BASE)
 ├── lib/
-│   ├── common.sh    # shared by all four platforms (bash 3.2 compatible)
-│   └── debian.sh    # shared by Ubuntu + Proxmox VE (bash 4.4+)
-├── DSM.sh           # platform-specific functions + orchestration
-├── macOS.sh
-├── Ubuntu.sh
-└── ProxmoxVE.sh
-build.sh             # concatenates header + config + libs + platform → root script
-lint.sh              # bash -n, shellcheck, step-count, build-freshness checks
-tests/run_tests.sh   # unit tests for the pure functions
+│   ├── core.sh                 # logging, traps, resume/progress (bash 3.2)
+│   └── modules/                # reusable topic modules, selected per platform in build.sh
+│       ├── crontab.sh          #   cross-platform modules (bash 3.2)
+│       ├── git.sh
+│       ├── gpg.sh
+│       ├── hosts.sh
+│       ├── proxychains.sh
+│       ├── pypi.sh
+│       ├── ssh.sh
+│       ├── wireguard.sh
+│       ├── zsh.sh
+│       └── debian/             # Debian-family modules (bash 4.4+)
+│           ├── apt.sh          #   APT config, batch installs, upgrades, cleanup
+│           ├── daemons.sh      #   chrony, docker, frr, lldpd, nut, postfix
+│           ├── kernel.sh       #   modules, sysctl, tuned, gai
+│           ├── security.sh     #   fail2ban, crowdsec, sshd, snmp
+│           ├── storage.sh      #   swap sizing, swap clear, zram
+│           ├── system.sh       #   domain/hostname/DNS/CPU/arch facts, SetDebianGlobals
+│           └── users.sh        #   default user, root, hostfile, openssh
+└── platforms/          # one directory per platform: config.sh + <name>.sh
+    ├── dsm/            #   config.sh + dsm.sh
+    ├── macos/          #   config.sh + macos.sh
+    ├── ubuntu/         #   config.sh + ubuntu.sh
+    └── proxmoxve/      #   config.sh + proxmoxve.sh
+build.sh                # assembles each dist/<Script>.sh from an explicit module list
+lint.sh                 # bash -n, shellcheck, step-count, build-freshness checks
+tests/run_tests.sh      # unit tests for the pure functions
 ```
 
-`build.sh` assembles each root script as: license/usage header → `config/<platform>.sh` → `lib/common.sh` → (`lib/debian.sh` for Ubuntu/PVE) → platform file. The Configuration block lands at the very top of the generated script so operators can tune a deployment in one place. Shared functions live in the libs; platform files set the structural globals a shared function needs (documented above each function, e.g. `GPG_HOME`, `ZSH_PATH_LIST`, `FAIL2BAN_JAILS`) and keep only platform-specific logic plus the `## Process` orchestration.
+`build.sh` assembles each dist script as: license/usage header → config files (common → shared family → `src/platforms/<name>/config.sh`) → `lib/core.sh` → selected `lib/modules/*.sh` (+ `lib/modules/debian/*.sh` for Ubuntu/PVE) → `src/platforms/<name>/<name>.sh`. The Configuration block lands at the very top of the generated script so operators can tune a deployment in one place. Modules carry shared functions; platform files set the structural globals a module needs (documented above each function, e.g. `FAIL2BAN_JAILS`, `DOCKER_APT_DISTRO`, `FRR_APT_LINE`) and keep only platform-specific logic plus the `## Process` orchestration.
 
 All scripts run under `set -Eeuo pipefail` with an `ERR` trap that reports the failing line and command. Commands whose failure is expected (e.g. `git config --unset` on a missing key, `chattr` on unsupported filesystems) carry an explicit `|| true`.
 
 ### Configuration block
 
-`src/config/<platform>.sh` is the single authoritative source of tunable defaults: credentials, identity, behavior switches, release pinning, network/DNS, proxy/mirrors, zsh theme/plugins, and package lists. Every knob is env-overridable (`VAR="${VAR:-default}"`). Functions reference these globals; the `:-` fallbacks kept inside a few shared functions are only a safety net, not a second place to edit. Structural arrays that operators rarely touch (firewall rules, sysctl values, chrony servers) stay in the functions.
+`src/config/` holds the shared layers (`common.sh` → `debian.sh`, Ubuntu + PVE only); each platform keeps its deltas in `src/platforms/<name>/config.sh`. The platform file keeps the deltas only: step totals, platform credentials, platform switches, platform package additions (`DEPENDENCY_PACKAGES=("${DEPENDENCY_PACKAGES_BASE[@]}" ...)`) and arch-conditional picks (PVE swaps `grub-efi-amd64-signed` for `grub-efi-arm64-signed`). Every knob is env-overridable (`VAR="${VAR:-default}"`). Functions reference these globals; the `:-` fallbacks kept inside a few shared functions are only a safety net, not a second place to edit. Structural arrays that operators rarely touch (firewall rules, sysctl values, chrony servers) stay in the functions.
 
 ### Resume and progress
 
-Each orchestration leaf runs through `RunStep "<id>" <function>`. A step is appended to the state file (`$AUTODEPLOY_STATE_DIR/state`, default `~/.autodeploy`) only after it succeeds, so an interrupted run resumes at the first unfinished step. Container functions (`ConfigurePackages`, `ConfigureSystem`, `InstallCustomPackages`) always run — they set globals and dispatch their children, which skip individually if already done. `GetSystemInformation` and macOS `ConfigureZsh` always run because later steps depend on the globals they set. `AUTODEPLOY_FORCE=true` clears the state and re-runs everything. `RenderProgress` prints a `[####----] done/total (pct%)` line per step; `AUTODEPLOY_STEP_TOTAL` must equal the number of `RunStep` calls (lint.sh enforces this).
+Each orchestration leaf runs through `RunStep "<id>" <function>`. A step is appended to the state file (`$AUTODEPLOY_STATE_DIR/state`, default `~/.autodeploy`) only after it succeeds, so an interrupted run resumes at the first unfinished step. Container functions (`ConfigurePackages`, `ConfigureSystem`, `InstallCustomPackages`) always run — they set globals and dispatch their children, which skip individually if already done. `GetSystemInformation` always runs because later steps depend on the globals it sets. `AUTODEPLOY_FORCE=true` clears the state and re-runs everything. `RenderProgress` prints a `[####----] done/total (pct%)` line per step; `AUTODEPLOY_STEP_TOTAL` must equal the number of `RunStep` calls (lint.sh enforces this).
 
 ## Conventions
 
 ### General Principles
-- `#!/bin/bash` shebang; license header is emitted by `build.sh`
-- Root scripts are executable (`build.sh` sets the bit)
-- PascalCase verb-noun function names: `GetSystemInformation()`, `InstallCustomPackages()`
-- Platform-specific helpers are nested inside their parent function; shared helpers live in `src/lib/`
+- `#!/bin/bash` shebang for built scripts; license header is emitted by `build.sh`
+- dist scripts are executable (`build.sh` sets the bit)
+- Source files are lowercase (`src/platforms/ubuntu/config.sh`, `src/platforms/ubuntu/ubuntu.sh`); generated dist scripts keep their published names (`dist/Ubuntu.sh`)
+- No `function` keyword; PascalCase verb-noun function names: `GetSystemInformation()`, `InstallCustomPackages()`
+- Platform-specific helpers are nested inside their parent function; shared helpers live in `src/lib/modules/`
+- Modules are selected per platform by the explicit file lists in `build.sh`; a module a platform uses must be listed there
+- `lib/core.sh` and `lib/modules/*.sh` must stay bash 3.2-compatible (macOS); `lib/modules/debian/*` targets bash 4.4+
 
 ### Variable Naming
 - UPPERCASE_SNAKE_CASE for globals: `NEW_HOSTNAME`, `GHPROXY_URL`, `DEFAULT_USERNAME`
@@ -203,11 +217,12 @@ Each orchestration leaf runs through `RunStep "<id>" <function>`. A step is appe
 - Sensitive files 600, SSH dirs 700, private keys 400
 
 ### Gotchas
-- **macOS ships bash 3.2**: `lib/common.sh` must stay 3.2-compatible — no associative arrays, no namerefs, guard empty-array expansions with `${arr[@]+"${arr[@]}"}`. `lib/debian.sh` targets bash 4.4+ only.
-- **Generated files**: commit the regenerated root scripts together with the `src/` change; `lint.sh` enforces freshness.
-- **Step total**: when adding/removing a `RunStep` call, update `AUTODEPLOY_STEP_TOTAL` in `src/config/<platform>.sh`; `lint.sh` fails on a mismatch.
-- **Configuration is authoritative**: edit tunable defaults in `src/config/<platform>.sh`, not inside functions. Keep new knobs env-overridable.
-- **Release pinning is intentional**: `LSB_CODENAME`/`LSB_VERSION` (Ubuntu) and `LSB_CODENAME`/`CEPH_CODENAME` (PVE) are hardcoded to the latest release by design. Bump them each release in the config block; do not switch to auto-detection.
+- **macOS ships bash 3.2**: `lib/core.sh` and `lib/modules/*.sh` must stay 3.2-compatible — no associative arrays, no namerefs, guard empty-array expansions with `${arr[@]+"${arr[@]}"}`. `lib/modules/debian/*` targets bash 4.4+ only.
+- **Module composition lives in build.sh**: adding a shared function to a new platform means adding its module file to that platform's build list — lint.sh does not verify module selection, only freshness.
+- **Generated files**: commit the regenerated `dist/` scripts together with the `src/` change; `lint.sh` enforces freshness.
+- **Step total**: when adding/removing a `RunStep` call, update `AUTODEPLOY_STEP_TOTAL` in the platform's `src/platforms/<name>/config.sh`; `lint.sh` fails on a mismatch.
+- **Configuration is authoritative**: edit tunable defaults in `src/config/`, not inside functions. Keep new knobs env-overridable. Structural globals a module needs (e.g. `DOCKER_APT_DISTRO`, `FRR_APT_LINE`) are documented above that function and set by the platform's `ConfigurePackages`.
+- **Release pinning is intentional**: `LSB_CODENAME`/`LSB_VERSION` (Ubuntu) and `LSB_CODENAME`/`CEPH_CODENAME` (PVE) are hardcoded to the latest release by design. Bump them each release in the config block; do not switch to auto-detection. PVE package picks are arch-aware: the `grub-efi-*-signed` swap happens in `src/platforms/proxmoxve/config.sh`.
 - **Single quotes in generated snippets** (e.g. `plugin_upgrade_list`) are deliberate — they must not expand at generation time.
 - `pcie_acs_override` is a patched-kernel parameter; mainline kernels ignore it. Kept intentionally for homelab IOMMU grouping.
 - macOS has no `shuf`; use `$((RANDOM % 256))` for random octets.
@@ -277,8 +292,9 @@ Default passwords are kept on purpose (operators change them after deployment). 
 2. Back up critical configuration; test in a non-production environment first
 3. Run:
 ```bash
-curl "https://source.zhijie.online/AutoDeploy/main/SCRIPT.sh" | sudo bash
+curl "https://source.zhijie.online/AutoDeploy/main/dist/SCRIPT.sh" | sudo bash
 ```
+
 
 ## Key Docs
 

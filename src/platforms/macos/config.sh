@@ -1,42 +1,16 @@
 # ============================================================================
 # Configuration - macOS
-# The single place to tune a deployment. Edit defaults here, or override any
-# knob via environment variable before running. Runs as the operator (no root).
+# Platform additions on top of config/common.sh. Runs as the operator (no
+# root). Override any knob via environment variable before running.
 # ============================================================================
 
 ## Resume / progress
-# State lives under the running user's home. AUTODEPLOY_FORCE=true re-runs all.
-AUTODEPLOY_STATE_DIR="${AUTODEPLOY_STATE_DIR:-${HOME}/.autodeploy}"
-AUTODEPLOY_FORCE="${AUTODEPLOY_FORCE:-false}"
 AUTODEPLOY_STEP_TOTAL=14 # must match the RunStep count (lint.sh checks)
-
-## Credentials
-OPENSSH_PASSWORD="${OPENSSH_PASSWORD:-}"
-GPG_PUBKEY="${GPG_PUBKEY:-DD982DAAB9C71C78F9563E5207EB56787030D792}"
-
-## Identity (Git)
-GIT_USER_NAME="${GIT_USER_NAME:-}"
-GIT_USER_EMAIL="${GIT_USER_EMAIL:-}"
-GIT_USER_SIGNINGKEY="${GIT_USER_SIGNINGKEY:-}"
-GIT_COMMIT_GPGSIGN="${GIT_COMMIT_GPGSIGN:-false}"
-GIT_GPG_PROGRAM="${GIT_GPG_PROGRAM:-gpg}"
-GIT_HTTP_PROXY="${GIT_HTTP_PROXY:-}"
-GIT_HTTPS_PROXY="${GIT_HTTPS_PROXY:-}"
 
 ## Behavior switches
 REINSTALL_BREW="${REINSTALL_BREW:-false}" # true wipes and reinstalls Homebrew
 
-## Proxy / mirrors
-GHPROXY_URL="${GHPROXY_URL:-}" # GitHub proxy: bare domain or full URL (scheme optional)
-PROXY_URL="${PROXY_URL:-http://vpn.zhijie.online:7890}" # zsh proxy_on helper
-PROXY_PROTOCOL="${PROXY_PROTOCOL:-socks5}" # proxychains upstream
-PROXY_IP="${PROXY_IP:-127.0.0.1}"
-PROXY_PORT="${PROXY_PORT:-7891}"
-PROXY_USERNAME="${PROXY_USERNAME:-}"
-PROXY_PASSWORD="${PROXY_PASSWORD:-}"
-
 ## Zsh
-ZSH_THEME="${ZSH_THEME:-ys}"
 ZSH_BUILD_IN_PLUGINS="${ZSH_BUILD_IN_PLUGINS:-aliases brew colored-man-pages command-not-found common-aliases docker docker-compose extract git history macos ssh sudo}"
 
 ## Homebrew formulae

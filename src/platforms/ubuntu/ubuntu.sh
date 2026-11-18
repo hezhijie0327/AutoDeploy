@@ -1,11 +1,11 @@
 ## Function
 # Get System Information
-function GetSystemInformation() {
+GetSystemInformation() {
     # Identity, credentials and release pinning live in the Configuration block.
     DEFAULT_FULLNAME="${DEFAULT_LASTNAME} ${DEFAULT_FIRSTNAME}"
 
-    function CheckMachineEnvironment() {
-        function CheckHypervisorEnvironment() {
+    CheckMachineEnvironment() {
+        CheckHypervisorEnvironment() {
             if ! HaveCommand virt-what; then
                 local apt_sources_file="/etc/apt/sources.list"
                 if [ ! -f "$apt_sources_file" ]; then
@@ -31,37 +31,29 @@ function GetSystemInformation() {
         }
         CheckHypervisorEnvironment
     }
-    function GetCPUpsABILevel() {
+    GetPsabiLevel() {
         # https://dl.xanmod.org/check_x86-64_psabi.sh
         PSABI_LEVEL=$(awk 'BEGIN{while(!/flags/)if(getline<"/proc/cpuinfo"!=1)exit 0;if(/lm/&&/cmov/&&/cx8/&&/fpu/&&/fxsr/&&/mmx/&&/syscall/&&/sse2/)l=1;if(l==1&&/cx16/&&/lahf/&&/popcnt/&&/sse4_1/&&/sse4_2/&&/ssse3/)l=2;if(l==2&&/avx/&&/avx2/&&/bmi1/&&/bmi2/&&/f16c/&&/fma/&&/abm/&&/movbe/&&/xsave/)l=3;if(l==3&&/avx512f/&&/avx512bw/&&/avx512cd/&&/avx512dq/&&/avx512vl/)l=4;print l}')
     }
-    function GetOSArchitecture() {
-        if HaveCommand dpkg; then
-            OS_ARCHITECTURE=$(dpkg --print-architecture)
-        else
-            case "$(uname -m)" in
-                aarch64) OS_ARCHITECTURE="arm64" ;;
-                x86_64) OS_ARCHITECTURE="amd64" ;;
-            esac
-        fi
+    GetUbuntuMirror() {
+        GetOSArchitecture
         case "${OS_ARCHITECTURE:-}" in
             arm64) MIRROR_URL="ubuntu-ports" ;;
             amd64) MIRROR_URL="ubuntu" ;;
-            *) Die "Unsupported architecture." ;;
         esac
     }
     CollectDNS
     GenerateDomain
     CheckMachineEnvironment
     GenerateHostname
-    GetCPUpsABILevel
+    GetPsabiLevel
     GetCPUVendorID
-    GetOSArchitecture
+    GetUbuntuMirror
     SetGHProxyDomain
 }
 
 # Set Repository Mirror
-function SetRepositoryMirror() {
+SetRepositoryMirror() {
     local mirror_list=(
         "deb ${TRANSPORT_PROTOCOL}://mirrors.cernet.edu.cn/${MIRROR_URL} ${LSB_CODENAME} main multiverse restricted universe"
         "deb ${TRANSPORT_PROTOCOL}://mirrors.cernet.edu.cn/${MIRROR_URL} ${LSB_CODENAME}-backports main multiverse restricted universe"
@@ -74,32 +66,20 @@ function SetRepositoryMirror() {
         "deb-src ${TRANSPORT_PROTOCOL}://mirrors.cernet.edu.cn/${MIRROR_URL} ${LSB_CODENAME}-security main multiverse restricted universe"
         "deb-src ${TRANSPORT_PROTOCOL}://mirrors.cernet.edu.cn/${MIRROR_URL} ${LSB_CODENAME}-updates main multiverse restricted universe"
     )
-    if [ ! -d "/etc/apt/sources.list.d" ]; then
-        mkdir "/etc/apt/sources.list.d"
-    else
-        rm -f /etc/apt/sources.list.d/*.*
-    fi
+    mkdir -p "/etc/apt/sources.list.d"
+    rm -f /etc/apt/sources.list.d/*.*
     printf '%s\n' "${mirror_list[@]}" > "/etc/apt/sources.list"
 }
 
 # Configure Packages
-function ConfigurePackages() {
-    function ConfigureCloudflareWARP() {
+ConfigurePackages() {
+    ConfigureCloudflareWARP() {
         # Get token from `https://<YOUR_TEAM_NAME>.cloudflareaccess.com/warp`
         # Login via `warp-cli registration token 'com.cloudflare.warp://<your-team-name>.cloudflareaccess.com/auth?token=<your-token>'`
         HaveCommand warp-cli || return 0
         ufw allow in on CloudflareWARP
     }
-    function ConfigureCrontab() {
-        CRONTAB_USER="root"
-        CRONTAB_ENTRIES=(
-            "0 0 * * 7 sudo apt update && sudo apt full-upgrade -qy && sudo apt autoremove -qy --purge"
-            "# 0 4 * * 7 sudo reboot"
-            "@reboot sudo rm -rf ~/.*_history ~/.ssh/known_hosts*"
-        )
-        InstallCrontab
-    }
-    function ConfigureGrub() {
+    ConfigureGrub() {
         HaveCommand update-grub || return 0
         rm -f "/etc/default/grub.d/50-cloudimg-settings.cfg"
         [ -f "/usr/share/grub/default/grub" ] || return 0
@@ -111,15 +91,12 @@ function ConfigurePackages() {
             "/usr/share/grub/default/grub" > "/etc/default/grub"
         update-grub
     }
-    function ConfigureLandscape() {
+    ConfigureLandscape() {
         [ -f "/usr/lib/python3/dist-packages/landscape/lib/network.py" ] || return 0
         sed -i 's/tostring/tobytes/g' "/usr/lib/python3/dist-packages/landscape/lib/network.py"
     }
-    function ConfigureNetplan() {
+    ConfigureNetplan() {
         HaveCommand netplan || return 0
-        NIC_NAME="${NIC_NAME:-}" # enp6s18 / ens18
-        STATIC_IPV4_CONFIG="${STATIC_IPV4_CONFIG:-}" # 10.192.31.254/19,10.192.0.1
-        STATIC_IPV6_CONFIG="${STATIC_IPV6_CONFIG:-}" # 2409:8a20:8800::254/64,2409:8a20:8800::1
         local static_ipv4_addr static_ipv4_gateway static_ipv6_addr static_ipv6_gateway
         static_ipv4_addr=$(printf '%s' "$STATIC_IPV4_CONFIG" | cut -d ',' -f 1)
         static_ipv4_gateway=$(printf '%s' "$STATIC_IPV4_CONFIG" | cut -d ',' -f 2)
@@ -177,7 +154,7 @@ function ConfigurePackages() {
         chmod 600 "/etc/netplan/netplan.yaml"
         netplan apply
     }
-    function ConfigureResolved() {
+    ConfigureResolved() {
         if HaveCommand resolvectl; then
             local resolved_list=(
                 "[Resolve]"
@@ -199,10 +176,10 @@ function ConfigurePackages() {
             chattr +i /etc/resolv.conf
         fi
     }
-    function ConfigureSystemd() {
+    ConfigureSystemd() {
         systemctl disable systemd-networkd-wait-online > /dev/null 2>&1 || true
     }
-    function ConfigureUfw() {
+    ConfigureUfw() {
         HaveCommand ufw || return 0
         [ -f "/etc/default/ufw" ] || return 0
         sed -i -E \
@@ -225,13 +202,10 @@ function ConfigurePackages() {
         ufw --force enable
         ufw status verbose
     }
-    function ConfigureWireGuard() {
+    ConfigureWireGuard() {
         HaveCommand wg || return 0
-        if [ ! -d "/etc/wireguard" ]; then
-            mkdir "/etc/wireguard"
-        else
-            rm -f /etc/wireguard/*
-        fi
+        mkdir -p "/etc/wireguard"
+        rm -f /etc/wireguard/*
         GenerateWireGuardConfig
         chown -R "${DEFAULT_USERNAME}:sudo" "/etc/wireguard"
         chmod -R 775 "/etc/wireguard"
@@ -273,16 +247,10 @@ function ConfigurePackages() {
     MODULE_LIST_EXTRA=()
     SYSCTL_INTERFACE_MODE="exclude"
     SYSCTL_INTERFACE_PATTERN='^(docker0|lo|wg0)$'
-    PROXYCHAINS_CONF="/etc/proxychains4.conf"
-    GPG_HOME="/home/${DEFAULT_USERNAME}/.gnupg"
-    GPG_KEYSERVER="hkps://keyserver.ubuntu.com:443"
-    GPG_PINENTRY="/usr/bin/pinentry-tty"
-    GPG_HOME_OWNER="${DEFAULT_USERNAME}:${DEFAULT_USERNAME}"
-    ZSH_HOME="/home/${DEFAULT_USERNAME}"
-    ZSH_OWNER="${DEFAULT_USERNAME}:${DEFAULT_USERNAME}"
-    ZSH_PATH_LIST=("/bin" "/sbin" "/usr/bin" "/usr/sbin" "/usr/local/bin" "/usr/local/sbin")
-    ZSH_EXTRA_EXPORTS=("export DEBIAN_FRONTEND=\"noninteractive\"")
-    ZSH_TRAPEXIT="false"
+    DOCKER_APT_DISTRO="ubuntu"
+    FRR_APT_LINE="deb [arch=${OS_ARCHITECTURE} signed-by=/usr/share/keyrings/frrouting-archive-keyring.gpg] https://deb.frrouting.org/frr stable frr-stable"
+    FRR_EXTRA_PACKAGES=("frr-rpki-rtrlib")
+    SetDebianGlobals
 
     RunStep "ConfigureAPT" ConfigureAPT
     RunStep "ConfigureBusybox" ConfigureBusybox
@@ -316,66 +284,19 @@ function ConfigurePackages() {
 }
 
 # Configure System
-function ConfigureSystem() {
-    function ConfigureDefaultUser() {
-        WarnDefaultPassword "DEFAULT_PASSWORD" "$DEFAULT_PASSWORD" '*Ubuntu123*'
-        PURGE_OTHER_USERS="${PURGE_OTHER_USERS:-true}"
-        if [ "$PURGE_OTHER_USERS" = "true" ]; then
-            LogWarn "PURGE_OTHER_USERS=true: removing every other user under /home (set PURGE_OTHER_USERS=false to keep them)"
-            local home_dir user
-            for home_dir in /home/*; do
-                if [ -d "$home_dir" ]; then
-                    user="${home_dir##*/}"
-                    if [ "$user" != "$DEFAULT_USERNAME" ]; then
-                        userdel -rf "$user" > /dev/null 2>&1 || true
-                    fi
-                fi
-            done
-        fi
-        if id "$DEFAULT_USERNAME" > /dev/null 2>&1; then
-            userdel -rf "$DEFAULT_USERNAME" > /dev/null 2>&1 || true
-        fi
-        useradd -c "$DEFAULT_FULLNAME" -d "/home/${DEFAULT_USERNAME}" -s "/bin/zsh" -m "$DEFAULT_USERNAME"
-        printf '%s:%s\n' "$DEFAULT_USERNAME" "$DEFAULT_PASSWORD" | chpasswd
-        adduser "$DEFAULT_USERNAME" "docker"
-        adduser "$DEFAULT_USERNAME" "sudo"
-        CRONTAB_USER="$DEFAULT_USERNAME"
-        CRONTAB_ENTRIES=(
-            "@reboot rm -rf ~/.*_history ~/.ssh/known_hosts*"
-        )
-        InstallCrontab
+ConfigureSystem() {
+    ConfigureHostfile() {
+        WriteHostfile "127.0.1.1 ${NEW_HOSTNAME}"
     }
-    function ConfigureHostfile() {
-        ComputeFullDomain
-        local host_list=(
-            "127.0.0.1 localhost"
-            "127.0.1.1 ${NEW_HOSTNAME}"
-            "255.255.255.255 broadcasthost"
-            "::1 ip6-localhost ip6-loopback localhost"
-            "fe00::0 ip6-localnet"
-            "ff00::0 ip6-mcastprefix"
-            "ff02::1 ip6-allnodes"
-            "ff02::2 ip6-allrouters"
-            "ff02::3 ip6-allhosts"
-        )
-        printf '%s\n' "${host_list[@]}" > "/etc/hosts"
-        printf '%s\n' "$NEW_HOSTNAME" > "/etc/hostname"
-        hostnamectl set-hostname "$NEW_HOSTNAME"
-    }
-    function ConfigureLocales() {
+    ConfigureLocales() {
         apt purge -qy locales
         apt update
         apt install -qy locales
         locale-gen "en_US.UTF-8"
         update-locale "en_US.UTF-8"
     }
-    function ConfigureSWAP() {
-        function ClearSWAP() {
-            HaveCommand sysctl || return 0
-            sync
-            sysctl -w vm.drop_caches=3 vm.overcommit_memory=0 vm.swappiness=0
-        }
-        function CreateSWAP() {
+    ConfigureSWAP() {
+        CreateSWAP() {
             local ram_mb
             ram_mb=$(free -m | awk '/^Mem:/ {print $2}')
             SWAP_SIZE=$(ComputeSwapSize "$ram_mb")
@@ -388,24 +309,14 @@ function ConfigureSystem() {
             mkswap "/swapfile"
             swapon "/swapfile"
         }
-        function CreateZRamSWAP() {
-            local zram_conf_list=(
-                "[zram0]"
-                "compression-algorithm = zstd"
-                "zram-size = min(ram / 2, 8192)"
-            )
-            rm -rf "/etc/systemd/zram-generator.conf.d"
-            mkdir -p "/etc/systemd/zram-generator.conf.d"
-            printf '%s\n' "${zram_conf_list[@]}" > "/etc/systemd/zram-generator.conf.d/zram.conf"
-        }
-        function RemoveSWAP() {
+        RemoveSWAP() {
             local swapfile
             while IFS= read -r swapfile; do
                 swapoff "$swapfile" > /dev/null 2>&1 || true
                 rm -f "$swapfile"
             done < <(awk 'NR>1 {print $1}' /proc/swaps)
         }
-        function UpdateFSTAB() {
+        UpdateFSTAB() {
             grep -v "swap" /etc/fstab > "/tmp/fstab.autodeploy" || true
             if [ -f "/swapfile" ] && [ "$DISABLE_SWAP" = "false" ]; then
                 printf '%s\n' "/swapfile none swap sw 0 0" >> "/tmp/fstab.autodeploy"
@@ -413,7 +324,6 @@ function ConfigureSystem() {
             cat "/tmp/fstab.autodeploy" > "/etc/fstab"
             rm -f "/tmp/fstab.autodeploy"
         }
-        DISABLE_SWAP="${DISABLE_SWAP:-false}"
         ClearSWAP
         RemoveSWAP
         if [ "$DISABLE_SWAP" = "false" ]; then
@@ -422,7 +332,7 @@ function ConfigureSystem() {
         CreateZRamSWAP
         UpdateFSTAB
     }
-    function ConfigureTimeZone() {
+    ConfigureTimeZone() {
         rm -f "/etc/localtime"
         ln -s "/usr/share/zoneinfo/Asia/Shanghai" "/etc/localtime"
     }
@@ -437,45 +347,20 @@ function ConfigureSystem() {
 }
 
 # Install Custom Packages
-function InstallCustomPackages() {
-    function InstallCloudflareWARP() {
+InstallCustomPackages() {
+    InstallCloudflareWARP() {
         InstallAptRepo "cloudflare-warp" "https://pkg.cloudflareclient.com/pubkey.gpg" \
             "deb [arch=${OS_ARCHITECTURE} signed-by=/usr/share/keyrings/cloudflare-warp-archive-keyring.gpg] https://pkg.cloudflareclient.com ${LSB_CODENAME} main"
         InstallAptPackages "cloudflare-warp"
     }
-    function InstallCrowdSec() {
-        InstallAptRepo "crowdsec" "https://packagecloud.io/crowdsec/crowdsec/gpgkey" \
-            "deb [arch=${OS_ARCHITECTURE} signed-by=/usr/share/keyrings/crowdsec-archive-keyring.gpg] https://packagecloud.io/crowdsec/crowdsec/any any main
-deb-src [arch=${OS_ARCHITECTURE} signed-by=/usr/share/keyrings/crowdsec-archive-keyring.gpg] https://packagecloud.io/crowdsec/crowdsec/any any main"
-        if HaveCommand cscli; then
-            local bouncer
-            while IFS= read -r bouncer; do
-                cscli bouncers delete "$bouncer"
-            done < <(cscli bouncers list | grep 'FirewallBouncer' | awk '{print $1}' || true)
-        fi
-        InstallAptPackages "crowdsec" "crowdsec-firewall-bouncer-nftables"
-    }
-    function InstallDockerEngine() {
-        InstallAptRepo "docker" "https://mirrors.cernet.edu.cn/docker-ce/linux/ubuntu/gpg" \
-            "deb [arch=${OS_ARCHITECTURE} signed-by=/usr/share/keyrings/docker-archive-keyring.gpg] https://mirrors.cernet.edu.cn/docker-ce/linux/ubuntu ${LSB_CODENAME} stable"
-        apt update
-        apt purge -qy containerd docker-compose docker-doc docker.io podman-docker runc || true
-        InstallAptPackages "containerd.io" "docker-buildx-plugin" "docker-ce" "docker-ce-cli" "docker-compose-plugin"
-    }
-    function InstallFRRouting() {
-        InstallAptRepo "frrouting" "https://deb.frrouting.org/frr/keys.gpg" \
-            "deb [arch=${OS_ARCHITECTURE} signed-by=/usr/share/keyrings/frrouting-archive-keyring.gpg] https://deb.frrouting.org/frr stable frr-stable"
-        InstallAptPackages "frr" "frr-pythontools" "frr-rpki-rtrlib" "frr-snmp"
-    }
-    function InstallTor() {
+    InstallTor() {
         InstallAptRepo "tor" "https://deb.torproject.org/torproject.org/A3C4F0F979CAA22CDBA8F512EE8CBC9E886DDD89.asc" \
             "deb [arch=${OS_ARCHITECTURE} signed-by=/usr/share/keyrings/tor-archive-keyring.gpg] https://deb.torproject.org/torproject.org stable main"
         InstallAptPackages "tor"
     }
-    function InstallXanModKernel() {
+    InstallXanModKernel() {
         # Note: NVIDIA, OpenZFS, VirtualBox, VMware and some other dkms modules
         # may not officially support EDGE and RT branch kernels.
-        XANMOD_BRANCH="${XANMOD_BRANCH:-edge}" # disable | main | edge | lts | rt
         local branch="$XANMOD_BRANCH"
         # psABI v1 CPUs cannot run edge/rt builds (compare before suffixing!)
         if [ "$PSABI_LEVEL" = "1" ] && { [ "$branch" = "edge" ] || [ "$branch" = "rt" ]; }; then
@@ -509,28 +394,6 @@ deb-src [arch=${OS_ARCHITECTURE} signed-by=/usr/share/keyrings/crowdsec-archive-
     RunStep "InstallOhMyZsh" InstallOhMyZsh
     #RunStep "InstallTor" InstallTor
     RunStep "InstallXanModKernel" InstallXanModKernel
-}
-
-# Install Dependency Packages
-function InstallDependencyPackages() {
-    local apt_list=("${DEPENDENCY_PACKAGES[@]}")
-    apt_list+=(${HYPERVISOR_AGENT[@]+"${HYPERVISOR_AGENT[@]}"} ${MICROCODE[@]+"${MICROCODE[@]}"})
-    # Purge guest agents that do not belong to the detected hypervisor.
-    local hypervisor_agent_list=("ksmtuned" "open-vm-tools" "qemu-guest-agent" "virtualbox-guest-dkms")
-    local agent wanted keep
-    for agent in "${hypervisor_agent_list[@]}"; do
-        keep="false"
-        for wanted in ${HYPERVISOR_AGENT[@]+"${HYPERVISOR_AGENT[@]}"}; do
-            if [ "$agent" = "$wanted" ]; then
-                keep="true"
-            fi
-        done
-        if [ "$keep" = "false" ] && dpkg -l "$agent" 2>/dev/null | grep -q '^ii'; then
-            apt purge -qy "$agent"
-            apt autoremove -qy --purge
-        fi
-    done
-    InstallAptPackages "${apt_list[@]}"
 }
 
 ## Process

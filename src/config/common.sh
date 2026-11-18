@@ -1,15 +1,13 @@
 # ============================================================================
-# Configuration - Synology DSM
-# The single place to tune a deployment. Edit defaults here, or override any
-# knob via environment variable before running. Runs as root via sudo; the
-# operator account is taken from SUDO_USER.
+# Configuration - shared across all platforms
+# Common knobs shared by every generated script. Platform config files add
+# platform-specific defaults on top of these. Every knob is env-overridable.
 # ============================================================================
 
 ## Resume / progress
 # State lives under the running user's home. AUTODEPLOY_FORCE=true re-runs all.
 AUTODEPLOY_STATE_DIR="${AUTODEPLOY_STATE_DIR:-${HOME}/.autodeploy}"
 AUTODEPLOY_FORCE="${AUTODEPLOY_FORCE:-false}"
-AUTODEPLOY_STEP_TOTAL=8 # must match the RunStep count (lint.sh checks)
 
 ## Credentials
 OPENSSH_PASSWORD="${OPENSSH_PASSWORD:-}"
@@ -27,7 +25,11 @@ GIT_HTTPS_PROXY="${GIT_HTTPS_PROXY:-}"
 ## Proxy / mirrors
 GHPROXY_URL="${GHPROXY_URL:-}" # GitHub proxy: bare domain or full URL (scheme optional)
 PROXY_URL="${PROXY_URL:-http://vpn.zhijie.online:7890}" # zsh proxy_on helper
+PROXY_PROTOCOL="${PROXY_PROTOCOL:-socks5}" # proxychains upstream
+PROXY_IP="${PROXY_IP:-127.0.0.1}"
+PROXY_PORT="${PROXY_PORT:-7891}"
+PROXY_USERNAME="${PROXY_USERNAME:-}"
+PROXY_PASSWORD="${PROXY_PASSWORD:-}"
 
 ## Zsh
 ZSH_THEME="${ZSH_THEME:-ys}"
-ZSH_BUILD_IN_PLUGINS="${ZSH_BUILD_IN_PLUGINS:-aliases colored-man-pages command-not-found common-aliases docker docker-compose extract git history ssh sudo}"

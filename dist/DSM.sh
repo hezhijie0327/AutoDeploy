@@ -1,5 +1,62 @@
+#!/bin/bash
+# Copyright 2026 Zhijie He
+# Licensed under Apache-2.0 WITH Commons-Clause-1.0. See LICENSE.
+#
+# GENERATED FILE - edit src/ and run ./build.sh to regenerate.
+# For a one-off tweak you may edit the Configuration block below.
+#
+## How to get and use?
+# curl "https://source.zhijie.online/AutoDeploy/main/dist/DSM.sh" | sudo bash
+# wget -qO- "https://source.zhijie.online/AutoDeploy/main/dist/DSM.sh" | sudo bash
 # ============================================================================
-# common.sh - shared across all platforms (DSM / macOS / Ubuntu / Proxmox VE)
+# Configuration - shared across all platforms
+# Common knobs shared by every generated script. Platform config files add
+# platform-specific defaults on top of these. Every knob is env-overridable.
+# ============================================================================
+
+## Resume / progress
+# State lives under the running user's home. AUTODEPLOY_FORCE=true re-runs all.
+AUTODEPLOY_STATE_DIR="${AUTODEPLOY_STATE_DIR:-${HOME}/.autodeploy}"
+AUTODEPLOY_FORCE="${AUTODEPLOY_FORCE:-false}"
+
+## Credentials
+OPENSSH_PASSWORD="${OPENSSH_PASSWORD:-}"
+GPG_PUBKEY="${GPG_PUBKEY:-DD982DAAB9C71C78F9563E5207EB56787030D792}"
+
+## Identity (Git)
+GIT_USER_NAME="${GIT_USER_NAME:-}"
+GIT_USER_EMAIL="${GIT_USER_EMAIL:-}"
+GIT_USER_SIGNINGKEY="${GIT_USER_SIGNINGKEY:-}"
+GIT_COMMIT_GPGSIGN="${GIT_COMMIT_GPGSIGN:-false}"
+GIT_GPG_PROGRAM="${GIT_GPG_PROGRAM:-gpg}"
+GIT_HTTP_PROXY="${GIT_HTTP_PROXY:-}"
+GIT_HTTPS_PROXY="${GIT_HTTPS_PROXY:-}"
+
+## Proxy / mirrors
+GHPROXY_URL="${GHPROXY_URL:-}" # GitHub proxy: bare domain or full URL (scheme optional)
+PROXY_URL="${PROXY_URL:-http://vpn.zhijie.online:7890}" # zsh proxy_on helper
+PROXY_PROTOCOL="${PROXY_PROTOCOL:-socks5}" # proxychains upstream
+PROXY_IP="${PROXY_IP:-127.0.0.1}"
+PROXY_PORT="${PROXY_PORT:-7891}"
+PROXY_USERNAME="${PROXY_USERNAME:-}"
+PROXY_PASSWORD="${PROXY_PASSWORD:-}"
+
+## Zsh
+ZSH_THEME="${ZSH_THEME:-ys}"
+# ============================================================================
+# Configuration - Synology DSM
+# Platform additions on top of config/common.sh. Runs as root via sudo; the
+# operator account is taken from SUDO_USER.
+# ============================================================================
+
+## Resume / progress
+AUTODEPLOY_STEP_TOTAL=8 # must match the RunStep count (lint.sh checks)
+
+## Zsh
+ZSH_BUILD_IN_PLUGINS="${ZSH_BUILD_IN_PLUGINS:-aliases colored-man-pages command-not-found common-aliases docker docker-compose extract git history ssh sudo}"
+# ============================================================================
+# core.sh - logging, error handling and the resume/progress state machine
+# Shared across all platforms (DSM / macOS / Ubuntu / Proxmox VE / Reinstall).
 # Part of the generated single-file scripts; not executable on its own.
 # Compatible with bash 3.2 (macOS system bash) - avoid bash 4+ features here.
 # ============================================================================
@@ -44,6 +101,30 @@ WarnDefaultPassword() {
     local name="$1" value="$2" default_value="$3"
     if [ "$value" = "$default_value" ]; then
         LogWarn "${name} is using the built-in default. Change it after deployment, or override it with ${name}=<value> before running."
+    fi
+}
+
+# Under `curl | sudo bash`, whoami is root; SUDO_USER is the real operator.
+# Used by DSM/macOS; debian platforms use DEFAULT_USERNAME instead.
+GetCurrentUsername() {
+    # shellcheck disable=SC2034
+    CURRENT_USERNAME="${SUDO_USER:-$(whoami)}"
+}
+
+SetGHProxyDomain() {
+    GHPROXY_URL="${GHPROXY_URL:-}"
+    if [ -n "$GHPROXY_URL" ]; then
+        # Accept a bare domain (proxy.example.com) or a full URL
+        # (https://proxy.example.com[/]); keep any given scheme.
+        case "$GHPROXY_URL" in
+            *://*) ;;
+            *) GHPROXY_URL="https://${GHPROXY_URL}" ;;
+        esac
+        # Normalize to exactly one trailing slash.
+        while [ "$GHPROXY_URL" != "${GHPROXY_URL%/}" ]; do
+            GHPROXY_URL="${GHPROXY_URL%/}"
+        done
+        export GHPROXY_URL="${GHPROXY_URL}/"
     fi
 }
 
@@ -116,34 +197,11 @@ InitRun() {
 }
 
 trap 'Die "failed at line ${LINENO}: ${BASH_COMMAND}"' ERR
+# ============================================================================
+# modules/git.sh - global git configuration (all platforms, bash 3.2+)
+# Uses the GIT_* knobs from config/common.sh.
+# ============================================================================
 
-## Function
-# Get System Information (shared parts)
-GetCurrentUsername() {
-    # Under `curl | sudo bash`, whoami is root; SUDO_USER is the real operator.
-    # Used by DSM/macOS; debian platforms use DEFAULT_USERNAME instead.
-    # shellcheck disable=SC2034
-    CURRENT_USERNAME="${SUDO_USER:-$(whoami)}"
-}
-
-SetGHProxyDomain() {
-    GHPROXY_URL="${GHPROXY_URL:-}"
-    if [ -n "$GHPROXY_URL" ]; then
-        # Accept a bare domain (proxy.example.com) or a full URL
-        # (https://proxy.example.com[/]); keep any given scheme.
-        case "$GHPROXY_URL" in
-            *://*) ;;
-            *) GHPROXY_URL="https://${GHPROXY_URL}" ;;
-        esac
-        # Normalize to exactly one trailing slash.
-        while [ "$GHPROXY_URL" != "${GHPROXY_URL%/}" ]; do
-            GHPROXY_URL="${GHPROXY_URL%/}"
-        done
-        export GHPROXY_URL="${GHPROXY_URL}/"
-    fi
-}
-
-# Configure Packages (shared)
 ApplyGitConfig() {
     local gitconfig_key_list=(
         "commit.gpgsign"
@@ -187,9 +245,13 @@ ConfigureGit() {
         chown "$DEFAULT_USERNAME:$DEFAULT_USERNAME" "$user_gitconfig"
     fi
 }
-
+# ============================================================================
+# modules/gpg.sh - GPG key setup with SSH authentication support
+# (all platforms, bash 3.2+)
 # Platform must set: GPG_HOME, GPG_KEYSERVER, GPG_PINENTRY (may be empty),
 # and optionally GPG_HOME_OWNER (user:group) when running as root.
+# ============================================================================
+
 ConfigureGPG() {
     HaveCommand gpg || return 0
     GPG_PUBKEY="${GPG_PUBKEY:-DD982DAAB9C71C78F9563E5207EB56787030D792}"
@@ -220,6 +282,10 @@ ConfigureGPG() {
     find "$GPG_HOME" -type d -exec chmod 700 {} +
     find "$GPG_HOME" -type f -exec chmod 600 {} +
 }
+# ============================================================================
+# modules/ssh.sh - SSH key pair generation and per-user .ssh initialization
+# (all platforms, bash 3.2+)
+# ============================================================================
 
 # Generate the user key pairs (ecdsa/ed25519/rsa) inside an existing .ssh dir.
 # DSA is intentionally gone: OpenSSH >= 9.8 disables it, 10.x removed it.
@@ -242,42 +308,32 @@ GenerateHostSSHKeys() {
     chmod 644 "${ssh_dir}"/ssh_host_*.pub
 }
 
-# Platform must set: PROXYCHAINS_CONF
-ConfigureProxyChains() {
-    local proxychains_list=(
-        'localnet 127.0.0.0/255.0.0.0'
-        'localnet 10.0.0.0/255.0.0.0'
-        'localnet 172.16.0.0/255.240.0.0'
-        'localnet 192.168.0.0/255.255.0.0'
-        'localnet ::1/128'
-        'proxy_dns'
-        'remote_dns_subnet 224'
-        'strict_chain'
-        'tcp_connect_time_out 8000'
-        'tcp_read_time_out 15000'
-        '[ProxyList]'
-        "${PROXY_PROTOCOL:-socks5} ${PROXY_IP:-127.0.0.1} ${PROXY_PORT:-7891}${PROXY_USERNAME:+ ${PROXY_USERNAME} ${PROXY_PASSWORD:-}}"
-    )
-    printf '%s\n' "${proxychains_list[@]}" > "$PROXYCHAINS_CONF"
-}
-
-ConfigurePythonPyPI() {
-    local which_pip=""
-    if HaveCommand pip3; then
-        which_pip="pip3"
-    elif HaveCommand pip; then
-        which_pip="pip"
-    else
-        return 0
-    fi
-    "$which_pip" config set global.index-url "https://mirrors.cernet.edu.cn/pypi/web/simple"
-    if [ "$(id -u)" -eq 0 ] && [ -n "${DEFAULT_USERNAME:-}" ] && [ -f "/root/.config/pip/pip.conf" ]; then
-        install -D -m 644 -o "$DEFAULT_USERNAME" -g "$DEFAULT_USERNAME" \
-            "/root/.config/pip/pip.conf" "/home/${DEFAULT_USERNAME}/.config/pip/pip.conf"
+# Initialize a user .ssh dir: back up any existing one, create the skeleton,
+# generate the key pairs, fix permissions. Callers that import authorized_keys
+# from GPG_HOME do so afterwards (the mv replaces the placeholder file).
+# Pass owner (user:group) when running as root; empty owner = skip chown.
+InitUserSSHDir() {
+    local ssh_dir="$1" comment="$2" owner="${3:-}"
+    BackupPath "$ssh_dir"
+    mkdir -p "$ssh_dir"
+    touch "${ssh_dir}/authorized_keys" "${ssh_dir}/known_hosts"
+    GenerateSSHKeys "$ssh_dir" "$comment"
+    chmod 600 "${ssh_dir}/authorized_keys"
+    chmod 644 "${ssh_dir}/known_hosts"
+    chmod 700 "$ssh_dir"
+    if [ -n "$owner" ]; then
+        chown -R "$owner" "$ssh_dir"
     fi
 }
+# ============================================================================
+# modules/zsh.sh - oh-my-zsh installation and .zshrc generation
+# (all platforms, bash 3.2+)
+# Platform must set: ZSH_PATH_LIST (array). ConfigureZsh additionally needs
+# ZSH_HOME, ZSH_BUILD_IN_PLUGINS, ZSH_EXTRA_EXPORTS (array, may be empty),
+# ZSH_TRAPEXIT (true/false), ZSH_OWNER (may be empty); InstallOhMyZsh needs
+# OMZ_HOME, OMZ_OWNER (may be empty).
+# ============================================================================
 
-# Platform must set: ZSH_PATH_LIST (array)
 GenerateCommandPath() {
     DEFAULT_PATH=""
     local path_entry
@@ -287,8 +343,6 @@ GenerateCommandPath() {
     DEFAULT_PATH="${DEFAULT_PATH%:}"
 }
 
-# Platform must set: ZSH_HOME, ZSH_BUILD_IN_PLUGINS, ZSH_EXTRA_EXPORTS (array,
-# may be empty), ZSH_TRAPEXIT (true/false), ZSH_OWNER (may be empty).
 GenerateOMZProfile() {
     local proxy_url="${PROXY_URL:-http://vpn.zhijie.online:7890}"
     local no_proxy='localhost,127.0.0.1,::1'
@@ -342,7 +396,6 @@ ConfigureZsh() {
     GenerateOMZProfile
 }
 
-# Platform must set: OMZ_HOME, OMZ_OWNER (may be empty)
 InstallOhMyZsh() {
     HaveCommand git || Die "git is required to install oh-my-zsh"
     local plugin_list=(
@@ -372,40 +425,91 @@ InstallOhMyZsh() {
         chown -R "$OMZ_OWNER" "$omz_dir"
     fi
 }
-
-# Write /etc/wireguard/wg0.conf. The private key never touches a temp file.
-# Platform handles directory ownership and bringing the interface up.
-GenerateWireGuardConfig() {
-    TUNNEL_CLIENT_IPADDR="10.172.$((RANDOM % 256)).$((RANDOM % 256))/32"
-    local private_key public_key preshared_key
-    private_key=$(wg genkey)
-    public_key=$(printf '%s' "$private_key" | wg pubkey)
-    preshared_key=$(wg genpsk)
-    local wireguard_list=(
-        "[Interface]"
-        "Address = ${TUNNEL_CLIENT_IPADDR}"
-        "# DNS = 127.0.0.1, ::1"
-        "ListenPort = 51820"
-        "MTU = 1420"
-        "PrivateKey = ${private_key}"
-        "# [Peer]"
-        "# AllowedIPs = ${TUNNEL_CLIENT_IPADDR}"
-        "# Endpoint = 127.0.0.1:51820"
-        "# PersistentKeepalive = 5"
-        "# PresharedKey = ${preshared_key}"
-        "# PublicKey = ${public_key}"
-    )
-    printf '%s\n' "${wireguard_list[@]}" > "/etc/wireguard/wg0.conf"
-    chmod 600 "/etc/wireguard/wg0.conf"
+## Function
+# Get System Information
+GetSystemInformation() {
+    GetCurrentUsername
+    HOME_BASE="/var/services/homes/${CURRENT_USERNAME}"
+    SetGHProxyDomain
 }
 
-# Platform must set: CRONTAB_USER, CRONTAB_ENTRIES (array)
-InstallCrontab() {
-    HaveCommand crontab || return 0
-    local sudo_prefix=()
-    if [ "$(id -u)" -ne 0 ]; then
-        sudo_prefix=(sudo)
-    fi
-    printf '%s\n' "${CRONTAB_ENTRIES[@]}" | ${sudo_prefix[@]+"${sudo_prefix[@]}"} crontab -u "$CRONTAB_USER" -
-    ${sudo_prefix[@]+"${sudo_prefix[@]}"} crontab -lu "$CRONTAB_USER"
+# Configure Packages
+ConfigurePackages() {
+    ConfigureDocker() {
+        HaveCommand synogroup || return 0
+        synogroup --add docker || true
+        if [ -S "/var/run/docker.sock" ]; then
+            chown root:docker "/var/run/docker.sock"
+        fi
+        synogroup --member docker "$CURRENT_USERNAME"
+    }
+    ConfigureOpenSSH() {
+        HaveCommand ssh-keygen || return 0
+        local user_ssh="${HOME_BASE}/.ssh"
+        InitUserSSHDir "$user_ssh" "${CURRENT_USERNAME}@$(hostname)" "${CURRENT_USERNAME}:users"
+        if [ -f "${GPG_HOME}/authorized_keys" ]; then
+            mv "${GPG_HOME}/authorized_keys" "${user_ssh}/authorized_keys"
+            chown "${CURRENT_USERNAME}:users" "${user_ssh}/authorized_keys"
+            chmod 600 "${user_ssh}/authorized_keys"
+        fi
+    }
+    ConfigurePing() {
+        HaveCommand setcap || return 0
+        HaveCommand ping || return 0
+        setcap 'cap_net_raw+ep' "$(command -v ping)"
+    }
+
+    GPG_HOME="${HOME_BASE}/.gnupg"
+    GPG_KEYSERVER="hkp://keyserver.ubuntu.com"
+    GPG_PINENTRY=""
+    GPG_HOME_OWNER="${CURRENT_USERNAME}:users"
+    ZSH_HOME="$HOME_BASE"
+    ZSH_OWNER="${CURRENT_USERNAME}:users"
+    ZSH_PATH_LIST=("/bin" "/sbin" "/usr/bin" "/usr/sbin" "/usr/local/bin" "/usr/local/sbin" "/usr/syno/bin" "/usr/syno/sbin")
+    ZSH_EXTRA_EXPORTS=("export DEBIAN_FRONTEND=\"noninteractive\"")
+    ZSH_TRAPEXIT="true"
+
+    RunStep "ConfigureDocker" ConfigureDocker
+    RunStep "ConfigureGit" ConfigureGit
+    RunStep "ConfigureGPG" ConfigureGPG
+    RunStep "ConfigureOpenSSH" ConfigureOpenSSH
+    RunStep "ConfigurePing" ConfigurePing
+    RunStep "ConfigureZsh" ConfigureZsh
 }
+
+# Configure System
+ConfigureSystem() {
+    ConfigureDefaultShell() {
+        HaveCommand zsh || return 0
+        local zsh_path
+        zsh_path=$(command -v zsh)
+        local profile_list=(
+            "if [[ -x ${zsh_path} ]]; then"
+            "    export SHELL=${zsh_path}"
+            "    exec ${zsh_path}"
+            "fi"
+        )
+        printf '%s\n' "${profile_list[@]}" > "${HOME_BASE}/.profile"
+    }
+    RunStep "ConfigureDefaultShell" ConfigureDefaultShell
+}
+
+# Install Custom Packages
+InstallCustomPackages() {
+    OMZ_HOME="$HOME_BASE"
+    OMZ_OWNER="${CURRENT_USERNAME}:users"
+    RunStep "InstallOhMyZsh" InstallOhMyZsh
+}
+
+## Process
+RequireRoot
+# Call GetSystemInformation (always runs: later steps need its globals)
+GetSystemInformation
+InitRun
+# Call InstallCustomPackages
+InstallCustomPackages
+# Call ConfigureSystem
+ConfigureSystem
+# Call ConfigurePackages
+ConfigurePackages
+RenderProgress "complete"

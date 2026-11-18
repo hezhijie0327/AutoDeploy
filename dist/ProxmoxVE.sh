@@ -6,38 +6,24 @@
 # For a one-off tweak you may edit the Configuration block below.
 #
 ## How to get and use?
-# curl "https://source.zhijie.online/AutoDeploy/main/ProxmoxVE.sh" | sudo bash
-# wget -qO- "https://source.zhijie.online/AutoDeploy/main/ProxmoxVE.sh" | sudo bash
+# curl "https://source.zhijie.online/AutoDeploy/main/dist/ProxmoxVE.sh" | sudo bash
+# wget -qO- "https://source.zhijie.online/AutoDeploy/main/dist/ProxmoxVE.sh" | sudo bash
 # ============================================================================
-# Configuration - Proxmox VE
-# The single place to tune a deployment. Edit defaults here, or override any
-# knob via environment variable before running, e.g.:
-#   ROOT_PASSWORD='...' RESET_CLUSTER=false curl .../ProxmoxVE.sh | sudo bash
+# Configuration - shared across all platforms
+# Common knobs shared by every generated script. Platform config files add
+# platform-specific defaults on top of these. Every knob is env-overridable.
 # ============================================================================
 
 ## Resume / progress
 # State lives under the running user's home. AUTODEPLOY_FORCE=true re-runs all.
 AUTODEPLOY_STATE_DIR="${AUTODEPLOY_STATE_DIR:-${HOME}/.autodeploy}"
 AUTODEPLOY_FORCE="${AUTODEPLOY_FORCE:-false}"
-AUTODEPLOY_STEP_TOTAL=50 # must match the RunStep count (lint.sh checks)
 
-## Credentials (defaults are intentional; change them after deployment)
-ROOT_PASSWORD="${ROOT_PASSWORD:-R00t@123!}"
-DEFAULT_PASSWORD="${DEFAULT_PASSWORD:-*Proxmox123*}"
-LOCK_ROOT="${LOCK_ROOT:-FALSE}" # TRUE locks the root account after deployment
-NUT_ADMIN_PASSWORD="${NUT_ADMIN_PASSWORD:-123456}"
-NUT_MON_PASSWORD="${NUT_MON_PASSWORD:-secret}"
-SNMP_AUTH_PASS="${SNMP_AUTH_PASS:-}" # empty -> root password (warns)
-SNMP_PRIV_PASS="${SNMP_PRIV_PASS:-}" # empty -> hostname (warns)
-SNMP_USER="${SNMP_USER:-proxmox}"
+## Credentials
 OPENSSH_PASSWORD="${OPENSSH_PASSWORD:-}"
 GPG_PUBKEY="${GPG_PUBKEY:-DD982DAAB9C71C78F9563E5207EB56787030D792}"
 
-## Identity
-DEFAULT_USERNAME="${DEFAULT_USERNAME:-proxmox}"
-DEFAULT_FIRSTNAME="${DEFAULT_FIRSTNAME:-User}"
-DEFAULT_LASTNAME="${DEFAULT_LASTNAME:-Proxmox}"
-HOSTNAME_PREFIX="${HOSTNAME_PREFIX:-ProxmoxVE}"
+## Identity (Git)
 GIT_USER_NAME="${GIT_USER_NAME:-}"
 GIT_USER_EMAIL="${GIT_USER_EMAIL:-}"
 GIT_USER_SIGNINGKEY="${GIT_USER_SIGNINGKEY:-}"
@@ -46,9 +32,36 @@ GIT_GPG_PROGRAM="${GIT_GPG_PROGRAM:-gpg}"
 GIT_HTTP_PROXY="${GIT_HTTP_PROXY:-}"
 GIT_HTTPS_PROXY="${GIT_HTTPS_PROXY:-}"
 
+## Proxy / mirrors
+GHPROXY_URL="${GHPROXY_URL:-}" # GitHub proxy: bare domain or full URL (scheme optional)
+PROXY_URL="${PROXY_URL:-http://vpn.zhijie.online:7890}" # zsh proxy_on helper
+PROXY_PROTOCOL="${PROXY_PROTOCOL:-socks5}" # proxychains upstream
+PROXY_IP="${PROXY_IP:-127.0.0.1}"
+PROXY_PORT="${PROXY_PORT:-7891}"
+PROXY_USERNAME="${PROXY_USERNAME:-}"
+PROXY_PASSWORD="${PROXY_PASSWORD:-}"
+
+## Zsh
+ZSH_THEME="${ZSH_THEME:-ys}"
+# ============================================================================
+# Configuration - shared between Ubuntu and Proxmox VE (Debian family)
+# Knobs shared by both Debian-family platforms. Platform config files
+# (Ubuntu.sh / ProxmoxVE.sh) add the platform deltas on top of these.
+# ============================================================================
+
+## Credentials (defaults are intentional; change them after deployment)
+ROOT_PASSWORD="${ROOT_PASSWORD:-R00t@123!}"
+LOCK_ROOT="${LOCK_ROOT:-FALSE}" # TRUE locks the root account after deployment
+NUT_ADMIN_PASSWORD="${NUT_ADMIN_PASSWORD:-123456}"
+NUT_MON_PASSWORD="${NUT_MON_PASSWORD:-secret}"
+SNMP_AUTH_PASS="${SNMP_AUTH_PASS:-}" # empty -> root password (warns)
+SNMP_PRIV_PASS="${SNMP_PRIV_PASS:-}" # empty -> hostname (warns)
+
+## Identity
+DEFAULT_FIRSTNAME="${DEFAULT_FIRSTNAME:-User}"
+
 ## Behavior switches
 PURGE_OTHER_USERS="${PURGE_OTHER_USERS:-true}" # remove other /home users (fresh-install assumption)
-RESET_CLUSTER="${RESET_CLUSTER:-true}" # FALSE on clustered nodes! resets corosync state
 USE_GLOBAL_DNS="${USE_GLOBAL_DNS:-false}" # true -> Google DNS, false -> AliDNS
 RESET_DOMAIN="${RESET_DOMAIN:-false}"
 RESET_HOSTNAME="${RESET_HOSTNAME:-false}"
@@ -56,16 +69,9 @@ CUSTOM_HOSTNAME="${CUSTOM_HOSTNAME:-}" # explicit hostname; overrides auto-detec
 CUSTOM_DOMAIN="${CUSTOM_DOMAIN:-}" # explicit search domain(s), space-separated; overrides RESET_DOMAIN
 DISABLE_ICMP_ECHO="${DISABLE_ICMP_ECHO:-false}"
 PREFER_IPV4="${PREFER_IPV4:-true}"
-DISABLE_DISPLAY="${DISABLE_DISPLAY:-false}" # disable efifb/vesafb (GPU passthrough)
-PATCH_INTEL_82599_SFP="${PATCH_INTEL_82599_SFP:-false}" # allow unsupported SFP on ixgbe
-ZFS_ARC_MAX="${ZFS_ARC_MAX:-1}" # ZFS ARC max, GiB
 I915_GUC_OPTION="${I915_GUC_OPTION:-3}" # 0 | 1 GuC | 2 HuC | 3 GuC/HuC
 NUT_MODE="${NUT_MODE:-}" # netclient | netserver | none | standalone
 NUT_HOST="${NUT_HOST:-}"
-
-## Release pinning (intentionally the latest PVE release; bump each release)
-LSB_CODENAME="${LSB_CODENAME:-trixie}"
-CEPH_CODENAME="${CEPH_CODENAME:-tentacle}"
 
 ## Network
 CUSTOM_DNS_CN=(
@@ -82,21 +88,12 @@ CUSTOM_DNS_GLOBAL=(
 )
 
 ## Proxy / mirrors
-GHPROXY_URL="${GHPROXY_URL:-}" # GitHub proxy: bare domain or full URL (scheme optional)
-PROXY_URL="${PROXY_URL:-http://vpn.zhijie.online:7890}" # zsh proxy_on helper
-PROXY_PROTOCOL="${PROXY_PROTOCOL:-socks5}" # proxychains upstream
-PROXY_IP="${PROXY_IP:-127.0.0.1}"
-PROXY_PORT="${PROXY_PORT:-7891}"
-PROXY_USERNAME="${PROXY_USERNAME:-}"
-PROXY_PASSWORD="${PROXY_PASSWORD:-}"
 DOCKER_REGISTRY_MIRRORS=()
 
-## Zsh
-ZSH_THEME="${ZSH_THEME:-ys}"
-ZSH_BUILD_IN_PLUGINS="${ZSH_BUILD_IN_PLUGINS:-aliases colored-man-pages command-not-found common-aliases debian docker docker-compose extract git history ssh sudo systemd}"
-
-## Dependency packages (apt)
-DEPENDENCY_PACKAGES=(
+## Dependency packages (apt) - Debian family base
+# Architecture-neutral packages present on both platforms. Platform configs
+# extend via: DEPENDENCY_PACKAGES=("${DEPENDENCY_PACKAGES_BASE[@]}" <extras>)
+DEPENDENCY_PACKAGES_BASE=(
     "apparmor"
     "apparmor-profiles"
     "apparmor-profiles-extra"
@@ -105,13 +102,9 @@ DEPENDENCY_PACKAGES=(
     "apt-transport-https"
     "busybox"
     "ca-certificates"
-    "ceph"
     "chrony"
     "curl"
     "dnsutils"
-    "efibootmgr"
-    "efitools"
-    "efivar"
     "ethtool"
     "fail2ban"
     "fastfetch"
@@ -121,7 +114,6 @@ DEPENDENCY_PACKAGES=(
     "git"
     "git-lfs"
     "gnupg"
-    "grub-efi-amd64-signed"
     "iperf3"
     "jq"
     "knot-dnsutils"
@@ -130,7 +122,6 @@ DEPENDENCY_PACKAGES=(
     "lm-sensors"
     "lsb-release"
     "mailutils"
-    "mokutil"
     "mtr-tiny"
     "nano"
     "net-tools"
@@ -144,24 +135,19 @@ DEPENDENCY_PACKAGES=(
     "nut-xml"
     "openssh-client"
     "openssh-server"
-    "openvswitch-switch"
     "p7zip-full"
     "pinentry-tty"
     "postfix"
-    "proxmox-secure-boot-support"
     "proxychains-ng"
     "python3"
     "python3-pip"
     "qrencode"
     "rar"
     "rsyslog"
-    "sbsigntool"
-    "shim-signed"
     "snmp"
     "snmp-mibs-downloader"
     "snmpd"
     "sudo"
-    "sudo-rs"
     "systemd"
     "systemd-zram-generator"
     "tcpdump"
@@ -183,7 +169,60 @@ DEPENDENCY_PACKAGES=(
     "zsh"
 )
 # ============================================================================
-# common.sh - shared across all platforms (DSM / macOS / Ubuntu / Proxmox VE)
+# Configuration - Proxmox VE
+# Platform additions on top of config/common.sh + config/debian.sh. Override
+# any knob via environment variable before running, e.g.:
+#   ROOT_PASSWORD='...' RESET_CLUSTER=false curl .../ProxmoxVE.sh | sudo bash
+# ============================================================================
+
+## Resume / progress
+AUTODEPLOY_STEP_TOTAL=50 # must match the RunStep count (lint.sh checks)
+
+## Credentials
+DEFAULT_PASSWORD_DEFAULT='*Proxmox123*' # baseline for the default-password warning
+DEFAULT_PASSWORD="${DEFAULT_PASSWORD:-${DEFAULT_PASSWORD_DEFAULT}}"
+SNMP_USER="${SNMP_USER:-proxmox}"
+
+## Identity
+DEFAULT_USERNAME="${DEFAULT_USERNAME:-proxmox}"
+DEFAULT_LASTNAME="${DEFAULT_LASTNAME:-Proxmox}"
+HOSTNAME_PREFIX="${HOSTNAME_PREFIX:-ProxmoxVE}"
+
+## Behavior switches
+RESET_CLUSTER="${RESET_CLUSTER:-true}" # FALSE on clustered nodes! resets corosync state
+DISABLE_DISPLAY="${DISABLE_DISPLAY:-false}" # disable efifb/vesafb (GPU passthrough)
+PATCH_INTEL_82599_SFP="${PATCH_INTEL_82599_SFP:-false}" # allow unsupported SFP on ixgbe
+ZFS_ARC_MAX="${ZFS_ARC_MAX:-1}" # ZFS ARC max, GiB
+
+## Release pinning (intentionally the latest PVE release; bump each release)
+LSB_CODENAME="${LSB_CODENAME:-trixie}"
+CEPH_CODENAME="${CEPH_CODENAME:-tentacle}"
+
+## Zsh
+ZSH_BUILD_IN_PLUGINS="${ZSH_BUILD_IN_PLUGINS:-aliases colored-man-pages command-not-found common-aliases debian docker docker-compose extract git history ssh sudo systemd}"
+
+## Dependency packages (apt) - Proxmox VE additions
+# The signed GRUB package differs per architecture (PVE supports amd64 and arm64).
+case "$(dpkg --print-architecture 2> /dev/null || echo amd64)" in
+    arm64) GRUB_SIGNED_PACKAGE="grub-efi-arm64-signed" ;;
+    *) GRUB_SIGNED_PACKAGE="grub-efi-amd64-signed" ;;
+esac
+DEPENDENCY_PACKAGES=("${DEPENDENCY_PACKAGES_BASE[@]}"
+    "ceph"
+    "efibootmgr"
+    "efitools"
+    "efivar"
+    "${GRUB_SIGNED_PACKAGE}"
+    "mokutil"
+    "openvswitch-switch"
+    "proxmox-secure-boot-support"
+    "sbsigntool"
+    "shim-signed"
+    "sudo-rs"
+)
+# ============================================================================
+# core.sh - logging, error handling and the resume/progress state machine
+# Shared across all platforms (DSM / macOS / Ubuntu / Proxmox VE / Reinstall).
 # Part of the generated single-file scripts; not executable on its own.
 # Compatible with bash 3.2 (macOS system bash) - avoid bash 4+ features here.
 # ============================================================================
@@ -228,6 +267,30 @@ WarnDefaultPassword() {
     local name="$1" value="$2" default_value="$3"
     if [ "$value" = "$default_value" ]; then
         LogWarn "${name} is using the built-in default. Change it after deployment, or override it with ${name}=<value> before running."
+    fi
+}
+
+# Under `curl | sudo bash`, whoami is root; SUDO_USER is the real operator.
+# Used by DSM/macOS; debian platforms use DEFAULT_USERNAME instead.
+GetCurrentUsername() {
+    # shellcheck disable=SC2034
+    CURRENT_USERNAME="${SUDO_USER:-$(whoami)}"
+}
+
+SetGHProxyDomain() {
+    GHPROXY_URL="${GHPROXY_URL:-}"
+    if [ -n "$GHPROXY_URL" ]; then
+        # Accept a bare domain (proxy.example.com) or a full URL
+        # (https://proxy.example.com[/]); keep any given scheme.
+        case "$GHPROXY_URL" in
+            *://*) ;;
+            *) GHPROXY_URL="https://${GHPROXY_URL}" ;;
+        esac
+        # Normalize to exactly one trailing slash.
+        while [ "$GHPROXY_URL" != "${GHPROXY_URL%/}" ]; do
+            GHPROXY_URL="${GHPROXY_URL%/}"
+        done
+        export GHPROXY_URL="${GHPROXY_URL}/"
     fi
 }
 
@@ -300,34 +363,25 @@ InitRun() {
 }
 
 trap 'Die "failed at line ${LINENO}: ${BASH_COMMAND}"' ERR
+# ============================================================================
+# modules/crontab.sh - crontab installation helper (all platforms, bash 3.2+)
+# Caller must set: CRONTAB_USER, CRONTAB_ENTRIES (array)
+# ============================================================================
 
-## Function
-# Get System Information (shared parts)
-GetCurrentUsername() {
-    # Under `curl | sudo bash`, whoami is root; SUDO_USER is the real operator.
-    # Used by DSM/macOS; debian platforms use DEFAULT_USERNAME instead.
-    # shellcheck disable=SC2034
-    CURRENT_USERNAME="${SUDO_USER:-$(whoami)}"
-}
-
-SetGHProxyDomain() {
-    GHPROXY_URL="${GHPROXY_URL:-}"
-    if [ -n "$GHPROXY_URL" ]; then
-        # Accept a bare domain (proxy.example.com) or a full URL
-        # (https://proxy.example.com[/]); keep any given scheme.
-        case "$GHPROXY_URL" in
-            *://*) ;;
-            *) GHPROXY_URL="https://${GHPROXY_URL}" ;;
-        esac
-        # Normalize to exactly one trailing slash.
-        while [ "$GHPROXY_URL" != "${GHPROXY_URL%/}" ]; do
-            GHPROXY_URL="${GHPROXY_URL%/}"
-        done
-        export GHPROXY_URL="${GHPROXY_URL}/"
+InstallCrontab() {
+    HaveCommand crontab || return 0
+    local sudo_prefix=()
+    if [ "$(id -u)" -ne 0 ]; then
+        sudo_prefix=(sudo)
     fi
+    printf '%s\n' "${CRONTAB_ENTRIES[@]}" | ${sudo_prefix[@]+"${sudo_prefix[@]}"} crontab -u "$CRONTAB_USER" -
+    ${sudo_prefix[@]+"${sudo_prefix[@]}"} crontab -lu "$CRONTAB_USER"
 }
+# ============================================================================
+# modules/git.sh - global git configuration (all platforms, bash 3.2+)
+# Uses the GIT_* knobs from config/common.sh.
+# ============================================================================
 
-# Configure Packages (shared)
 ApplyGitConfig() {
     local gitconfig_key_list=(
         "commit.gpgsign"
@@ -371,9 +425,13 @@ ConfigureGit() {
         chown "$DEFAULT_USERNAME:$DEFAULT_USERNAME" "$user_gitconfig"
     fi
 }
-
+# ============================================================================
+# modules/gpg.sh - GPG key setup with SSH authentication support
+# (all platforms, bash 3.2+)
 # Platform must set: GPG_HOME, GPG_KEYSERVER, GPG_PINENTRY (may be empty),
 # and optionally GPG_HOME_OWNER (user:group) when running as root.
+# ============================================================================
+
 ConfigureGPG() {
     HaveCommand gpg || return 0
     GPG_PUBKEY="${GPG_PUBKEY:-DD982DAAB9C71C78F9563E5207EB56787030D792}"
@@ -404,6 +462,69 @@ ConfigureGPG() {
     find "$GPG_HOME" -type d -exec chmod 700 {} +
     find "$GPG_HOME" -type f -exec chmod 600 {} +
 }
+# ============================================================================
+# modules/hosts.sh - standard /etc/hosts entries (all platforms, bash 3.2+)
+# Pure data table. Debian platforms append platform extras via WriteHostfile
+# (modules/debian/users.sh); macOS writes the table with sudo tee directly.
+# ============================================================================
+
+HOSTS_BASE_ENTRIES=(
+    "127.0.0.1 localhost"
+    "255.255.255.255 broadcasthost"
+    "::1 ip6-localhost ip6-loopback localhost"
+    "fe00::0 ip6-localnet"
+    "ff00::0 ip6-mcastprefix"
+    "ff02::1 ip6-allnodes"
+    "ff02::2 ip6-allrouters"
+    "ff02::3 ip6-allhosts"
+)
+# ============================================================================
+# modules/proxychains.sh - proxychains-ng client configuration
+# (all platforms, bash 3.2+)
+# Platform must set: PROXYCHAINS_CONF
+# ============================================================================
+
+ConfigureProxyChains() {
+    local proxychains_list=(
+        'localnet 127.0.0.0/255.0.0.0'
+        'localnet 10.0.0.0/255.0.0.0'
+        'localnet 172.16.0.0/255.240.0.0'
+        'localnet 192.168.0.0/255.255.0.0'
+        'localnet ::1/128'
+        'proxy_dns'
+        'remote_dns_subnet 224'
+        'strict_chain'
+        'tcp_connect_time_out 8000'
+        'tcp_read_time_out 15000'
+        '[ProxyList]'
+        "${PROXY_PROTOCOL:-socks5} ${PROXY_IP:-127.0.0.1} ${PROXY_PORT:-7891}${PROXY_USERNAME:+ ${PROXY_USERNAME} ${PROXY_PASSWORD:-}}"
+    )
+    printf '%s\n' "${proxychains_list[@]}" > "$PROXYCHAINS_CONF"
+}
+# ============================================================================
+# modules/pypi.sh - pip mirror configuration (all platforms, bash 3.2+)
+# On root-run platforms the resulting config is copied to DEFAULT_USERNAME.
+# ============================================================================
+
+ConfigurePythonPyPI() {
+    local which_pip=""
+    if HaveCommand pip3; then
+        which_pip="pip3"
+    elif HaveCommand pip; then
+        which_pip="pip"
+    else
+        return 0
+    fi
+    "$which_pip" config set global.index-url "https://mirrors.cernet.edu.cn/pypi/web/simple"
+    if [ "$(id -u)" -eq 0 ] && [ -n "${DEFAULT_USERNAME:-}" ] && [ -f "/root/.config/pip/pip.conf" ]; then
+        install -D -m 644 -o "$DEFAULT_USERNAME" -g "$DEFAULT_USERNAME" \
+            "/root/.config/pip/pip.conf" "/home/${DEFAULT_USERNAME}/.config/pip/pip.conf"
+    fi
+}
+# ============================================================================
+# modules/ssh.sh - SSH key pair generation and per-user .ssh initialization
+# (all platforms, bash 3.2+)
+# ============================================================================
 
 # Generate the user key pairs (ecdsa/ed25519/rsa) inside an existing .ssh dir.
 # DSA is intentionally gone: OpenSSH >= 9.8 disables it, 10.x removed it.
@@ -426,42 +547,32 @@ GenerateHostSSHKeys() {
     chmod 644 "${ssh_dir}"/ssh_host_*.pub
 }
 
-# Platform must set: PROXYCHAINS_CONF
-ConfigureProxyChains() {
-    local proxychains_list=(
-        'localnet 127.0.0.0/255.0.0.0'
-        'localnet 10.0.0.0/255.0.0.0'
-        'localnet 172.16.0.0/255.240.0.0'
-        'localnet 192.168.0.0/255.255.0.0'
-        'localnet ::1/128'
-        'proxy_dns'
-        'remote_dns_subnet 224'
-        'strict_chain'
-        'tcp_connect_time_out 8000'
-        'tcp_read_time_out 15000'
-        '[ProxyList]'
-        "${PROXY_PROTOCOL:-socks5} ${PROXY_IP:-127.0.0.1} ${PROXY_PORT:-7891}${PROXY_USERNAME:+ ${PROXY_USERNAME} ${PROXY_PASSWORD:-}}"
-    )
-    printf '%s\n' "${proxychains_list[@]}" > "$PROXYCHAINS_CONF"
-}
-
-ConfigurePythonPyPI() {
-    local which_pip=""
-    if HaveCommand pip3; then
-        which_pip="pip3"
-    elif HaveCommand pip; then
-        which_pip="pip"
-    else
-        return 0
-    fi
-    "$which_pip" config set global.index-url "https://mirrors.cernet.edu.cn/pypi/web/simple"
-    if [ "$(id -u)" -eq 0 ] && [ -n "${DEFAULT_USERNAME:-}" ] && [ -f "/root/.config/pip/pip.conf" ]; then
-        install -D -m 644 -o "$DEFAULT_USERNAME" -g "$DEFAULT_USERNAME" \
-            "/root/.config/pip/pip.conf" "/home/${DEFAULT_USERNAME}/.config/pip/pip.conf"
+# Initialize a user .ssh dir: back up any existing one, create the skeleton,
+# generate the key pairs, fix permissions. Callers that import authorized_keys
+# from GPG_HOME do so afterwards (the mv replaces the placeholder file).
+# Pass owner (user:group) when running as root; empty owner = skip chown.
+InitUserSSHDir() {
+    local ssh_dir="$1" comment="$2" owner="${3:-}"
+    BackupPath "$ssh_dir"
+    mkdir -p "$ssh_dir"
+    touch "${ssh_dir}/authorized_keys" "${ssh_dir}/known_hosts"
+    GenerateSSHKeys "$ssh_dir" "$comment"
+    chmod 600 "${ssh_dir}/authorized_keys"
+    chmod 644 "${ssh_dir}/known_hosts"
+    chmod 700 "$ssh_dir"
+    if [ -n "$owner" ]; then
+        chown -R "$owner" "$ssh_dir"
     fi
 }
+# ============================================================================
+# modules/zsh.sh - oh-my-zsh installation and .zshrc generation
+# (all platforms, bash 3.2+)
+# Platform must set: ZSH_PATH_LIST (array). ConfigureZsh additionally needs
+# ZSH_HOME, ZSH_BUILD_IN_PLUGINS, ZSH_EXTRA_EXPORTS (array, may be empty),
+# ZSH_TRAPEXIT (true/false), ZSH_OWNER (may be empty); InstallOhMyZsh needs
+# OMZ_HOME, OMZ_OWNER (may be empty).
+# ============================================================================
 
-# Platform must set: ZSH_PATH_LIST (array)
 GenerateCommandPath() {
     DEFAULT_PATH=""
     local path_entry
@@ -471,8 +582,6 @@ GenerateCommandPath() {
     DEFAULT_PATH="${DEFAULT_PATH%:}"
 }
 
-# Platform must set: ZSH_HOME, ZSH_BUILD_IN_PLUGINS, ZSH_EXTRA_EXPORTS (array,
-# may be empty), ZSH_TRAPEXIT (true/false), ZSH_OWNER (may be empty).
 GenerateOMZProfile() {
     local proxy_url="${PROXY_URL:-http://vpn.zhijie.online:7890}"
     local no_proxy='localhost,127.0.0.1,::1'
@@ -526,7 +635,6 @@ ConfigureZsh() {
     GenerateOMZProfile
 }
 
-# Platform must set: OMZ_HOME, OMZ_OWNER (may be empty)
 InstallOhMyZsh() {
     HaveCommand git || Die "git is required to install oh-my-zsh"
     local plugin_list=(
@@ -556,50 +664,704 @@ InstallOhMyZsh() {
         chown -R "$OMZ_OWNER" "$omz_dir"
     fi
 }
+# ============================================================================
+# modules/debian/apt.sh - APT configuration, batch installs and upgrades
+# (Ubuntu / Proxmox VE, bash 4.4+)
+# ConfigureAPT needs APT_PREFERENCES (array of "<release> <priority>").
+# InstallDependencyPackages needs DEPENDENCY_PACKAGES + MICROCODE; set
+# HYPERVISOR_AGENT (array, possibly empty) to also purge foreign guest agents.
+# CleanupOutageKernels needs KERNEL_PATTERN (grep -E on installed kernels).
+# ============================================================================
 
-# Write /etc/wireguard/wg0.conf. The private key never touches a temp file.
-# Platform handles directory ownership and bringing the interface up.
-GenerateWireGuardConfig() {
-    TUNNEL_CLIENT_IPADDR="10.172.$((RANDOM % 256)).$((RANDOM % 256))/32"
-    local private_key public_key preshared_key
-    private_key=$(wg genkey)
-    public_key=$(printf '%s' "$private_key" | wg pubkey)
-    preshared_key=$(wg genpsk)
-    local wireguard_list=(
-        "[Interface]"
-        "Address = ${TUNNEL_CLIENT_IPADDR}"
-        "# DNS = 127.0.0.1, ::1"
-        "ListenPort = 51820"
-        "MTU = 1420"
-        "PrivateKey = ${private_key}"
-        "# [Peer]"
-        "# AllowedIPs = ${TUNNEL_CLIENT_IPADDR}"
-        "# Endpoint = 127.0.0.1:51820"
-        "# PersistentKeepalive = 5"
-        "# PresharedKey = ${preshared_key}"
-        "# PublicKey = ${public_key}"
+ConfigureAPT() {
+    local apt_conf_list=(
+        '# Disable HTTP Pipelining'
+        'Acquire::http::Pipeline-Depth "0";'
+        '# Disable Phased Updates'
+        'APT::Get::Always-Include-Phased-Updates true;'
+        'Update-Manager::Always-Include-Phased-Updates true;'
     )
-    printf '%s\n' "${wireguard_list[@]}" > "/etc/wireguard/wg0.conf"
-    chmod 600 "/etc/wireguard/wg0.conf"
+    mkdir -p /etc/apt/apt.conf.d
+    printf '%s\n' "${apt_conf_list[@]}" > /etc/apt/apt.conf.d/99autodeploy
+    rm -rf /etc/apt/preferences.d
+    mkdir -p /etc/apt/preferences.d
+    local entry release priority
+    : > /etc/apt/preferences
+    for entry in "${APT_PREFERENCES[@]}"; do
+        release="${entry%% *}"
+        priority="${entry##* }"
+        case "$priority" in
+            *[!0-9]*) priority="500" ;;
+        esac
+        printf 'Package: *\nPin: release a=%s\nPin-Priority: %s\n\n' "$release" "$priority" >> /etc/apt/preferences
+    done
+    apt modernize-sources
+    rm -f /etc/apt/sources.list.bak /etc/apt/sources.list.d/*.bak
 }
 
-# Platform must set: CRONTAB_USER, CRONTAB_ENTRIES (array)
-InstallCrontab() {
-    HaveCommand crontab || return 0
-    local sudo_prefix=()
-    if [ "$(id -u)" -ne 0 ]; then
-        sudo_prefix=(sudo)
+ConfigureBusybox() {
+    HaveCommand busybox || return 0
+    busybox --install -s
+}
+
+# Weekly root maintenance crontab (apt upgrade + history wipe).
+ConfigureCrontab() {
+    CRONTAB_USER="root"
+    CRONTAB_ENTRIES=(
+        "0 0 * * 7 sudo apt update && sudo apt full-upgrade -qy && sudo apt autoremove -qy --purge"
+        "# 0 4 * * 7 sudo reboot"
+        "@reboot sudo rm -rf ~/.*_history ~/.ssh/known_hosts*"
+    )
+    InstallCrontab
+}
+
+InstallAptRepo() {
+    local name="$1" key_url="$2" repo_line="$3"
+    rm -f "/usr/share/keyrings/${name}-archive-keyring.gpg"
+    curl -fsSL "$key_url" | gpg --dearmor -o "/usr/share/keyrings/${name}-archive-keyring.gpg"
+    printf '%s\n' "$repo_line" > "/etc/apt/sources.list.d/${name}.list"
+}
+
+InstallAptPackages() {
+    apt update
+    # Filter available packages, then install them in a single apt invocation:
+    # one dependency-resolution / dpkg-trigger pass instead of one per package.
+    local pkg available=()
+    for pkg in "$@"; do
+        if apt-cache show "$pkg" > /dev/null 2>&1; then
+            available+=("$pkg")
+        else
+            LogWarn "package not available, skipped: ${pkg}"
+        fi
+    done
+    if [ "${#available[@]}" -gt 0 ]; then
+        apt install -qy "${available[@]}"
     fi
-    printf '%s\n' "${CRONTAB_ENTRIES[@]}" | ${sudo_prefix[@]+"${sudo_prefix[@]}"} crontab -u "$CRONTAB_USER" -
-    ${sudo_prefix[@]+"${sudo_prefix[@]}"} crontab -lu "$CRONTAB_USER"
+}
+
+InstallDependencyPackages() {
+    local apt_list=("${DEPENDENCY_PACKAGES[@]}")
+    apt_list+=(${HYPERVISOR_AGENT[@]+"${HYPERVISOR_AGENT[@]}"} ${MICROCODE[@]+"${MICROCODE[@]}"})
+    # Purge guest agents that do not belong to the detected hypervisor. Only
+    # runs when HYPERVISOR_AGENT is set (Ubuntu detects it; PVE skips entirely).
+    if [ "${HYPERVISOR_AGENT+x}" = "x" ]; then
+        local hypervisor_agent_list=("ksmtuned" "open-vm-tools" "qemu-guest-agent" "virtualbox-guest-dkms")
+        local agent wanted keep
+        for agent in "${hypervisor_agent_list[@]}"; do
+            keep="false"
+            for wanted in ${HYPERVISOR_AGENT[@]+"${HYPERVISOR_AGENT[@]}"}; do
+                if [ "$agent" = "$wanted" ]; then
+                    keep="true"
+                fi
+            done
+            if [ "$keep" = "false" ] && dpkg -l "$agent" 2>/dev/null | grep -q '^ii'; then
+                apt purge -qy "$agent"
+                apt autoremove -qy --purge
+            fi
+        done
+    fi
+    InstallAptPackages "${apt_list[@]}"
+}
+
+UpgradePackages() {
+    apt update
+    apt full-upgrade -qy
+    apt autoremove -qy --purge
+}
+
+# Extra paths to remove may be passed as arguments. Never wipe all of /tmp.
+CleanupTempFiles() {
+    apt clean
+    rm -f /root/.*_history /tmp/*.autodeploy "$@"
+}
+
+# Keeps the newest kernel matching KERNEL_PATTERN, purges the rest.
+CleanupOutageKernels() {
+    local latest kernel
+    latest=$(dpkg -l | grep -E "$KERNEL_PATTERN" | awk '{print $2}' | sort -V | tail -n 1 || true)
+    if [ -z "$latest" ]; then
+        return 0
+    fi
+    local kernel_list=()
+    while IFS= read -r kernel; do
+        if [ "$kernel" != "$latest" ]; then
+            kernel_list+=("$kernel")
+        fi
+    done < <(dpkg -l | grep -E "$KERNEL_PATTERN" | awk '{print $2}' | sort -V || true)
+    for kernel in ${kernel_list[@]+"${kernel_list[@]}"}; do
+        apt purge -qy "$kernel"
+    done
+    apt autoremove -qy --purge
 }
 # ============================================================================
-# debian.sh - shared between Ubuntu and Proxmox VE (Debian-family, bash 4.4+)
-# Part of the generated single-file scripts; not executable on its own.
+# modules/debian/daemons.sh - shared Debian-family service configuration
+# (Ubuntu / Proxmox VE, bash 4.4+)
+# ConfigureDockerEngine optionally reads DOCKER_REGISTRY_MIRRORS (array).
+# InstallDockerEngine needs DOCKER_APT_DISTRO (ubuntu | debian).
+# InstallFRRouting needs FRR_APT_LINE and optionally FRR_EXTRA_PACKAGES.
+# ConfigureNut reads the NUT_* knobs; ConfigureSNMP-related parts live in
+# modules/debian/security.sh.
 # ============================================================================
 
-## Function
-# Get System Information (shared parts)
+ConfigureChrony() {
+    HaveCommand chronyc || return 0
+    local chrony_list=(
+        "allow"
+        "clientloglimit 65536"
+        "driftfile /var/lib/chrony/chrony.drift"
+        "dumpdir /run/chrony"
+        "keyfile /etc/chrony/chrony.keys"
+        "leapsectz right/UTC"
+        "logdir /var/log/chrony"
+        "makestep 1 3"
+        "ratelimit burst 8 interval 3 leak 2"
+        "rtcsync"
+    )
+    DHCP_NTP=()
+    local chrony_ntp_list=(
+        ${DHCP_NTP[@]+"${DHCP_NTP[@]}"}
+        "ntp.ntsc.ac.cn"
+        "ntp1.nim.ac.cn"
+        "ntp2.nim.ac.cn"
+        "ntp.aliyun.com"
+        "ntp.tencent.com"
+        "time.apple.com"
+        "time.windows.com"
+        "time.cloudflare.com"
+        "time.nist.gov"
+        "pool.ntp.org"
+    )
+    local prefer_list=("ntp.ntsc.ac.cn" "ntp1.nim.ac.cn" "ntp2.nim.ac.cn")
+    local server suffix
+    {
+        printf '%s\n' "${chrony_list[@]}"
+        for server in "${chrony_ntp_list[@]}"; do
+            suffix=" iburst"
+            case " ${prefer_list[*]} ${DHCP_NTP[*]:-} " in
+                *" ${server} "*) suffix=" iburst prefer" ;;
+            esac
+            printf 'server %s%s\n' "$server" "$suffix"
+        done
+    } > /etc/chrony/chrony.conf
+    systemctl restart chrony
+    sleep 5
+    chronyc activity
+    chronyc tracking
+    chronyc clients
+    hwclock -w || true
+}
+
+ConfigureDockerEngine() {
+    HaveCommand docker || return 0
+    DOCKER_REGISTRY_MIRRORS=()
+    local docker_list=(
+        "{"
+        "  \"allow-direct-routing\": true,"
+        "  \"experimental\": true,"
+        "  \"firewall-backend\": \"nftables\","
+        "  \"ip-forward\": true"
+        "}"
+    )
+    if [ "${#DOCKER_REGISTRY_MIRRORS[@]}" -gt 0 ]; then
+        docker_list=(
+            "{"
+            "  \"allow-direct-routing\": true,"
+            "  \"experimental\": true,"
+            "  \"firewall-backend\": \"nftables\","
+            "  \"ip-forward\": true,"
+            "  \"registry-mirrors\": ["
+            "$(printf '    "%s",\n' "${DOCKER_REGISTRY_MIRRORS[@]}" | sed '$s/,$//')"
+            "  ]"
+            "}"
+        )
+    fi
+    mkdir -p "/docker"
+    chown -R "${DEFAULT_USERNAME}:docker" "/docker"
+    chmod -R 775 "/docker"
+    mkdir -p /etc/docker
+    printf '%s\n' 'DOCKER_OPTS="--iptables=false"' > /etc/default/docker
+    printf '%s\n' "${docker_list[@]}" > /etc/docker/daemon.json
+    systemctl enable docker
+    systemctl restart docker
+}
+
+InstallDockerEngine() {
+    InstallAptRepo "docker" "https://mirrors.cernet.edu.cn/docker-ce/linux/${DOCKER_APT_DISTRO}/gpg" \
+        "deb [arch=${OS_ARCHITECTURE:-amd64} signed-by=/usr/share/keyrings/docker-archive-keyring.gpg] https://mirrors.cernet.edu.cn/docker-ce/linux/${DOCKER_APT_DISTRO} ${LSB_CODENAME} stable"
+    apt update
+    apt purge -qy containerd docker-compose docker-doc docker.io podman-docker runc || true
+    InstallAptPackages "containerd.io" "docker-buildx-plugin" "docker-ce" "docker-ce-cli" "docker-compose-plugin"
+}
+
+ConfigureFRRouting() {
+    HaveCommand vtysh || return 0
+    local frrouting_list=(
+        "frr defaults datacenter"
+        "log syslog errors"
+    )
+    printf '%s\n' "${frrouting_list[@]}" > /etc/frr/frr.conf
+    systemctl restart frr
+    sleep 5
+    vtysh -c "show running-config"
+    vtysh -c "show ip route"
+    vtysh -c "show ipv6 route"
+}
+
+InstallFRRouting() {
+    InstallAptRepo "frrouting" "https://deb.frrouting.org/frr/keys.gpg" "$FRR_APT_LINE"
+    InstallAptPackages "frr" "frr-pythontools" ${FRR_EXTRA_PACKAGES[@]+"${FRR_EXTRA_PACKAGES[@]}"} "frr-snmp"
+}
+
+ConfigureLLDPD() {
+    HaveCommand lldpcli || return 0
+    printf '%s\n' 'DAEMON_ARGS="-c -e -f -s -x"' > /etc/default/lldpd
+    systemctl restart lldpd
+    lldpcli show neighbors detail
+}
+
+ConfigureNut() {
+    HaveCommand upsmon || return 0
+    CreateUpsdUsers() {
+        NUT_ADMIN_PASSWORD="${NUT_ADMIN_PASSWORD:-123456}"
+        NUT_MON_PASSWORD="${NUT_MON_PASSWORD:-secret}"
+        WarnDefaultPassword "NUT_ADMIN_PASSWORD" "$NUT_ADMIN_PASSWORD" "123456"
+        WarnDefaultPassword "NUT_MON_PASSWORD" "$NUT_MON_PASSWORD" "secret"
+        upsd_user_list=(
+            "admin,${NUT_ADMIN_PASSWORD},master,FSD,SET"
+            "monuser,${NUT_MON_PASSWORD},slave,,"
+        )
+    }
+    GenerateNutConf() {
+        printf 'MODE=%s\n' "${NUT_MODE:-none}" > /etc/nut/nut.conf
+    }
+    GenerateUpsConf() {
+        local ups_driver_list=(
+            "ups,usbhid-ups,auto"
+        )
+        local ups_conf_list=(
+            "maxretry = 3"
+            "retrydelay = 5"
+        )
+        local entry ups_name ups_driver ups_port
+        {
+            printf '%s\n' "${ups_conf_list[@]}"
+            for entry in "${ups_driver_list[@]}"; do
+                ups_name="${entry%%,*}"
+                ups_driver=$(printf '%s' "$entry" | cut -d ',' -f 2)
+                ups_port="${entry##*,}"
+                printf '[%s]\n    driver = %s\n    port = %s\n' "$ups_name" "$ups_driver" "$ups_port"
+            done
+        } > /etc/nut/ups.conf
+    }
+    GenerateUpsdConf() {
+        local upsd_config_list=(
+            "MAXAGE 15"
+            "MAXCONN 1024"
+            "STATEPATH /var/run/nut"
+        )
+        {
+            if [ "${NUT_MODE}" = "standalone" ]; then
+                printf '%s\n' "LISTEN 127.0.0.1 3493" "LISTEN ::1 3493"
+            else
+                printf '%s\n' "LISTEN 0.0.0.0 3493"
+            fi
+            printf '%s\n' "${upsd_config_list[@]}"
+        } > /etc/nut/upsd.conf
+    }
+    GenerateUpsdUsers() {
+        local entry upsd_username upsd_password upsd_role upsd_actions
+        {
+            for entry in "${upsd_user_list[@]}"; do
+                upsd_username=$(printf '%s' "$entry" | cut -d ',' -f 1)
+                upsd_password=$(printf '%s' "$entry" | cut -d ',' -f 2)
+                upsd_role=$(printf '%s' "$entry" | cut -d ',' -f 3)
+                upsd_actions=$(printf '%s' "$entry" | cut -d ',' -f 4-5 | tr ',' ' ' | sed 's/^ //g;s/ $//g')
+                printf '[%s]\n' "$upsd_username"
+                if [ -n "$upsd_actions" ]; then
+                    printf '    actions = %s\n    instcmds = ALL\n' "$upsd_actions"
+                fi
+                printf '    password = %s\n    upsmon %s\n' "$upsd_password" "$upsd_role"
+            done
+        } > /etc/nut/upsd.users
+    }
+    GenerateUpsmonConf() {
+        local upsmon_list=(
+            "DEADTIME 15"
+            "FINALDELAY 5"
+            "HOSTSYNC 15"
+            "MINSUPPLIES 1"
+            "NOCOMMWARNTIME 300"
+            "POLLFREQ 5"
+            "POLLFREQALERT 5"
+            "POWERDOWNFLAG /etc/killpower"
+            "RBWARNTIME 43200"
+            'SHUTDOWNCMD "/sbin/shutdown -h +0"'
+            "MONITOR ${UPSMON_SYSTEM} 1 ${UPSMON_USERNAME} ${UPSMON_PASSWORD} ${UPSMON_ROLE}"
+        )
+        printf '%s\n' "${upsmon_list[@]}" > /etc/nut/upsmon.conf
+    }
+    NUT_MODE="${NUT_MODE:-}" # netclient | netserver | none | standalone
+    NUT_HOST="${NUT_HOST:-}" # localhost
+    rm -f /etc/nut/*.*
+    local nut_service_list=()
+    case "${NUT_MODE:-none}" in
+        netclient)
+            CreateUpsdUsers
+            UPSMON_USERNAME=$(printf '%s' "${upsd_user_list[1]}" | cut -d ',' -f 1)
+            UPSMON_PASSWORD=$(printf '%s' "${upsd_user_list[1]}" | cut -d ',' -f 2)
+            UPSMON_ROLE=$(printf '%s' "${upsd_user_list[1]}" | cut -d ',' -f 3)
+            UPSMON_SYSTEM="${UPS_NAME:-ups}@${NUT_HOST:-localhost}"
+            nut_service_list=(
+                "nut-client,enable"
+                "nut-driver,disable"
+                "nut-monitor,enable"
+                "nut-server,disable"
+            )
+            GenerateNutConf
+            GenerateUpsmonConf
+            ;;
+        netserver|standalone)
+            CreateUpsdUsers
+            UPSMON_USERNAME=$(printf '%s' "${upsd_user_list[0]}" | cut -d ',' -f 1)
+            UPSMON_PASSWORD=$(printf '%s' "${upsd_user_list[0]}" | cut -d ',' -f 2)
+            UPSMON_ROLE=$(printf '%s' "${upsd_user_list[0]}" | cut -d ',' -f 3)
+            UPSMON_SYSTEM="${UPS_NAME:-ups}@localhost"
+            nut_service_list=(
+                "nut-client,enable"
+                "nut-driver,enable"
+                "nut-monitor,enable"
+                "nut-server,enable"
+            )
+            GenerateNutConf
+            GenerateUpsConf
+            GenerateUpsdConf
+            GenerateUpsdUsers
+            GenerateUpsmonConf
+            ;;
+        none)
+            nut_service_list=(
+                "nut-client,disable"
+                "nut-driver,disable"
+                "nut-monitor,disable"
+                "nut-server,disable"
+            )
+            GenerateNutConf
+            ;;
+    esac
+    chown -R root:nut /etc/nut
+    chmod 640 /etc/nut/*.*
+    local entry service_name service_status
+    for entry in "${nut_service_list[@]}"; do
+        service_name="${entry%%,*}"
+        service_status="${entry##*,}"
+        systemctl "$service_status" "$service_name" > /dev/null 2>&1 || true
+    done
+}
+
+ConfigurePostfix() {
+    [ -f /etc/postfix/main.cf ] || return 0
+    local current_hostname
+    current_hostname=$(awk -F '=' '/^myhostname/ {gsub(/^[ \t]+|[ \t]+$/, "", $2); print $2; exit}' /etc/postfix/main.cf)
+    if [ -n "$current_hostname" ]; then
+        sed -i "s/${current_hostname}/${NEW_HOSTNAME}/g" /etc/postfix/main.cf
+    fi
+}
+# ============================================================================
+# modules/debian/kernel.sh - kernel modules, sysctl tuning and scheduler
+# (Ubuntu / Proxmox VE, bash 4.4+)
+# ConfigureModules needs CPU_VENDOR_ID, ENABLE_IOMMU, INTEL_GVT_MODULES,
+# INTEL_HDMI_AUDIO_MODULE, NESTED_MODULES and MODULE_LIST_EXTRA (may be empty).
+# ConfigureSysctl needs SYSCTL_INTERFACE_MODE (include|exclude) and
+# SYSCTL_INTERFACE_PATTERN, plus the DISABLE_ICMP_ECHO switch.
+# ============================================================================
+
+ConfigureModules() {
+    if [ -d /etc/modprobe.d ]; then
+        rm -rf /etc/modprobe.d
+        mkdir -p /etc/modprobe.d
+    fi
+    rm -f /etc/modules
+    local iommu_modules=()
+    if [ -n "$ENABLE_IOMMU" ]; then
+        iommu_modules=("vfio" "vfio_iommu_type1" "vfio_pci" "vfio_virqfd")
+        printf '%s\n' "options vfio_iommu_type1 allow_unsafe_interrupts=1" > /etc/modprobe.d/vfio_iommu_type1.conf
+    fi
+    local module_list=(
+        "kvm"
+        "tls"
+        ${INTEL_GVT_MODULES[@]+"${INTEL_GVT_MODULES[@]}"}
+        ${INTEL_HDMI_AUDIO_MODULE[@]+"${INTEL_HDMI_AUDIO_MODULE[@]}"}
+        ${iommu_modules[@]+"${iommu_modules[@]}"}
+        ${NESTED_MODULES[@]+"${NESTED_MODULES[@]}"}
+        ${MODULE_LIST_EXTRA[@]+"${MODULE_LIST_EXTRA[@]}"}
+    )
+    printf '%s\n' "${module_list[@]}" | sort -u > /etc/modules
+    printf '%s\n' "options kvm ignore_msrs=1 report_ignored_msrs=0" >> /etc/modprobe.d/kvm.conf
+    if [ "$CPU_VENDOR_ID" = "AMD" ]; then
+        printf '%s\n' "options kvm-amd nested=1" > /etc/modprobe.d/kvm-amd.conf
+    elif [ "$CPU_VENDOR_ID" = "Intel" ]; then
+        # 0 | 1 - GuC | 2 - HuC | 3 - GuC / HuC
+        printf '%s\n' "options i915 enable_guc=${I915_GUC_OPTION:-3} enable_gvt=1" > /etc/modprobe.d/i915.conf
+        printf '%s\n' "options kvm-intel nested=Y" > /etc/modprobe.d/kvm-intel.conf
+        printf '%s\n' "options snd-hda-intel enable_msi=1" > /etc/modprobe.d/snd-hda-intel.conf
+    fi
+}
+
+# mode: include|exclude; pattern: extended regex matched against interface names
+CollectInterfaces() {
+    local mode="$1" pattern="$2" iface
+    while IFS= read -r iface; do
+        if [ "$mode" = "include" ]; then
+            if [[ "$iface" =~ $pattern ]]; then
+                printf '%s\n' "$iface"
+            fi
+        else
+            if [[ ! "$iface" =~ $pattern ]]; then
+                printf '%s\n' "$iface"
+            fi
+        fi
+    done < <(awk -F: 'NR>2 {gsub(/^[ \t]+/, "", $1); print $1}' /proc/net/dev)
+}
+
+ConfigureSysctl() {
+    HaveCommand sysctl || return 0
+    local icmp_echo=()
+    if [ "${DISABLE_ICMP_ECHO:-false}" = "true" ]; then
+        icmp_echo=(
+            "net.ipv4.icmp_echo_ignore_all = 1"
+            "net.ipv6.icmp.echo_ignore_all = 1"
+        )
+    fi
+    local interface_list=("all" "default") iface
+    while IFS= read -r iface; do
+        interface_list+=("$iface")
+    done < <(CollectInterfaces "$SYSCTL_INTERFACE_MODE" "$SYSCTL_INTERFACE_PATTERN")
+    local sysctl_list=(
+        "net.core.default_qdisc = fq_pie"
+        "net.core.rmem_max = 7500000"
+        "net.core.wmem_max = 7500000"
+        "net.ipv4.ip_forward = 1"
+        "net.ipv4.tcp_congestion_control = bbr"
+        "net.ipv4.tcp_fastopen = 3"
+        "vm.dirty_background_ratio = 5"
+        "vm.dirty_ratio = 15"
+        "vm.overcommit_memory = 1"
+        "vm.page-cluster = 0"
+        "vm.swappiness = 10"
+        ${icmp_echo[@]+"${icmp_echo[@]}"}
+    )
+    mkdir -p /etc/sysctl.d
+    if [ ! -f /etc/sysctl.d/99-sysctl.conf ]; then
+        ln -s /etc/sysctl.conf /etc/sysctl.d/99-sysctl.conf
+    fi
+    {
+        printf '%s\n' "${sysctl_list[@]}"
+        for iface in "${interface_list[@]}"; do
+            printf 'net.ipv6.conf.%s.accept_ra = 2\n' "$iface"
+            printf 'net.ipv6.conf.%s.addr_gen_mode = 0\n' "$iface"
+            printf 'net.ipv6.conf.%s.autoconf = 1\n' "$iface"
+            printf 'net.ipv6.conf.%s.forwarding = 1\n' "$iface"
+            printf 'net.ipv6.conf.%s.use_tempaddr = 0\n' "$iface"
+        done
+    } | sort -u > /etc/sysctl.d/99-autodeploy.conf
+    sysctl -p
+}
+
+ConfigureTuned() {
+    HaveCommand tuned-adm || return 0
+    tuned-adm profile "$(tuned-adm recommend)"
+    tuned-adm active
+}
+
+ConfigureGAI() {
+    local prefer_ipv4_option
+    if [ "${PREFER_IPV4:-true}" = "true" ]; then
+        prefer_ipv4_option="precedence ::ffff:0:0/96 100"
+    else
+        prefer_ipv4_option="precedence ::ffff:0:0/96 10"
+    fi
+    local gai_conf_list=(
+        "label ::/0 1"
+        "label ::1/128 0"
+        "label 2001:0::/32 7"
+        "label 2002::/16 2"
+        "label ::/96 3"
+        "label fc00::/7 6"
+        "label fec0::/10 5"
+        "label ::ffff:0:0/96 4"
+        "precedence ::/0 40"
+        "precedence ::1/128 50"
+        "precedence 2002::/16 30"
+        "precedence ::/96 20"
+        "$prefer_ipv4_option"
+        "scopev4 ::ffff:0.0.0.0/96 14"
+        "scopev4 ::ffff:127.0.0.0/104 2"
+        "scopev4 ::ffff:169.254.0.0/112 2"
+    )
+    printf '%s\n' "${gai_conf_list[@]}" | sort -u > /etc/gai.conf
+}
+# ============================================================================
+# modules/debian/security.sh - Fail2Ban, CrowdSec, sshd and SNMPv3
+# (Ubuntu / Proxmox VE, bash 4.4+)
+# ConfigureFail2Ban must be given FAIL2BAN_JAILS (array) and
+# FAIL2BAN_BANACTION (ufw | default), plus optional FAIL2BAN_FILTER_NAME +
+# FAIL2BAN_FILTER (array). ConfigureSNMPBase needs SNMP_USER.
+# ============================================================================
+
+ConfigureFail2Ban() {
+    HaveCommand fail2ban-client || return 0
+    if [ -d /etc/fail2ban/jail.d ]; then
+        rm -f /etc/fail2ban/jail.d/*
+    else
+        mkdir -p /etc/fail2ban/jail.d
+    fi
+    if [ -f /etc/fail2ban/fail2ban.conf ]; then
+        cp /etc/fail2ban/fail2ban.conf /etc/fail2ban/fail2ban.local
+    fi
+    if [ -f /etc/fail2ban/jail.conf ]; then
+        if [ "${FAIL2BAN_BANACTION}" = "ufw" ]; then
+            sed -E \
+                -e 's/action = iptables-allports/action = ufw/g' \
+                -e 's/banaction = iptables-multiport(-log)?/banaction = ufw/g' \
+                -e 's/banaction = ufw-log/banaction = ufw/g' \
+                -e 's/banaction_allports = iptables-allports/banaction_allports = ufw/g' \
+                /etc/fail2ban/jail.conf > /etc/fail2ban/jail.local
+        else
+            cp /etc/fail2ban/jail.conf /etc/fail2ban/jail.local
+        fi
+    fi
+    if [ -n "${FAIL2BAN_FILTER_NAME:-}" ]; then
+        printf '%s\n' "${FAIL2BAN_FILTER[@]}" > "/etc/fail2ban/filter.d/${FAIL2BAN_FILTER_NAME}.conf"
+    fi
+    printf '%s\n' "${FAIL2BAN_JAILS[@]}" > /etc/fail2ban/jail.d/fail2ban_default.conf
+    systemctl enable fail2ban
+    fail2ban-client reload
+    sleep 5
+    fail2ban-client status
+}
+
+ConfigureCrowdSec() {
+    HaveCommand cscli || return 0
+    local collection
+    for collection in "crowdsecurity/iptables" "crowdsecurity/linux-lpe" "crowdsecurity/linux" "crowdsecurity/sshd"; do
+        cscli collections install "$collection"
+    done
+    systemctl restart crowdsec
+    cscli hub list
+}
+
+InstallCrowdSec() {
+    InstallAptRepo "crowdsec" "https://packagecloud.io/crowdsec/crowdsec/gpgkey" \
+        "deb [arch=${OS_ARCHITECTURE:-amd64} signed-by=/usr/share/keyrings/crowdsec-archive-keyring.gpg] https://packagecloud.io/crowdsec/crowdsec/any any main
+deb-src [arch=${OS_ARCHITECTURE:-amd64} signed-by=/usr/share/keyrings/crowdsec-archive-keyring.gpg] https://packagecloud.io/crowdsec/crowdsec/any any main"
+    if HaveCommand cscli; then
+        local bouncer
+        while IFS= read -r bouncer; do
+            cscli bouncers delete "$bouncer"
+        done < <(cscli bouncers list | grep 'FirewallBouncer' | awk '{print $1}' || true)
+    fi
+    InstallAptPackages "crowdsec" "crowdsec-firewall-bouncer-nftables"
+}
+
+# Root password login is intentional: the root account gets locked afterwards
+# via LOCK_ROOT=TRUE (see ConfigureRootUser).
+ConfigureSshd() {
+    [ -f /usr/share/openssh/sshd_config ] || return 0
+    sed -E \
+        -e 's/^#?PasswordAuthentication .*/PasswordAuthentication yes/' \
+        -e 's/^#?PermitRootLogin .*/PermitRootLogin yes/' \
+        -e 's/^#?PubkeyAuthentication .*/PubkeyAuthentication yes/' \
+        /usr/share/openssh/sshd_config > /etc/ssh/sshd_config
+    rm -f /etc/ssh/sshd_config.d/*
+}
+
+# Platform wrapper sets SNMP_USER, then calls this.
+ConfigureSNMPBase() {
+    HaveCommand snmpwalk || return 0
+    if [ -z "${SNMP_AUTH_PASS:-}" ]; then
+        SNMP_AUTH_PASS="${ROOT_PASSWORD}"
+        LogWarn "SNMP_AUTH_PASS defaults to the root password; override it via SNMP_AUTH_PASS."
+    fi
+    if [ -z "${SNMP_PRIV_PASS:-}" ]; then
+        SNMP_PRIV_PASS="${NEW_HOSTNAME}"
+        LogWarn "SNMP_PRIV_PASS defaults to the hostname; override it via SNMP_PRIV_PASS."
+    fi
+    SNMP_SYS_CONTACT="${DEFAULT_FULLNAME}"
+    SNMP_SYS_LOCATION="${NEW_HOSTNAME}"
+    SNMP_SYS_NAME="${NEW_FULL_DOMAIN}"
+    local snmp_list=(
+        "agentaddress udp:161,udp6:161"
+        "master agentx"
+        "rouser ${SNMP_USER}"
+        "sysContact ${SNMP_SYS_CONTACT}"
+        "sysLocation ${SNMP_SYS_LOCATION}"
+        "sysName ${SNMP_SYS_NAME}"
+        "sysServices 76"
+    )
+    systemctl stop snmpd
+    pkill -x snmpd > /dev/null 2>&1 || true
+    sed -i 's/^mibs :/# mibs :/g' /etc/snmp/snmp.conf
+    printf 'createUser %s SHA "%s" AES "%s"\n' "$SNMP_USER" "$SNMP_AUTH_PASS" "$SNMP_PRIV_PASS" > /var/lib/snmp/snmpd.conf
+    printf '%s\n' "${snmp_list[@]}" | sort > /etc/snmp/snmpd.conf
+    systemctl start snmpd
+    # Verification only; head closes the pipe early, so ignore SIGPIPE.
+    snmpwalk -v3 -a SHA -A "$SNMP_AUTH_PASS" -x AES -X "$SNMP_PRIV_PASS" -l authPriv -u "$SNMP_USER" 127.0.0.1 | head || true
+}
+# ============================================================================
+# modules/debian/storage.sh - swap helpers for Debian family
+# (Ubuntu / Proxmox VE, bash 4.4+)
+# Platform ConfigureSWAP orchestrators combine these with their own
+# CreateSWAP / RemoveSWAP / UpdateFSTAB variants (swapfile vs LVM).
+# ============================================================================
+
+# Swap size in MiB from RAM in MiB (pure, tested in tests/)
+ComputeSwapSize() {
+    local ram_mb="$1" ram_size frac_first
+    ram_size=$(awk -v ram="$ram_mb" 'BEGIN{print log(ram)/log(2)}')
+    if [[ "$ram_size" == *.* ]]; then
+        frac_first=$(printf '%s' "$ram_size" | cut -d '.' -f 2 | cut -c 1)
+        ram_size=${ram_size%%.*}
+        if [ "$frac_first" -gt 5 ]; then
+            ram_size=$((ram_size + 1))
+        fi
+    fi
+    if [ "$ram_size" -le 11 ]; then
+        printf '%s\n' $((2 ** ram_size * 2))
+    elif [ "$ram_size" -le 13 ]; then
+        printf '%s\n' $((2 ** ram_size))
+    elif [ "$ram_size" -le 16 ]; then
+        printf '%s\n' $((2 ** 12))
+    else
+        printf '%s\n' $((2 ** 13))
+    fi
+}
+
+ClearSWAP() {
+    HaveCommand sysctl || return 0
+    sync
+    sysctl -w vm.drop_caches=3 vm.overcommit_memory=0 vm.swappiness=0
+}
+
+# zram-generator config shared by both platforms (always-on compressed swap).
+CreateZRamSWAP() {
+    local zram_conf_list=(
+        "[zram0]"
+        "compression-algorithm = zstd"
+        "zram-size = min(ram / 2, 8192)"
+    )
+    rm -rf "/etc/systemd/zram-generator.conf.d"
+    mkdir -p "/etc/systemd/zram-generator.conf.d"
+    printf '%s\n' "${zram_conf_list[@]}" > "/etc/systemd/zram-generator.conf.d/zram.conf"
+}
+# ============================================================================
+# modules/debian/system.sh - system information gathering for Debian family
+# (Ubuntu / Proxmox VE, bash 4.4+)
+# Sets: NEW_DOMAIN, NEW_HOSTNAME, OLD_HOSTNAME, CURRENT_DNS, DHCP_DNS,
+# CUSTOM_DNS, DNS_LINE, CPU_VENDOR_ID, ENABLE_IOMMU, MICROCODE,
+# INTEL_GVT_MODULES, INTEL_HDMI_AUDIO_MODULE, NESTED_MODULES,
+# OS_ARCHITECTURE, plus the Debian structural globals via SetDebianGlobals.
+# ============================================================================
+
 GenerateDomain() {
     RESET_DOMAIN="${RESET_DOMAIN:-false}"
     NEW_DOMAIN=()
@@ -619,20 +1381,24 @@ GenerateDomain() {
     fi
 }
 
+# Sets NEW_HOSTNAME (CUSTOM_HOSTNAME > hostname file > hostname command >
+# HOSTNAME_PREFIX timestamp) and OLD_HOSTNAME (original hostname, used by the
+# Proxmox VE node rename step).
 GenerateHostname() {
     RESET_HOSTNAME="${RESET_HOSTNAME:-false}"
+    OLD_HOSTNAME=""
+    if [ -f "${HOSTNAME_FILE:-/etc/hostname}" ]; then
+        OLD_HOSTNAME=$(awk '{print $1; exit}' "${HOSTNAME_FILE:-/etc/hostname}")
+    fi
+    if [ -z "$OLD_HOSTNAME" ] && HaveCommand hostname; then
+        OLD_HOSTNAME=$(hostname)
+    fi
     NEW_HOSTNAME=""
     if [ -n "${CUSTOM_HOSTNAME:-}" ]; then
         NEW_HOSTNAME="$CUSTOM_HOSTNAME"
         return 0
     fi
-    local hostname_file="${HOSTNAME_FILE:-/etc/hostname}"
-    if [ -f "$hostname_file" ]; then
-        NEW_HOSTNAME=$(awk '{print $1; exit}' "$hostname_file")
-    fi
-    if [ -z "$NEW_HOSTNAME" ] && HaveCommand hostname; then
-        NEW_HOSTNAME=$(hostname)
-    fi
+    NEW_HOSTNAME="$OLD_HOSTNAME"
     if [ -z "$NEW_HOSTNAME" ] || [ "$RESET_HOSTNAME" = "true" ]; then
         NEW_HOSTNAME="${HOSTNAME_PREFIX}-$(date '+%Y%m%d%H%M%S')"
     fi
@@ -722,536 +1488,100 @@ WriteResolvConf() {
     } > /etc/resolv.conf
 }
 
-# Configure Packages (shared)
-# Platform must set: APT_PREFERENCES (array of "<release> <priority>")
-ConfigureAPT() {
-    local apt_conf_list=(
-        '# Disable HTTP Pipelining'
-        'Acquire::http::Pipeline-Depth "0";'
-        '# Disable Phased Updates'
-        'APT::Get::Always-Include-Phased-Updates true;'
-        'Update-Manager::Always-Include-Phased-Updates true;'
-    )
-    mkdir -p /etc/apt/apt.conf.d
-    printf '%s\n' "${apt_conf_list[@]}" > /etc/apt/apt.conf.d/99autodeploy
-    rm -rf /etc/apt/preferences.d
-    mkdir -p /etc/apt/preferences.d
-    local entry release priority
-    : > /etc/apt/preferences
-    for entry in "${APT_PREFERENCES[@]}"; do
-        release="${entry%% *}"
-        priority="${entry##* }"
-        case "$priority" in
-            *[!0-9]*) priority="500" ;;
+GetOSArchitecture() {
+    if HaveCommand dpkg; then
+        OS_ARCHITECTURE=$(dpkg --print-architecture)
+    else
+        case "$(uname -m)" in
+            aarch64) OS_ARCHITECTURE="arm64" ;;
+            x86_64) OS_ARCHITECTURE="amd64" ;;
         esac
-        printf 'Package: *\nPin: release a=%s\nPin-Priority: %s\n\n' "$release" "$priority" >> /etc/apt/preferences
-    done
-    apt modernize-sources
-    rm -f /etc/apt/sources.list.bak /etc/apt/sources.list.d/*.bak
-}
-
-ConfigureBusybox() {
-    HaveCommand busybox || return 0
-    busybox --install -s
-}
-
-ConfigureChrony() {
-    HaveCommand chronyc || return 0
-    local chrony_list=(
-        "allow"
-        "clientloglimit 65536"
-        "driftfile /var/lib/chrony/chrony.drift"
-        "dumpdir /run/chrony"
-        "keyfile /etc/chrony/chrony.keys"
-        "leapsectz right/UTC"
-        "logdir /var/log/chrony"
-        "makestep 1 3"
-        "ratelimit burst 8 interval 3 leak 2"
-        "rtcsync"
-    )
-    DHCP_NTP=()
-    local chrony_ntp_list=(
-        ${DHCP_NTP[@]+"${DHCP_NTP[@]}"}
-        "ntp.ntsc.ac.cn"
-        "ntp1.nim.ac.cn"
-        "ntp2.nim.ac.cn"
-        "ntp.aliyun.com"
-        "ntp.tencent.com"
-        "time.apple.com"
-        "time.windows.com"
-        "time.cloudflare.com"
-        "time.nist.gov"
-        "pool.ntp.org"
-    )
-    local prefer_list=("ntp.ntsc.ac.cn" "ntp1.nim.ac.cn" "ntp2.nim.ac.cn")
-    local server suffix
-    {
-        printf '%s\n' "${chrony_list[@]}"
-        for server in "${chrony_ntp_list[@]}"; do
-            suffix=" iburst"
-            case " ${prefer_list[*]} ${DHCP_NTP[*]:-} " in
-                *" ${server} "*) suffix=" iburst prefer" ;;
-            esac
-            printf 'server %s%s\n' "$server" "$suffix"
-        done
-    } > /etc/chrony/chrony.conf
-    systemctl restart chrony
-    sleep 5
-    chronyc activity
-    chronyc tracking
-    chronyc clients
-    hwclock -w || true
-}
-
-ConfigureCrowdSec() {
-    HaveCommand cscli || return 0
-    local collection
-    for collection in "crowdsecurity/iptables" "crowdsecurity/linux-lpe" "crowdsecurity/linux" "crowdsecurity/sshd"; do
-        cscli collections install "$collection"
-    done
-    systemctl restart crowdsec
-    cscli hub list
-}
-
-ConfigureDockerEngine() {
-    HaveCommand docker || return 0
-    DOCKER_REGISTRY_MIRRORS=()
-    local docker_list=(
-        "{"
-        "  \"allow-direct-routing\": true,"
-        "  \"experimental\": true,"
-        "  \"firewall-backend\": \"nftables\","
-        "  \"ip-forward\": true"
-        "}"
-    )
-    if [ "${#DOCKER_REGISTRY_MIRRORS[@]}" -gt 0 ]; then
-        docker_list=(
-            "{"
-            "  \"allow-direct-routing\": true,"
-            "  \"experimental\": true,"
-            "  \"firewall-backend\": \"nftables\","
-            "  \"ip-forward\": true,"
-            "  \"registry-mirrors\": ["
-            "$(printf '    "%s",\n' "${DOCKER_REGISTRY_MIRRORS[@]}" | sed '$s/,$//')"
-            "  ]"
-            "}"
-        )
     fi
-    if [ ! -d "/docker" ]; then
-        mkdir "/docker"
-    fi
-    chown -R "${DEFAULT_USERNAME}:docker" "/docker"
-    chmod -R 775 "/docker"
-    mkdir -p /etc/docker
-    printf '%s\n' 'DOCKER_OPTS="--iptables=false"' > /etc/default/docker
-    printf '%s\n' "${docker_list[@]}" > /etc/docker/daemon.json
-    systemctl enable docker
-    systemctl restart docker
-}
-
-# Platform must set: FAIL2BAN_JAILS (array), FAIL2BAN_BANACTION (ufw or default),
-# and optionally FAIL2BAN_FILTER_NAME + FAIL2BAN_FILTER (array).
-ConfigureFail2Ban() {
-    HaveCommand fail2ban-client || return 0
-    if [ -d /etc/fail2ban/jail.d ]; then
-        rm -f /etc/fail2ban/jail.d/*
-    else
-        mkdir -p /etc/fail2ban/jail.d
-    fi
-    if [ -f /etc/fail2ban/fail2ban.conf ]; then
-        cp /etc/fail2ban/fail2ban.conf /etc/fail2ban/fail2ban.local
-    fi
-    if [ -f /etc/fail2ban/jail.conf ]; then
-        if [ "${FAIL2BAN_BANACTION}" = "ufw" ]; then
-            sed -E \
-                -e 's/action = iptables-allports/action = ufw/g' \
-                -e 's/banaction = iptables-multiport(-log)?/banaction = ufw/g' \
-                -e 's/banaction = ufw-log/banaction = ufw/g' \
-                -e 's/banaction_allports = iptables-allports/banaction_allports = ufw/g' \
-                /etc/fail2ban/jail.conf > /etc/fail2ban/jail.local
-        else
-            cp /etc/fail2ban/jail.conf /etc/fail2ban/jail.local
-        fi
-    fi
-    if [ -n "${FAIL2BAN_FILTER_NAME:-}" ]; then
-        printf '%s\n' "${FAIL2BAN_FILTER[@]}" > "/etc/fail2ban/filter.d/${FAIL2BAN_FILTER_NAME}.conf"
-    fi
-    printf '%s\n' "${FAIL2BAN_JAILS[@]}" > /etc/fail2ban/jail.d/fail2ban_default.conf
-    systemctl enable fail2ban
-    fail2ban-client reload
-    sleep 5
-    fail2ban-client status
-}
-
-ConfigureFRRouting() {
-    HaveCommand vtysh || return 0
-    local frrouting_list=(
-        "frr defaults datacenter"
-        "log syslog errors"
-    )
-    printf '%s\n' "${frrouting_list[@]}" > /etc/frr/frr.conf
-    systemctl restart frr
-    sleep 5
-    vtysh -c "show running-config"
-    vtysh -c "show ip route"
-    vtysh -c "show ipv6 route"
-}
-
-ConfigureLLDPD() {
-    HaveCommand lldpcli || return 0
-    printf '%s\n' 'DAEMON_ARGS="-c -e -f -s -x"' > /etc/default/lldpd
-    systemctl restart lldpd
-    lldpcli show neighbors detail
-}
-
-# Platform must set: MODULE_LIST_EXTRA (array, may be empty)
-ConfigureModules() {
-    if [ -d /etc/modprobe.d ]; then
-        rm -rf /etc/modprobe.d
-        mkdir -p /etc/modprobe.d
-    fi
-    rm -f /etc/modules
-    local iommu_modules=()
-    if [ -n "$ENABLE_IOMMU" ]; then
-        iommu_modules=("vfio" "vfio_iommu_type1" "vfio_pci" "vfio_virqfd")
-        printf '%s\n' "options vfio_iommu_type1 allow_unsafe_interrupts=1" > /etc/modprobe.d/vfio_iommu_type1.conf
-    fi
-    local module_list=(
-        "kvm"
-        "tls"
-        ${INTEL_GVT_MODULES[@]+"${INTEL_GVT_MODULES[@]}"}
-        ${INTEL_HDMI_AUDIO_MODULE[@]+"${INTEL_HDMI_AUDIO_MODULE[@]}"}
-        ${iommu_modules[@]+"${iommu_modules[@]}"}
-        ${NESTED_MODULES[@]+"${NESTED_MODULES[@]}"}
-        ${MODULE_LIST_EXTRA[@]+"${MODULE_LIST_EXTRA[@]}"}
-    )
-    printf '%s\n' "${module_list[@]}" | sort -u > /etc/modules
-    printf '%s\n' "options kvm ignore_msrs=1 report_ignored_msrs=0" >> /etc/modprobe.d/kvm.conf
-    if [ "$CPU_VENDOR_ID" = "AMD" ]; then
-        printf '%s\n' "options kvm-amd nested=1" > /etc/modprobe.d/kvm-amd.conf
-    elif [ "$CPU_VENDOR_ID" = "Intel" ]; then
-        # 0 | 1 - GuC | 2 - HuC | 3 - GuC / HuC
-        printf '%s\n' "options i915 enable_guc=${I915_GUC_OPTION:-3} enable_gvt=1" > /etc/modprobe.d/i915.conf
-        printf '%s\n' "options kvm-intel nested=Y" > /etc/modprobe.d/kvm-intel.conf
-        printf '%s\n' "options snd-hda-intel enable_msi=1" > /etc/modprobe.d/snd-hda-intel.conf
-    fi
-}
-
-ConfigureNut() {
-    HaveCommand upsmon || return 0
-    function Create_upsd_users() {
-        NUT_ADMIN_PASSWORD="${NUT_ADMIN_PASSWORD:-123456}"
-        NUT_MON_PASSWORD="${NUT_MON_PASSWORD:-secret}"
-        WarnDefaultPassword "NUT_ADMIN_PASSWORD" "$NUT_ADMIN_PASSWORD" "123456"
-        WarnDefaultPassword "NUT_MON_PASSWORD" "$NUT_MON_PASSWORD" "secret"
-        upsd_user_list=(
-            "admin,${NUT_ADMIN_PASSWORD},master,FSD,SET"
-            "monuser,${NUT_MON_PASSWORD},slave,,"
-        )
-    }
-    function Generate_nut_conf() {
-        printf 'MODE=%s\n' "${NUT_MODE:-none}" > /etc/nut/nut.conf
-    }
-    function Generate_ups_conf() {
-        local ups_driver_list=(
-            "ups,usbhid-ups,auto"
-        )
-        local ups_conf_list=(
-            "maxretry = 3"
-            "retrydelay = 5"
-        )
-        local entry ups_name ups_driver ups_port
-        {
-            printf '%s\n' "${ups_conf_list[@]}"
-            for entry in "${ups_driver_list[@]}"; do
-                ups_name="${entry%%,*}"
-                ups_driver=$(printf '%s' "$entry" | cut -d ',' -f 2)
-                ups_port="${entry##*,}"
-                printf '[%s]\n    driver = %s\n    port = %s\n' "$ups_name" "$ups_driver" "$ups_port"
-            done
-        } > /etc/nut/ups.conf
-    }
-    function Generate_upsd_conf() {
-        local upsd_config_list=(
-            "MAXAGE 15"
-            "MAXCONN 1024"
-            "STATEPATH /var/run/nut"
-        )
-        {
-            if [ "${NUT_MODE}" = "standalone" ]; then
-                printf '%s\n' "LISTEN 127.0.0.1 3493" "LISTEN ::1 3493"
-            else
-                printf '%s\n' "LISTEN 0.0.0.0 3493"
-            fi
-            printf '%s\n' "${upsd_config_list[@]}"
-        } > /etc/nut/upsd.conf
-    }
-    function Generate_upsd_users() {
-        local entry upsd_username upsd_password upsd_role upsd_actions
-        {
-            for entry in "${upsd_user_list[@]}"; do
-                upsd_username=$(printf '%s' "$entry" | cut -d ',' -f 1)
-                upsd_password=$(printf '%s' "$entry" | cut -d ',' -f 2)
-                upsd_role=$(printf '%s' "$entry" | cut -d ',' -f 3)
-                upsd_actions=$(printf '%s' "$entry" | cut -d ',' -f 4-5 | tr ',' ' ' | sed 's/^ //g;s/ $//g')
-                printf '[%s]\n' "$upsd_username"
-                if [ -n "$upsd_actions" ]; then
-                    printf '    actions = %s\n    instcmds = ALL\n' "$upsd_actions"
-                fi
-                printf '    password = %s\n    upsmon %s\n' "$upsd_password" "$upsd_role"
-            done
-        } > /etc/nut/upsd.users
-    }
-    function Generate_upsmon_conf() {
-        local upsmon_list=(
-            "DEADTIME 15"
-            "FINALDELAY 5"
-            "HOSTSYNC 15"
-            "MINSUPPLIES 1"
-            "NOCOMMWARNTIME 300"
-            "POLLFREQ 5"
-            "POLLFREQALERT 5"
-            "POWERDOWNFLAG /etc/killpower"
-            "RBWARNTIME 43200"
-            'SHUTDOWNCMD "/sbin/shutdown -h +0"'
-            "MONITOR ${UPSMON_SYSTEM} 1 ${UPSMON_USERNAME} ${UPSMON_PASSWORD} ${UPSMON_ROLE}"
-        )
-        printf '%s\n' "${upsmon_list[@]}" > /etc/nut/upsmon.conf
-    }
-    NUT_MODE="${NUT_MODE:-}" # netclient | netserver | none | standalone
-    NUT_HOST="${NUT_HOST:-}" # localhost
-    rm -f /etc/nut/*.*
-    local nut_service_list=()
-    case "${NUT_MODE:-none}" in
-        netclient)
-            Create_upsd_users
-            UPSMON_USERNAME=$(printf '%s' "${upsd_user_list[1]}" | cut -d ',' -f 1)
-            UPSMON_PASSWORD=$(printf '%s' "${upsd_user_list[1]}" | cut -d ',' -f 2)
-            UPSMON_ROLE=$(printf '%s' "${upsd_user_list[1]}" | cut -d ',' -f 3)
-            UPSMON_SYSTEM="${UPS_NAME:-ups}@${NUT_HOST:-localhost}"
-            nut_service_list=(
-                "nut-client,enable"
-                "nut-driver,disable"
-                "nut-monitor,enable"
-                "nut-server,disable"
-            )
-            Generate_nut_conf
-            Generate_upsmon_conf
-            ;;
-        netserver|standalone)
-            Create_upsd_users
-            UPSMON_USERNAME=$(printf '%s' "${upsd_user_list[0]}" | cut -d ',' -f 1)
-            UPSMON_PASSWORD=$(printf '%s' "${upsd_user_list[0]}" | cut -d ',' -f 2)
-            UPSMON_ROLE=$(printf '%s' "${upsd_user_list[0]}" | cut -d ',' -f 3)
-            UPSMON_SYSTEM="${UPS_NAME:-ups}@localhost"
-            nut_service_list=(
-                "nut-client,enable"
-                "nut-driver,enable"
-                "nut-monitor,enable"
-                "nut-server,enable"
-            )
-            Generate_nut_conf
-            Generate_ups_conf
-            Generate_upsd_conf
-            Generate_upsd_users
-            Generate_upsmon_conf
-            ;;
-        none)
-            nut_service_list=(
-                "nut-client,disable"
-                "nut-driver,disable"
-                "nut-monitor,disable"
-                "nut-server,disable"
-            )
-            Generate_nut_conf
-            ;;
+    case "${OS_ARCHITECTURE:-}" in
+        amd64|arm64) ;;
+        *) Die "Unsupported architecture." ;;
     esac
-    chown -R root:nut /etc/nut
-    chmod 640 /etc/nut/*.*
-    local entry service_name service_status
-    for entry in "${nut_service_list[@]}"; do
-        service_name="${entry%%,*}"
-        service_status="${entry##*,}"
-        systemctl "$service_status" "$service_name" > /dev/null 2>&1 || true
-    done
 }
 
-ConfigureOpenSSH() {
-    HaveCommand ssh-keygen || return 0
-    if [ -d /etc/ssh ]; then
-        GenerateHostSSHKeys /etc/ssh "root@${NEW_HOSTNAME}"
-    fi
-    BackupPath /root/.ssh
-    mkdir -p /root/.ssh
-    touch /root/.ssh/authorized_keys /root/.ssh/known_hosts
-    GenerateSSHKeys /root/.ssh "root@${NEW_HOSTNAME}"
-    chmod 600 /root/.ssh/authorized_keys
-    chmod 644 /root/.ssh/known_hosts
-    chmod 700 /root/.ssh
-    local user_ssh="/home/${DEFAULT_USERNAME}/.ssh"
-    BackupPath "$user_ssh"
-    mkdir -p "$user_ssh"
-    if [ -f "/home/${DEFAULT_USERNAME}/.gnupg/authorized_keys" ]; then
-        mv "/home/${DEFAULT_USERNAME}/.gnupg/authorized_keys" "${user_ssh}/authorized_keys"
-    else
-        touch "${user_ssh}/authorized_keys"
-    fi
-    touch "${user_ssh}/known_hosts"
-    GenerateSSHKeys "$user_ssh" "${DEFAULT_USERNAME}@${NEW_HOSTNAME}"
-    chown -R "$DEFAULT_USERNAME:$DEFAULT_USERNAME" "$user_ssh"
-    chmod 600 "${user_ssh}/authorized_keys"
-    chmod 644 "${user_ssh}/known_hosts"
-    chmod 700 "$user_ssh"
+# Structural globals shared by both Debian platforms; platform ConfigurePackages
+# blocks may override any of them (e.g. Proxmox VE extends ZSH_PATH_LIST).
+SetDebianGlobals() {
+    PROXYCHAINS_CONF="/etc/proxychains4.conf"
+    GPG_HOME="/home/${DEFAULT_USERNAME}/.gnupg"
+    GPG_KEYSERVER="hkps://keyserver.ubuntu.com:443"
+    GPG_PINENTRY="/usr/bin/pinentry-tty"
+    GPG_HOME_OWNER="${DEFAULT_USERNAME}:${DEFAULT_USERNAME}"
+    ZSH_HOME="/home/${DEFAULT_USERNAME}"
+    ZSH_OWNER="${DEFAULT_USERNAME}:${DEFAULT_USERNAME}"
+    ZSH_PATH_LIST=("/bin" "/sbin" "/usr/bin" "/usr/sbin" "/usr/local/bin" "/usr/local/sbin")
+    ZSH_EXTRA_EXPORTS=("export DEBIAN_FRONTEND=\"noninteractive\"")
+    ZSH_TRAPEXIT="false"
+}
+# ============================================================================
+# modules/debian/users.sh - user, root and host identity management
+# (Ubuntu / Proxmox VE, bash 4.4+)
+# ConfigureDefaultUser needs DEFAULT_USERNAME/FULLNAME/PASSWORD (plus
+# DEFAULT_PASSWORD_DEFAULT for the warning) and the PURGE_OTHER_USERS switch;
+# the pveum blocks are no-ops on non-PVE hosts (HaveCommand pveum).
+# WriteHostfile needs NEW_HOSTNAME and takes extra host entries as arguments.
+# ConfigureOpenSSH needs NEW_HOSTNAME + DEFAULT_USERNAME.
+# ============================================================================
+
+# Write /etc/hosts plus /etc/hostname and apply it via hostnamectl.
+# Extra entries (e.g. the Ubuntu loopback alias or the PVE management IP)
+# come first as arguments, above HOSTS_BASE_ENTRIES.
+WriteHostfile() {
+    local host_list=("$@")
+    host_list+=("${HOSTS_BASE_ENTRIES[@]}")
+    printf '%s\n' "${host_list[@]}" > "/etc/hosts"
+    printf '%s\n' "$NEW_HOSTNAME" > "/etc/hostname"
+    hostnamectl set-hostname "$NEW_HOSTNAME"
 }
 
-ConfigurePostfix() {
-    [ -f /etc/postfix/main.cf ] || return 0
-    local current_hostname
-    current_hostname=$(awk -F '=' '/^myhostname/ {gsub(/^[ \t]+|[ \t]+$/, "", $2); print $2; exit}' /etc/postfix/main.cf)
-    if [ -n "$current_hostname" ]; then
-        sed -i "s/${current_hostname}/${NEW_HOSTNAME}/g" /etc/postfix/main.cf
-    fi
-}
-
-# Platform wrapper sets SNMP_USER, then calls this.
-ConfigureSNMPBase() {
-    HaveCommand snmpwalk || return 0
-    if [ -z "${SNMP_AUTH_PASS:-}" ]; then
-        SNMP_AUTH_PASS="${ROOT_PASSWORD}"
-        LogWarn "SNMP_AUTH_PASS defaults to the root password; override it via SNMP_AUTH_PASS."
-    fi
-    if [ -z "${SNMP_PRIV_PASS:-}" ]; then
-        SNMP_PRIV_PASS="${NEW_HOSTNAME}"
-        LogWarn "SNMP_PRIV_PASS defaults to the hostname; override it via SNMP_PRIV_PASS."
-    fi
-    SNMP_SYS_CONTACT="${DEFAULT_FULLNAME}"
-    SNMP_SYS_LOCATION="${NEW_HOSTNAME}"
-    SNMP_SYS_NAME="${NEW_FULL_DOMAIN}"
-    local snmp_list=(
-        "agentaddress udp:161,udp6:161"
-        "master agentx"
-        "rouser ${SNMP_USER}"
-        "sysContact ${SNMP_SYS_CONTACT}"
-        "sysLocation ${SNMP_SYS_LOCATION}"
-        "sysName ${SNMP_SYS_NAME}"
-        "sysServices 76"
-    )
-    systemctl stop snmpd
-    pkill -x snmpd > /dev/null 2>&1 || true
-    sed -i 's/^mibs :/# mibs :/g' /etc/snmp/snmp.conf
-    printf 'createUser %s SHA "%s" AES "%s"\n' "$SNMP_USER" "$SNMP_AUTH_PASS" "$SNMP_PRIV_PASS" > /var/lib/snmp/snmpd.conf
-    printf '%s\n' "${snmp_list[@]}" | sort > /etc/snmp/snmpd.conf
-    systemctl start snmpd
-    # Verification only; head closes the pipe early, so ignore SIGPIPE.
-    snmpwalk -v3 -a SHA -A "$SNMP_AUTH_PASS" -x AES -X "$SNMP_PRIV_PASS" -l authPriv -u "$SNMP_USER" 127.0.0.1 | head || true
-}
-
-# Root password login is intentional: the root account gets locked afterwards
-# via LOCK_ROOT=TRUE (see ConfigureRootUser).
-ConfigureSshd() {
-    [ -f /usr/share/openssh/sshd_config ] || return 0
-    sed -E \
-        -e 's/^#?PasswordAuthentication .*/PasswordAuthentication yes/' \
-        -e 's/^#?PermitRootLogin .*/PermitRootLogin yes/' \
-        -e 's/^#?PubkeyAuthentication .*/PubkeyAuthentication yes/' \
-        /usr/share/openssh/sshd_config > /etc/ssh/sshd_config
-    rm -f /etc/ssh/sshd_config.d/*
-}
-
-# mode: include|exclude; pattern: extended regex matched against interface names
-CollectInterfaces() {
-    local mode="$1" pattern="$2" iface
-    while IFS= read -r iface; do
-        if [ "$mode" = "include" ]; then
-            if [[ "$iface" =~ $pattern ]]; then
-                printf '%s\n' "$iface"
+ConfigureDefaultUser() {
+    WarnDefaultPassword "DEFAULT_PASSWORD" "$DEFAULT_PASSWORD" "$DEFAULT_PASSWORD_DEFAULT"
+    PURGE_OTHER_USERS="${PURGE_OTHER_USERS:-true}"
+    if [ "$PURGE_OTHER_USERS" = "true" ]; then
+        LogWarn "PURGE_OTHER_USERS=true: removing every other user under /home (set PURGE_OTHER_USERS=false to keep them)"
+        local home_dir user
+        for home_dir in /home/*; do
+            if [ -d "$home_dir" ]; then
+                user="${home_dir##*/}"
+                if [ "$user" != "$DEFAULT_USERNAME" ]; then
+                    userdel -rf "$user" > /dev/null 2>&1 || true
+                    if HaveCommand pveum; then
+                        pveum userdel "${user}@pam" > /dev/null 2>&1 || true
+                    fi
+                fi
             fi
-        else
-            if [[ ! "$iface" =~ $pattern ]]; then
-                printf '%s\n' "$iface"
-            fi
-        fi
-    done < <(awk -F: 'NR>2 {gsub(/^[ \t]+/, "", $1); print $1}' /proc/net/dev)
-}
-
-# Platform must set: SYSCTL_INTERFACE_MODE, SYSCTL_INTERFACE_PATTERN
-ConfigureSysctl() {
-    HaveCommand sysctl || return 0
-    local icmp_echo=()
-    if [ "${DISABLE_ICMP_ECHO:-false}" = "true" ]; then
-        icmp_echo=(
-            "net.ipv4.icmp_echo_ignore_all = 1"
-            "net.ipv6.icmp.echo_ignore_all = 1"
-        )
-    fi
-    local interface_list=("all" "default") iface
-    while IFS= read -r iface; do
-        interface_list+=("$iface")
-    done < <(CollectInterfaces "$SYSCTL_INTERFACE_MODE" "$SYSCTL_INTERFACE_PATTERN")
-    local sysctl_list=(
-        "net.core.default_qdisc = fq_pie"
-        "net.core.rmem_max = 7500000"
-        "net.core.wmem_max = 7500000"
-        "net.ipv4.ip_forward = 1"
-        "net.ipv4.tcp_congestion_control = bbr"
-        "net.ipv4.tcp_fastopen = 3"
-        "vm.dirty_background_ratio = 5"
-        "vm.dirty_ratio = 15"
-        "vm.overcommit_memory = 1"
-        "vm.page-cluster = 0"
-        "vm.swappiness = 10"
-        ${icmp_echo[@]+"${icmp_echo[@]}"}
-    )
-    mkdir -p /etc/sysctl.d
-    if [ ! -f /etc/sysctl.d/99-sysctl.conf ]; then
-        ln -s /etc/sysctl.conf /etc/sysctl.d/99-sysctl.conf
-    fi
-    {
-        printf '%s\n' "${sysctl_list[@]}"
-        for iface in "${interface_list[@]}"; do
-            printf 'net.ipv6.conf.%s.accept_ra = 2\n' "$iface"
-            printf 'net.ipv6.conf.%s.addr_gen_mode = 0\n' "$iface"
-            printf 'net.ipv6.conf.%s.autoconf = 1\n' "$iface"
-            printf 'net.ipv6.conf.%s.forwarding = 1\n' "$iface"
-            printf 'net.ipv6.conf.%s.use_tempaddr = 0\n' "$iface"
         done
-    } | sort -u > /etc/sysctl.d/99-autodeploy.conf
-    sysctl -p
-}
-
-ConfigureTuned() {
-    HaveCommand tuned-adm || return 0
-    tuned-adm profile "$(tuned-adm recommend)"
-    tuned-adm active
-}
-
-# Configure System (shared)
-ConfigureGAI() {
-    local prefer_ipv4_option
-    if [ "${PREFER_IPV4:-true}" = "true" ]; then
-        prefer_ipv4_option="precedence ::ffff:0:0/96 100"
-    else
-        prefer_ipv4_option="precedence ::ffff:0:0/96 10"
     fi
-    local gai_conf_list=(
-        "label ::/0 1"
-        "label ::1/128 0"
-        "label 2001:0::/32 7"
-        "label 2002::/16 2"
-        "label ::/96 3"
-        "label fc00::/7 6"
-        "label fec0::/10 5"
-        "label ::ffff:0:0/96 4"
-        "precedence ::/0 40"
-        "precedence ::1/128 50"
-        "precedence 2002::/16 30"
-        "precedence ::/96 20"
-        "$prefer_ipv4_option"
-        "scopev4 ::ffff:0.0.0.0/96 14"
-        "scopev4 ::ffff:127.0.0.0/104 2"
-        "scopev4 ::ffff:169.254.0.0/112 2"
+    if id "$DEFAULT_USERNAME" > /dev/null 2>&1; then
+        userdel -rf "$DEFAULT_USERNAME" > /dev/null 2>&1 || true
+    fi
+    useradd -c "$DEFAULT_FULLNAME" -d "/home/${DEFAULT_USERNAME}" -s "/bin/zsh" -m "$DEFAULT_USERNAME"
+    printf '%s:%s\n' "$DEFAULT_USERNAME" "$DEFAULT_PASSWORD" | chpasswd
+    adduser "$DEFAULT_USERNAME" "docker"
+    adduser "$DEFAULT_USERNAME" "sudo"
+    CRONTAB_USER="$DEFAULT_USERNAME"
+    CRONTAB_ENTRIES=(
+        "@reboot rm -rf ~/.*_history ~/.ssh/known_hosts*"
     )
-    printf '%s\n' "${gai_conf_list[@]}" | sort -u > /etc/gai.conf
+    InstallCrontab
+    if HaveCommand pveum; then
+        if pveum group list | grep -q 'LADM'; then
+            pveum group modify "LADM" -comment "Local Administrators"
+        else
+            pveum groupadd "LADM" -comment "Local Administrators"
+        fi
+        pveum aclmod "/" -group "LADM" -role "Administrator"
+        if pveum user list | grep -q "${DEFAULT_USERNAME}@pam"; then
+            pveum usermod "${DEFAULT_USERNAME}@pam" -comment "$DEFAULT_FULLNAME" -firstname "$DEFAULT_FIRSTNAME" -group "LADM" -lastname "$DEFAULT_LASTNAME"
+        else
+            pveum useradd "${DEFAULT_USERNAME}@pam" -comment "$DEFAULT_FULLNAME" -firstname "$DEFAULT_FIRSTNAME" -group "LADM" -lastname "$DEFAULT_LASTNAME"
+        fi
+        pveum usermod "root@pam" -comment "Proxmox Root" -firstname "Root" -group "LADM" -lastname "Proxmox"
+    fi
 }
 
 # Only the deployment user switches to zsh; system accounts keep their shells.
@@ -1274,104 +1604,30 @@ ConfigureRootUser() {
     fi
 }
 
-# Swap size in MiB from RAM in MiB (pure, tested in tests/)
-ComputeSwapSize() {
-    local ram_mb="$1" ram_size frac_first
-    ram_size=$(awk -v ram="$ram_mb" 'BEGIN{print log(ram)/log(2)}')
-    if [[ "$ram_size" == *.* ]]; then
-        frac_first=$(printf '%s' "$ram_size" | cut -d '.' -f 2 | cut -c 1)
-        ram_size=${ram_size%%.*}
-        if [ "$frac_first" -gt 5 ]; then
-            ram_size=$((ram_size + 1))
-        fi
+ConfigureOpenSSH() {
+    HaveCommand ssh-keygen || return 0
+    if [ -d /etc/ssh ]; then
+        GenerateHostSSHKeys /etc/ssh "root@${NEW_HOSTNAME}"
     fi
-    if [ "$ram_size" -le 11 ]; then
-        printf '%s\n' $((2 ** ram_size * 2))
-    elif [ "$ram_size" -le 13 ]; then
-        printf '%s\n' $((2 ** ram_size))
-    elif [ "$ram_size" -le 16 ]; then
-        printf '%s\n' $((2 ** 12))
-    else
-        printf '%s\n' $((2 ** 13))
+    InitUserSSHDir /root/.ssh "root@${NEW_HOSTNAME}"
+    local user_ssh="/home/${DEFAULT_USERNAME}/.ssh"
+    InitUserSSHDir "$user_ssh" "${DEFAULT_USERNAME}@${NEW_HOSTNAME}" "$DEFAULT_USERNAME:$DEFAULT_USERNAME"
+    if [ -f "/home/${DEFAULT_USERNAME}/.gnupg/authorized_keys" ]; then
+        mv "/home/${DEFAULT_USERNAME}/.gnupg/authorized_keys" "${user_ssh}/authorized_keys"
+        chmod 600 "${user_ssh}/authorized_keys"
     fi
-}
-
-# Install / Upgrade / Cleanup (shared helpers)
-InstallAptRepo() {
-    local name="$1" key_url="$2" repo_line="$3"
-    rm -f "/usr/share/keyrings/${name}-archive-keyring.gpg"
-    curl -fsSL "$key_url" | gpg --dearmor -o "/usr/share/keyrings/${name}-archive-keyring.gpg"
-    printf '%s\n' "$repo_line" > "/etc/apt/sources.list.d/${name}.list"
-}
-
-InstallAptPackages() {
-    apt update
-    # Filter available packages, then install them in a single apt invocation:
-    # one dependency-resolution / dpkg-trigger pass instead of one per package.
-    local pkg available=()
-    for pkg in "$@"; do
-        if apt-cache show "$pkg" > /dev/null 2>&1; then
-            available+=("$pkg")
-        else
-            LogWarn "package not available, skipped: ${pkg}"
-        fi
-    done
-    if [ "${#available[@]}" -gt 0 ]; then
-        apt install -qy "${available[@]}"
-    fi
-}
-
-UpgradePackages() {
-    apt update
-    apt full-upgrade -qy
-    apt autoremove -qy --purge
-}
-
-# Extra paths to remove may be passed as arguments. Never wipe all of /tmp.
-CleanupTempFiles() {
-    apt clean
-    rm -f /root/.*_history /tmp/*.autodeploy "$@"
-}
-
-# Platform must set: KERNEL_PATTERN (grep -E matching installed kernel packages)
-# Keeps the newest kernel, purges the rest.
-CleanupOutageKernels() {
-    local latest kernel
-    latest=$(dpkg -l | grep -E "$KERNEL_PATTERN" | awk '{print $2}' | sort -V | tail -n 1 || true)
-    if [ -z "$latest" ]; then
-        return 0
-    fi
-    local kernel_list=()
-    while IFS= read -r kernel; do
-        if [ "$kernel" != "$latest" ]; then
-            kernel_list+=("$kernel")
-        fi
-    done < <(dpkg -l | grep -E "$KERNEL_PATTERN" | awk '{print $2}' | sort -V || true)
-    for kernel in ${kernel_list[@]+"${kernel_list[@]}"}; do
-        apt purge -qy "$kernel"
-    done
-    apt autoremove -qy --purge
 }
 ## Function
 # Get System Information
-function GetSystemInformation() {
+GetSystemInformation() {
     # Identity, credentials and release pinning live in the Configuration block.
     DEFAULT_FULLNAME="${DEFAULT_LASTNAME} ${DEFAULT_FIRSTNAME}"
 
-    function GenerateResolv() {
+    GenerateResolv() {
         CollectDNS
         WriteResolvConf
     }
-    function GetHostname() {
-        OLD_HOSTNAME=""
-        if [ -f "/etc/hostname" ]; then
-            OLD_HOSTNAME=$(awk '{print $1; exit}' "/etc/hostname")
-        fi
-        if [ -z "$OLD_HOSTNAME" ] && HaveCommand hostname; then
-            OLD_HOSTNAME=$(hostname)
-        fi
-    }
-    function GetManagementIPAddress() {
+    GetManagementIPAddress() {
         CURRENT_MANAGEMENT_IP=""
         if ip link show vmbr0 > /dev/null 2>&1; then
             CURRENT_MANAGEMENT_IP=$(ip address show vmbr0 | awk '/inet / {print $2}' | sort | head -n 1 | sed 's/\/.*//')
@@ -1384,13 +1640,13 @@ function GetSystemInformation() {
     GenerateHostname
     GenerateResolv
     GetCPUVendorID
-    GetHostname
+    GetOSArchitecture
     GetManagementIPAddress
     SetGHProxyDomain
 }
 
 # Set Repository Mirror
-function SetRepositoryMirror() {
+SetRepositoryMirror() {
     local mirror_list=(
         "deb ${TRANSPORT_PROTOCOL}://mirrors.cernet.edu.cn/debian-security ${LSB_CODENAME}-security contrib main non-free non-free-firmware"
         "deb ${TRANSPORT_PROTOCOL}://mirrors.cernet.edu.cn/debian ${LSB_CODENAME} contrib main non-free non-free-firmware"
@@ -1411,18 +1667,15 @@ function SetRepositoryMirror() {
         "deb ${TRANSPORT_PROTOCOL}://mirrors.cernet.edu.cn/proxmox/debian ${LSB_CODENAME} pve-no-subscription pve-test"
         "deb ${TRANSPORT_PROTOCOL}://mirrors.cernet.edu.cn/proxmox/debian/ceph-${CEPH_CODENAME} ${LSB_CODENAME} no-subscription test"
     )
-    if [ ! -d "/etc/apt/sources.list.d" ]; then
-        mkdir "/etc/apt/sources.list.d"
-    else
-        rm -f /etc/apt/sources.list.d/*.*
-    fi
+    mkdir -p "/etc/apt/sources.list.d"
+    rm -f /etc/apt/sources.list.d/*.*
     printf '%s\n' "${mirror_list[@]}" > "/etc/apt/sources.list"
     printf '%s\n' "${proxmox_mirror_list[@]}" > "/etc/apt/sources.list.d/proxmox.list"
 }
 
 # Configure Packages
-function ConfigurePackages() {
-    function ConfigureAPTPVEExtras() {
+ConfigurePackages() {
+    ConfigureAPTPVEExtras() {
         local pve_repo_preference_list=(
             "pve-enterprise 1000"
             "pve-no-subscription 990"
@@ -1445,21 +1698,12 @@ function ConfigurePackages() {
             sed -i 's|Signed-By:.*|Signed-By: /usr/share/keyrings/debian-archive-keyring.gpg|g' "/etc/apt/sources.list.d/debian-backports.sources"
         fi
     }
-    function ConfigureCrontab() {
-        CRONTAB_USER="root"
-        CRONTAB_ENTRIES=(
-            "0 0 * * 7 sudo apt update && sudo apt full-upgrade -qy && sudo apt autoremove -qy --purge"
-            "# 0 4 * * 7 sudo reboot"
-            "@reboot sudo rm -rf ~/.*_history ~/.ssh/known_hosts*"
-        )
-        InstallCrontab
-    }
-    function ConfigureGrub() {
+    ConfigureGrub() {
         local display_option="" sfp_option="" btrfs_option=""
-        if [ "${DISABLE_DISPLAY:-false}" = "true" ]; then
+        if [ "$DISABLE_DISPLAY" = "true" ]; then
             display_option=" video=efifb:off,vesafb:off"
         fi
-        if [ "${PATCH_INTEL_82599_SFP:-false}" = "true" ]; then
+        if [ "$PATCH_INTEL_82599_SFP" = "true" ]; then
             sfp_option=" ixgbe.allow_unsupported_sfp=1"
         fi
         if [ "$(findmnt -no FSTYPE / 2>/dev/null || true)" = "btrfs" ]; then
@@ -1483,9 +1727,8 @@ function ConfigurePackages() {
             proxmox-boot-tool refresh
         fi
     }
-    function ConfigureZfsModules() {
+    ConfigureZfsModules() {
         if HaveCommand arcstat; then
-            ZFS_ARC_MAX="${ZFS_ARC_MAX:-1}" # GiB
             printf 'options zfs zfs_arc_max=%s\n' "$((ZFS_ARC_MAX * 1024 * 1024 * 1024))" > "/etc/modprobe.d/zfs.conf"
             update-initramfs -u -k all
         fi
@@ -1493,13 +1736,13 @@ function ConfigurePackages() {
             printf '%s\n' "options ixgbe allow_unsupported_sfp=1" > "/etc/modprobe.d/ixgbe.conf"
         fi
     }
-    function ConfigurePVEPrivKeys() {
+    ConfigurePVEPrivKeys() {
         [ -d "/etc/pve/priv" ] || return 0
         rm -f "/etc/pve/priv/authorized_keys" "/etc/pve/priv/known_hosts"
         touch "/etc/pve/priv/authorized_keys" "/etc/pve/priv/known_hosts"
         chmod 600 "/etc/pve/priv/authorized_keys" "/etc/pve/priv/known_hosts"
     }
-    function ConfigurePVECeph() {
+    ConfigurePVECeph() {
         if [ -d "/etc/systemd/system/ceph-mon.target.wants" ]; then
             local mon_path mon
             for mon_path in "/etc/systemd/system/ceph-mon.target.wants"/ceph-mon@*; do
@@ -1513,8 +1756,7 @@ function ConfigurePackages() {
             mkdir -p "/etc/ceph" "/var/lib/ceph/mgr" "/var/lib/ceph/mon"
         fi
     }
-    function ConfigurePVECluster() {
-        RESET_CLUSTER="${RESET_CLUSTER:-true}"
+    ConfigurePVECluster() {
         if [ "$RESET_CLUSTER" != "true" ]; then
             LogInfo "RESET_CLUSTER=false: leaving cluster configuration untouched"
             return 0
@@ -1528,16 +1770,16 @@ function ConfigurePackages() {
         killall pmxcfs || true
         systemctl start pve-cluster
     }
-    function ConfigurePVEContainer() {
+    ConfigurePVEContainer() {
         sed -Ezi.bak 's|http://download.proxmox.com|https://mirrors.cernet.edu.cn/proxmox|g' "/usr/share/perl5/PVE/APLInfo.pm"
         systemctl restart pvedaemon
     }
-    function ConfigurePVEDashboard() {
+    ConfigurePVEDashboard() {
         # Removes the "No valid subscription" nag; re-run after proxmox-widget-toolkit updates.
         sed -Ezi.bak "s/(Ext.Msg.show\(\{\s+title: gettext\('No valid sub)/void\(\{ \/\/\1/g" "/usr/share/javascript/proxmox-widget-toolkit/proxmoxlib.js"
         systemctl restart pveproxy
     }
-    function ConfigurePVEFirewall() {
+    ConfigurePVEFirewall() {
         local cluster_fw_list=(
             "[OPTIONS]"
             "ebtables: 1"
@@ -1623,14 +1865,10 @@ function ConfigurePackages() {
                 done
             fi
         done
-        if [ ! -d "/etc/pve/firewall" ]; then
-            mkdir "/etc/pve/firewall"
-            chown -R root:www-data "/etc/pve/firewall"
-        fi
-        if [ ! -d "/etc/pve/nodes" ]; then
-            mkdir "/etc/pve/nodes"
-            chown -R root:www-data "/etc/pve/nodes"
-        fi
+        mkdir -p "/etc/pve/firewall"
+        chown -R root:www-data "/etc/pve/firewall"
+        mkdir -p "/etc/pve/nodes"
+        chown -R root:www-data "/etc/pve/nodes"
         printf '%s\n' "${cluster_fw_list[@]}" > "/etc/pve/firewall/cluster.fw"
         printf '%s\n' "${host_fw_list[@]}" > "/etc/pve/nodes/${NEW_HOSTNAME}/host.fw"
         local vm
@@ -1638,7 +1876,7 @@ function ConfigurePackages() {
             printf '%s\n' "${vm_container_fw_list[@]}" > "/etc/pve/firewall/${vm}.fw"
         done
     }
-    function ConfigureZfs() {
+    ConfigureZfs() {
         HaveCommand zpool || return 0
         local pool
         while IFS= read -r pool; do
@@ -1684,16 +1922,10 @@ function ConfigurePackages() {
     MODULE_LIST_EXTRA=("ip_conntrack_ftp" "nfnetlink_queue")
     SYSCTL_INTERFACE_MODE="include"
     SYSCTL_INTERFACE_PATTERN='^vmbr'
-    PROXYCHAINS_CONF="/etc/proxychains4.conf"
-    GPG_HOME="/home/${DEFAULT_USERNAME}/.gnupg"
-    GPG_KEYSERVER="hkps://keyserver.ubuntu.com:443"
-    GPG_PINENTRY="/usr/bin/pinentry-tty"
-    GPG_HOME_OWNER="${DEFAULT_USERNAME}:${DEFAULT_USERNAME}"
-    ZSH_HOME="/home/${DEFAULT_USERNAME}"
-    ZSH_OWNER="${DEFAULT_USERNAME}:${DEFAULT_USERNAME}"
-    ZSH_PATH_LIST=("/bin" "/sbin" "/usr/bin" "/usr/sbin" "/usr/local/bin" "/usr/local/sbin" "/usr/lib/cargo/bin")
-    ZSH_EXTRA_EXPORTS=("export DEBIAN_FRONTEND=\"noninteractive\"")
-    ZSH_TRAPEXIT="false"
+    DOCKER_APT_DISTRO="debian"
+    FRR_APT_LINE="deb [arch=${OS_ARCHITECTURE} signed-by=/usr/share/keyrings/frrouting-archive-keyring.gpg] https://deb.frrouting.org/frr ${LSB_CODENAME} frr-stable"
+    SetDebianGlobals
+    ZSH_PATH_LIST+=("/usr/lib/cargo/bin")
 
     RunStep "ConfigureAPT" ConfigureAPT
     RunStep "ConfigureAPTPVEExtras" ConfigureAPTPVEExtras
@@ -1730,73 +1962,16 @@ function ConfigurePackages() {
 }
 
 # Configure System
-function ConfigureSystem() {
-    function ConfigureDefaultUser() {
-        WarnDefaultPassword "DEFAULT_PASSWORD" "$DEFAULT_PASSWORD" '*Proxmox123*'
-        PURGE_OTHER_USERS="${PURGE_OTHER_USERS:-true}"
-        if [ "$PURGE_OTHER_USERS" = "true" ]; then
-            LogWarn "PURGE_OTHER_USERS=true: removing every other user under /home (set PURGE_OTHER_USERS=false to keep them)"
-            local home_dir user
-            for home_dir in /home/*; do
-                if [ -d "$home_dir" ]; then
-                    user="${home_dir##*/}"
-                    if [ "$user" != "$DEFAULT_USERNAME" ]; then
-                        userdel -rf "$user" > /dev/null 2>&1 || true
-                        if HaveCommand pveum; then
-                            pveum userdel "${user}@pam" > /dev/null 2>&1 || true
-                        fi
-                    fi
-                fi
-            done
-        fi
-        if id "$DEFAULT_USERNAME" > /dev/null 2>&1; then
-            userdel -rf "$DEFAULT_USERNAME" > /dev/null 2>&1 || true
-        fi
-        useradd -c "$DEFAULT_FULLNAME" -d "/home/${DEFAULT_USERNAME}" -s "/bin/zsh" -m "$DEFAULT_USERNAME"
-        printf '%s:%s\n' "$DEFAULT_USERNAME" "$DEFAULT_PASSWORD" | chpasswd
-        adduser "$DEFAULT_USERNAME" "docker"
-        adduser "$DEFAULT_USERNAME" "sudo"
-        CRONTAB_USER="$DEFAULT_USERNAME"
-        CRONTAB_ENTRIES=(
-            "@reboot rm -rf ~/.*_history ~/.ssh/known_hosts*"
-        )
-        InstallCrontab
-        if HaveCommand pveum; then
-            if pveum group list | grep -q 'LADM'; then
-                pveum group modify "LADM" -comment "Local Administrators"
-            else
-                pveum groupadd "LADM" -comment "Local Administrators"
-            fi
-            pveum aclmod "/" -group "LADM" -role "Administrator"
-            if pveum user list | grep -q "${DEFAULT_USERNAME}@pam"; then
-                pveum usermod "${DEFAULT_USERNAME}@pam" -comment "$DEFAULT_FULLNAME" -firstname "$DEFAULT_FIRSTNAME" -group "LADM" -lastname "$DEFAULT_LASTNAME"
-            else
-                pveum useradd "${DEFAULT_USERNAME}@pam" -comment "$DEFAULT_FULLNAME" -firstname "$DEFAULT_FIRSTNAME" -group "LADM" -lastname "$DEFAULT_LASTNAME"
-            fi
-            pveum usermod "root@pam" -comment "Proxmox Root" -firstname "Root" -group "LADM" -lastname "Proxmox"
-        fi
-    }
-    function ConfigureHostfile() {
+ConfigureSystem() {
+    ConfigureHostfile() {
         ComputeFullDomain
-        local host_list=()
+        local mgmt_entry=""
         if [ -n "$CURRENT_MANAGEMENT_IP" ]; then
-            host_list+=("${CURRENT_MANAGEMENT_IP} ${NEW_FULL_DOMAIN} ${NEW_HOSTNAME}")
+            mgmt_entry="${CURRENT_MANAGEMENT_IP} ${NEW_FULL_DOMAIN} ${NEW_HOSTNAME}"
         fi
-        host_list+=(
-            "127.0.0.1 localhost"
-            "255.255.255.255 broadcasthost"
-            "::1 ip6-localhost ip6-loopback localhost"
-            "fe00::0 ip6-localnet"
-            "ff00::0 ip6-mcastprefix"
-            "ff02::1 ip6-allnodes"
-            "ff02::2 ip6-allrouters"
-            "ff02::3 ip6-allhosts"
-        )
-        printf '%s\n' "${host_list[@]}" > "/etc/hosts"
-        printf '%s\n' "$NEW_HOSTNAME" > "/etc/hostname"
-        hostnamectl set-hostname "$NEW_HOSTNAME"
+        WriteHostfile ${mgmt_entry:+"$mgmt_entry"}
     }
-    function ConfigureProxmoxVENode() {
+    ConfigureProxmoxVENode() {
         if [ "$OLD_HOSTNAME" != "$NEW_HOSTNAME" ]; then
             if [ -d "/etc/pve/nodes/${OLD_HOSTNAME}" ]; then
                 tar -czvf "/etc/pve/nodes/${OLD_HOSTNAME}.tar.gz" "/etc/pve/nodes/${OLD_HOSTNAME}"
@@ -1818,7 +1993,7 @@ function ConfigureSystem() {
             fi
         fi
     }
-    function ConfigureSecureBoot() {
+    ConfigureSecureBoot() {
         if [ "$(findmnt -n -o FSTYPE / 2>/dev/null || true)" = "zfs" ]; then
             local esp
             while IFS= read -r esp; do
@@ -1826,23 +2001,8 @@ function ConfigureSystem() {
             done < <(lsblk -nr -o NAME,FSTYPE,SIZE | grep -v '^zd' | awk '$2=="vfat" {print "/dev/"$1}' || true)
         fi
     }
-    function ConfigureSWAP() {
-        function ClearSWAP() {
-            HaveCommand sysctl || return 0
-            sync
-            sysctl -w vm.drop_caches=3 vm.overcommit_memory=0 vm.swappiness=0
-        }
-        function CreateSWAP() {
-            local zram_conf_list=(
-                "[zram0]"
-                "compression-algorithm = zstd"
-                "zram-size = min(ram / 2, 8192)"
-            )
-            rm -rf "/etc/systemd/zram-generator.conf.d"
-            mkdir -p "/etc/systemd/zram-generator.conf.d"
-            printf '%s\n' "${zram_conf_list[@]}" > "/etc/systemd/zram-generator.conf.d/zram.conf"
-        }
-        function RemoveSWAP() {
+    ConfigureSWAP() {
+        RemoveSWAP() {
             local swapfile
             while IFS= read -r swapfile; do
                 swapoff "$swapfile" > /dev/null 2>&1 || true
@@ -1854,14 +2014,14 @@ function ConfigureSystem() {
                 fi
             done < <(awk 'NR>1 {print $1}' /proc/swaps)
         }
-        function UpdateFSTAB() {
+        UpdateFSTAB() {
             grep -v "swap" /etc/fstab > "/tmp/fstab.autodeploy" || true
             cat "/tmp/fstab.autodeploy" > "/etc/fstab"
             rm -f "/tmp/fstab.autodeploy"
         }
         ClearSWAP
         RemoveSWAP
-        CreateSWAP
+        CreateZRamSWAP
         UpdateFSTAB
     }
     RunStep "ConfigureDefaultShell" ConfigureDefaultShell
@@ -1875,44 +2035,13 @@ function ConfigureSystem() {
 }
 
 # Install Custom Packages
-function InstallCustomPackages() {
-    function InstallCrowdSec() {
-        InstallAptRepo "crowdsec" "https://packagecloud.io/crowdsec/crowdsec/gpgkey" \
-            "deb [arch=amd64 signed-by=/usr/share/keyrings/crowdsec-archive-keyring.gpg] https://packagecloud.io/crowdsec/crowdsec/any any main
-deb-src [arch=amd64 signed-by=/usr/share/keyrings/crowdsec-archive-keyring.gpg] https://packagecloud.io/crowdsec/crowdsec/any any main"
-        if HaveCommand cscli; then
-            local bouncer
-            while IFS= read -r bouncer; do
-                cscli bouncers delete "$bouncer"
-            done < <(cscli bouncers list | grep 'FirewallBouncer' | awk '{print $1}' || true)
-        fi
-        InstallAptPackages "crowdsec" "crowdsec-firewall-bouncer-nftables"
-    }
-    function InstallDockerEngine() {
-        InstallAptRepo "docker" "https://mirrors.cernet.edu.cn/docker-ce/linux/debian/gpg" \
-            "deb [arch=amd64 signed-by=/usr/share/keyrings/docker-archive-keyring.gpg] https://mirrors.cernet.edu.cn/docker-ce/linux/debian ${LSB_CODENAME} stable"
-        apt update
-        apt purge -qy containerd docker-compose docker-doc docker.io podman-docker runc || true
-        InstallAptPackages "containerd.io" "docker-buildx-plugin" "docker-ce" "docker-ce-cli" "docker-compose-plugin"
-    }
-    function InstallFRRouting() {
-        InstallAptRepo "frrouting" "https://deb.frrouting.org/frr/keys.gpg" \
-            "deb [arch=amd64 signed-by=/usr/share/keyrings/frrouting-archive-keyring.gpg] https://deb.frrouting.org/frr ${LSB_CODENAME} frr-stable"
-        InstallAptPackages "frr" "frr-pythontools" "frr-snmp"
-    }
+InstallCustomPackages() {
     OMZ_HOME="/home/${DEFAULT_USERNAME}"
     OMZ_OWNER="${DEFAULT_USERNAME}:${DEFAULT_USERNAME}"
     RunStep "InstallCrowdSec" InstallCrowdSec
     RunStep "InstallDockerEngine" InstallDockerEngine
     RunStep "InstallFRRouting" InstallFRRouting
     RunStep "InstallOhMyZsh" InstallOhMyZsh
-}
-
-# Install Dependency Packages
-function InstallDependencyPackages() {
-    local apt_list=("${DEPENDENCY_PACKAGES[@]}")
-    apt_list+=(${MICROCODE[@]+"${MICROCODE[@]}"})
-    InstallAptPackages "${apt_list[@]}"
 }
 
 ## Process

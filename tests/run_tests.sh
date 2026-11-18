@@ -11,10 +11,12 @@
 set -Eeuo pipefail
 cd "$(dirname "$0")/.." || exit 1
 
-# shellcheck source=../src/lib/common.sh
-source src/lib/common.sh
-# shellcheck source=../src/lib/debian.sh
-source src/lib/debian.sh
+# shellcheck source=../src/lib/core.sh
+source src/lib/core.sh
+for module in src/lib/modules/*.sh src/lib/modules/debian/*.sh; do
+    # shellcheck source=/dev/null
+    source "$module"
+done
 
 FAILURES=0
 TMPDIR_TESTS=$(mktemp -d)
@@ -54,10 +56,16 @@ HOSTNAME_FILE="${TMPDIR_TESTS}/hostname"
 printf 'myhost\n' > "$HOSTNAME_FILE"
 HOSTNAME_PREFIX="Test" GenerateHostname
 AssertEq "reads hostname file" "myhost" "$NEW_HOSTNAME"
+AssertEq "OLD_HOSTNAME keeps original" "myhost" "$OLD_HOSTNAME"
 
 printf 'myhost extra\n' > "$HOSTNAME_FILE"
 HOSTNAME_PREFIX="Test" GenerateHostname
 AssertEq "takes first field only" "myhost" "$NEW_HOSTNAME"
+
+CUSTOM_HOSTNAME="custom-host" GenerateHostname
+AssertEq "CUSTOM_HOSTNAME overrides detection" "custom-host" "$NEW_HOSTNAME"
+AssertEq "OLD_HOSTNAME survives CUSTOM_HOSTNAME" "myhost" "$OLD_HOSTNAME"
+unset CUSTOM_HOSTNAME
 
 HOSTNAME_FILE="${TMPDIR_TESTS}/missing"
 RESET_HOSTNAME="true" HOSTNAME_PREFIX="Test" GenerateHostname
@@ -119,6 +127,9 @@ ComputeFullDomain
 AssertEq "joins FQDNs with spaces" "host.a.com host.b.com" "$NEW_FULL_DOMAIN"
 
 printf '== ConfigureZsh / GenerateOMZProfile ==\n'
+# Provide a mock zsh command so the suite runs on hosts without zsh
+# (command -v finds shell functions too).
+zsh() { :; }
 ZSH_HOME="${TMPDIR_TESTS}/zsh"
 ZSH_OWNER=""
 ZSH_PATH_LIST=("/bin" "/usr/bin" "/opt/homebrew/bin")
@@ -136,6 +147,7 @@ ConfigureZsh
 AssertEq "zshrc TRAPEXIT absent when disabled" "0" "$(grep -c 'TRAPEXIT()' "${ZSH_HOME}/.zshrc" || true)"
 
 printf '== ConfigureProxyChains ==\n'
+unset -f zsh
 PROXYCHAINS_CONF="${TMPDIR_TESTS}/proxychains.conf"
 PROXY_PROTOCOL=""; PROXY_IP=""; PROXY_PORT=""; PROXY_USERNAME=""; PROXY_PASSWORD=""
 ConfigureProxyChains
@@ -156,6 +168,53 @@ else
 fi
 BackupPath "${TMPDIR_TESTS}/never-existed" > /dev/null
 printf 'ok   no-op on missing target\n'
+
+printf '== InitUserSSHDir ==\n'
+# Mock ssh-keygen/chown so this runs without a real OpenSSH and without root.
+SSH_KEYGEN_LOG="${TMPDIR_TESTS}/ssh-keygen.log"
+CHOWN_LOG="${TMPDIR_TESTS}/chown.log"
+: > "$SSH_KEYGEN_LOG"
+: > "$CHOWN_LOG"
+ssh-keygen() {
+    local args=("$@") i keyfile
+    printf '%s\n' "$*" >> "$SSH_KEYGEN_LOG"
+    for i in "${!args[@]}"; do
+        if [ "${args[$i]}" = "-f" ]; then
+            keyfile="${args[$((i + 1))]}"
+            # Real ssh-keygen writes the private key plus its .pub sibling.
+            touch "$keyfile" "${keyfile}.pub"
+        fi
+    done
+}
+chown() { printf '%s\n' "$*" >> "$CHOWN_LOG"; }
+InitUserSSHDir "${TMPDIR_TESTS}/user-ssh" "user@example" ""
+AssertEq "generates three key pairs" "3" "$(wc -l < "$SSH_KEYGEN_LOG" | tr -d ' ')"
+if [ -f "${TMPDIR_TESTS}/user-ssh/authorized_keys" ] && [ -f "${TMPDIR_TESTS}/user-ssh/known_hosts" ]; then
+    printf 'ok   creates authorized_keys and known_hosts\n'
+else
+    printf 'FAIL creates authorized_keys and known_hosts\n'
+    FAILURES=$((FAILURES + 1))
+fi
+if [ -x "${TMPDIR_TESTS}/user-ssh" ]; then
+    printf 'ok   ssh dir is executable (700)\n'
+else
+    printf 'FAIL ssh dir is executable (700)\n'
+    FAILURES=$((FAILURES + 1))
+fi
+mkdir -p "${TMPDIR_TESTS}/existing-ssh"
+touch "${TMPDIR_TESTS}/existing-ssh/keepme"
+InitUserSSHDir "${TMPDIR_TESTS}/existing-ssh" "user@example" "owner:group" > /dev/null
+if ls -d "${TMPDIR_TESTS}/existing-ssh.bak."* > /dev/null 2>&1; then
+    printf 'ok   backs up pre-existing ssh dir\n'
+else
+    printf 'FAIL backs up pre-existing ssh dir\n'
+    FAILURES=$((FAILURES + 1))
+fi
+case "$(tail -n 1 "$CHOWN_LOG")" in
+    *"-R owner:group"*) printf 'ok   applies requested owner\n' ;;
+    *) printf 'FAIL applies requested owner, got [%s]\n' "$(tail -n 1 "$CHOWN_LOG")"; FAILURES=$((FAILURES + 1)) ;;
+esac
+unset -f ssh-keygen chown
 
 printf '== Resume / progress ==\n'
 AUTODEPLOY_STATE_DIR="${TMPDIR_TESTS}/state"
@@ -181,7 +240,7 @@ esac
 # A failing step must not be recorded. Run it in a separate bash process so
 # errexit is fully active (a `|| true` subshell would suppress it).
 cat > "${TMPDIR_TESTS}/failrun.sh" <<'EOS'
-source src/lib/common.sh
+source src/lib/core.sh
 AUTODEPLOY_STATE_DIR="$1"
 AUTODEPLOY_STEP_TOTAL=3
 AUTODEPLOY_FORCE="false"

@@ -1,14 +1,14 @@
 ## Function
 # Get System Information
-function GetSystemInformation() {
+GetSystemInformation() {
     GetCurrentUsername
     HOME_BASE="/var/services/homes/${CURRENT_USERNAME}"
     SetGHProxyDomain
 }
 
 # Configure Packages
-function ConfigurePackages() {
-    function ConfigureDocker() {
+ConfigurePackages() {
+    ConfigureDocker() {
         HaveCommand synogroup || return 0
         synogroup --add docker || true
         if [ -S "/var/run/docker.sock" ]; then
@@ -16,24 +16,17 @@ function ConfigurePackages() {
         fi
         synogroup --member docker "$CURRENT_USERNAME"
     }
-    function ConfigureOpenSSH() {
+    ConfigureOpenSSH() {
         HaveCommand ssh-keygen || return 0
         local user_ssh="${HOME_BASE}/.ssh"
-        BackupPath "$user_ssh"
-        mkdir -p "$user_ssh"
+        InitUserSSHDir "$user_ssh" "${CURRENT_USERNAME}@$(hostname)" "${CURRENT_USERNAME}:users"
         if [ -f "${GPG_HOME}/authorized_keys" ]; then
             mv "${GPG_HOME}/authorized_keys" "${user_ssh}/authorized_keys"
-        else
-            touch "${user_ssh}/authorized_keys"
+            chown "${CURRENT_USERNAME}:users" "${user_ssh}/authorized_keys"
+            chmod 600 "${user_ssh}/authorized_keys"
         fi
-        touch "${user_ssh}/known_hosts"
-        GenerateSSHKeys "$user_ssh" "${CURRENT_USERNAME}@$(hostname)"
-        chown -R "${CURRENT_USERNAME}:users" "$user_ssh"
-        chmod 600 "${user_ssh}/authorized_keys"
-        chmod 644 "${user_ssh}/known_hosts"
-        chmod 700 "$user_ssh"
     }
-    function ConfigurePing() {
+    ConfigurePing() {
         HaveCommand setcap || return 0
         HaveCommand ping || return 0
         setcap 'cap_net_raw+ep' "$(command -v ping)"
@@ -58,8 +51,8 @@ function ConfigurePackages() {
 }
 
 # Configure System
-function ConfigureSystem() {
-    function ConfigureDefaultShell() {
+ConfigureSystem() {
+    ConfigureDefaultShell() {
         HaveCommand zsh || return 0
         local zsh_path
         zsh_path=$(command -v zsh)
@@ -75,7 +68,7 @@ function ConfigureSystem() {
 }
 
 # Install Custom Packages
-function InstallCustomPackages() {
+InstallCustomPackages() {
     OMZ_HOME="$HOME_BASE"
     OMZ_OWNER="${CURRENT_USERNAME}:users"
     RunStep "InstallOhMyZsh" InstallOhMyZsh
