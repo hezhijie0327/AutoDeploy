@@ -237,8 +237,9 @@ Each orchestration leaf runs through `RunStep "<id>" <function>`. A step is appe
 - Package Center: PKG_SOURCES are merged into `/usr/syno/etc/packages/feeds`
   (flat JSON array, URL-deduped in bash); PKG_PACKAGES install via
   `synopkg install_from_server` (the server-feed subcommand - plain
-  `synopkg install` is for local .spk files) and a weekly
-  `synopkg upgradeall` line in `/etc/crontab` (the layer DSM itself executes)
+  `synopkg install` is for local .spk files). Package auto-update is
+  deliberately left to the DSM Task Scheduler UI - crontab surgery is
+  avoided on purpose
 - Docker registry mirrors: only the `registry-mirrors` value in
   `/var/packages/{ContainerManager,Docker}/etc/dockerd.json` is rewritten;
   never touch the DSM `db` log-driver, and keep PKG_PACKAGES ids matching

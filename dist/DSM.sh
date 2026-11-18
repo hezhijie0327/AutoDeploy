@@ -50,7 +50,7 @@ ZSH_THEME="${ZSH_THEME:-ys}"
 # ============================================================================
 
 ## Resume / progress
-AUTODEPLOY_STEP_TOTAL=11 # must match the RunStep count (lint.sh checks)
+AUTODEPLOY_STEP_TOTAL=10 # must match the RunStep count (lint.sh checks)
 
 ## Package Center (third-party feeds + packages to install)
 # PKG_SOURCES entries are "name|url"; they are merged into
@@ -79,12 +79,6 @@ PKG_PACKAGES=(
     "synocli-videodriver"
     "synocli-videodriver-tools"
 )
-
-## Package auto-update
-# Weekly synopkg upgradeall through /etc/crontab (Sunday 04:15, right
-# after the 04:05 maintenance slot). /etc/crontab is the layer DSM itself
-# executes - GUI tasks only appear there as synoschedtask indirections.
-PKG_AUTO_UPDATE="${PKG_AUTO_UPDATE:-true}"
 
 ## Docker (Container Manager) registry mirrors
 # Empty by default: dockerd.json is left untouched (your existing mirrors
@@ -654,25 +648,12 @@ InstallPkgPackages() {
     done
 }
 
-# Weekly synopkg upgradeall through the DSM crontab, so third-party packages
-# keep themselves current. The entry is idempotent (grep-checked).
-ConfigurePkgAutoUpdate() {
-    [ "$PKG_AUTO_UPDATE" = "true" ] || return 0
-    local cron_line="15 4 * * 0 root /usr/syno/bin/synopkg upgradeall"
-    if ! grep -qF "synopkg upgradeall" /etc/crontab; then
-        printf '%s\n' "$cron_line" >> /etc/crontab
-        systemctl restart crond > /dev/null 2>&1 || true
-        LogInfo "package auto-update scheduled (Sat 05:00)"
-    fi
-}
-
 # Install Custom Packages
 InstallCustomPackages() {
     OMZ_HOME="$HOME_BASE"
     OMZ_OWNER="${CURRENT_USERNAME}:users"
     RunStep "ConfigurePkgSources" ConfigurePkgSources
     RunStep "InstallPkgPackages" InstallPkgPackages
-    RunStep "ConfigurePkgAutoUpdate" ConfigurePkgAutoUpdate
     RunStep "InstallOhMyZsh" InstallOhMyZsh
 }
 

@@ -168,25 +168,12 @@ InstallPkgPackages() {
     done
 }
 
-# Weekly synopkg upgradeall through the DSM crontab, so third-party packages
-# keep themselves current. The entry is idempotent (grep-checked).
-ConfigurePkgAutoUpdate() {
-    [ "$PKG_AUTO_UPDATE" = "true" ] || return 0
-    local cron_line="15 4 * * 0 root /usr/syno/bin/synopkg upgradeall"
-    if ! grep -qF "synopkg upgradeall" /etc/crontab; then
-        printf '%s\n' "$cron_line" >> /etc/crontab
-        systemctl restart crond > /dev/null 2>&1 || true
-        LogInfo "package auto-update scheduled (Sat 05:00)"
-    fi
-}
-
 # Install Custom Packages
 InstallCustomPackages() {
     OMZ_HOME="$HOME_BASE"
     OMZ_OWNER="${CURRENT_USERNAME}:users"
     RunStep "ConfigurePkgSources" ConfigurePkgSources
     RunStep "InstallPkgPackages" InstallPkgPackages
-    RunStep "ConfigurePkgAutoUpdate" ConfigurePkgAutoUpdate
     RunStep "InstallOhMyZsh" InstallOhMyZsh
 }
 

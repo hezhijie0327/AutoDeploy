@@ -5,7 +5,7 @@
 # ============================================================================
 
 ## Resume / progress
-AUTODEPLOY_STEP_TOTAL=11 # must match the RunStep count (lint.sh checks)
+AUTODEPLOY_STEP_TOTAL=10 # must match the RunStep count (lint.sh checks)
 
 ## Package Center (third-party feeds + packages to install)
 # PKG_SOURCES entries are "name|url"; they are merged into
@@ -34,12 +34,6 @@ PKG_PACKAGES=(
     "synocli-videodriver"
     "synocli-videodriver-tools"
 )
-
-## Package auto-update
-# Weekly synopkg upgradeall through /etc/crontab (Sunday 04:15, right
-# after the 04:05 maintenance slot). /etc/crontab is the layer DSM itself
-# executes - GUI tasks only appear there as synoschedtask indirections.
-PKG_AUTO_UPDATE="${PKG_AUTO_UPDATE:-true}"
 
 ## Docker (Container Manager) registry mirrors
 # Empty by default: dockerd.json is left untouched (your existing mirrors
