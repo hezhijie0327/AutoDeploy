@@ -253,6 +253,10 @@ Each orchestration leaf runs through `RunStep "<id>" <function>`. A step is appe
 
 ### ProxmoxVE.sh
 - APT-based; `proxmox-boot-tool` for ZFS bootloader config
+- Node rename (ConfigureProxmoxVENode): guest configs (qemu-server/lxc
+  .conf) are copied into the new node folder before the old directory is
+  archived - pmxcfs cannot rename non-empty folders; the rrd files are
+  copied with -f checks (they are files, not directories)
 - `ConfigurePVECluster` resets corosync state — gated by `RESET_CLUSTER` (default `true`; set `false` on clustered nodes)
 - Subscription-nag and CT-template mirror patches are fragile across PVE upgrades; re-run after updating
 
