@@ -263,6 +263,22 @@ GetCurrentUsername() {
     CURRENT_USERNAME="${SUDO_USER:-$(whoami)}"
 }
 
+# Detect the package architecture (amd64 | arm64); anything else is fatal.
+GetOSArchitecture() {
+    if HaveCommand dpkg; then
+        OS_ARCHITECTURE=$(dpkg --print-architecture)
+    else
+        case "$(uname -m)" in
+            aarch64) OS_ARCHITECTURE="arm64" ;;
+            x86_64) OS_ARCHITECTURE="amd64" ;;
+        esac
+    fi
+    case "${OS_ARCHITECTURE:-}" in
+        amd64|arm64) ;;
+        *) Die "Unsupported architecture." ;;
+    esac
+}
+
 SetGHProxyDomain() {
     GHPROXY_URL="${GHPROXY_URL:-}"
     if [ -n "$GHPROXY_URL" ]; then
@@ -454,6 +470,7 @@ ConfigureGPG() {
 # (modules/debian/users.sh); macOS writes the table with sudo tee directly.
 # ============================================================================
 
+# shellcheck disable=SC2034 # consumed by WriteHostfile (debian users.sh) and macOS
 HOSTS_BASE_ENTRIES=(
     "127.0.0.1 localhost"
     "255.255.255.255 broadcasthost"
@@ -721,6 +738,7 @@ ConfigureBusybox() {
 }
 
 # Weekly root maintenance crontab (apt upgrade + history wipe).
+# shellcheck disable=SC2034 # CRONTAB_* feed InstallCrontab (modules/crontab.sh)
 ConfigureCrontab() {
     CRONTAB_USER="root"
     CRONTAB_ENTRIES=(
@@ -1442,6 +1460,8 @@ CollectDNS() {
     DNS_LINE="${DNS_LINE% }"
 }
 
+# shellcheck disable=SC2034 # the case branches feed ConfigureModules, the
+# platform Grub steps and InstallDependencyPackages
 GetCPUVendorID() {
     CPU_VENDOR_ID=$(awk -F: '/vendor_id/ {gsub(/^[ \t]+/, "", $2); print $2; exit}' /proc/cpuinfo)
     # pcie_acs_override is a patched-kernel parameter (common homelab kernels);
@@ -1503,23 +1523,9 @@ WriteResolvConf() {
     } > /etc/resolv.conf
 }
 
-GetOSArchitecture() {
-    if HaveCommand dpkg; then
-        OS_ARCHITECTURE=$(dpkg --print-architecture)
-    else
-        case "$(uname -m)" in
-            aarch64) OS_ARCHITECTURE="arm64" ;;
-            x86_64) OS_ARCHITECTURE="amd64" ;;
-        esac
-    fi
-    case "${OS_ARCHITECTURE:-}" in
-        amd64|arm64) ;;
-        *) Die "Unsupported architecture." ;;
-    esac
-}
-
 # Structural globals shared by both Debian platforms; platform ConfigurePackages
 # blocks may override any of them (e.g. Proxmox VE extends ZSH_PATH_LIST).
+# shellcheck disable=SC2034 # consumed by the gpg/proxychains/zsh modules
 SetDebianGlobals() {
     PROXYCHAINS_CONF="/etc/proxychains4.conf"
     GPG_HOME="/home/${DEFAULT_USERNAME}/.gnupg"
@@ -1578,7 +1584,9 @@ ConfigureDefaultUser() {
     printf '%s:%s\n' "$DEFAULT_USERNAME" "$DEFAULT_PASSWORD" | chpasswd
     adduser "$DEFAULT_USERNAME" "docker"
     adduser "$DEFAULT_USERNAME" "sudo"
+    # shellcheck disable=SC2034 # consumed by InstallCrontab (modules/crontab.sh)
     CRONTAB_USER="$DEFAULT_USERNAME"
+    # shellcheck disable=SC2034 # consumed by InstallCrontab (modules/crontab.sh)
     CRONTAB_ENTRIES=(
         "@reboot rm -rf ~/.*_history ~/.ssh/known_hosts*"
     )

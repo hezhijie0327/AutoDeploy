@@ -24,14 +24,14 @@ done < <(find src dist -name '*.sh' -not -path '*/.git/*' | sort)
 
 if command -v shellcheck > /dev/null 2>&1; then
     printf '\n== shellcheck ==\n'
-    for file in dist/DSM.sh dist/macOS.sh dist/Ubuntu.sh dist/ProxmoxVE.sh dist/Reinstall.sh; do
+    while IFS= read -r file; do
         if shellcheck --shell=bash --severity=warning "$file"; then
             printf 'ok   %s\n' "$file"
         else
             printf 'FAIL %s\n' "$file"
             status=1
         fi
-    done
+    done < <(find src/lib -name '*.sh' | sort; printf '%s\n' dist/DSM.sh dist/macOS.sh dist/Ubuntu.sh dist/ProxmoxVE.sh dist/Reinstall.sh)
 else
     printf '\n== shellcheck ==\nskipped (not installed)\n'
 fi

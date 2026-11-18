@@ -39,6 +39,7 @@ ConfigureBusybox() {
 }
 
 # Weekly root maintenance crontab (apt upgrade + history wipe).
+# shellcheck disable=SC2034 # CRONTAB_* feed InstallCrontab (modules/crontab.sh)
 ConfigureCrontab() {
     CRONTAB_USER="root"
     CRONTAB_ENTRIES=(

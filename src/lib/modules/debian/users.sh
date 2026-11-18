@@ -44,7 +44,9 @@ ConfigureDefaultUser() {
     printf '%s:%s\n' "$DEFAULT_USERNAME" "$DEFAULT_PASSWORD" | chpasswd
     adduser "$DEFAULT_USERNAME" "docker"
     adduser "$DEFAULT_USERNAME" "sudo"
+    # shellcheck disable=SC2034 # consumed by InstallCrontab (modules/crontab.sh)
     CRONTAB_USER="$DEFAULT_USERNAME"
+    # shellcheck disable=SC2034 # consumed by InstallCrontab (modules/crontab.sh)
     CRONTAB_ENTRIES=(
         "@reboot rm -rf ~/.*_history ~/.ssh/known_hosts*"
     )

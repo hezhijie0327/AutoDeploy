@@ -171,7 +171,6 @@ BuildInstallerInitrd() {
 # Queue a one-time GRUB boot into the installer; the next reboot wipes the
 # disk, so nothing of the host setup survives beyond this script.
 InstallBootEntry() {
-    GRUB_DEFAULT="saved"
     if grep -q '^GRUB_DEFAULT=' /etc/default/grub; then
         sed -i 's/^GRUB_DEFAULT=.*/GRUB_DEFAULT=saved/' /etc/default/grub
     else

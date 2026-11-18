@@ -4,6 +4,7 @@
 # (modules/debian/users.sh); macOS writes the table with sudo tee directly.
 # ============================================================================
 
+# shellcheck disable=SC2034 # consumed by WriteHostfile (debian users.sh) and macOS
 HOSTS_BASE_ENTRIES=(
     "127.0.0.1 localhost"
     "255.255.255.255 broadcasthost"

@@ -83,5 +83,4 @@ BuildScript "dist/Reinstall.sh" \
 # wget -qO- "https://source.zhijie.online/AutoDeploy/main/dist/Reinstall.sh" | sudo bash' \
     src/config/common.sh src/platforms/reinstall/config.sh \
     src/lib/core.sh \
-    src/lib/modules/debian/system.sh \
     src/platforms/reinstall/reinstall.sh

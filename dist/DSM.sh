@@ -111,6 +111,22 @@ GetCurrentUsername() {
     CURRENT_USERNAME="${SUDO_USER:-$(whoami)}"
 }
 
+# Detect the package architecture (amd64 | arm64); anything else is fatal.
+GetOSArchitecture() {
+    if HaveCommand dpkg; then
+        OS_ARCHITECTURE=$(dpkg --print-architecture)
+    else
+        case "$(uname -m)" in
+            aarch64) OS_ARCHITECTURE="arm64" ;;
+            x86_64) OS_ARCHITECTURE="amd64" ;;
+        esac
+    fi
+    case "${OS_ARCHITECTURE:-}" in
+        amd64|arm64) ;;
+        *) Die "Unsupported architecture." ;;
+    esac
+}
+
 SetGHProxyDomain() {
     GHPROXY_URL="${GHPROXY_URL:-}"
     if [ -n "$GHPROXY_URL" ]; then
