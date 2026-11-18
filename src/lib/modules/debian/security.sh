@@ -76,13 +76,16 @@ deb-src [arch=${OS_ARCHITECTURE:-amd64} signed-by=/usr/share/keyrings/crowdsec-a
 # e.g. Proxmox VE keeps 22 for cluster-internal SSH).
 ConfigureSshd() {
     [ -f /usr/share/openssh/sshd_config ] || return 0
+    local port="${SSH_PORT:-22}"
+    # Replace the commented Port directive in place (keeps the vendor
+    # layout); fall back to an appended line when the file has none.
     sed -E \
-        -e '/^#?[[:space:]]*Port[[:space:]]/d' \
+        -e "s/^#?[[:space:]]*Port[[:space:]].*/Port ${port}/" \
         -e 's/^#?PasswordAuthentication .*/PasswordAuthentication yes/' \
         -e 's/^#?PermitRootLogin .*/PermitRootLogin yes/' \
         -e 's/^#?PubkeyAuthentication .*/PubkeyAuthentication yes/' \
         /usr/share/openssh/sshd_config > /etc/ssh/sshd_config
-    printf 'Port %s\n' "${SSH_PORT:-22}" >> /etc/ssh/sshd_config
+    grep -qE '^Port[[:space:]]' /etc/ssh/sshd_config || printf 'Port %s\n' "$port" >> /etc/ssh/sshd_config
     rm -f /etc/ssh/sshd_config.d/*
     # Ubuntu 25.10+/PVE 9: sshd runs behind ssh.socket, and after changing
     # Port the socket configuration must be regenerated and the socket
