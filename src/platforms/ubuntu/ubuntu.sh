@@ -73,6 +73,29 @@ SetRepositoryMirror() {
 
 # Configure Packages
 ConfigurePackages() {
+    ConfigureCockpit() {
+        HaveCommand cockpit-bridge || return 0
+        mkdir -p /etc/cockpit
+        local cockpit_conf_list=(
+            "[Session]"
+            "IdleTimeout = 60"
+            "[WebService]"
+            "MaxStartups = 3:75:5"
+        )
+        printf '%s\n' "${cockpit_conf_list[@]}" > /etc/cockpit/cockpit.conf
+        if [ "$COCKPIT_PORT" != "9090" ]; then
+            # cockpit.socket hardcodes 9090; a drop-in moves the listen port.
+            mkdir -p /etc/systemd/system/cockpit.socket.d
+            local socket_override_list=(
+                "[Socket]"
+                "ListenStream="
+                "ListenStream=${COCKPIT_PORT}"
+            )
+            printf '%s\n' "${socket_override_list[@]}" > /etc/systemd/system/cockpit.socket.d/autodeploy.conf
+            systemctl daemon-reload
+        fi
+        systemctl enable --now cockpit.socket
+    }
     ConfigureCloudflareWARP() {
         # Get token from `https://<YOUR_TEAM_NAME>.cloudflareaccess.com/warp`
         # Login via `warp-cli registration token 'com.cloudflare.warp://<your-team-name>.cloudflareaccess.com/auth?token=<your-token>'`
@@ -193,7 +216,8 @@ ConfigurePackages() {
         ufw --force reset
         ufw allow 123/udp
         ufw allow 161/udp
-        ufw limit 22/tcp
+        ufw limit ${SSH_PORT}/tcp
+        ufw allow ${COCKPIT_PORT}/tcp # cockpit web UI
         ufw allow 323/udp
         ufw allow 3493/tcp
         ufw allow 51820/udp
@@ -233,6 +257,12 @@ ConfigurePackages() {
         "${LSB_CODENAME}-proposed 100"
     )
     FAIL2BAN_BANACTION="ufw"
+    FAIL2BAN_FILTER_NAME="cockpit"
+    FAIL2BAN_FILTER=(
+        "[Definition]"
+        "failregex = ^\s*(?:\S+\s+)?(?:cockpit\[\d+\]: )?pam_unix\(cockpit:auth\): authentication failure;.*rhost=<HOST>"
+        "journalmatch = _SYSTEMD_UNIT=cockpit.service"
+    )
     FAIL2BAN_JAILS=(
         "[sshd]"
         "bantime = 604800"
@@ -241,7 +271,15 @@ ConfigurePackages() {
         "findtime = 60"
         "logpath = /var/log/auth.log"
         "maxretry = 5"
-        "port = 22"
+        "port = ${SSH_PORT}"
+        "[cockpit]"
+        "backend = systemd"
+        "bantime = 604800"
+        "enabled = true"
+        "filter = cockpit"
+        "findtime = 60"
+        "maxretry = 5"
+        "port = ${COCKPIT_PORT}"
     )
     MODULE_LIST_EXTRA=()
     SYSCTL_INTERFACE_MODE="exclude"
@@ -255,6 +293,7 @@ ConfigurePackages() {
     RunStep "ConfigureBusybox" ConfigureBusybox
     RunStep "ConfigureChrony" ConfigureChrony
     RunStep "ConfigureCloudflareWARP" ConfigureCloudflareWARP
+    RunStep "ConfigureCockpit" ConfigureCockpit
     RunStep "ConfigureCrontab" ConfigureCrontab
     RunStep "ConfigureCrowdSec" ConfigureCrowdSec
     RunStep "ConfigureDockerEngine" ConfigureDockerEngine

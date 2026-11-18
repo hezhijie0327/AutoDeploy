@@ -66,7 +66,9 @@ REINSTALL_RELEASE='24.04' REINSTALL_PASSWORD='MyS3cure!Pass' \
 | `LOCK_ROOT` | `FALSE` | 设为 `TRUE` 部署后锁定 root 账户 |
 | `NUT_ADMIN_PASSWORD` / `NUT_MON_PASSWORD` | `123456` / `secret` | NUT UPS 用户密码 |
 | `SNMP_AUTH_PASS` / `SNMP_PRIV_PASS` | root 密码 / 主机名 | SNMPv3 凭据（建议显式设置） |
+| `SNMP_USER` | `proxmox` | SNMPv3 只读用户名（PVE） |
 | `OPENSSH_PASSWORD` | 空 | SSH 私钥口令 |
+| `GPG_PUBKEY` | `DD982DAAB9C71C78F9563E5207EB56787030D792` | 导入的 GPG 公钥（SSH 认证支持） |
 
 ### 行为开关
 
@@ -80,6 +82,16 @@ REINSTALL_RELEASE='24.04' REINSTALL_PASSWORD='MyS3cure!Pass' \
 | `AUTODEPLOY_STATE_DIR` | `~/.autodeploy` | 断点续跑状态文件目录 |
 | `XANMOD_BRANCH` | `edge` | XanMod 内核分支：`disable` / `main` / `edge` / `lts` / `rt` |
 | `GHPROXY_URL` | 空 | GitHub 代理地址，可带或不带 `https://`（自动补全 scheme 与末尾斜杠） |
+| `RESET_DOMAIN` / `RESET_HOSTNAME` | `false` | 忽略检测到的搜索域 / 主机名，按 `HOSTNAME_PREFIX` 重新生成 |
+| `DISABLE_ICMP_ECHO` | `false` | `true` 时忽略全部 ICMP echo（Ubuntu / PVE） |
+| `PREFER_IPV4` | `true` | gai.conf 地址选择优先 IPv4 |
+| `DISABLE_DISPLAY` | `false` | 关闭 efifb/vesafb（PVE，GPU 直通场景） |
+| `PATCH_INTEL_82599_SFP` | `false` | 放行 ixgbe 不受支持的 SFP 模块（PVE） |
+| `ZFS_ARC_MAX` | `1` | ZFS ARC 上限，GiB（PVE） |
+| `I915_GUC_OPTION` | `3` | i915 GuC/HuC 加载策略：0 关闭 / 1 GuC / 2 HuC / 3 GuC+HuC |
+| `NUT_MODE` / `NUT_HOST` / `UPS_NAME` | `none` / `localhost` / `ups` | NUT UPS 模式、服务端地址（netclient 模式）、设备名 |
+| `SSH_PORT` | `9022`（Ubuntu）/ `22`（PVE） | sshd 监听端口，fail2ban jail 与 ufw 规则联动（PVE 保持 22 以兼容集群内部 SSH） |
+| `COCKPIT_PORT` | `9090` | Cockpit Web UI 端口（Ubuntu，自动生成 cockpit.socket 覆盖） |
 
 ### 网络与身份
 
@@ -87,10 +99,30 @@ REINSTALL_RELEASE='24.04' REINSTALL_PASSWORD='MyS3cure!Pass' \
 |------|------|
 | `NIC_NAME` / `STATIC_IPV4_CONFIG` / `STATIC_IPV6_CONFIG` | Netplan 静态网络，格式 `地址/掩码,网关`（Ubuntu） |
 | `GIT_USER_NAME` / `GIT_USER_EMAIL` / `GIT_USER_SIGNINGKEY` | root 的 Git 身份 |
+| `GIT_COMMIT_GPGSIGN` / `GIT_GPG_PROGRAM` | Git 提交 GPG 签名开关与 gpg 程序路径 |
+| `GIT_HTTP_PROXY` / `GIT_HTTPS_PROXY` | git 的 HTTP(S) 代理（独立于全局代理） |
 | `PROXY_PROTOCOL` / `PROXY_IP` / `PROXY_PORT` / `PROXY_USERNAME` / `PROXY_PASSWORD` | proxychains 上游代理 |
+| `PROXY_URL` | `http://vpn.zhijie.online:7890` | zsh `proxy_on` 便捷代理 |
+| `DEFAULT_FIRSTNAME` / `DEFAULT_LASTNAME` | `User` / `Ubuntu`（PVE: `Proxmox`） | 默认用户姓名（`DEFAULT_FULLNAME` = 姓 名） |
+| `HOSTNAME_PREFIX` | `Ubuntu`（PVE: `ProxmoxVE`） | 时间戳主机名的前缀 |
+| `ZSH_THEME` | `ys` | oh-my-zsh 主题 |
 | `CUSTOM_HOSTNAME` / `CUSTOM_DOMAIN` | 自定义主机名 / 搜索域（Ubuntu / PVE），优先于自动检测与 `RESET_*` |
-| `CUSTOM_DNS` | `223.5.5.5 223.6.6.6 2400:3200::1 2400:3200:baba::1` | 解析器列表（空格分隔，默认 AliDNS，env 可覆盖） |
+| `CUSTOM_DNS` | 默认 `223.5.5.5 223.6.6.6 2400:3200::1 2400:3200:baba::1`（AliDNS），空格分隔，env 可覆盖 |
 | `DEFAULT_USERNAME` | 默认用户名（`ubuntu` / `proxmox`） |
+
+### 软件包与内置常量（编辑配置块，非环境变量）
+
+以下为数组或常量，环境变量无法覆盖，直接编辑对应配置文件后随脚本部署即可：
+
+| 变量 | 所在文件 | 说明 |
+|------|----------|------|
+| `DEPENDENCY_PACKAGES_BASE` / `DEPENDENCY_PACKAGES` | `config/debian.sh` + 平台配置 | Debian 系基础包 + 平台增量 |
+| `DOCKER_REGISTRY_MIRRORS` | `config/debian.sh` | Docker registry 镜像列表（写入 daemon.json） |
+| `ZSH_BUILD_IN_PLUGINS` | 平台配置 | oh-my-zsh 内置插件列表 |
+| `BREW_PACKAGES` / `CASK_APPS` / `MAS_APPS` | `platforms/macos/config.sh` | Homebrew formulae / cask / Mac App Store 应用 |
+| `LSB_CODENAME` / `LSB_VERSION` / `CEPH_CODENAME` | 平台配置 | 发行版代号（**有意 pin 到最新**，随发行版周期手动更新） |
+| `GRUB_SIGNED_PACKAGE` | `platforms/proxmoxve/config.sh` | 按架构自动选择 amd64 / arm64 签名 GRUB |
+| `AUTODEPLOY_STEP_TOTAL` | 平台配置 | 步骤总数（须与 RunStep 数一致，lint.sh 校验） |
 
 示例：
 

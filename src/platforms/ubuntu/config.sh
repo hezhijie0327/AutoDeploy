@@ -6,7 +6,7 @@
 # ============================================================================
 
 ## Resume / progress
-AUTODEPLOY_STEP_TOTAL=48 # must match the RunStep count (lint.sh checks)
+AUTODEPLOY_STEP_TOTAL=49 # must match the RunStep count (lint.sh checks)
 
 ## Credentials
 DEFAULT_PASSWORD_DEFAULT='*Ubuntu123*' # baseline for the default-password warning
@@ -20,6 +20,8 @@ HOSTNAME_PREFIX="${HOSTNAME_PREFIX:-Ubuntu}"
 ## Behavior switches
 DISABLE_SWAP="${DISABLE_SWAP:-false}"
 XANMOD_BRANCH="${XANMOD_BRANCH:-edge}" # disable | main | edge | lts | rt
+SSH_PORT="${SSH_PORT:-9022}" # sshd listen port (fail2ban jail + ufw follow this)
+COCKPIT_PORT="${COCKPIT_PORT:-9090}" # cockpit web UI port (cockpit.socket override)
 
 ## Release pinning (intentionally the latest release; bump each release)
 LSB_CODENAME="${LSB_CODENAME:-resolute}"
@@ -35,6 +37,7 @@ ZSH_BUILD_IN_PLUGINS="${ZSH_BUILD_IN_PLUGINS:-aliases colored-man-pages command-
 
 ## Dependency packages (apt) - Ubuntu additions
 DEPENDENCY_PACKAGES=("${DEPENDENCY_PACKAGES_BASE[@]}"
+    "cockpit"
     "cron"
     "iputils-ping"
     "landscape-common"

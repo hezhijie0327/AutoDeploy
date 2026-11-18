@@ -165,7 +165,7 @@ DEPENDENCY_PACKAGES_BASE=(
 # ============================================================================
 
 ## Resume / progress
-AUTODEPLOY_STEP_TOTAL=48 # must match the RunStep count (lint.sh checks)
+AUTODEPLOY_STEP_TOTAL=49 # must match the RunStep count (lint.sh checks)
 
 ## Credentials
 DEFAULT_PASSWORD_DEFAULT='*Ubuntu123*' # baseline for the default-password warning
@@ -179,6 +179,8 @@ HOSTNAME_PREFIX="${HOSTNAME_PREFIX:-Ubuntu}"
 ## Behavior switches
 DISABLE_SWAP="${DISABLE_SWAP:-false}"
 XANMOD_BRANCH="${XANMOD_BRANCH:-edge}" # disable | main | edge | lts | rt
+SSH_PORT="${SSH_PORT:-9022}" # sshd listen port (fail2ban jail + ufw follow this)
+COCKPIT_PORT="${COCKPIT_PORT:-9090}" # cockpit web UI port (cockpit.socket override)
 
 ## Release pinning (intentionally the latest release; bump each release)
 LSB_CODENAME="${LSB_CODENAME:-resolute}"
@@ -194,6 +196,7 @@ ZSH_BUILD_IN_PLUGINS="${ZSH_BUILD_IN_PLUGINS:-aliases colored-man-pages command-
 
 ## Dependency packages (apt) - Ubuntu additions
 DEPENDENCY_PACKAGES=("${DEPENDENCY_PACKAGES_BASE[@]}"
+    "cockpit"
     "cron"
     "iputils-ping"
     "landscape-common"
@@ -1312,14 +1315,17 @@ deb-src [arch=${OS_ARCHITECTURE:-amd64} signed-by=/usr/share/keyrings/crowdsec-a
 }
 
 # Root password login is intentional: the root account gets locked afterwards
-# via LOCK_ROOT=TRUE (see ConfigureRootUser).
+# via LOCK_ROOT=TRUE (see ConfigureRootUser). Needs SSH_PORT (defaults to 22,
+# e.g. Proxmox VE keeps 22 for cluster-internal SSH).
 ConfigureSshd() {
     [ -f /usr/share/openssh/sshd_config ] || return 0
     sed -E \
+        -e "s/^#?Port .*/Port ${SSH_PORT:-22}/" \
         -e 's/^#?PasswordAuthentication .*/PasswordAuthentication yes/' \
         -e 's/^#?PermitRootLogin .*/PermitRootLogin yes/' \
         -e 's/^#?PubkeyAuthentication .*/PubkeyAuthentication yes/' \
         /usr/share/openssh/sshd_config > /etc/ssh/sshd_config
+    grep -q '^Port ' /etc/ssh/sshd_config || printf 'Port %s\n' "${SSH_PORT:-22}" >> /etc/ssh/sshd_config
     rm -f /etc/ssh/sshd_config.d/*
 }
 
@@ -1725,6 +1731,29 @@ SetRepositoryMirror() {
 
 # Configure Packages
 ConfigurePackages() {
+    ConfigureCockpit() {
+        HaveCommand cockpit-bridge || return 0
+        mkdir -p /etc/cockpit
+        local cockpit_conf_list=(
+            "[Session]"
+            "IdleTimeout = 60"
+            "[WebService]"
+            "MaxStartups = 3:75:5"
+        )
+        printf '%s\n' "${cockpit_conf_list[@]}" > /etc/cockpit/cockpit.conf
+        if [ "$COCKPIT_PORT" != "9090" ]; then
+            # cockpit.socket hardcodes 9090; a drop-in moves the listen port.
+            mkdir -p /etc/systemd/system/cockpit.socket.d
+            local socket_override_list=(
+                "[Socket]"
+                "ListenStream="
+                "ListenStream=${COCKPIT_PORT}"
+            )
+            printf '%s\n' "${socket_override_list[@]}" > /etc/systemd/system/cockpit.socket.d/autodeploy.conf
+            systemctl daemon-reload
+        fi
+        systemctl enable --now cockpit.socket
+    }
     ConfigureCloudflareWARP() {
         # Get token from `https://<YOUR_TEAM_NAME>.cloudflareaccess.com/warp`
         # Login via `warp-cli registration token 'com.cloudflare.warp://<your-team-name>.cloudflareaccess.com/auth?token=<your-token>'`
@@ -1845,7 +1874,8 @@ ConfigurePackages() {
         ufw --force reset
         ufw allow 123/udp
         ufw allow 161/udp
-        ufw limit 22/tcp
+        ufw limit ${SSH_PORT}/tcp
+        ufw allow ${COCKPIT_PORT}/tcp # cockpit web UI
         ufw allow 323/udp
         ufw allow 3493/tcp
         ufw allow 51820/udp
@@ -1885,6 +1915,12 @@ ConfigurePackages() {
         "${LSB_CODENAME}-proposed 100"
     )
     FAIL2BAN_BANACTION="ufw"
+    FAIL2BAN_FILTER_NAME="cockpit"
+    FAIL2BAN_FILTER=(
+        "[Definition]"
+        "failregex = ^\s*(?:\S+\s+)?(?:cockpit\[\d+\]: )?pam_unix\(cockpit:auth\): authentication failure;.*rhost=<HOST>"
+        "journalmatch = _SYSTEMD_UNIT=cockpit.service"
+    )
     FAIL2BAN_JAILS=(
         "[sshd]"
         "bantime = 604800"
@@ -1893,7 +1929,15 @@ ConfigurePackages() {
         "findtime = 60"
         "logpath = /var/log/auth.log"
         "maxretry = 5"
-        "port = 22"
+        "port = ${SSH_PORT}"
+        "[cockpit]"
+        "backend = systemd"
+        "bantime = 604800"
+        "enabled = true"
+        "filter = cockpit"
+        "findtime = 60"
+        "maxretry = 5"
+        "port = ${COCKPIT_PORT}"
     )
     MODULE_LIST_EXTRA=()
     SYSCTL_INTERFACE_MODE="exclude"
@@ -1907,6 +1951,7 @@ ConfigurePackages() {
     RunStep "ConfigureBusybox" ConfigureBusybox
     RunStep "ConfigureChrony" ConfigureChrony
     RunStep "ConfigureCloudflareWARP" ConfigureCloudflareWARP
+    RunStep "ConfigureCockpit" ConfigureCockpit
     RunStep "ConfigureCrontab" ConfigureCrontab
     RunStep "ConfigureCrowdSec" ConfigureCrowdSec
     RunStep "ConfigureDockerEngine" ConfigureDockerEngine

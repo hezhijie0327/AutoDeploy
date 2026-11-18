@@ -23,6 +23,7 @@ RESET_CLUSTER="${RESET_CLUSTER:-true}" # FALSE on clustered nodes! resets corosy
 DISABLE_DISPLAY="${DISABLE_DISPLAY:-false}" # disable efifb/vesafb (GPU passthrough)
 PATCH_INTEL_82599_SFP="${PATCH_INTEL_82599_SFP:-false}" # allow unsupported SFP on ixgbe
 ZFS_ARC_MAX="${ZFS_ARC_MAX:-1}" # ZFS ARC max, GiB
+SSH_PORT="${SSH_PORT:-22}" # keep 22: PVE cluster nodes talk SSH to each other on port 22
 
 ## Release pinning (intentionally the latest PVE release; bump each release)
 LSB_CODENAME="${LSB_CODENAME:-trixie}"
