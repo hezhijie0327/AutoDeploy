@@ -80,7 +80,7 @@ REINSTALL_RELEASE='24.04' REINSTALL_PASSWORD='MyS3cure!Pass' \
 | `DISABLE_SWAP` | `false` | 不创建 swapfile（Ubuntu） |
 | `AUTODEPLOY_FORCE` | `false` | 忽略断点记录，强制重跑所有步骤 |
 | `AUTODEPLOY_STATE_DIR` | `~/.autodeploy` | 断点续跑状态文件目录 |
-| `XANMOD_BRANCH` | `edge` | XanMod 内核分支（仅 amd64，arm64 回退 `linux-generic`）：`disable` / `main` / `edge` / `lts` / `rt`；psABI v1 老 CPU 自动引导到 `lts`（唯一提供 x64v1 的分支） |
+| `XANMOD_BRANCH` | `main` | XanMod 内核分支（仅 amd64，arm64 回退 `linux-generic`）：`disable` / `main` / `edge` / `lts` / `rt`；psABI v1 老 CPU 自动引导到 `lts`（唯一提供 x64v1 的分支）。`edge` 自 7.3 起与 `main` 版本完全一致 |
 | `GHPROXY_URL` | 空 | GitHub 代理地址，可带或不带 `https://`（自动补全 scheme 与末尾斜杠） |
 | `RESET_DOMAIN` / `RESET_HOSTNAME` | `false` | 忽略检测到的搜索域 / 主机名；主机名重置后生成 12 位随机 hash（同 docker 容器 ID 风格） |
 | `DISABLE_ICMP_ECHO` | `false` | `true` 时忽略全部 ICMP echo（Ubuntu / PVE） |
