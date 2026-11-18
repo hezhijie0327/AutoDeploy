@@ -465,9 +465,11 @@ RunStep "SetRepositoryMirror.https" SetRepositoryMirror
 # Call UpgradePackages
 RunStep "UpgradePackages" UpgradePackages
 # Call InstallCustomPackages
-InstallCustomPackages
-# Call ConfigureSystem
+# Call ConfigureSystem (creates the default user before any Install*
+# step that installs into its home directory)
 ConfigureSystem
+# Call InstallCustomPackages
+InstallCustomPackages
 # Call ConfigurePackages
 ConfigurePackages
 # Call CleanupTempFiles
