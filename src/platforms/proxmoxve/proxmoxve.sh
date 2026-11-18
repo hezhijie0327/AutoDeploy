@@ -433,6 +433,12 @@ ConfigureSystem() {
 
 # Install Custom Packages
 InstallCustomPackages() {
+    # Install-time structural globals: the Install* steps below run BEFORE
+    # ConfigurePackages, where these used to be assigned.
+    DOCKER_APT_DISTRO="debian"
+    FRR_APT_LINE="deb [arch=${OS_ARCHITECTURE} signed-by=/usr/share/keyrings/frrouting-archive-keyring.gpg] https://deb.frrouting.org/frr ${LSB_CODENAME} frr-stable"
+    SetDebianGlobals
+    ZSH_PATHS+=("/usr/lib/cargo/bin")
     OMZ_HOME="/home/${DEFAULT_USERNAME}"
     OMZ_OWNER="${DEFAULT_USERNAME}:${DEFAULT_USERNAME}"
     RunStep "InstallCrowdSec" InstallCrowdSec
