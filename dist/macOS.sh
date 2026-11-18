@@ -812,7 +812,7 @@ InstallDependencyPackages() {
         sudo rm -rf "$BREW_PREFIX" "/usr/local/Homebrew"
     fi
     if ! HaveCommand brew; then
-        /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
+        /bin/bash -c "$(curl -fsSL "${GHPROXY_URL:-}https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh")"
     fi
     local app_list=("${BREW_PACKAGES[@]}")
     brew developer on
