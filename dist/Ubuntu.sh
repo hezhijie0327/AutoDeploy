@@ -175,7 +175,7 @@ DEFAULT_LASTNAME="${DEFAULT_LASTNAME:-Ubuntu}"
 
 ## Behavior switches
 DISABLE_SWAP="${DISABLE_SWAP:-false}"
-XANMOD_BRANCH="${XANMOD_BRANCH:-edge}" # disable | main | edge | lts | rt
+XANMOD_BRANCH="${XANMOD_BRANCH:-edge}" # disable | main | edge | lts | rt; psABI v1 CPUs are forced to lts
 INSTALL_CLOUDFLARE_WARP="${INSTALL_CLOUDFLARE_WARP:-false}" # install cloudflare-warp from the Cloudflare repo
 INSTALL_TOR="${INSTALL_TOR:-false}" # install tor from the torproject repo
 SSH_PORT="${SSH_PORT:-9022}" # sshd listen port (fail2ban jail + ufw follow this)
@@ -1196,9 +1196,21 @@ ConfigureSysctl() {
         interface_list+=("$iface")
     done < <(CollectInterfaces "$SYSCTL_INTERFACE_MODE" "$SYSCTL_INTERFACE_PATTERN")
     local sysctl_list=(
+        "fs.protected_fifos = 2"
+        "fs.protected_hardlinks = 1"
+        "fs.protected_regular = 2"
+        "fs.protected_symlinks = 1"
+        "fs.suid_dumpable = 0"
+        "kernel.dmesg_restrict = 1"
+        "kernel.kptr_restrict = 2"
+        "kernel.randomize_va_space = 2"
+        "kernel.unprivileged_bpf_disabled = 1"
+        "net.core.bpf_jit_harden = 2"
         "net.core.default_qdisc = fq_pie"
         "net.core.rmem_max = 7500000"
         "net.core.wmem_max = 7500000"
+        "net.ipv4.conf.all.accept_source_route = 0"
+        "net.ipv4.conf.default.accept_source_route = 0"
         "net.ipv4.ip_forward = 1"
         "net.ipv4.tcp_congestion_control = bbr"
         "net.ipv4.tcp_fastopen = 3"
@@ -1223,7 +1235,7 @@ ConfigureSysctl() {
             printf 'net.ipv6.conf.%s.use_tempaddr = 0\n' "$iface"
         done
     } | sort -u > /etc/sysctl.d/99-autodeploy.conf
-    sysctl -p
+    sysctl --system
 }
 
 ConfigureTuned() {
@@ -2083,28 +2095,33 @@ InstallCustomPackages() {
         # Note: NVIDIA, OpenZFS, VirtualBox, VMware and some other dkms modules
         # may not officially support EDGE and RT branch kernels.
         local branch="$XANMOD_BRANCH"
-        # psABI v1 CPUs cannot run edge/rt builds (compare before suffixing!)
-        if [ "$PSABI_LEVEL" = "1" ] && { [ "$branch" = "edge" ] || [ "$branch" = "rt" ]; }; then
-            branch="main"
+        # psABI v1 (legacy) CPUs are covered only by the LTS branch - main,
+        # edge and rt publish x64v2/v3 packages only.
+        if [ "$PSABI_LEVEL" = "1" ] && [ "$branch" != "lts" ]; then
+            branch="lts"
         fi
         # no kernel benefit beyond v3
         local level="$PSABI_LEVEL"
         if [ "$level" = "4" ]; then
             level="3"
         fi
-        local apt_list=()
+        # XanMod publishes amd64 packages only - the repo is added just when
+        # a xanmod kernel will actually be installed; everything else stays
+        # on the stock Ubuntu kernel (arm64 uses linux-generic: the HWE
+        # kernels are amd64-only).
         if [ "$OS_ARCHITECTURE" = "amd64" ] && [ "$level" != "0" ] && [ "$branch" != "disable" ]; then
             local suffix=""
             if [ "$branch" != "main" ]; then
                 suffix="${branch}-"
             fi
-            apt_list=("linux-xanmod-${suffix}x64v${level}")
+            InstallAptRepo "xanmod" "https://dl.xanmod.org/archive.key" \
+                "deb [arch=amd64 signed-by=/usr/share/keyrings/xanmod-archive-keyring.gpg] https://deb.xanmod.org ${LSB_CODENAME} main non-free"
+            InstallAptPackages "linux-xanmod-${suffix}x64v${level}"
+        elif [ "$OS_ARCHITECTURE" = "amd64" ]; then
+            InstallAptPackages "linux-generic-hwe-${LSB_VERSION}"
         else
-            apt_list=("linux-generic-hwe-${LSB_VERSION}")
+            InstallAptPackages "linux-generic"
         fi
-        InstallAptRepo "xanmod" "https://dl.xanmod.org/archive.key" \
-            "deb [arch=${OS_ARCHITECTURE} signed-by=/usr/share/keyrings/xanmod-archive-keyring.gpg] https://deb.xanmod.org ${LSB_CODENAME} main non-free"
-        InstallAptPackages "${apt_list[@]}"
     }
     OMZ_HOME="/home/${DEFAULT_USERNAME}"
     OMZ_OWNER="${DEFAULT_USERNAME}:${DEFAULT_USERNAME}"

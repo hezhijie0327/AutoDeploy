@@ -400,28 +400,33 @@ InstallCustomPackages() {
         # Note: NVIDIA, OpenZFS, VirtualBox, VMware and some other dkms modules
         # may not officially support EDGE and RT branch kernels.
         local branch="$XANMOD_BRANCH"
-        # psABI v1 CPUs cannot run edge/rt builds (compare before suffixing!)
-        if [ "$PSABI_LEVEL" = "1" ] && { [ "$branch" = "edge" ] || [ "$branch" = "rt" ]; }; then
-            branch="main"
+        # psABI v1 (legacy) CPUs are covered only by the LTS branch - main,
+        # edge and rt publish x64v2/v3 packages only.
+        if [ "$PSABI_LEVEL" = "1" ] && [ "$branch" != "lts" ]; then
+            branch="lts"
         fi
         # no kernel benefit beyond v3
         local level="$PSABI_LEVEL"
         if [ "$level" = "4" ]; then
             level="3"
         fi
-        local apt_list=()
+        # XanMod publishes amd64 packages only - the repo is added just when
+        # a xanmod kernel will actually be installed; everything else stays
+        # on the stock Ubuntu kernel (arm64 uses linux-generic: the HWE
+        # kernels are amd64-only).
         if [ "$OS_ARCHITECTURE" = "amd64" ] && [ "$level" != "0" ] && [ "$branch" != "disable" ]; then
             local suffix=""
             if [ "$branch" != "main" ]; then
                 suffix="${branch}-"
             fi
-            apt_list=("linux-xanmod-${suffix}x64v${level}")
+            InstallAptRepo "xanmod" "https://dl.xanmod.org/archive.key" \
+                "deb [arch=amd64 signed-by=/usr/share/keyrings/xanmod-archive-keyring.gpg] https://deb.xanmod.org ${LSB_CODENAME} main non-free"
+            InstallAptPackages "linux-xanmod-${suffix}x64v${level}"
+        elif [ "$OS_ARCHITECTURE" = "amd64" ]; then
+            InstallAptPackages "linux-generic-hwe-${LSB_VERSION}"
         else
-            apt_list=("linux-generic-hwe-${LSB_VERSION}")
+            InstallAptPackages "linux-generic"
         fi
-        InstallAptRepo "xanmod" "https://dl.xanmod.org/archive.key" \
-            "deb [arch=${OS_ARCHITECTURE} signed-by=/usr/share/keyrings/xanmod-archive-keyring.gpg] https://deb.xanmod.org ${LSB_CODENAME} main non-free"
-        InstallAptPackages "${apt_list[@]}"
     }
     OMZ_HOME="/home/${DEFAULT_USERNAME}"
     OMZ_OWNER="${DEFAULT_USERNAME}:${DEFAULT_USERNAME}"

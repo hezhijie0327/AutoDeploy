@@ -262,7 +262,7 @@ Each orchestration leaf runs through `RunStep "<id>" <function>`. A step is appe
 
 ### Ubuntu.sh
 - APT with CERNET mirrors; Netplan for network; systemd-resolved for DNS
-- XanMod kernel selection respects CPU psABI level (`PSABI_LEVEL`); v1 CPUs fall back to the main branch
+- XanMod kernel selection respects CPU psABI level (`PSABI_LEVEL`); amd64-only (other arches fall back to `linux-generic`), psABI v1 CPUs are forced to the `lts` branch (the only one shipping x64v1), and the xanmod apt repo is only added when a xanmod kernel will actually be installed
 - UFW firewall; `ufw --force reset/enable` to stay non-interactive
 
 ### Reinstall.sh

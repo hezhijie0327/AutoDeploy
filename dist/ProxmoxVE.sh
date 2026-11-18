@@ -1165,9 +1165,21 @@ ConfigureSysctl() {
         interface_list+=("$iface")
     done < <(CollectInterfaces "$SYSCTL_INTERFACE_MODE" "$SYSCTL_INTERFACE_PATTERN")
     local sysctl_list=(
+        "fs.protected_fifos = 2"
+        "fs.protected_hardlinks = 1"
+        "fs.protected_regular = 2"
+        "fs.protected_symlinks = 1"
+        "fs.suid_dumpable = 0"
+        "kernel.dmesg_restrict = 1"
+        "kernel.kptr_restrict = 2"
+        "kernel.randomize_va_space = 2"
+        "kernel.unprivileged_bpf_disabled = 1"
+        "net.core.bpf_jit_harden = 2"
         "net.core.default_qdisc = fq_pie"
         "net.core.rmem_max = 7500000"
         "net.core.wmem_max = 7500000"
+        "net.ipv4.conf.all.accept_source_route = 0"
+        "net.ipv4.conf.default.accept_source_route = 0"
         "net.ipv4.ip_forward = 1"
         "net.ipv4.tcp_congestion_control = bbr"
         "net.ipv4.tcp_fastopen = 3"
@@ -1192,7 +1204,7 @@ ConfigureSysctl() {
             printf 'net.ipv6.conf.%s.use_tempaddr = 0\n' "$iface"
         done
     } | sort -u > /etc/sysctl.d/99-autodeploy.conf
-    sysctl -p
+    sysctl --system
 }
 
 ConfigureTuned() {

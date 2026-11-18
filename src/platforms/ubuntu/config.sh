@@ -19,7 +19,7 @@ DEFAULT_LASTNAME="${DEFAULT_LASTNAME:-Ubuntu}"
 
 ## Behavior switches
 DISABLE_SWAP="${DISABLE_SWAP:-false}"
-XANMOD_BRANCH="${XANMOD_BRANCH:-edge}" # disable | main | edge | lts | rt
+XANMOD_BRANCH="${XANMOD_BRANCH:-edge}" # disable | main | edge | lts | rt; psABI v1 CPUs are forced to lts
 INSTALL_CLOUDFLARE_WARP="${INSTALL_CLOUDFLARE_WARP:-false}" # install cloudflare-warp from the Cloudflare repo
 INSTALL_TOR="${INSTALL_TOR:-false}" # install tor from the torproject repo
 SSH_PORT="${SSH_PORT:-9022}" # sshd listen port (fail2ban jail + ufw follow this)
