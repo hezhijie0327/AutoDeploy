@@ -172,6 +172,14 @@ AssertEq "default proxy line" "socks5 127.0.0.1 7891" "$(tail -n 1 "$PROXYCHAINS
 PROXY_USERNAME="user"; PROXY_PASSWORD="pass"
 ConfigureProxyChains
 AssertEq "proxy line with credentials" "socks5 127.0.0.1 7891 user pass" "$(tail -n 1 "$PROXYCHAINS_CONF")"
+PROXY_USERNAME="user"; PROXY_PASSWORD=""
+ConfigureProxyChains
+AssertEq "username without password is omitted" "socks5 127.0.0.1 7891" "$(tail -n 1 "$PROXYCHAINS_CONF")"
+proxy_line=$(tail -n 1 "$PROXYCHAINS_CONF")
+if [ "$proxy_line" = "${proxy_line% }" ]; then printf 'ok   no trailing space on proxy line\n'; else printf 'FAIL trailing space on proxy line\n'; FAILURES=$((FAILURES + 1)); fi
+PROXY_USERNAME=""; PROXY_PASSWORD="pass"
+ConfigureProxyChains
+AssertEq "password without username is omitted" "socks5 127.0.0.1 7891" "$(tail -n 1 "$PROXYCHAINS_CONF")"
 
 printf '== BackupPath ==\n'
 mkdir -p "${TMPDIR_TESTS}/backup-target"
