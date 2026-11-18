@@ -1242,8 +1242,9 @@ ConfigureGAI() {
 # modules/debian/security.sh - Fail2Ban, CrowdSec, sshd and SNMPv3
 # (Ubuntu / Proxmox VE, bash 4.4+)
 # ConfigureFail2Ban must be given FAIL2BAN_JAILS (array) and
-# FAIL2BAN_BANACTION (ufw | default), plus optional FAIL2BAN_FILTER_NAME +
-# FAIL2BAN_FILTER (array). ConfigureSNMPBase needs SNMP_USER.
+# FAIL2BAN_BANACTION (ufw | nftables-multiport | default = keep the distro
+# jail.conf values), plus optional FAIL2BAN_FILTER_NAME + FAIL2BAN_FILTER
+# (array). ConfigureSNMPBase needs SNMP_USER.
 # ============================================================================
 
 ConfigureFail2Ban() {
@@ -1263,6 +1264,15 @@ ConfigureFail2Ban() {
                 -e 's/banaction = iptables-multiport(-log)?/banaction = ufw/g' \
                 -e 's/banaction = ufw-log/banaction = ufw/g' \
                 -e 's/banaction_allports = iptables-allports/banaction_allports = ufw/g' \
+                /etc/fail2ban/jail.conf > /etc/fail2ban/jail.local
+        elif [ "${FAIL2BAN_BANACTION:-default}" != "default" ]; then
+            # Rewriting the iptables defaults keeps the %(banaction_allports)s
+            # references intact; the allports twin is derived from the suffix
+            # (e.g. nftables-multiport -> nftables-allports).
+            local allports_action="${FAIL2BAN_BANACTION%-multiport}-allports"
+            sed -E \
+                -e "s/^banaction = iptables-multiport(-log)?\$/banaction = ${FAIL2BAN_BANACTION}/" \
+                -e "s/^banaction_allports = iptables-allports\$/banaction_allports = ${allports_action}/" \
                 /etc/fail2ban/jail.conf > /etc/fail2ban/jail.local
         else
             cp /etc/fail2ban/jail.conf /etc/fail2ban/jail.local

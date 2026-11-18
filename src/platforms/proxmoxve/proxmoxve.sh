@@ -275,7 +275,9 @@ ConfigurePackages() {
         "${LSB_CODENAME} 500"
         "${LSB_CODENAME}-proposed-updates 100"
     )
-    FAIL2BAN_BANACTION="default"
+    # nftables over the distro default (iptables-multiport): PVE ships
+    # nftables, not iptables, and the nftables actions are dual-stack.
+    FAIL2BAN_BANACTION="nftables-multiport"
     FAIL2BAN_FILTER_NAME="proxmox"
     FAIL2BAN_FILTER=(
         "[Definition]"
