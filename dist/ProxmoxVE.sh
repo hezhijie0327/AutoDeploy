@@ -52,6 +52,9 @@ ZSH_THEME="${ZSH_THEME:-ys}"
 ## Credentials (defaults are intentional; change them after deployment)
 ROOT_PASSWORD="${ROOT_PASSWORD:-}" # empty = generate a random one at run time (printed)
 LOCK_ROOT="${LOCK_ROOT:-false}" # TRUE locks the root account after deployment
+# The literal defaults are intentional: Synology DSM's UPS client only
+# attempts the well-known monuser/secret pair, so NUT_MON_PASSWORD must
+# stay fixed for DSM hosts to connect (override the admin one freely).
 NUT_ADMIN_PASSWORD="${NUT_ADMIN_PASSWORD:-123456}"
 NUT_MON_PASSWORD="${NUT_MON_PASSWORD:-secret}"
 SNMP_AUTH_PASSWORD="${SNMP_AUTH_PASSWORD:-}" # empty -> root password (warns)

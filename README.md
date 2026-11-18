@@ -67,7 +67,7 @@ REINSTALL_RELEASE='26.04' REINSTALL_PASSWORD='MyS3cure!Pass' \
 | `ROOT_PASSWORD` | 留空随机生成并打印 | root 密码（Ubuntu / PVE） |
 | `DEFAULT_PASSWORD` | 留空随机生成并打印 | 默认用户密码（Ubuntu / PVE） |
 | `LOCK_ROOT` | `false` | 设为 `true` 部署后锁定 root 账户 |
-| `NUT_ADMIN_PASSWORD` / `NUT_MON_PASSWORD` | `123456` / `secret` | NUT UPS 用户密码 |
+| `NUT_ADMIN_PASSWORD` / `NUT_MON_PASSWORD` | `123456` / `secret` | NUT UPS 用户密码；`secret` 刻意固定——群晖 DSM 的 UPS 客户端只会尝试 monuser/secret 这组凭据，改了 DSM 就连不上 |
 | `SNMP_AUTH_PASSWORD` / `SNMP_PRIV_PASSWORD` | root 密码 / 主机名 | SNMPv3 凭据（建议显式设置） |
 | `SNMP_USER` | `proxmox` | SNMPv3 只读用户名（PVE） |
 | `OPENSSH_PASSWORD` | 空 | SSH 私钥口令 |
