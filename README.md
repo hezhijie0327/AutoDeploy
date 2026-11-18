@@ -50,7 +50,7 @@ curl "https://source.zhijie.online/AutoDeploy/main/dist/<脚本名>.sh" | sudo b
 网络重装指定版本与密码（默认生成随机 root 密码并打印）：
 
 ```bash
-REINSTALL_RELEASE='24.04' REINSTALL_PASSWORD='MyS3cure!Pass' \
+REINSTALL_RELEASE='26.04' REINSTALL_PASSWORD='MyS3cure!Pass' \
   curl "https://source.zhijie.online/AutoDeploy/main/dist/Reinstall.sh" | sudo bash
 ```
 
