@@ -6,7 +6,7 @@
 # ============================================================================
 
 ## Resume / progress
-AUTODEPLOY_STEP_TOTAL=50 # must match the RunStep count (lint.sh checks)
+ZJDEPLOY_STEP_TOTAL=50 # must match the RunStep count (lint.sh checks)
 
 ## Credentials
 DEFAULT_PASSWORD="${DEFAULT_PASSWORD:-}" # empty = generate a random one at run time (printed)

@@ -1,4 +1,4 @@
-# AutoDeploy
+# ZJDeploy
 
 [![License](https://img.shields.io/badge/License-Apache%202.0--Commons%20Clause-blue)](LICENSE)
 [![Bash](https://img.shields.io/badge/Bash-4EAA25?logo=gnubash&logoColor=white)](https://www.gnu.org/software/bash/)
@@ -23,7 +23,7 @@
 - **系统优化**：BBR、sysctl 调优、ZRAM swap、chrony 时间同步、XanMod 内核（按 CPU psABI 级别选择）
 - **一键重装**：`Reinstall.sh` 备好 Alpine 安装环境与一次性 GRUB 引导项，重启即重装为全新 Ubuntu（云镜像复制安装，保留原网络配置）
 - **可重复执行**：已有密钥和配置自动备份为 `*.bak.<时间戳>`，不会直接覆盖
-- **断点续跑**：每个步骤成功后记录到 `~/.autodeploy/state`，中断后重跑自动跳过已完成步骤；`AUTODEPLOY_FORCE=true` 全部重来
+- **断点续跑**：每个步骤成功后记录到 `~/.zjdeploy/state`，中断后重跑自动跳过已完成步骤；`ZJDEPLOY_FORCE=true` 全部重来
 - **进度可视**：每步打印 `[####----------------] 8/48 (16%) ConfigureChrony` 进度条
 - **顶部集中配置**：每个脚本开头是 Configuration 块，凭据 / 开关 / 网络 / 软件包列表一处可调
 - **批量装包**：依赖一次性批量安装（apt / brew），省去逐包重复解析，装机与重跑更快
@@ -33,25 +33,25 @@
 
 | 平台 | 脚本 | 运行方式 |
 |------|------|----------|
-| DSM 群晖 | [DSM.sh](https://source.zhijie.online/AutoDeploy/main/dist/DSM.sh) | root 执行 |
-| macOS | [macOS.sh](https://source.zhijie.online/AutoDeploy/main/dist/macOS.sh) | 普通用户执行，内部按需 `sudo` |
-| Proxmox VE | [ProxmoxVE.sh](https://source.zhijie.online/AutoDeploy/main/dist/ProxmoxVE.sh) | root 执行 |
-| Ubuntu | [Ubuntu.sh](https://source.zhijie.online/AutoDeploy/main/dist/Ubuntu.sh) | root 执行 |
-| Ubuntu 网络重装 | [Reinstall.sh](https://source.zhijie.online/AutoDeploy/main/dist/Reinstall.sh) | root 执行；**危险：下次重启清盘重装** |
+| DSM 群晖 | [DSM.sh](https://source.zhijie.online/ZJDeploy/main/dist/DSM.sh) | root 执行 |
+| macOS | [macOS.sh](https://source.zhijie.online/ZJDeploy/main/dist/macOS.sh) | 普通用户执行，内部按需 `sudo` |
+| Proxmox VE | [ProxmoxVE.sh](https://source.zhijie.online/ZJDeploy/main/dist/ProxmoxVE.sh) | root 执行 |
+| Ubuntu | [Ubuntu.sh](https://source.zhijie.online/ZJDeploy/main/dist/Ubuntu.sh) | root 执行 |
+| Ubuntu 网络重装 | [Reinstall.sh](https://source.zhijie.online/ZJDeploy/main/dist/Reinstall.sh) | root 执行；**危险：下次重启清盘重装** |
 
 ```bash
 # Linux / DSM / PVE（<脚本名> 换成上表任意一个）
-curl "https://source.zhijie.online/AutoDeploy/main/dist/<脚本名>.sh" | sudo bash
+curl "https://source.zhijie.online/ZJDeploy/main/dist/<脚本名>.sh" | sudo bash
 
 # macOS（普通用户执行）
-/bin/bash -c "$(curl -fsSL 'https://source.zhijie.online/AutoDeploy/main/dist/macOS.sh')"
+/bin/bash -c "$(curl -fsSL 'https://source.zhijie.online/ZJDeploy/main/dist/macOS.sh')"
 ```
 
 网络重装指定版本与密码（默认生成随机 root 密码并打印）：
 
 ```bash
 REINSTALL_RELEASE='26.04' REINSTALL_PASSWORD='MyS3cure!Pass' \
-  curl "https://source.zhijie.online/AutoDeploy/main/dist/Reinstall.sh" | sudo bash
+  curl "https://source.zhijie.online/ZJDeploy/main/dist/Reinstall.sh" | sudo bash
 ```
 
 ## 配置
@@ -81,8 +81,8 @@ REINSTALL_RELEASE='26.04' REINSTALL_PASSWORD='MyS3cure!Pass' \
 | `RESET_CLUSTER` | `true` | 重置 corosync 集群状态（PVE；**已入集群的节点务必设 `false`**） |
 | `RESET_BREW` | `false` | 重装 Homebrew（macOS） |
 | `DISABLE_SWAP` | `false` | 不创建 swapfile（Ubuntu） |
-| `AUTODEPLOY_FORCE` | `false` | 忽略断点记录，强制重跑所有步骤 |
-| `AUTODEPLOY_STATE_DIR` | `~/.autodeploy` | 断点续跑状态文件目录 |
+| `ZJDEPLOY_FORCE` | `false` | 忽略断点记录，强制重跑所有步骤 |
+| `ZJDEPLOY_STATE_DIR` | `~/.zjdeploy` | 断点续跑状态文件目录 |
 | `XANMOD_BRANCH` | `main` | XanMod 内核分支（仅 amd64，arm64 回退 `linux-generic`）：`disable` / `main` / `edge` / `lts` / `rt`；psABI v1 老 CPU 自动引导到 `lts`（唯一提供 x64v1 的分支）。`edge` 自 7.3 起与 `main` 版本完全一致 |
 | `GHPROXY_URL` | 空 | GitHub 代理地址，可带或不带 `https://`（自动补全 scheme 与末尾斜杠） |
 | `RESET_DOMAIN` / `RESET_HOSTNAME` | `false` | 忽略检测到的搜索域 / 主机名；主机名重置后生成 12 位随机 hash（同 docker 容器 ID 风格） |
@@ -128,7 +128,7 @@ REINSTALL_RELEASE='26.04' REINSTALL_PASSWORD='MyS3cure!Pass' \
 | `BREW_PACKAGES` / `CASK_APPS` / `MAS_APPS` | `platforms/macos/config.sh` | Homebrew formulae / cask / Mac App Store 应用 |
 | `LSB_CODENAME` / `LSB_VERSION` / `CEPH_CODENAME` | 平台配置 | 发行版代号（**有意 pin 到最新**，随发行版周期手动更新） |
 | `GRUB_SIGNED_PACKAGE` | `platforms/proxmoxve/config.sh` | 按架构自动选择 amd64 / arm64 签名 GRUB |
-| `AUTODEPLOY_STEP_TOTAL` | 平台配置 | 步骤总数（须与 RunStep 数一致，lint.sh 校验） |
+| `ZJDEPLOY_STEP_TOTAL` | 平台配置 | 步骤总数（须与 RunStep 数一致，lint.sh 校验） |
 
 示例：
 
@@ -136,7 +136,7 @@ REINSTALL_RELEASE='26.04' REINSTALL_PASSWORD='MyS3cure!Pass' \
 export ROOT_PASSWORD='MyS3cure!Pass'
 export DEFAULT_PASSWORD='MyUser!Pass'
 export PURGE_OTHER_USERS=false
-curl "https://source.zhijie.online/AutoDeploy/main/dist/Ubuntu.sh" | sudo bash
+curl "https://source.zhijie.online/ZJDeploy/main/dist/Ubuntu.sh" | sudo bash
 ```
 
 ### 重装（Reinstall.sh）

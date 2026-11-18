@@ -7,7 +7,7 @@
 # ============================================================================
 
 ## Resume / progress
-AUTODEPLOY_STEP_TOTAL=6 # must match the RunStep count (lint.sh checks)
+ZJDEPLOY_STEP_TOTAL=6 # must match the RunStep count (lint.sh checks)
 
 ## Target system
 # Release pinning: defaults to the latest LTS (bump each cycle). Env override
@@ -22,7 +22,7 @@ REINSTALL_CANCEL="${REINSTALL_CANCEL:-false}" # true = undo a staged reinstall (
 REINSTALL_BOOT_MODE="${REINSTALL_BOOT_MODE:-auto}"
 
 ## Installer bootstrap (Alpine netboot files run the install after reboot)
-REINSTALL_CONFHOME="${REINSTALL_CONFHOME:-https://source.zhijie.online/AutoDeploy/main/src/platforms/reinstall}" # trans.sh location
+REINSTALL_CONFHOME="${REINSTALL_CONFHOME:-https://source.zhijie.online/ZJDeploy/main/src/platforms/reinstall}" # trans.sh location
 
 ## Identity of the freshly installed system
 REINSTALL_PASSWORD="${REINSTALL_PASSWORD:-}" # empty -> generate one (printed) or key-only

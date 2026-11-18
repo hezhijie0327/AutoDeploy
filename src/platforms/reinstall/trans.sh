@@ -1,6 +1,6 @@
 #!/bin/sh
 # ============================================================================
-# AutoDeploy Ubuntu reinstall - phase 2 (installer).
+# ZJDeploy Ubuntu reinstall - phase 2 (installer).
 # Runs inside the Alpine RAM system after the reboot staged by
 # dist/Reinstall.sh. Written for busybox ash: no arrays, no [[ ]], no process
 # substitution. All upstream fetches use http on purpose - the installer
@@ -30,7 +30,7 @@ CMDLINE="$(cat /proc/cmdline)"
 DONE_BANNER=""
 
 log() {
-    printf '[AutoDeploy] %s\n' "$*"
+    printf '[ZJDeploy] %s\n' "$*"
 }
 
 # Same separator the phase-1 script prints (core.sh LogSeparator); this
@@ -40,7 +40,7 @@ separator() {
 }
 
 die() {
-    printf '[AutoDeploy] ERROR: %s\n' "$*" >&2
+    printf '[ZJDeploy] ERROR: %s\n' "$*" >&2
     exit 1
 }
 
@@ -379,7 +379,7 @@ chroot_configure() {
         fi
         printf '%s\n' "      nameservers:"
         printf '%s\n' "        addresses: [$(get_extra dns "223.5.5.5,223.6.6.6")]"
-    } > /os/etc/netplan/99-autodeploy.yaml
+    } > /os/etc/netplan/99-zjdeploy.yaml
 
     # Regenerate fstab: root keeps the image UUID; the ESP is mounted explicitly.
     root_part_uuid=$(blkid -s UUID -o value "$(part_dev "$target_disk" 2)")

@@ -242,9 +242,9 @@ esac
 unset -f ssh-keygen chown
 
 printf '== Resume / progress ==\n'
-AUTODEPLOY_STATE_DIR="${TMPDIR_TESTS}/state"
-AUTODEPLOY_STEP_TOTAL=3
-AUTODEPLOY_FORCE="false"
+ZJDEPLOY_STATE_DIR="${TMPDIR_TESTS}/state"
+ZJDEPLOY_STEP_TOTAL=3
+ZJDEPLOY_FORCE="false"
 STEP_RUN_COUNT=0
 DummyStep() { STEP_RUN_COUNT=$((STEP_RUN_COUNT + 1)); }
 
@@ -266,9 +266,9 @@ esac
 # errexit is fully active (a `|| true` subshell would suppress it).
 cat > "${TMPDIR_TESTS}/failrun.sh" <<'EOS'
 source src/lib/core.sh
-AUTODEPLOY_STATE_DIR="$1"
-AUTODEPLOY_STEP_TOTAL=3
-AUTODEPLOY_FORCE="false"
+ZJDEPLOY_STATE_DIR="$1"
+ZJDEPLOY_STEP_TOTAL=3
+ZJDEPLOY_FORCE="false"
 FailStep() { return 1; }
 RunStep "failstep" FailStep
 EOS
@@ -280,9 +280,9 @@ else
     printf 'ok   failing step is not recorded\n'
 fi
 
-AUTODEPLOY_FORCE="true" InitRun > /dev/null
-AssertEq "AUTODEPLOY_FORCE clears state" "0" "$(StepsCompleted)"
-AUTODEPLOY_FORCE="false"
+ZJDEPLOY_FORCE="true" InitRun > /dev/null
+AssertEq "ZJDEPLOY_FORCE clears state" "0" "$(StepsCompleted)"
+ZJDEPLOY_FORCE="false"
 
 printf '== SetGHProxyDomain normalization ==\n'
 GHPROXY_URL="proxy.example.com"; SetGHProxyDomain

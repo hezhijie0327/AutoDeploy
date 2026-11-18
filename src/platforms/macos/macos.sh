@@ -201,7 +201,7 @@ UpgradePackages() {
 # Cleanup Temp Files
 CleanupTempFiles() {
     brew cleanup
-    rm -f "/Users/${CURRENT_USERNAME}/".*_history /tmp/*.autodeploy
+    rm -f "/Users/${CURRENT_USERNAME}/".*_history /tmp/*.zjdeploy
 }
 
 ## Process

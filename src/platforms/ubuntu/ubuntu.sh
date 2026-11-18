@@ -91,7 +91,7 @@ ConfigurePackages() {
                 "ListenStream="
                 "ListenStream=${COCKPIT_PORT}"
             )
-            printf '%s\n' "${socket_override_list[@]}" > /etc/systemd/system/cockpit.socket.d/autodeploy.conf
+            printf '%s\n' "${socket_override_list[@]}" > /etc/systemd/system/cockpit.socket.d/zjdeploy.conf
             systemctl daemon-reload
         fi
         systemctl enable --now cockpit.socket

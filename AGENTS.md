@@ -1,6 +1,6 @@
 # AGENTS.md
 
-AutoDeploy is a collection of shell scripts for automated system deployment across Synology DSM, macOS, Proxmox VE, and Ubuntu, plus a network reinstall entry for Ubuntu hosts. See [README.md](README.md) for the Chinese overview.
+ZJDeploy is a collection of shell scripts for automated system deployment across Synology DSM, macOS, Proxmox VE, and Ubuntu, plus a network reinstall entry for Ubuntu hosts. See [README.md](README.md) for the Chinese overview.
 
 ## HANDOVER.md
 
@@ -188,7 +188,7 @@ All scripts run under `set -Eeuo pipefail` with an `ERR` trap that reports the f
 
 ### Resume and progress
 
-Each orchestration leaf runs through `RunStep "<id>" <function>`. A step is appended to the state file (`$AUTODEPLOY_STATE_DIR/state`, default `~/.autodeploy`) only after it succeeds, so an interrupted run resumes at the first unfinished step. Container functions (`ConfigurePackages`, `ConfigureSystem`, `InstallCustomPackages`) always run — they set globals and dispatch their children, which skip individually if already done. `GetSystemInformation` always runs because later steps depend on the globals it sets. `AUTODEPLOY_FORCE=true` clears the state and re-runs everything. `RenderProgress` prints a `[####----] done/total (pct%)` line per step; `AUTODEPLOY_STEP_TOTAL` must equal the number of `RunStep` calls (lint.sh enforces this). `Reinstall.sh` uses the same machinery; its state only helps re-running a failed preparation, since the reboot wipes the host.
+Each orchestration leaf runs through `RunStep "<id>" <function>`. A step is appended to the state file (`$ZJDEPLOY_STATE_DIR/state`, default `~/.zjdeploy`) only after it succeeds, so an interrupted run resumes at the first unfinished step. Container functions (`ConfigurePackages`, `ConfigureSystem`, `InstallCustomPackages`) always run — they set globals and dispatch their children, which skip individually if already done. `GetSystemInformation` always runs because later steps depend on the globals it sets. `ZJDEPLOY_FORCE=true` clears the state and re-runs everything. `RenderProgress` prints a `[####----] done/total (pct%)` line per step; `ZJDEPLOY_STEP_TOTAL` must equal the number of `RunStep` calls (lint.sh enforces this). `Reinstall.sh` uses the same machinery; its state only helps re-running a failed preparation, since the reboot wipes the host.
 
 ## Conventions
 
@@ -217,14 +217,14 @@ Each orchestration leaf runs through `RunStep "<id>" <function>`. A step is appe
 ### File Operations
 - Write config files with `printf '%s\n' "${array[@]}" > "$target"` — no temp-file round-trips
 - `rm -f` for files; `rm -rf` only for directories
-- Cleanup removes only `*.autodeploy` temp files, never all of `/tmp`
+- Cleanup removes only `*.zjdeploy` temp files, never all of `/tmp`
 - Sensitive files 600, SSH dirs 700, private keys 400
 
 ### Gotchas
 - **macOS ships bash 3.2**: `lib/core.sh` and `lib/modules/*.sh` must stay 3.2-compatible — no associative arrays, no namerefs, guard empty-array expansions with `${arr[@]+"${arr[@]}"}`. `lib/modules/debian/*` targets bash 4.4+ only; `src/platforms/reinstall/trans.sh` is busybox ash only.
 - **Module composition lives in build.sh**: adding a shared function to a new platform means adding its module file to that platform's build list — lint.sh does not verify module selection, only freshness.
 - **Generated files**: commit the regenerated `dist/` scripts together with the `src/` change; `lint.sh` enforces freshness.
-- **Step total**: when adding/removing a `RunStep` call, update `AUTODEPLOY_STEP_TOTAL` in the platform's `src/platforms/<name>/config.sh`; `lint.sh` fails on a mismatch.
+- **Step total**: when adding/removing a `RunStep` call, update `ZJDEPLOY_STEP_TOTAL` in the platform's `src/platforms/<name>/config.sh`; `lint.sh` fails on a mismatch.
 - **Configuration is authoritative**: edit tunable defaults in `src/config/`, not inside functions. Keep new knobs env-overridable. Structural globals a module needs (e.g. `DOCKER_APT_DISTRO`, `FRR_APT_LINE`) are documented above that function and set by the platform's `ConfigurePackages`.
 - **Release pinning is intentional**: `LSB_CODENAME`/`LSB_VERSION` (Ubuntu) and `LSB_CODENAME`/`CEPH_CODENAME` (PVE) are hardcoded to the latest release by design. `REINSTALL_RELEASE` (Reinstall) pins the latest LTS but stays env-overridable to the other LTS releases. Bump them each release in the config block; do not switch to auto-detection. PVE package picks are arch-aware: the `grub-efi-*-signed` swap happens in `src/platforms/proxmoxve/config.sh`.
 - **Single quotes in generated snippets** (e.g. `plugin_upgrade_list`) are deliberate — they must not expand at generation time.
@@ -274,7 +274,7 @@ Each orchestration leaf runs through `RunStep "<id>" <function>`. A step is appe
 - Phase 2 (`src/platforms/reinstall/trans.sh`) partitions the disk (ESP/bios_grub + root + trailing installer staging partition), copies the Ubuntu cloud image out of a qemu-nbd-attached qcow2 (never dd — 24.04+ images carry a separate /boot partition), and preserves the root UUID/label so baked-in grub references stay valid
 - All installer-phase mirrors use http, not https: the Alpine RAM system may boot with an unsynced clock, which breaks TLS certificate validation
 - The netplan written into the new system matches the NIC by MAC address and re-applies the previous IPv4/IPv6 addressing
-- Cloud-init is disabled (`/etc/cloud/cloud-init.disabled`); run the matching deployment script after the first boot for full AutoDeploy configuration
+- Cloud-init is disabled (`/etc/cloud/cloud-init.disabled`); run the matching deployment script after the first boot for full ZJDeploy configuration
 - Requires a real-machine test round before trusting: GRUB one-time entry, initramfs init injection, and netplan replay are environment-sensitive
 
 ## Common Patterns
@@ -320,7 +320,7 @@ ecdsa-384 / ed25519 / rsa-4096 only. DSA was removed: OpenSSH ≥ 9.8 disables i
 2. Back up critical configuration; test in a non-production environment first
 3. Run:
 ```bash
-curl "https://source.zhijie.online/AutoDeploy/main/dist/SCRIPT.sh" | sudo bash
+curl "https://source.zhijie.online/ZJDeploy/main/dist/SCRIPT.sh" | sudo bash
 ```
 
 `Reinstall.sh` additionally accepts `REINSTALL_RELEASE` and `REINSTALL_PASSWORD` and wipes the machine on the next reboot — read the Platform-Specific Considerations first.

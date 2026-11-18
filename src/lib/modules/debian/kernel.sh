@@ -107,7 +107,7 @@ ConfigureSysctl() {
             printf 'net.ipv6.conf.%s.forwarding = 1\n' "$iface"
             printf 'net.ipv6.conf.%s.use_tempaddr = 0\n' "$iface"
         done
-    } | sort -u > /etc/sysctl.d/99-autodeploy.conf
+    } | sort -u > /etc/sysctl.d/99-zjdeploy.conf
     sysctl --system
 }
 

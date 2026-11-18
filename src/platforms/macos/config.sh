@@ -5,7 +5,7 @@
 # ============================================================================
 
 ## Resume / progress
-AUTODEPLOY_STEP_TOTAL=16 # must match the RunStep count (lint.sh checks)
+ZJDEPLOY_STEP_TOTAL=16 # must match the RunStep count (lint.sh checks)
 
 ## Behavior switches
 RESET_BREW="${RESET_BREW:-false}" # true wipes and reinstalls Homebrew

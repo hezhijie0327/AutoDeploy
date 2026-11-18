@@ -8,15 +8,15 @@
 set -Eeuo pipefail
 
 LogInfo() {
-    printf '[AutoDeploy] %s\n' "$*"
+    printf '[ZJDeploy] %s\n' "$*"
 }
 
 LogWarn() {
-    printf '[AutoDeploy] WARNING: %s\n' "$*" >&2
+    printf '[ZJDeploy] WARNING: %s\n' "$*" >&2
 }
 
 Die() {
-    printf '[AutoDeploy] ERROR: %s\n' "$*" >&2
+    printf '[ZJDeploy] ERROR: %s\n' "$*" >&2
     exit 1
 }
 
@@ -106,10 +106,10 @@ SetGHProxyDomain() {
 ## Resume + progress
 # Each orchestration step runs through RunStep. A step is recorded in the state
 # file only after it succeeds, so an interrupted run resumes at the first
-# unfinished step. AUTODEPLOY_FORCE=true clears the state and re-runs everything.
-# Platform must set: AUTODEPLOY_STATE_DIR, AUTODEPLOY_STEP_TOTAL.
+# unfinished step. ZJDEPLOY_FORCE=true clears the state and re-runs everything.
+# Platform must set: ZJDEPLOY_STATE_DIR, ZJDEPLOY_STEP_TOTAL.
 StateFile() {
-    printf '%s/state\n' "$AUTODEPLOY_STATE_DIR"
+    printf '%s/state\n' "$ZJDEPLOY_STATE_DIR"
 }
 
 StepDone() {
@@ -119,7 +119,7 @@ StepDone() {
 }
 
 MarkStep() {
-    mkdir -p "$AUTODEPLOY_STATE_DIR"
+    mkdir -p "$ZJDEPLOY_STATE_DIR"
     printf '%s\n' "$1" >> "$(StateFile)"
 }
 
@@ -134,7 +134,7 @@ StepsCompleted() {
 }
 
 RenderProgress() {
-    local label="$1" total="${AUTODEPLOY_STEP_TOTAL:-0}" completed width=20 filled percent bar
+    local label="$1" total="${ZJDEPLOY_STEP_TOTAL:-0}" completed width=20 filled percent bar
     completed=$(StepsCompleted)
     if [ "$total" -le 0 ]; then
         LogInfo "$label"
@@ -149,7 +149,7 @@ RenderProgress() {
 RunStep() {
     local step_id="$1"
     shift
-    if [ "${AUTODEPLOY_FORCE:-false}" != "true" ] && StepDone "$step_id"; then
+    if [ "${ZJDEPLOY_FORCE:-false}" != "true" ] && StepDone "$step_id"; then
         LogInfo "skip ${step_id} (completed in a previous run)"
         return 0
     fi
@@ -159,14 +159,14 @@ RunStep() {
 }
 
 InitRun() {
-    if [ "${AUTODEPLOY_FORCE:-false}" = "true" ]; then
+    if [ "${ZJDEPLOY_FORCE:-false}" = "true" ]; then
         rm -f "$(StateFile)"
-        LogInfo "AUTODEPLOY_FORCE=true: re-running all steps"
+        LogInfo "ZJDEPLOY_FORCE=true: re-running all steps"
     else
         local completed
         completed=$(StepsCompleted)
         if [ "$completed" -gt 0 ]; then
-            LogInfo "resuming: ${completed}/${AUTODEPLOY_STEP_TOTAL} steps already complete"
+            LogInfo "resuming: ${completed}/${ZJDEPLOY_STEP_TOTAL} steps already complete"
         fi
     fi
 }

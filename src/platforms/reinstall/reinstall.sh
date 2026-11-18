@@ -129,7 +129,7 @@ DownloadInstallerFiles() {
 # initramfs init to copy them into the RAM system before switch_root; the
 # installer then runs via the OpenRC local service.
 BuildInstallerInitrd() {
-    workdir="/tmp/reinstall-initrd.autodeploy"
+    workdir="/tmp/reinstall-initrd.zjdeploy"
     rm -rf "$workdir"
     mkdir -p "$workdir"
     zcat /reinstall-initrd | cpio -idm -D "$workdir" > /dev/null 2>&1
@@ -156,8 +156,8 @@ BuildInstallerInitrd() {
             print "ln -sf /etc/init.d/local /sysroot/etc/runlevels/default/local"
             injected = 1
         }
-    ' "$workdir/init" > "$workdir/init.autodeploy"
-    mv "$workdir/init.autodeploy" "$workdir/init"
+    ' "$workdir/init" > "$workdir/init.zjdeploy"
+    mv "$workdir/init.zjdeploy" "$workdir/init"
     chmod +x "$workdir/init"
     (cd "$workdir" && find . | cpio -o -H newc -R 0:0 | gzip -1) > /reinstall-initrd
     rm -rf "$workdir" /reinstall-trans.sh
@@ -203,13 +203,13 @@ InstallBootEntry() {
     cmdline="${cmdline} extra_dns=${DNS_SERVERS}"
 
     {
-        printf '%s\n' 'menuentry "AutoDeploy Reinstall" --id autodeploy-reinstall {'
+        printf '%s\n' 'menuentry "ZJDeploy Reinstall" --id zjdeploy-reinstall {'
         printf '%s\n' '    search --no-floppy --file --set=root /reinstall-vmlinuz'
         printf '%s\n' "    linux /reinstall-vmlinuz ${cmdline}"
         printf '%s\n' '    initrd /reinstall-initrd'
         printf '%s\n' '}'
     } > /boot/grub/custom.cfg
-    grub-reboot "AutoDeploy Reinstall"
+    grub-reboot "ZJDeploy Reinstall"
     LogInfo "one-time boot entry installed; next reboot starts the reinstall"
 }
 
@@ -261,4 +261,4 @@ RunStep "BuildInstallerInitrd" BuildInstallerInitrd
 RunStep "InstallBootEntry" InstallBootEntry
 RenderSummary
 RenderProgress "complete"
-rm -f /tmp/*.autodeploy > /dev/null 2>&1 || true
+rm -f /tmp/*.zjdeploy > /dev/null 2>&1 || true

@@ -5,7 +5,7 @@
 # ============================================================================
 
 ## Resume / progress
-AUTODEPLOY_STEP_TOTAL=10 # must match the RunStep count (lint.sh checks)
+ZJDEPLOY_STEP_TOTAL=10 # must match the RunStep count (lint.sh checks)
 
 ## Package Center (third-party feeds + packages to install)
 # PKG_SOURCES entries are "name|url"; they are merged into

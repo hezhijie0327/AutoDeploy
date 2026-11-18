@@ -6,8 +6,8 @@
 # For a one-off tweak you may edit the Configuration block below.
 #
 ## How to get and use?
-# curl "https://source.zhijie.online/AutoDeploy/main/dist/Reinstall.sh" | sudo bash
-# wget -qO- "https://source.zhijie.online/AutoDeploy/main/dist/Reinstall.sh" | sudo bash
+# curl "https://source.zhijie.online/ZJDeploy/main/dist/Reinstall.sh" | sudo bash
+# wget -qO- "https://source.zhijie.online/ZJDeploy/main/dist/Reinstall.sh" | sudo bash
 # ============================================================================
 # Configuration - shared across all platforms
 # Common knobs shared by every generated script. Platform config files add
@@ -15,9 +15,9 @@
 # ============================================================================
 
 ## Resume / progress
-# State lives under the running user's home. AUTODEPLOY_FORCE=true re-runs all.
-AUTODEPLOY_STATE_DIR="${AUTODEPLOY_STATE_DIR:-${HOME}/.autodeploy}"
-AUTODEPLOY_FORCE="${AUTODEPLOY_FORCE:-false}"
+# State lives under the running user's home. ZJDEPLOY_FORCE=true re-runs all.
+ZJDEPLOY_STATE_DIR="${ZJDEPLOY_STATE_DIR:-${HOME}/.zjdeploy}"
+ZJDEPLOY_FORCE="${ZJDEPLOY_FORCE:-false}"
 
 ## Credentials
 OPENSSH_PASSWORD="${OPENSSH_PASSWORD:-}"
@@ -52,7 +52,7 @@ ZSH_THEME="${ZSH_THEME:-ys}"
 # ============================================================================
 
 ## Resume / progress
-AUTODEPLOY_STEP_TOTAL=6 # must match the RunStep count (lint.sh checks)
+ZJDEPLOY_STEP_TOTAL=6 # must match the RunStep count (lint.sh checks)
 
 ## Target system
 # Release pinning: defaults to the latest LTS (bump each cycle). Env override
@@ -67,7 +67,7 @@ REINSTALL_CANCEL="${REINSTALL_CANCEL:-false}" # true = undo a staged reinstall (
 REINSTALL_BOOT_MODE="${REINSTALL_BOOT_MODE:-auto}"
 
 ## Installer bootstrap (Alpine netboot files run the install after reboot)
-REINSTALL_CONFHOME="${REINSTALL_CONFHOME:-https://source.zhijie.online/AutoDeploy/main/src/platforms/reinstall}" # trans.sh location
+REINSTALL_CONFHOME="${REINSTALL_CONFHOME:-https://source.zhijie.online/ZJDeploy/main/src/platforms/reinstall}" # trans.sh location
 
 ## Identity of the freshly installed system
 REINSTALL_PASSWORD="${REINSTALL_PASSWORD:-}" # empty -> generate one (printed) or key-only
@@ -82,15 +82,15 @@ REINSTALL_SSH_KEYS="${REINSTALL_SSH_KEYS:-}" # authorized_keys content, or a fil
 set -Eeuo pipefail
 
 LogInfo() {
-    printf '[AutoDeploy] %s\n' "$*"
+    printf '[ZJDeploy] %s\n' "$*"
 }
 
 LogWarn() {
-    printf '[AutoDeploy] WARNING: %s\n' "$*" >&2
+    printf '[ZJDeploy] WARNING: %s\n' "$*" >&2
 }
 
 Die() {
-    printf '[AutoDeploy] ERROR: %s\n' "$*" >&2
+    printf '[ZJDeploy] ERROR: %s\n' "$*" >&2
     exit 1
 }
 
@@ -180,10 +180,10 @@ SetGHProxyDomain() {
 ## Resume + progress
 # Each orchestration step runs through RunStep. A step is recorded in the state
 # file only after it succeeds, so an interrupted run resumes at the first
-# unfinished step. AUTODEPLOY_FORCE=true clears the state and re-runs everything.
-# Platform must set: AUTODEPLOY_STATE_DIR, AUTODEPLOY_STEP_TOTAL.
+# unfinished step. ZJDEPLOY_FORCE=true clears the state and re-runs everything.
+# Platform must set: ZJDEPLOY_STATE_DIR, ZJDEPLOY_STEP_TOTAL.
 StateFile() {
-    printf '%s/state\n' "$AUTODEPLOY_STATE_DIR"
+    printf '%s/state\n' "$ZJDEPLOY_STATE_DIR"
 }
 
 StepDone() {
@@ -193,7 +193,7 @@ StepDone() {
 }
 
 MarkStep() {
-    mkdir -p "$AUTODEPLOY_STATE_DIR"
+    mkdir -p "$ZJDEPLOY_STATE_DIR"
     printf '%s\n' "$1" >> "$(StateFile)"
 }
 
@@ -208,7 +208,7 @@ StepsCompleted() {
 }
 
 RenderProgress() {
-    local label="$1" total="${AUTODEPLOY_STEP_TOTAL:-0}" completed width=20 filled percent bar
+    local label="$1" total="${ZJDEPLOY_STEP_TOTAL:-0}" completed width=20 filled percent bar
     completed=$(StepsCompleted)
     if [ "$total" -le 0 ]; then
         LogInfo "$label"
@@ -223,7 +223,7 @@ RenderProgress() {
 RunStep() {
     local step_id="$1"
     shift
-    if [ "${AUTODEPLOY_FORCE:-false}" != "true" ] && StepDone "$step_id"; then
+    if [ "${ZJDEPLOY_FORCE:-false}" != "true" ] && StepDone "$step_id"; then
         LogInfo "skip ${step_id} (completed in a previous run)"
         return 0
     fi
@@ -233,14 +233,14 @@ RunStep() {
 }
 
 InitRun() {
-    if [ "${AUTODEPLOY_FORCE:-false}" = "true" ]; then
+    if [ "${ZJDEPLOY_FORCE:-false}" = "true" ]; then
         rm -f "$(StateFile)"
-        LogInfo "AUTODEPLOY_FORCE=true: re-running all steps"
+        LogInfo "ZJDEPLOY_FORCE=true: re-running all steps"
     else
         local completed
         completed=$(StepsCompleted)
         if [ "$completed" -gt 0 ]; then
-            LogInfo "resuming: ${completed}/${AUTODEPLOY_STEP_TOTAL} steps already complete"
+            LogInfo "resuming: ${completed}/${ZJDEPLOY_STEP_TOTAL} steps already complete"
         fi
     fi
 }
@@ -377,7 +377,7 @@ DownloadInstallerFiles() {
 # initramfs init to copy them into the RAM system before switch_root; the
 # installer then runs via the OpenRC local service.
 BuildInstallerInitrd() {
-    workdir="/tmp/reinstall-initrd.autodeploy"
+    workdir="/tmp/reinstall-initrd.zjdeploy"
     rm -rf "$workdir"
     mkdir -p "$workdir"
     zcat /reinstall-initrd | cpio -idm -D "$workdir" > /dev/null 2>&1
@@ -404,8 +404,8 @@ BuildInstallerInitrd() {
             print "ln -sf /etc/init.d/local /sysroot/etc/runlevels/default/local"
             injected = 1
         }
-    ' "$workdir/init" > "$workdir/init.autodeploy"
-    mv "$workdir/init.autodeploy" "$workdir/init"
+    ' "$workdir/init" > "$workdir/init.zjdeploy"
+    mv "$workdir/init.zjdeploy" "$workdir/init"
     chmod +x "$workdir/init"
     (cd "$workdir" && find . | cpio -o -H newc -R 0:0 | gzip -1) > /reinstall-initrd
     rm -rf "$workdir" /reinstall-trans.sh
@@ -451,13 +451,13 @@ InstallBootEntry() {
     cmdline="${cmdline} extra_dns=${DNS_SERVERS}"
 
     {
-        printf '%s\n' 'menuentry "AutoDeploy Reinstall" --id autodeploy-reinstall {'
+        printf '%s\n' 'menuentry "ZJDeploy Reinstall" --id zjdeploy-reinstall {'
         printf '%s\n' '    search --no-floppy --file --set=root /reinstall-vmlinuz'
         printf '%s\n' "    linux /reinstall-vmlinuz ${cmdline}"
         printf '%s\n' '    initrd /reinstall-initrd'
         printf '%s\n' '}'
     } > /boot/grub/custom.cfg
-    grub-reboot "AutoDeploy Reinstall"
+    grub-reboot "ZJDeploy Reinstall"
     LogInfo "one-time boot entry installed; next reboot starts the reinstall"
 }
 
@@ -509,4 +509,4 @@ RunStep "BuildInstallerInitrd" BuildInstallerInitrd
 RunStep "InstallBootEntry" InstallBootEntry
 RenderSummary
 RenderProgress "complete"
-rm -f /tmp/*.autodeploy > /dev/null 2>&1 || true
+rm -f /tmp/*.zjdeploy > /dev/null 2>&1 || true

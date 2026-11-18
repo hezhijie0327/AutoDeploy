@@ -16,7 +16,7 @@ ConfigureAPT() {
         'Update-Manager::Always-Include-Phased-Updates true;'
     )
     mkdir -p /etc/apt/apt.conf.d
-    printf '%s\n' "${apt_conf_list[@]}" > /etc/apt/apt.conf.d/99autodeploy
+    printf '%s\n' "${apt_conf_list[@]}" > /etc/apt/apt.conf.d/99zjdeploy
     rm -rf /etc/apt/preferences.d
     mkdir -p /etc/apt/preferences.d
     local entry release priority
@@ -107,7 +107,7 @@ UpgradePackages() {
 # Extra paths to remove may be passed as arguments. Never wipe all of /tmp.
 CleanupTempFiles() {
     apt clean
-    rm -f /root/.*_history /tmp/*.autodeploy "$@"
+    rm -f /root/.*_history /tmp/*.zjdeploy "$@"
 }
 
 # Keeps the newest kernel matching KERNEL_PATTERN, purges the rest.

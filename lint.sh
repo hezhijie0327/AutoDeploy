@@ -39,11 +39,11 @@ fi
 printf '\n== step count ==\n'
 for file in dist/DSM.sh dist/macOS.sh dist/Ubuntu.sh dist/ProxmoxVE.sh dist/Reinstall.sh; do
     count=$(grep -cE '^[[:space:]]*RunStep "' "$file" || true)
-    total=$(sed -n 's/^AUTODEPLOY_STEP_TOTAL=\([0-9][0-9]*\).*/\1/p' "$file")
+    total=$(sed -n 's/^ZJDEPLOY_STEP_TOTAL=\([0-9][0-9]*\).*/\1/p' "$file")
     if [ "$count" = "$total" ]; then
         printf 'ok   %s (%s steps)\n' "$file" "$total"
     else
-        printf 'FAIL %s: %s RunStep calls but AUTODEPLOY_STEP_TOTAL=%s\n' "$file" "$count" "$total"
+        printf 'FAIL %s: %s RunStep calls but ZJDEPLOY_STEP_TOTAL=%s\n' "$file" "$count" "$total"
         status=1
     fi
 done

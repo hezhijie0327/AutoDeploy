@@ -5,9 +5,9 @@
 # ============================================================================
 
 ## Resume / progress
-# State lives under the running user's home. AUTODEPLOY_FORCE=true re-runs all.
-AUTODEPLOY_STATE_DIR="${AUTODEPLOY_STATE_DIR:-${HOME}/.autodeploy}"
-AUTODEPLOY_FORCE="${AUTODEPLOY_FORCE:-false}"
+# State lives under the running user's home. ZJDEPLOY_FORCE=true re-runs all.
+ZJDEPLOY_STATE_DIR="${ZJDEPLOY_STATE_DIR:-${HOME}/.zjdeploy}"
+ZJDEPLOY_FORCE="${ZJDEPLOY_FORCE:-false}"
 
 ## Credentials
 OPENSSH_PASSWORD="${OPENSSH_PASSWORD:-}"

@@ -6,8 +6,8 @@
 # For a one-off tweak you may edit the Configuration block below.
 #
 ## How to get and use?
-# curl "https://source.zhijie.online/AutoDeploy/main/dist/Ubuntu.sh" | sudo bash
-# wget -qO- "https://source.zhijie.online/AutoDeploy/main/dist/Ubuntu.sh" | sudo bash
+# curl "https://source.zhijie.online/ZJDeploy/main/dist/Ubuntu.sh" | sudo bash
+# wget -qO- "https://source.zhijie.online/ZJDeploy/main/dist/Ubuntu.sh" | sudo bash
 # ============================================================================
 # Configuration - shared across all platforms
 # Common knobs shared by every generated script. Platform config files add
@@ -15,9 +15,9 @@
 # ============================================================================
 
 ## Resume / progress
-# State lives under the running user's home. AUTODEPLOY_FORCE=true re-runs all.
-AUTODEPLOY_STATE_DIR="${AUTODEPLOY_STATE_DIR:-${HOME}/.autodeploy}"
-AUTODEPLOY_FORCE="${AUTODEPLOY_FORCE:-false}"
+# State lives under the running user's home. ZJDEPLOY_FORCE=true re-runs all.
+ZJDEPLOY_STATE_DIR="${ZJDEPLOY_STATE_DIR:-${HOME}/.zjdeploy}"
+ZJDEPLOY_FORCE="${ZJDEPLOY_FORCE:-false}"
 
 ## Credentials
 OPENSSH_PASSWORD="${OPENSSH_PASSWORD:-}"
@@ -165,7 +165,7 @@ DEPENDENCY_PACKAGES_BASE=(
 # ============================================================================
 
 ## Resume / progress
-AUTODEPLOY_STEP_TOTAL=52 # must match the RunStep count (lint.sh checks)
+ZJDEPLOY_STEP_TOTAL=52 # must match the RunStep count (lint.sh checks)
 
 ## Credentials
 DEFAULT_PASSWORD="${DEFAULT_PASSWORD:-}" # empty = generate a random one at run time (printed)
@@ -220,15 +220,15 @@ DEPENDENCY_PACKAGES=("${DEPENDENCY_PACKAGES_BASE[@]}"
 set -Eeuo pipefail
 
 LogInfo() {
-    printf '[AutoDeploy] %s\n' "$*"
+    printf '[ZJDeploy] %s\n' "$*"
 }
 
 LogWarn() {
-    printf '[AutoDeploy] WARNING: %s\n' "$*" >&2
+    printf '[ZJDeploy] WARNING: %s\n' "$*" >&2
 }
 
 Die() {
-    printf '[AutoDeploy] ERROR: %s\n' "$*" >&2
+    printf '[ZJDeploy] ERROR: %s\n' "$*" >&2
     exit 1
 }
 
@@ -318,10 +318,10 @@ SetGHProxyDomain() {
 ## Resume + progress
 # Each orchestration step runs through RunStep. A step is recorded in the state
 # file only after it succeeds, so an interrupted run resumes at the first
-# unfinished step. AUTODEPLOY_FORCE=true clears the state and re-runs everything.
-# Platform must set: AUTODEPLOY_STATE_DIR, AUTODEPLOY_STEP_TOTAL.
+# unfinished step. ZJDEPLOY_FORCE=true clears the state and re-runs everything.
+# Platform must set: ZJDEPLOY_STATE_DIR, ZJDEPLOY_STEP_TOTAL.
 StateFile() {
-    printf '%s/state\n' "$AUTODEPLOY_STATE_DIR"
+    printf '%s/state\n' "$ZJDEPLOY_STATE_DIR"
 }
 
 StepDone() {
@@ -331,7 +331,7 @@ StepDone() {
 }
 
 MarkStep() {
-    mkdir -p "$AUTODEPLOY_STATE_DIR"
+    mkdir -p "$ZJDEPLOY_STATE_DIR"
     printf '%s\n' "$1" >> "$(StateFile)"
 }
 
@@ -346,7 +346,7 @@ StepsCompleted() {
 }
 
 RenderProgress() {
-    local label="$1" total="${AUTODEPLOY_STEP_TOTAL:-0}" completed width=20 filled percent bar
+    local label="$1" total="${ZJDEPLOY_STEP_TOTAL:-0}" completed width=20 filled percent bar
     completed=$(StepsCompleted)
     if [ "$total" -le 0 ]; then
         LogInfo "$label"
@@ -361,7 +361,7 @@ RenderProgress() {
 RunStep() {
     local step_id="$1"
     shift
-    if [ "${AUTODEPLOY_FORCE:-false}" != "true" ] && StepDone "$step_id"; then
+    if [ "${ZJDEPLOY_FORCE:-false}" != "true" ] && StepDone "$step_id"; then
         LogInfo "skip ${step_id} (completed in a previous run)"
         return 0
     fi
@@ -371,14 +371,14 @@ RunStep() {
 }
 
 InitRun() {
-    if [ "${AUTODEPLOY_FORCE:-false}" = "true" ]; then
+    if [ "${ZJDEPLOY_FORCE:-false}" = "true" ]; then
         rm -f "$(StateFile)"
-        LogInfo "AUTODEPLOY_FORCE=true: re-running all steps"
+        LogInfo "ZJDEPLOY_FORCE=true: re-running all steps"
     else
         local completed
         completed=$(StepsCompleted)
         if [ "$completed" -gt 0 ]; then
-            LogInfo "resuming: ${completed}/${AUTODEPLOY_STEP_TOTAL} steps already complete"
+            LogInfo "resuming: ${completed}/${ZJDEPLOY_STEP_TOTAL} steps already complete"
         fi
     fi
 }
@@ -740,7 +740,7 @@ ConfigureAPT() {
         'Update-Manager::Always-Include-Phased-Updates true;'
     )
     mkdir -p /etc/apt/apt.conf.d
-    printf '%s\n' "${apt_conf_list[@]}" > /etc/apt/apt.conf.d/99autodeploy
+    printf '%s\n' "${apt_conf_list[@]}" > /etc/apt/apt.conf.d/99zjdeploy
     rm -rf /etc/apt/preferences.d
     mkdir -p /etc/apt/preferences.d
     local entry release priority
@@ -831,7 +831,7 @@ UpgradePackages() {
 # Extra paths to remove may be passed as arguments. Never wipe all of /tmp.
 CleanupTempFiles() {
     apt clean
-    rm -f /root/.*_history /tmp/*.autodeploy "$@"
+    rm -f /root/.*_history /tmp/*.zjdeploy "$@"
 }
 
 # Keeps the newest kernel matching KERNEL_PATTERN, purges the rest.
@@ -1252,7 +1252,7 @@ ConfigureSysctl() {
             printf 'net.ipv6.conf.%s.forwarding = 1\n' "$iface"
             printf 'net.ipv6.conf.%s.use_tempaddr = 0\n' "$iface"
         done
-    } | sort -u > /etc/sysctl.d/99-autodeploy.conf
+    } | sort -u > /etc/sysctl.d/99-zjdeploy.conf
     sysctl --system
 }
 
@@ -1831,7 +1831,7 @@ ConfigurePackages() {
                 "ListenStream="
                 "ListenStream=${COCKPIT_PORT}"
             )
-            printf '%s\n' "${socket_override_list[@]}" > /etc/systemd/system/cockpit.socket.d/autodeploy.conf
+            printf '%s\n' "${socket_override_list[@]}" > /etc/systemd/system/cockpit.socket.d/zjdeploy.conf
             systemctl daemon-reload
         fi
         systemctl enable --now cockpit.socket
