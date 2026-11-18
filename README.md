@@ -112,7 +112,7 @@ curl "https://source.zhijie.online/ZJDeploy/main/dist/Reinstall.sh" \
 | `CUSTOM_HOSTNAME` / `CUSTOM_DOMAIN` | 自定义主机名 / 搜索域（Ubuntu / PVE），优先于自动检测与 `RESET_*`；检测不到主机名时自动生成 12 位随机 hash（如 `a3f19c02b7d4`） |
 | `ZSH_THEME` | `ys` | oh-my-zsh 主题 |
 | `CUSTOM_DNS` | 默认 `223.5.5.5 223.6.6.6 2400:3200::1 2400:3200:baba::1`（AliDNS），空格分隔，env 可覆盖 |
-| `DEFAULT_USERNAME` | `default` | 默认用户名（Ubuntu / PVE） |
+| `DEFAULT_USERNAME` | `zjdeploy` | 默认用户名（Ubuntu / PVE） |
 
 ### 软件包与内置常量（编辑配置块，非环境变量）
 

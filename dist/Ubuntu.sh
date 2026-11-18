@@ -172,7 +172,7 @@ DEFAULT_PASSWORD="${DEFAULT_PASSWORD:-}" # empty = generate a random one at run 
 SNMP_USER="${SNMP_USER:-ubuntu}" # SNMPv3 read-only user
 
 ## Identity
-DEFAULT_USERNAME="${DEFAULT_USERNAME:-default}"
+DEFAULT_USERNAME="${DEFAULT_USERNAME:-zjdeploy}"
 DEFAULT_FIRSTNAME="${DEFAULT_FIRSTNAME:-User}"
 DEFAULT_LASTNAME="${DEFAULT_LASTNAME:-Default}"
 
@@ -2200,10 +2200,11 @@ TRANSPORT_PROTOCOL="https"
 RunStep "SetRepositoryMirror.https" SetRepositoryMirror
 # Call UpgradePackages
 RunStep "UpgradePackages" UpgradePackages
+# Call ConfigureSystem (creates the default user before any Install*
+# step that installs into its home directory)
+ConfigureSystem
 # Call InstallCustomPackages
 InstallCustomPackages
-# Call ConfigureSystem
-ConfigureSystem
 # Call ConfigurePackages
 ConfigurePackages
 # Call CleanupTempFiles
