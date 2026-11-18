@@ -227,6 +227,7 @@ Each orchestration leaf runs through `RunStep "<id>" <function>`. A step is appe
 - **Step total**: when adding/removing a `RunStep` call, update `ZJDEPLOY_STEP_TOTAL` in the platform's `src/platforms/<name>/config.sh`; `lint.sh` fails on a mismatch.
 - **Configuration is authoritative**: edit tunable defaults in `src/config/`, not inside functions. Keep new knobs env-overridable. Structural globals a module needs (e.g. `DOCKER_APT_DISTRO`, `FRR_APT_LINE`) are documented above that function and set by the platform's `ConfigurePackages`.
 - **Release pinning is intentional**: `LSB_CODENAME`/`LSB_VERSION` (Ubuntu) and `LSB_CODENAME`/`CEPH_CODENAME` (PVE) are hardcoded to the latest release by design. `REINSTALL_RELEASE` (Reinstall) pins the latest LTS but stays env-overridable to the other LTS releases. Bump them each release in the config block; do not switch to auto-detection. PVE package picks are arch-aware: the `grub-efi-*-signed` swap happens in `src/platforms/proxmoxve/config.sh`.
+- **Internal `*.zhijie.online` names resolve to `127.0.0.1` on public DNS** (split-horizon): only the LAN DNS serves real addresses, so referencing them in public config defaults and docs (e.g. the `PROXY_URL` default) is inert off-site by design.
 - **Single quotes in generated snippets** (e.g. `plugin_upgrade_list`) are deliberate — they must not expand at generation time.
 - `pcie_acs_override` is a patched-kernel parameter; mainline kernels ignore it. Kept intentionally for homelab IOMMU grouping.
 - macOS has no `shuf`; use `$((RANDOM % 256))` for random octets.

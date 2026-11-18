@@ -107,7 +107,7 @@ REINSTALL_RELEASE='26.04' REINSTALL_PASSWORD='MyS3cure!Pass' \
 | `GIT_COMMIT_GPGSIGN` / `GIT_GPG_PROGRAM` | Git 提交 GPG 签名开关与 gpg 程序路径 |
 | `GIT_HTTP_PROXY` / `GIT_HTTPS_PROXY` | git 的 HTTP(S) 代理（独立于全局代理） |
 | `PROXY_PROTOCOL` / `PROXY_IP` / `PROXY_PORT` / `PROXY_USERNAME` / `PROXY_PASSWORD` | proxychains 上游代理 |
-| `PROXY_URL` | `http://vpn.zhijie.online:7890` | zsh `proxy_on` 便捷代理 |
+| `PROXY_URL` | `http://vpn.zhijie.online:7890` | zsh `proxy_on` 便捷代理；该域名公网解析固定为 `127.0.0.1` 回环，仅内网 DNS 给真实地址——脱离内网此默认值自动失效，公开无碍 |
 | `DEFAULT_FIRSTNAME` / `DEFAULT_LASTNAME` | `User` / `Default` | 默认用户姓名（`DEFAULT_FULLNAME` = 姓名） |
 | `CUSTOM_HOSTNAME` / `CUSTOM_DOMAIN` | 自定义主机名 / 搜索域（Ubuntu / PVE），优先于自动检测与 `RESET_*`；检测不到主机名时自动生成 12 位随机 hash（如 `a3f19c02b7d4`） |
 | `ZSH_THEME` | `ys` | oh-my-zsh 主题 |
