@@ -16,7 +16,6 @@ REINSTALL_RELEASE="${REINSTALL_RELEASE:-26.04}"
 REINSTALL_INSTALLER_PART_SIZE_MB="${REINSTALL_INSTALLER_PART_SIZE_MB:-2048}" # staging partition for the cloud image
 
 ## Installer bootstrap (Alpine netboot files run the install after reboot)
-REINSTALL_ALPINE_VERSION="${REINSTALL_ALPINE_VERSION:-auto}" # auto = detect newest, or pin e.g. 3.22
 REINSTALL_CONFHOME="${REINSTALL_CONFHOME:-https://source.zhijie.online/AutoDeploy/main/src/platforms/reinstall}" # trans.sh location
 
 ## Identity of the freshly installed system

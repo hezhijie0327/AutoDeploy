@@ -143,7 +143,6 @@ curl "https://source.zhijie.online/AutoDeploy/main/dist/Ubuntu.sh" | sudo bash
 | `REINSTALL_RELEASE` | `26.04` | 目标 Ubuntu **LTS** 版本（`20.04` / `22.04` / `24.04` / `26.04`） |
 | `REINSTALL_PASSWORD` | 随机生成并打印 | 新系统 root 密码；留空时若检测到本机 SSH 公钥则同时安装密钥 |
 | `REINSTALL_SSH_KEYS` | 复用本机 root 公钥 | authorized_keys 内容或文件路径 |
-| `REINSTALL_ALPINE_VERSION` | `auto` | 固定 Alpine 版本（如 `3.22`） |
 | `REINSTALL_INSTALLER_PART_SIZE_MB` | `2048` | 安装暂存分区大小 |
 
 流程：脚本在本机备好 Alpine netboot 内核与安装器（写入 initramfs），注册一次性 GRUB 引导项；重启后自动分区、下载 Ubuntu 云镜像并复制安装、按原网卡 MAC 还原网络配置、写入密码 / 密钥并禁用 cloud-init。**目标磁盘会被清空**，仅支持 Ubuntu 源系统、GRUB 引导。重装完成后建议再跑一次 `dist/Ubuntu.sh` 完成完整配置。

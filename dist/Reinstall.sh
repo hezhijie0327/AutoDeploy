@@ -61,7 +61,6 @@ REINSTALL_RELEASE="${REINSTALL_RELEASE:-26.04}"
 REINSTALL_INSTALLER_PART_SIZE_MB="${REINSTALL_INSTALLER_PART_SIZE_MB:-2048}" # staging partition for the cloud image
 
 ## Installer bootstrap (Alpine netboot files run the install after reboot)
-REINSTALL_ALPINE_VERSION="${REINSTALL_ALPINE_VERSION:-auto}" # auto = detect newest, or pin e.g. 3.22
 REINSTALL_CONFHOME="${REINSTALL_CONFHOME:-https://source.zhijie.online/AutoDeploy/main/src/platforms/reinstall}" # trans.sh location
 
 ## Identity of the freshly installed system
@@ -329,22 +328,17 @@ DownloadInstallerFiles() {
     # break the download.
     ALPINE_MIRROR="http://mirrors.cernet.edu.cn/alpine"
     IMAGE_MIRROR="http://mirrors.cernet.edu.cn/ubuntu-cloud-images"
-    if [ "$REINSTALL_ALPINE_VERSION" = "auto" ]; then
-        REINSTALL_ALPINE_VERSION=$(curl -fsSL "${ALPINE_MIRROR}/" | grep -oE 'v3\.[0-9]+' | sort -uV | tail -n 1 | tr -d v || true)
-    fi
-    case "$REINSTALL_ALPINE_VERSION" in
-        3.[0-9][0-9]) ;;
-        *) REINSTALL_ALPINE_VERSION="3.22" ;;
-    esac
     case "$OS_ARCHITECTURE" in
         amd64) ALPINE_ARCH="x86_64" ;;
         arm64) ALPINE_ARCH="aarch64" ;;
     esac
-    ALPINE_BASE="${ALPINE_MIRROR}/v${REINSTALL_ALPINE_VERSION}/releases/${ALPINE_ARCH}/netboot"
+    # latest-stable is a mirror symlink that always tracks the newest
+    # release - no version detection needed.
+    ALPINE_BASE="${ALPINE_MIRROR}/latest-stable/releases/${ALPINE_ARCH}/netboot"
     # The CERNET mirror carries the <codename>/current/ tree only (no
     # releases/), with codename-based filenames.
     REINSTALL_CLOUD_IMAGE="${IMAGE_MIRROR}/${UBUNTU_CODENAME}/current/${UBUNTU_CODENAME}-server-cloudimg-${OS_ARCHITECTURE}.img"
-    ALPINE_REPO="${ALPINE_MIRROR}/v${REINSTALL_ALPINE_VERSION}/main"
+    ALPINE_REPO="${ALPINE_MIRROR}/latest-stable/main"
 
     curl -fsSL -o /reinstall-vmlinuz "${ALPINE_BASE}/vmlinuz-${ALPINE_FLAVOUR}"
     curl -fsSL -o /reinstall-initrd "${ALPINE_BASE}/initramfs-${ALPINE_FLAVOUR}"
@@ -354,7 +348,7 @@ DownloadInstallerFiles() {
     for file in /reinstall-vmlinuz /reinstall-initrd /reinstall-modloop; do
         [ -s "$file" ] || Die "failed to download ${file}"
     done
-    LogInfo "staged alpine v${REINSTALL_ALPINE_VERSION} (${ALPINE_FLAVOUR}) and Ubuntu ${REINSTALL_RELEASE} (${UBUNTU_CODENAME}) cloud image"
+    LogInfo "staged alpine latest-stable (${ALPINE_FLAVOUR}) and Ubuntu ${REINSTALL_RELEASE} (${UBUNTU_CODENAME}) cloud image"
 }
 
 # BuildInstallerInitrd
