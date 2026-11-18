@@ -6,10 +6,11 @@
 # ============================================================================
 
 ## Resume / progress
-AUTODEPLOY_STEP_TOTAL=51 # must match the RunStep count (lint.sh checks)
+AUTODEPLOY_STEP_TOTAL=52 # must match the RunStep count (lint.sh checks)
 
 ## Credentials
 DEFAULT_PASSWORD="${DEFAULT_PASSWORD:-}" # empty = generate a random one at run time (printed)
+SNMP_USER="${SNMP_USER:-ubuntu}" # SNMPv3 read-only user
 
 ## Identity
 DEFAULT_USERNAME="${DEFAULT_USERNAME:-default}"

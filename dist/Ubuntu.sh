@@ -165,10 +165,11 @@ DEPENDENCY_PACKAGES_BASE=(
 # ============================================================================
 
 ## Resume / progress
-AUTODEPLOY_STEP_TOTAL=51 # must match the RunStep count (lint.sh checks)
+AUTODEPLOY_STEP_TOTAL=52 # must match the RunStep count (lint.sh checks)
 
 ## Credentials
 DEFAULT_PASSWORD="${DEFAULT_PASSWORD:-}" # empty = generate a random one at run time (printed)
+SNMP_USER="${SNMP_USER:-ubuntu}" # SNMPv3 read-only user
 
 ## Identity
 DEFAULT_USERNAME="${DEFAULT_USERNAME:-default}"
@@ -1288,7 +1289,7 @@ ConfigureGAI() {
 # ConfigureFail2Ban must be given FAIL2BAN_JAILS (array) and
 # FAIL2BAN_BANACTION (ufw | nftables-multiport | default = keep the distro
 # jail.conf values), plus optional FAIL2BAN_FILTER_NAME + FAIL2BAN_FILTER
-# (array). ConfigureSNMPBase needs SNMP_USER.
+# (array). ConfigureSNMPBase needs SNMP_USER (platform config: ubuntu / proxmox).
 # (sshd lives in debian/ssh.sh alongside the OpenSSH key setup.)
 # ============================================================================
 
@@ -1356,7 +1357,7 @@ deb-src [arch=${OS_ARCHITECTURE:-amd64} signed-by=/usr/share/keyrings/crowdsec-a
     InstallAptPackages "crowdsec" "crowdsec-firewall-bouncer-nftables"
 }
 
-# Platform wrapper sets SNMP_USER, then calls this.
+# SNMP_USER comes from the platform config block (ubuntu / proxmox).
 ConfigureSNMPBase() {
     HaveCommand snmpwalk || return 0
     if [ -z "${SNMP_AUTH_PASSWORD:-}" ]; then
@@ -2045,6 +2046,7 @@ ConfigurePackages() {
     RunStep "ConfigureProxyChains" ConfigureProxyChains
     RunStep "ConfigurePythonPyPI" ConfigurePythonPyPI
     RunStep "ConfigureResolved" ConfigureResolved
+    RunStep "ConfigureSNMP" ConfigureSNMPBase
     RunStep "ConfigureSshd" ConfigureSshd
     RunStep "ConfigureSysctl" ConfigureSysctl
     RunStep "ConfigureSystemd" ConfigureSystemd

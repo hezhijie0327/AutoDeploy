@@ -312,6 +312,7 @@ ConfigurePackages() {
     RunStep "ConfigureProxyChains" ConfigureProxyChains
     RunStep "ConfigurePythonPyPI" ConfigurePythonPyPI
     RunStep "ConfigureResolved" ConfigureResolved
+    RunStep "ConfigureSNMP" ConfigureSNMPBase
     RunStep "ConfigureSshd" ConfigureSshd
     RunStep "ConfigureSysctl" ConfigureSysctl
     RunStep "ConfigureSystemd" ConfigureSystemd

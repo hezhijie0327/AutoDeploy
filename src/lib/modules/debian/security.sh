@@ -4,7 +4,7 @@
 # ConfigureFail2Ban must be given FAIL2BAN_JAILS (array) and
 # FAIL2BAN_BANACTION (ufw | nftables-multiport | default = keep the distro
 # jail.conf values), plus optional FAIL2BAN_FILTER_NAME + FAIL2BAN_FILTER
-# (array). ConfigureSNMPBase needs SNMP_USER.
+# (array). ConfigureSNMPBase needs SNMP_USER (platform config: ubuntu / proxmox).
 # (sshd lives in debian/ssh.sh alongside the OpenSSH key setup.)
 # ============================================================================
 
@@ -72,7 +72,7 @@ deb-src [arch=${OS_ARCHITECTURE:-amd64} signed-by=/usr/share/keyrings/crowdsec-a
     InstallAptPackages "crowdsec" "crowdsec-firewall-bouncer-nftables"
 }
 
-# Platform wrapper sets SNMP_USER, then calls this.
+# SNMP_USER comes from the platform config block (ubuntu / proxmox).
 ConfigureSNMPBase() {
     HaveCommand snmpwalk || return 0
     if [ -z "${SNMP_AUTH_PASSWORD:-}" ]; then
