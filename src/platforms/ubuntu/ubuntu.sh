@@ -284,10 +284,6 @@ ConfigurePackages() {
     MODULE_LIST_EXTRA=()
     SYSCTL_INTERFACE_MODE="exclude"
     SYSCTL_INTERFACE_PATTERN='^(docker0|lo|wg0)$'
-    DOCKER_APT_DISTRO="ubuntu"
-    FRR_APT_LINE="deb [arch=${OS_ARCHITECTURE} signed-by=/usr/share/keyrings/frrouting-archive-keyring.gpg] https://deb.frrouting.org/frr stable frr-stable"
-    FRR_EXTRA_PACKAGES=("frr-rpki-rtrlib")
-    SetDebianGlobals
 
     RunStep "ConfigureAPT" ConfigureAPT
     RunStep "ConfigureBusybox" ConfigureBusybox
@@ -324,6 +320,13 @@ ConfigurePackages() {
 
 # Configure System
 ConfigureSystem() {
+    # Install-time structural globals: this container's Install* steps run
+    # BEFORE ConfigurePackages, so the variables their modules need are
+    # declared here rather than there.
+    DOCKER_APT_DISTRO="ubuntu"
+    FRR_APT_LINE="deb [arch=${OS_ARCHITECTURE} signed-by=/usr/share/keyrings/frrouting-archive-keyring.gpg] https://deb.frrouting.org/frr stable frr-stable"
+    FRR_EXTRA_PACKAGES=("frr-rpki-rtrlib")
+    SetDebianGlobals
     ConfigureHostfile() {
         WriteHostfile "127.0.1.1 ${NEW_HOSTNAME}"
     }
