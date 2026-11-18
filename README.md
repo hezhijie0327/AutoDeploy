@@ -31,22 +31,25 @@
 
 ## 快速开始
 
+| 平台 | 脚本 | 运行方式 |
+|------|------|----------|
+| DSM 群晖 | [DSM.sh](https://source.zhijie.online/AutoDeploy/main/dist/DSM.sh) | root 执行 |
+| macOS | [macOS.sh](https://source.zhijie.online/AutoDeploy/main/dist/macOS.sh) | 普通用户执行，内部按需 `sudo` |
+| Proxmox VE | [ProxmoxVE.sh](https://source.zhijie.online/AutoDeploy/main/dist/ProxmoxVE.sh) | root 执行 |
+| Ubuntu | [Ubuntu.sh](https://source.zhijie.online/AutoDeploy/main/dist/Ubuntu.sh) | root 执行 |
+| Ubuntu 网络重装 | [Reinstall.sh](https://source.zhijie.online/AutoDeploy/main/dist/Reinstall.sh) | root 执行；**危险：下次重启清盘重装** |
+
 ```bash
-# DSM 群晖
-curl "https://source.zhijie.online/AutoDeploy/main/dist/DSM.sh" | sudo bash
+# Linux / DSM / PVE（<脚本名> 换成上表任意一个）
+curl "https://source.zhijie.online/AutoDeploy/main/dist/<脚本名>.sh" | sudo bash
 
-# macOS（普通用户执行，内部按需 sudo）
+# macOS（普通用户执行）
 /bin/bash -c "$(curl -fsSL 'https://source.zhijie.online/AutoDeploy/main/dist/macOS.sh')"
+```
 
-# Proxmox VE
-curl "https://source.zhijie.online/AutoDeploy/main/dist/ProxmoxVE.sh" | sudo bash
+网络重装指定版本与密码（默认生成随机 root 密码并打印）：
 
-# Ubuntu
-curl "https://source.zhijie.online/AutoDeploy/main/dist/Ubuntu.sh" | sudo bash
-
-# Ubuntu 网络重装（危险：下次重启清盘重装，默认生成随机 root 密码并打印）
-curl "https://source.zhijie.online/AutoDeploy/main/dist/Reinstall.sh" | sudo bash
-# 指定版本与密码：
+```bash
 REINSTALL_RELEASE='24.04' REINSTALL_PASSWORD='MyS3cure!Pass' \
   curl "https://source.zhijie.online/AutoDeploy/main/dist/Reinstall.sh" | sudo bash
 ```
