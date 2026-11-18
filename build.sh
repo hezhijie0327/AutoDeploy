@@ -61,7 +61,7 @@ BuildScript "dist/Ubuntu.sh" \
     src/lib/modules/proxychains.sh src/lib/modules/pypi.sh src/lib/modules/ssh.sh \
     src/lib/modules/wireguard.sh src/lib/modules/zsh.sh \
     src/lib/modules/debian/apt.sh src/lib/modules/debian/daemons.sh src/lib/modules/debian/kernel.sh \
-    src/lib/modules/debian/security.sh src/lib/modules/debian/storage.sh \
+    src/lib/modules/debian/security.sh src/lib/modules/debian/ssh.sh src/lib/modules/debian/storage.sh \
     src/lib/modules/debian/system.sh src/lib/modules/debian/users.sh \
     src/platforms/ubuntu/ubuntu.sh
 
@@ -74,7 +74,7 @@ BuildScript "dist/ProxmoxVE.sh" \
     src/lib/modules/proxychains.sh src/lib/modules/pypi.sh src/lib/modules/ssh.sh \
     src/lib/modules/zsh.sh \
     src/lib/modules/debian/apt.sh src/lib/modules/debian/daemons.sh src/lib/modules/debian/kernel.sh \
-    src/lib/modules/debian/security.sh src/lib/modules/debian/storage.sh \
+    src/lib/modules/debian/security.sh src/lib/modules/debian/ssh.sh src/lib/modules/debian/storage.sh \
     src/lib/modules/debian/system.sh src/lib/modules/debian/users.sh \
     src/platforms/proxmoxve/proxmoxve.sh
 

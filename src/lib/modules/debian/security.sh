@@ -1,10 +1,11 @@
 # ============================================================================
-# modules/debian/security.sh - Fail2Ban, CrowdSec, sshd and SNMPv3
+# modules/debian/security.sh - Fail2Ban, CrowdSec and SNMPv3
 # (Ubuntu / Proxmox VE, bash 4.4+)
 # ConfigureFail2Ban must be given FAIL2BAN_JAILS (array) and
 # FAIL2BAN_BANACTION (ufw | nftables-multiport | default = keep the distro
 # jail.conf values), plus optional FAIL2BAN_FILTER_NAME + FAIL2BAN_FILTER
 # (array). ConfigureSNMPBase needs SNMP_USER.
+# (sshd lives in debian/ssh.sh alongside the OpenSSH key setup.)
 # ============================================================================
 
 ConfigureFail2Ban() {
@@ -69,32 +70,6 @@ deb-src [arch=${OS_ARCHITECTURE:-amd64} signed-by=/usr/share/keyrings/crowdsec-a
         done < <(cscli bouncers list | grep 'FirewallBouncer' | awk '{print $1}' || true)
     fi
     InstallAptPackages "crowdsec" "crowdsec-firewall-bouncer-nftables"
-}
-
-# Root password login is intentional: the root account gets locked afterwards
-# via LOCK_ROOT=TRUE (see ConfigureRootUser). Needs SSH_PORT (defaults to 22,
-# e.g. Proxmox VE keeps 22 for cluster-internal SSH).
-ConfigureSshd() {
-    [ -f /usr/share/openssh/sshd_config ] || return 0
-    local port="${SSH_PORT:-22}"
-    # Replace the commented Port directive in place (keeps the vendor
-    # layout); fall back to an appended line when the file has none.
-    sed -E \
-        -e "s/^#?[[:space:]]*Port[[:space:]].*/Port ${port}/" \
-        -e 's/^#?PasswordAuthentication .*/PasswordAuthentication yes/' \
-        -e 's/^#?PermitRootLogin .*/PermitRootLogin yes/' \
-        -e 's/^#?PubkeyAuthentication .*/PubkeyAuthentication yes/' \
-        /usr/share/openssh/sshd_config > /etc/ssh/sshd_config
-    grep -qE '^Port[[:space:]]' /etc/ssh/sshd_config || printf 'Port %s\n' "$port" >> /etc/ssh/sshd_config
-    rm -f /etc/ssh/sshd_config.d/*
-    # Ubuntu 25.10+/PVE 9: sshd runs behind ssh.socket, and after changing
-    # Port the socket configuration must be regenerated and the socket
-    # restarted (the notice in the vendor sshd_config documents exactly
-    # this); restarting the service alone does not move the port.
-    if systemctl is-enabled ssh.socket > /dev/null 2>&1 || systemctl is-active ssh.socket > /dev/null 2>&1; then
-        systemctl daemon-reload
-        systemctl restart ssh.socket
-    fi
 }
 
 # Platform wrapper sets SNMP_USER, then calls this.

@@ -5,6 +5,8 @@
 # DNS_LINE, CPU_VENDOR_ID, ENABLE_IOMMU, MICROCODE,
 # INTEL_GVT_MODULES, INTEL_HDMI_AUDIO_MODULE, NESTED_MODULES,
 # OS_ARCHITECTURE, plus the Debian structural globals via SetDebianGlobals.
+# WriteHostfile needs NEW_HOSTNAME, HOSTS_BASE_ENTRIES (modules/hosts.sh)
+# and takes extra host entries as arguments.
 # ============================================================================
 
 GenerateDomain() {
@@ -135,6 +137,17 @@ WriteResolvConf() {
         done
         printf 'search %s\n' "${NEW_DOMAIN[*]}"
     } > /etc/resolv.conf
+}
+
+# Write /etc/hosts plus /etc/hostname and apply it via hostnamectl.
+# Extra entries (e.g. the Ubuntu loopback alias or the PVE management IP)
+# come first as arguments, above HOSTS_BASE_ENTRIES.
+WriteHostfile() {
+    local host_list=("$@")
+    host_list+=("${HOSTS_BASE_ENTRIES[@]}")
+    printf '%s\n' "${host_list[@]}" > "/etc/hosts"
+    printf '%s\n' "$NEW_HOSTNAME" > "/etc/hostname"
+    hostnamectl set-hostname "$NEW_HOSTNAME"
 }
 
 # Structural globals shared by both Debian platforms; platform ConfigurePackages

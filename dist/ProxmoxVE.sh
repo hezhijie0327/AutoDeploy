@@ -467,10 +467,10 @@ ConfigureGPG() {
 # ============================================================================
 # modules/hosts.sh - standard /etc/hosts entries (all platforms, bash 3.2+)
 # Pure data table. Debian platforms append platform extras via WriteHostfile
-# (modules/debian/users.sh); macOS writes the table with sudo tee directly.
+# (modules/debian/system.sh); macOS writes the table with sudo tee directly.
 # ============================================================================
 
-# shellcheck disable=SC2034 # consumed by WriteHostfile (debian users.sh) and macOS
+# shellcheck disable=SC2034 # consumed by WriteHostfile (debian system.sh) and macOS
 HOSTS_BASE_ENTRIES=(
     "127.0.0.1 localhost"
     "255.255.255.255 broadcasthost"
@@ -1241,12 +1241,13 @@ ConfigureGAI() {
     printf '%s\n' "${gai_conf_list[@]}" | sort -u > /etc/gai.conf
 }
 # ============================================================================
-# modules/debian/security.sh - Fail2Ban, CrowdSec, sshd and SNMPv3
+# modules/debian/security.sh - Fail2Ban, CrowdSec and SNMPv3
 # (Ubuntu / Proxmox VE, bash 4.4+)
 # ConfigureFail2Ban must be given FAIL2BAN_JAILS (array) and
 # FAIL2BAN_BANACTION (ufw | nftables-multiport | default = keep the distro
 # jail.conf values), plus optional FAIL2BAN_FILTER_NAME + FAIL2BAN_FILTER
 # (array). ConfigureSNMPBase needs SNMP_USER.
+# (sshd lives in debian/ssh.sh alongside the OpenSSH key setup.)
 # ============================================================================
 
 ConfigureFail2Ban() {
@@ -1313,32 +1314,6 @@ deb-src [arch=${OS_ARCHITECTURE:-amd64} signed-by=/usr/share/keyrings/crowdsec-a
     InstallAptPackages "crowdsec" "crowdsec-firewall-bouncer-nftables"
 }
 
-# Root password login is intentional: the root account gets locked afterwards
-# via LOCK_ROOT=TRUE (see ConfigureRootUser). Needs SSH_PORT (defaults to 22,
-# e.g. Proxmox VE keeps 22 for cluster-internal SSH).
-ConfigureSshd() {
-    [ -f /usr/share/openssh/sshd_config ] || return 0
-    local port="${SSH_PORT:-22}"
-    # Replace the commented Port directive in place (keeps the vendor
-    # layout); fall back to an appended line when the file has none.
-    sed -E \
-        -e "s/^#?[[:space:]]*Port[[:space:]].*/Port ${port}/" \
-        -e 's/^#?PasswordAuthentication .*/PasswordAuthentication yes/' \
-        -e 's/^#?PermitRootLogin .*/PermitRootLogin yes/' \
-        -e 's/^#?PubkeyAuthentication .*/PubkeyAuthentication yes/' \
-        /usr/share/openssh/sshd_config > /etc/ssh/sshd_config
-    grep -qE '^Port[[:space:]]' /etc/ssh/sshd_config || printf 'Port %s\n' "$port" >> /etc/ssh/sshd_config
-    rm -f /etc/ssh/sshd_config.d/*
-    # Ubuntu 25.10+/PVE 9: sshd runs behind ssh.socket, and after changing
-    # Port the socket configuration must be regenerated and the socket
-    # restarted (the notice in the vendor sshd_config documents exactly
-    # this); restarting the service alone does not move the port.
-    if systemctl is-enabled ssh.socket > /dev/null 2>&1 || systemctl is-active ssh.socket > /dev/null 2>&1; then
-        systemctl daemon-reload
-        systemctl restart ssh.socket
-    fi
-}
-
 # Platform wrapper sets SNMP_USER, then calls this.
 ConfigureSNMPBase() {
     HaveCommand snmpwalk || return 0
@@ -1370,6 +1345,54 @@ ConfigureSNMPBase() {
     systemctl start snmpd
     # Verification only; head closes the pipe early, so ignore SIGPIPE.
     snmpwalk -v3 -a SHA -A "$SNMP_AUTH_PASS" -x AES -X "$SNMP_PRIV_PASS" -l authPriv -u "$SNMP_USER" 127.0.0.1 | head || true
+}
+# ============================================================================
+# modules/debian/ssh.sh - OpenSSH host keys, user key setup and sshd
+# (Ubuntu / Proxmox VE, bash 4.4+)
+# ConfigureOpenSSH needs NEW_HOSTNAME + DEFAULT_USERNAME (+DEFAULT_PASSWORD
+# for the key ownership) and the ssh.sh key helpers; ConfigureSshd needs
+# SSH_PORT (defaults to 22, e.g. Proxmox VE keeps 22 for cluster-internal
+# SSH).
+# ============================================================================
+
+ConfigureOpenSSH() {
+    HaveCommand ssh-keygen || return 0
+    if [ -d /etc/ssh ]; then
+        GenerateHostSSHKeys /etc/ssh "root@${NEW_HOSTNAME}"
+    fi
+    InitUserSSHDir /root/.ssh "root@${NEW_HOSTNAME}"
+    local user_ssh="/home/${DEFAULT_USERNAME}/.ssh"
+    InitUserSSHDir "$user_ssh" "${DEFAULT_USERNAME}@${NEW_HOSTNAME}" "$DEFAULT_USERNAME:$DEFAULT_USERNAME"
+    if [ -f "/home/${DEFAULT_USERNAME}/.gnupg/authorized_keys" ]; then
+        mv "/home/${DEFAULT_USERNAME}/.gnupg/authorized_keys" "${user_ssh}/authorized_keys"
+        chmod 600 "${user_ssh}/authorized_keys"
+    fi
+}
+
+# Root password login is intentional: the root account gets locked afterwards
+# via LOCK_ROOT=TRUE (see ConfigureRootUser). Needs SSH_PORT (defaults to 22,
+# e.g. Proxmox VE keeps 22 for cluster-internal SSH).
+ConfigureSshd() {
+    [ -f /usr/share/openssh/sshd_config ] || return 0
+    local port="${SSH_PORT:-22}"
+    # Replace the commented Port directive in place (keeps the vendor
+    # layout); fall back to an appended line when the file has none.
+    sed -E \
+        -e "s/^#?[[:space:]]*Port[[:space:]].*/Port ${port}/" \
+        -e 's/^#?PasswordAuthentication .*/PasswordAuthentication yes/' \
+        -e 's/^#?PermitRootLogin .*/PermitRootLogin yes/' \
+        -e 's/^#?PubkeyAuthentication .*/PubkeyAuthentication yes/' \
+        /usr/share/openssh/sshd_config > /etc/ssh/sshd_config
+    grep -qE '^Port[[:space:]]' /etc/ssh/sshd_config || printf 'Port %s\n' "$port" >> /etc/ssh/sshd_config
+    rm -f /etc/ssh/sshd_config.d/*
+    # Ubuntu 25.10+/PVE 9: sshd runs behind ssh.socket, and after changing
+    # Port the socket configuration must be regenerated and the socket
+    # restarted (the notice in the vendor sshd_config documents exactly
+    # this); restarting the service alone does not move the port.
+    if systemctl is-enabled ssh.socket > /dev/null 2>&1 || systemctl is-active ssh.socket > /dev/null 2>&1; then
+        systemctl daemon-reload
+        systemctl restart ssh.socket
+    fi
 }
 # ============================================================================
 # modules/debian/storage.sh - swap helpers for Debian family
@@ -1424,6 +1447,8 @@ CreateZRamSWAP() {
 # DNS_LINE, CPU_VENDOR_ID, ENABLE_IOMMU, MICROCODE,
 # INTEL_GVT_MODULES, INTEL_HDMI_AUDIO_MODULE, NESTED_MODULES,
 # OS_ARCHITECTURE, plus the Debian structural globals via SetDebianGlobals.
+# WriteHostfile needs NEW_HOSTNAME, HOSTS_BASE_ENTRIES (modules/hosts.sh)
+# and takes extra host entries as arguments.
 # ============================================================================
 
 GenerateDomain() {
@@ -1556,6 +1581,17 @@ WriteResolvConf() {
     } > /etc/resolv.conf
 }
 
+# Write /etc/hosts plus /etc/hostname and apply it via hostnamectl.
+# Extra entries (e.g. the Ubuntu loopback alias or the PVE management IP)
+# come first as arguments, above HOSTS_BASE_ENTRIES.
+WriteHostfile() {
+    local host_list=("$@")
+    host_list+=("${HOSTS_BASE_ENTRIES[@]}")
+    printf '%s\n' "${host_list[@]}" > "/etc/hosts"
+    printf '%s\n' "$NEW_HOSTNAME" > "/etc/hostname"
+    hostnamectl set-hostname "$NEW_HOSTNAME"
+}
+
 # Structural globals shared by both Debian platforms; platform ConfigurePackages
 # blocks may override any of them (e.g. Proxmox VE extends ZSH_PATH_LIST).
 # shellcheck disable=SC2034 # consumed by the gpg/proxychains/zsh modules
@@ -1572,25 +1608,12 @@ SetDebianGlobals() {
     ZSH_TRAPEXIT="false"
 }
 # ============================================================================
-# modules/debian/users.sh - user, root and host identity management
+# modules/debian/users.sh - default user and root account management
 # (Ubuntu / Proxmox VE, bash 4.4+)
 # ConfigureDefaultUser needs DEFAULT_USERNAME/FULLNAME/PASSWORD (plus
 # DEFAULT_PASSWORD_DEFAULT for the warning) and the PURGE_OTHER_USERS switch;
 # the pveum blocks are no-ops on non-PVE hosts (HaveCommand pveum).
-# WriteHostfile needs NEW_HOSTNAME and takes extra host entries as arguments.
-# ConfigureOpenSSH needs NEW_HOSTNAME + DEFAULT_USERNAME.
 # ============================================================================
-
-# Write /etc/hosts plus /etc/hostname and apply it via hostnamectl.
-# Extra entries (e.g. the Ubuntu loopback alias or the PVE management IP)
-# come first as arguments, above HOSTS_BASE_ENTRIES.
-WriteHostfile() {
-    local host_list=("$@")
-    host_list+=("${HOSTS_BASE_ENTRIES[@]}")
-    printf '%s\n' "${host_list[@]}" > "/etc/hosts"
-    printf '%s\n' "$NEW_HOSTNAME" > "/etc/hostname"
-    hostnamectl set-hostname "$NEW_HOSTNAME"
-}
 
 ConfigureDefaultUser() {
     WarnDefaultPassword "DEFAULT_PASSWORD" "$DEFAULT_PASSWORD" "$DEFAULT_PASSWORD_DEFAULT"
@@ -1657,20 +1680,6 @@ ConfigureRootUser() {
         passwd -l root
     else
         passwd -u root
-    fi
-}
-
-ConfigureOpenSSH() {
-    HaveCommand ssh-keygen || return 0
-    if [ -d /etc/ssh ]; then
-        GenerateHostSSHKeys /etc/ssh "root@${NEW_HOSTNAME}"
-    fi
-    InitUserSSHDir /root/.ssh "root@${NEW_HOSTNAME}"
-    local user_ssh="/home/${DEFAULT_USERNAME}/.ssh"
-    InitUserSSHDir "$user_ssh" "${DEFAULT_USERNAME}@${NEW_HOSTNAME}" "$DEFAULT_USERNAME:$DEFAULT_USERNAME"
-    if [ -f "/home/${DEFAULT_USERNAME}/.gnupg/authorized_keys" ]; then
-        mv "/home/${DEFAULT_USERNAME}/.gnupg/authorized_keys" "${user_ssh}/authorized_keys"
-        chmod 600 "${user_ssh}/authorized_keys"
     fi
 }
 ## Function

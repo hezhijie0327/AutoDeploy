@@ -1,23 +1,10 @@
 # ============================================================================
-# modules/debian/users.sh - user, root and host identity management
+# modules/debian/users.sh - default user and root account management
 # (Ubuntu / Proxmox VE, bash 4.4+)
 # ConfigureDefaultUser needs DEFAULT_USERNAME/FULLNAME/PASSWORD (plus
 # DEFAULT_PASSWORD_DEFAULT for the warning) and the PURGE_OTHER_USERS switch;
 # the pveum blocks are no-ops on non-PVE hosts (HaveCommand pveum).
-# WriteHostfile needs NEW_HOSTNAME and takes extra host entries as arguments.
-# ConfigureOpenSSH needs NEW_HOSTNAME + DEFAULT_USERNAME.
 # ============================================================================
-
-# Write /etc/hosts plus /etc/hostname and apply it via hostnamectl.
-# Extra entries (e.g. the Ubuntu loopback alias or the PVE management IP)
-# come first as arguments, above HOSTS_BASE_ENTRIES.
-WriteHostfile() {
-    local host_list=("$@")
-    host_list+=("${HOSTS_BASE_ENTRIES[@]}")
-    printf '%s\n' "${host_list[@]}" > "/etc/hosts"
-    printf '%s\n' "$NEW_HOSTNAME" > "/etc/hostname"
-    hostnamectl set-hostname "$NEW_HOSTNAME"
-}
 
 ConfigureDefaultUser() {
     WarnDefaultPassword "DEFAULT_PASSWORD" "$DEFAULT_PASSWORD" "$DEFAULT_PASSWORD_DEFAULT"
@@ -84,19 +71,5 @@ ConfigureRootUser() {
         passwd -l root
     else
         passwd -u root
-    fi
-}
-
-ConfigureOpenSSH() {
-    HaveCommand ssh-keygen || return 0
-    if [ -d /etc/ssh ]; then
-        GenerateHostSSHKeys /etc/ssh "root@${NEW_HOSTNAME}"
-    fi
-    InitUserSSHDir /root/.ssh "root@${NEW_HOSTNAME}"
-    local user_ssh="/home/${DEFAULT_USERNAME}/.ssh"
-    InitUserSSHDir "$user_ssh" "${DEFAULT_USERNAME}@${NEW_HOSTNAME}" "$DEFAULT_USERNAME:$DEFAULT_USERNAME"
-    if [ -f "/home/${DEFAULT_USERNAME}/.gnupg/authorized_keys" ]; then
-        mv "/home/${DEFAULT_USERNAME}/.gnupg/authorized_keys" "${user_ssh}/authorized_keys"
-        chmod 600 "${user_ssh}/authorized_keys"
     fi
 }

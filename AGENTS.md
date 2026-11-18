@@ -79,6 +79,7 @@ Strong success criteria let you loop independently. Weak criteria ("make it work
 Every commit subject starts with a type prefix — `feat` / `fix` / `chore` / `docs` / `revert` / `refactor` / `perf` / `test` / `build` — optionally scoped: `fix(toolbar): ...`. Subject: imperative, lowercase start, no trailing period, aim ≤ 72 chars; detail goes in the body after a blank line (why, not what); breaking changes take `!` before the colon or a `BREAKING CHANGE:` body footer. Never rewrite pushed history.
 
 - Commit incrementally — one logical change per commit, after lint and tests pass. Present changes for review before committing.
+- **Never commit a `src/` change without its regenerated `dist/` artifacts**: run `./build.sh` first and `git add` the dist files in the SAME commit. A src commit without dist leaves the tree stale (lint.sh fails on a fresh clone) and forces history rewrites to fix.
 - PRs: link the issue, summarize the change and verification (tests/benchmarks), and include config/log/pprof evidence for bug fixes.
 - Commit tested changes only
 - Use descriptive commit messages
@@ -161,10 +162,11 @@ src/
 │           ├── apt.sh          #   APT config, batch installs, upgrades, cleanup
 │           ├── daemons.sh      #   chrony, docker, frr, lldpd, nut, postfix
 │           ├── kernel.sh       #   modules, sysctl, tuned, gai
-│           ├── security.sh     #   fail2ban, crowdsec, sshd, snmp
+│           ├── security.sh     #   fail2ban, crowdsec, snmp
+│           ├── ssh.sh          #   host/user SSH keys wiring, sshd config
 │           ├── storage.sh      #   swap sizing, swap clear, zram
-│           ├── system.sh       #   domain/hostname/DNS/CPU/arch facts, SetDebianGlobals
-│           └── users.sh        #   default user, root, hostfile, openssh
+│           ├── system.sh       #   domain/hostname/DNS/CPU/arch facts, hosts file, SetDebianGlobals
+│           └── users.sh        #   default user, root
 └── platforms/          # one directory per platform: config.sh + <name>.sh
     ├── dsm/            #   config.sh + dsm.sh
     ├── macos/          #   config.sh + macos.sh
