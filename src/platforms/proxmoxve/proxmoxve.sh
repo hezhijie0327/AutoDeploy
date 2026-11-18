@@ -357,7 +357,23 @@ ConfigureSystem() {
     ConfigureProxmoxVENode() {
         if [ "$OLD_HOSTNAME" != "$NEW_HOSTNAME" ]; then
             if [ -d "/etc/pve/nodes/${OLD_HOSTNAME}" ]; then
-                tar -czvf "/etc/pve/nodes/${OLD_HOSTNAME}.tar.gz" "/etc/pve/nodes/${OLD_HOSTNAME}"
+                # Guest configs (qemu-server/lxc) must follow the rename,
+                # otherwise VMs/CTs defined under the old node name would
+                # disappear from the cluster config. VM disks are unaffected
+                # - they live on storage, not in the node directory.
+                local guest_dir conf
+                for guest_dir in qemu-server lxc; do
+                    if [ -d "/etc/pve/nodes/${OLD_HOSTNAME}/${guest_dir}" ]; then
+                        mkdir -p "/etc/pve/nodes/${NEW_HOSTNAME}/${guest_dir}"
+                        for conf in "/etc/pve/nodes/${OLD_HOSTNAME}/${guest_dir}"/*.conf; do
+                            if [ -f "$conf" ]; then
+                                cp -a "$conf" "/etc/pve/nodes/${NEW_HOSTNAME}/${guest_dir}/"
+                                LogInfo "guest config moved: ${conf##*/} -> ${NEW_HOSTNAME}/${guest_dir}"
+                            fi
+                        done
+                    fi
+                done
+                tar -czf "/etc/pve/nodes/${OLD_HOSTNAME}.tar.gz" -C "/etc/pve/nodes" "${OLD_HOSTNAME}"
                 if [ -f "/etc/pve/nodes/${OLD_HOSTNAME}.tar.gz" ]; then
                     rm -rf "/etc/pve/nodes/${OLD_HOSTNAME}"
                 fi
@@ -368,9 +384,9 @@ ConfigureSystem() {
                     rm -rf "/var/lib/rrdcached/db/pve2-node/${OLD_HOSTNAME}"
                 fi
             fi
-            if [ -d "/var/lib/rrdcached/db/pve2-storage/${OLD_HOSTNAME}" ]; then
+            if [ -f "/var/lib/rrdcached/db/pve2-storage/${OLD_HOSTNAME}" ]; then
                 cp -rf "/var/lib/rrdcached/db/pve2-storage/${OLD_HOSTNAME}" "/var/lib/rrdcached/db/pve2-storage/${NEW_HOSTNAME}"
-                if [ -d "/var/lib/rrdcached/db/pve2-storage/${NEW_HOSTNAME}" ]; then
+                if [ -f "/var/lib/rrdcached/db/pve2-storage/${NEW_HOSTNAME}" ]; then
                     rm -rf "/var/lib/rrdcached/db/pve2-storage/${OLD_HOSTNAME}"
                 fi
             fi
