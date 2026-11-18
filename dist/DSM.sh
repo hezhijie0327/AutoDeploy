@@ -62,7 +62,6 @@ AUTODEPLOY_STEP_TOTAL=10 # must match the RunStep count (lint.sh checks)
 # the OMZ, zsh and GPG steps) plus the SynoCli suite.
 PKG_SOURCES=(
     "SynoCommunity|https://packages.synocommunity.com/"
-    "Kuangshen SPK|https://spk7.imnks.com/"
 )
 PKG_PACKAGES=(
     "git" # required by InstallOhMyZsh
