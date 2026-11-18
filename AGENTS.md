@@ -234,6 +234,15 @@ Each orchestration leaf runs through `RunStep "<id>" <function>`. A step is appe
 ### DSM.sh
 - Runs as root via `sudo bash`; the operator account is taken from `SUDO_USER` (not `whoami`, which is root under sudo)
 - Synology commands: `synogroup`, `chown root:docker`; homes under `/var/services/homes/`
+- Package Center: PKG_SOURCES are merged into `/usr/syno/etc/packages/feeds`
+  (flat JSON array, URL-deduped in bash); PKG_PACKAGES install via
+  `synopkg install_from_server` (the server-feed subcommand - plain
+  `synopkg install` is for local .spk files) and a weekly
+  `synopkg upgradeall` line in `/etc/crontab` (the layer DSM itself executes)
+- Docker registry mirrors: only the `registry-mirrors` value in
+  `/var/packages/{ContainerManager,Docker}/etc/dockerd.json` is rewritten;
+  never touch the DSM `db` log-driver, and keep PKG_PACKAGES ids matching
+  the feed package ids (`synopkg list`)
 - Default shell switches via `~/.profile` exec (DSM has no `usermod`)
 
 ### macOS.sh

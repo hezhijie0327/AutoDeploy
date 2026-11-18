@@ -117,7 +117,8 @@ REINSTALL_RELEASE='24.04' REINSTALL_PASSWORD='MyS3cure!Pass' \
 | 变量 | 所在文件 | 说明 |
 |------|----------|------|
 | `DEPENDENCY_PACKAGES_BASE` / `DEPENDENCY_PACKAGES` | `config/debian.sh` + 平台配置 | Debian 系基础包 + 平台增量 |
-| `DOCKER_REGISTRY_MIRRORS` | `config/debian.sh` | Docker registry 镜像列表（写入 daemon.json） |
+| `DOCKER_REGISTRY_MIRRORS` | `config/debian.sh` + `platforms/dsm/config.sh` | Docker registry 镜像列表；Ubuntu/PVE 写入 daemon.json，DSM 写入 Container Manager dockerd.json（DSM 默认空 = 不动已有配置） |
+| `PKG_SOURCES` / `PKG_PACKAGES` / `PKG_AUTO_UPDATE` | `platforms/dsm/config.sh` | DSM 套件源（合并进 `/usr/syno/etc/packages/feeds`）、`synopkg install_from_server` 套件列表、每周日 04:15 自动 `synopkg upgradeall`（`/etc/crontab`） |
 | `ZSH_BUILD_IN_PLUGINS` | 平台配置 | oh-my-zsh 内置插件列表 |
 | `BREW_PACKAGES` / `CASK_APPS` / `MAS_APPS` | `platforms/macos/config.sh` | Homebrew formulae / cask / Mac App Store 应用 |
 | `LSB_CODENAME` / `LSB_VERSION` / `CEPH_CODENAME` | 平台配置 | 发行版代号（**有意 pin 到最新**，随发行版周期手动更新） |

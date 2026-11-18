@@ -50,7 +50,50 @@ ZSH_THEME="${ZSH_THEME:-ys}"
 # ============================================================================
 
 ## Resume / progress
-AUTODEPLOY_STEP_TOTAL=8 # must match the RunStep count (lint.sh checks)
+AUTODEPLOY_STEP_TOTAL=11 # must match the RunStep count (lint.sh checks)
+
+## Package Center (third-party feeds + packages to install)
+# PKG_SOURCES entries are "name|url"; they are merged into
+# /usr/syno/etc/packages/feeds (existing feeds are kept, deduped by URL).
+# PKG_PACKAGES are feed package ids, installed via
+# `synopkg install_from_server` and left on their default autostart; list
+# installed ids with `synopkg list`. The set below is what a fresh DSM needs
+# for the rest of this script to be effective (git/zsh/gnuPG are required by
+# the OMZ, zsh and GPG steps) plus the SynoCli suite.
+PKG_SOURCES=(
+    "SynoCommunity|https://packages.synocommunity.com/"
+    "Kuangshen SPK|https://spk7.imnks.com/"
+)
+PKG_PACKAGES=(
+    "git" # required by InstallOhMyZsh
+    "gnupg" # required by ConfigureGPG
+    "vim"
+    "zsh-static" # required by ConfigureZsh / ConfigureDefaultShell
+    "python314"
+    "ffmpeg8"
+    "synocli-file"
+    "synocli-disk"
+    "synocli-monitor"
+    "synocli-net"
+    "synocli-misc"
+    "synocli-videodriver"
+    "synocli-videodriver-tools"
+)
+
+## Package auto-update
+# Weekly synopkg upgradeall through /etc/crontab (Sunday 04:15, right
+# after the 04:05 maintenance slot). /etc/crontab is the layer DSM itself
+# executes - GUI tasks only appear there as synoschedtask indirections.
+PKG_AUTO_UPDATE="${PKG_AUTO_UPDATE:-true}"
+
+## Docker (Container Manager) registry mirrors
+# Empty by default: dockerd.json is left untouched (your existing mirrors
+# are kept). Fill the list to have the registry-mirrors value rewritten
+# declaratively - only that key changes; data-root, the DSM "db" log-driver
+# and storage-driver stay untouched. The package is restarted to apply. In
+# the Package Center registry settings keep the checkmark on the v2
+# "Docker Hub" entry, not "Docker Hub (v1)".
+DOCKER_REGISTRY_MIRRORS=()
 
 ## Zsh
 ZSH_BUILD_IN_PLUGINS="${ZSH_BUILD_IN_PLUGINS:-aliases colored-man-pages command-not-found common-aliases docker docker-compose extract git history ssh sudo}"
@@ -452,12 +495,49 @@ GetSystemInformation() {
 # Configure Packages
 ConfigurePackages() {
     ConfigureDocker() {
-        HaveCommand synogroup || return 0
-        synogroup --add docker || true
-        if [ -S "/var/run/docker.sock" ]; then
-            chown root:docker "/var/run/docker.sock"
+        if HaveCommand synogroup; then
+            synogroup --add docker || true
+            if [ -S "/var/run/docker.sock" ]; then
+                chown root:docker "/var/run/docker.sock"
+            fi
+            synogroup --member docker "$CURRENT_USERNAME"
         fi
-        synogroup --member docker "$CURRENT_USERNAME"
+        # Registry mirrors for Container Manager / Docker: only the
+        # registry-mirrors value is rewritten in dockerd.json - everything
+        # else (data-root, the DSM "db" log-driver, storage-driver) stays as
+        # the package shipped it. An empty DOCKER_REGISTRY_MIRRORS keeps the
+        # file untouched.
+        if [ "${#DOCKER_REGISTRY_MIRRORS[@]}" -eq 0 ]; then
+            LogInfo "DOCKER_REGISTRY_MIRRORS empty; dockerd.json left unchanged"
+            return 0
+        fi
+        local dockerd_conf="" conf_candidate pkg_name mirrors_json="[" entry sep=""
+        for conf_candidate in \
+            "/var/packages/ContainerManager/etc/dockerd.json" \
+            "/var/packages/Docker/etc/dockerd.json"; do
+            if [ -f "$conf_candidate" ]; then
+                dockerd_conf="$conf_candidate"
+                break
+            fi
+        done
+        if [ -z "$dockerd_conf" ]; then
+            LogInfo "Container Manager not installed; skipping registry mirrors"
+            return 0
+        fi
+        for entry in "${DOCKER_REGISTRY_MIRRORS[@]}"; do
+            mirrors_json="${mirrors_json}${sep}\"${entry}\""
+            sep=","
+        done
+        mirrors_json="${mirrors_json}]"
+        if grep -q '"registry-mirrors"' "$dockerd_conf"; then
+            sed -i -E "s|\"registry-mirrors\"[[:space:]]*:[[:space:]]*\[[^]]*\]|\"registry-mirrors\": ${mirrors_json}|" "$dockerd_conf"
+        else
+            sed -i "s|^\{|{\"registry-mirrors\": ${mirrors_json}, |" "$dockerd_conf"
+        fi
+        pkg_name="$(dirname "$(dirname "$dockerd_conf")")"
+        pkg_name="${pkg_name##*/}"
+        synopkg restart "$pkg_name" > /dev/null 2>&1 || LogWarn "restart ${pkg_name} failed - mirrors apply at the next restart"
+        LogInfo "registry mirrors set in ${dockerd_conf}"
     }
     ConfigureOpenSSH() {
         HaveCommand ssh-keygen || return 0
@@ -510,10 +590,89 @@ ConfigureSystem() {
     RunStep "ConfigureDefaultShell" ConfigureDefaultShell
 }
 
+# Merge PKG_SOURCES into the Package Center feeds file. The file is a flat
+# JSON array of {"feed":url,"name":name} objects, so plain string surgery
+# with URL dedupe is enough - no JSON tooling required. Existing feeds are
+# kept; Package Center picks the file up on its next refresh.
+ConfigurePkgSources() {
+    HaveCommand synopkg || return 0
+    local feeds_file="/usr/syno/etc/packages/feeds"
+    mkdir -p "$(dirname "$feeds_file")"
+    local existing="" new_entries="" entry name url
+    if [ -f "$feeds_file" ]; then
+        existing="$(cat "$feeds_file")"
+    fi
+    for entry in "${PKG_SOURCES[@]}"; do
+        name="${entry%%|*}"
+        url="${entry#*|}"
+        case "$existing" in
+            *"$url"*) continue ;; # already configured
+        esac
+        entry="{\"feed\":\"${url}\",\"name\":\"${name}\"}"
+        if [ -n "$new_entries" ]; then
+            new_entries="${new_entries},${entry}"
+        else
+            new_entries="$entry"
+        fi
+    done
+    if [ -z "$new_entries" ]; then
+        LogInfo "package sources already configured"
+        return 0
+    fi
+    case "$existing" in
+        "") printf '[%s]\n' "$new_entries" > "$feeds_file" ;;
+        "["*"]")
+            # splice into the existing array: drop the outer brackets, keep
+            # whatever is inside, and append after a comma
+            existing="${existing#\[}"
+            existing="${existing%\]}"
+            printf '[%s,%s]\n' "$existing" "$new_entries" > "$feeds_file"
+            ;;
+        *)
+            BackupPath "$feeds_file"
+            printf '[%s]\n' "$new_entries" > "$feeds_file"
+            LogWarn "unrecognized feeds content - replaced (old file backed up)"
+            ;;
+    esac
+    # Best-effort catalog refresh; otherwise Package Center fetches it on the
+    # next open.
+    synopkg update > /dev/null 2>&1 || LogWarn "feed refresh deferred - open Package Center once to pick up new sources"
+    LogInfo "package sources merged into ${feeds_file}"
+}
+
+# Install the PKG_PACKAGES ids from the configured feeds. Packages keep
+# their default autostart; there is no synopkg on/off on DSM 7.
+InstallPkgPackages() {
+    HaveCommand synopkg || return 0
+    local pkg
+    for pkg in "${PKG_PACKAGES[@]}"; do
+        if synopkg install_from_server "$pkg"; then
+            LogInfo "package installed: ${pkg}"
+        else
+            LogWarn "synopkg install_from_server ${pkg} failed - check the feed or the package id"
+        fi
+    done
+}
+
+# Weekly synopkg upgradeall through the DSM crontab, so third-party packages
+# keep themselves current. The entry is idempotent (grep-checked).
+ConfigurePkgAutoUpdate() {
+    [ "$PKG_AUTO_UPDATE" = "true" ] || return 0
+    local cron_line="15 4 * * 0 root /usr/syno/bin/synopkg upgradeall"
+    if ! grep -qF "synopkg upgradeall" /etc/crontab; then
+        printf '%s\n' "$cron_line" >> /etc/crontab
+        systemctl restart crond > /dev/null 2>&1 || true
+        LogInfo "package auto-update scheduled (Sat 05:00)"
+    fi
+}
+
 # Install Custom Packages
 InstallCustomPackages() {
     OMZ_HOME="$HOME_BASE"
     OMZ_OWNER="${CURRENT_USERNAME}:users"
+    RunStep "ConfigurePkgSources" ConfigurePkgSources
+    RunStep "InstallPkgPackages" InstallPkgPackages
+    RunStep "ConfigurePkgAutoUpdate" ConfigurePkgAutoUpdate
     RunStep "InstallOhMyZsh" InstallOhMyZsh
 }
 
