@@ -5,12 +5,12 @@
 # ============================================================================
 
 ## Credentials (defaults are intentional; change them after deployment)
-ROOT_PASSWORD="${ROOT_PASSWORD:-R00t@123!}"
-LOCK_ROOT="${LOCK_ROOT:-FALSE}" # TRUE locks the root account after deployment
+ROOT_PASSWORD="${ROOT_PASSWORD:-}" # empty = generate a random one at run time (printed)
+LOCK_ROOT="${LOCK_ROOT:-false}" # TRUE locks the root account after deployment
 NUT_ADMIN_PASSWORD="${NUT_ADMIN_PASSWORD:-123456}"
 NUT_MON_PASSWORD="${NUT_MON_PASSWORD:-secret}"
-SNMP_AUTH_PASS="${SNMP_AUTH_PASS:-}" # empty -> root password (warns)
-SNMP_PRIV_PASS="${SNMP_PRIV_PASS:-}" # empty -> hostname (warns)
+SNMP_AUTH_PASSWORD="${SNMP_AUTH_PASSWORD:-}" # empty -> root password (warns)
+SNMP_PRIV_PASSWORD="${SNMP_PRIV_PASSWORD:-}" # empty -> hostname (warns)
 
 ## Behavior switches
 PURGE_OTHER_USERS="${PURGE_OTHER_USERS:-true}" # remove other /home users (fresh-install assumption)

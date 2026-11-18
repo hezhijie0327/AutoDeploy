@@ -151,7 +151,7 @@ WriteHostfile() {
 }
 
 # Structural globals shared by both Debian platforms; platform ConfigurePackages
-# blocks may override any of them (e.g. Proxmox VE extends ZSH_PATH_LIST).
+# blocks may override any of them (e.g. Proxmox VE extends ZSH_PATHS).
 # shellcheck disable=SC2034 # consumed by the gpg/proxychains/zsh modules
 SetDebianGlobals() {
     PROXYCHAINS_CONF="/etc/proxychains4.conf"
@@ -161,7 +161,7 @@ SetDebianGlobals() {
     GPG_HOME_OWNER="${DEFAULT_USERNAME}:${DEFAULT_USERNAME}"
     ZSH_HOME="/home/${DEFAULT_USERNAME}"
     ZSH_OWNER="${DEFAULT_USERNAME}:${DEFAULT_USERNAME}"
-    ZSH_PATH_LIST=("/bin" "/sbin" "/usr/bin" "/usr/sbin" "/usr/local/bin" "/usr/local/sbin")
+    ZSH_PATHS=("/bin" "/sbin" "/usr/bin" "/usr/sbin" "/usr/local/bin" "/usr/local/sbin")
     ZSH_EXTRA_EXPORTS=("export DEBIAN_FRONTEND=\"noninteractive\"")
     ZSH_TRAPEXIT="false"
 }

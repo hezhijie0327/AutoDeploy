@@ -2,12 +2,16 @@
 # modules/debian/users.sh - default user and root account management
 # (Ubuntu / Proxmox VE, bash 4.4+)
 # ConfigureDefaultUser needs DEFAULT_USERNAME/FULLNAME/PASSWORD (plus
-# DEFAULT_PASSWORD_DEFAULT for the warning) and the PURGE_OTHER_USERS switch;
+# DEFAULT_PASSWORD_SENTINEL for the warning) and the PURGE_OTHER_USERS switch;
 # the pveum blocks are no-ops on non-PVE hosts (HaveCommand pveum).
 # ============================================================================
 
 ConfigureDefaultUser() {
-    WarnDefaultPassword "DEFAULT_PASSWORD" "$DEFAULT_PASSWORD" "$DEFAULT_PASSWORD_DEFAULT"
+    if [ -z "$DEFAULT_PASSWORD" ]; then
+        DEFAULT_PASSWORD=$(MintRandomPassword)
+        LogWarn "DEFAULT_PASSWORD was empty: generated a random one - note it down (override via env on re-runs)"
+        LogInfo "default user password: ${DEFAULT_PASSWORD}"
+    fi
     PURGE_OTHER_USERS="${PURGE_OTHER_USERS:-true}"
     if [ "$PURGE_OTHER_USERS" = "true" ]; then
         LogWarn "PURGE_OTHER_USERS=true: removing every other user under /home (set PURGE_OTHER_USERS=false to keep them)"
@@ -63,11 +67,14 @@ ConfigureDefaultShell() {
 }
 
 ConfigureRootUser() {
-    LOCK_ROOT="${LOCK_ROOT:-FALSE}"
-    ROOT_PASSWORD="${ROOT_PASSWORD:-R00t@123!}"
-    WarnDefaultPassword "ROOT_PASSWORD" "$ROOT_PASSWORD" 'R00t@123!'
+    LOCK_ROOT="${LOCK_ROOT:-false}"
+    if [ -z "$ROOT_PASSWORD" ]; then
+        ROOT_PASSWORD=$(MintRandomPassword)
+        LogWarn "ROOT_PASSWORD was empty: generated a random one - note it down (override via env on re-runs)"
+        LogInfo "root password: ${ROOT_PASSWORD}"
+    fi
     printf 'root:%s\n' "$ROOT_PASSWORD" | chpasswd
-    if [ "$LOCK_ROOT" = "TRUE" ]; then
+    if [ "$LOCK_ROOT" = "true" ]; then
         passwd -l root
     else
         passwd -u root

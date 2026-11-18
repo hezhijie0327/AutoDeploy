@@ -304,7 +304,7 @@ SetGHProxyDomain() {
 ecdsa-384 / ed25519 / rsa-4096 only. DSA was removed: OpenSSH ≥ 9.8 disables it and 10.x removed it, which broke the whole `&&` chain on modern systems.
 
 ### Credentials
-Default passwords are kept on purpose (operators change them after deployment). Every default in use triggers a `WarnDefaultPassword`/`LogWarn` notice and can be overridden via environment variable before running. SSH root password login is intentional; the root account is locked afterwards with `LOCK_ROOT=TRUE`.
+`ROOT_PASSWORD` and `DEFAULT_PASSWORD` default to empty and are generated randomly at run time (printed to the log); operators can override them via environment variable. The remaining literal defaults (NUT) trigger a `WarnDefaultPassword`/`LogWarn` notice. SSH root password login is intentional; the root account is locked afterwards with `LOCK_ROOT=true`.
 
 ## Security Considerations
 

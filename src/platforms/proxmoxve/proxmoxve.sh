@@ -308,7 +308,7 @@ ConfigurePackages() {
     DOCKER_APT_DISTRO="debian"
     FRR_APT_LINE="deb [arch=${OS_ARCHITECTURE} signed-by=/usr/share/keyrings/frrouting-archive-keyring.gpg] https://deb.frrouting.org/frr ${LSB_CODENAME} frr-stable"
     SetDebianGlobals
-    ZSH_PATH_LIST+=("/usr/lib/cargo/bin")
+    ZSH_PATHS+=("/usr/lib/cargo/bin")
 
     RunStep "ConfigureAPT" ConfigureAPT
     RunStep "ConfigureAPTPVEExtras" ConfigureAPTPVEExtras

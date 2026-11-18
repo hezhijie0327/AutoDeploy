@@ -75,7 +75,7 @@ ConfigurePackages() {
     GPG_HOME_OWNER="${CURRENT_USERNAME}:users"
     ZSH_HOME="$HOME_BASE"
     ZSH_OWNER="${CURRENT_USERNAME}:users"
-    ZSH_PATH_LIST=("/bin" "/sbin" "/usr/bin" "/usr/sbin" "/usr/local/bin" "/usr/local/sbin" "/usr/syno/bin" "/usr/syno/sbin")
+    ZSH_PATHS=("/bin" "/sbin" "/usr/bin" "/usr/sbin" "/usr/local/bin" "/usr/local/sbin" "/usr/syno/bin" "/usr/syno/sbin")
     ZSH_EXTRA_EXPORTS=("export DEBIAN_FRONTEND=\"noninteractive\"")
     ZSH_TRAPEXIT="true"
 

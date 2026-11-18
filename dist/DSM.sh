@@ -133,6 +133,15 @@ BackupPath() {
     fi
 }
 
+# MintRandomPassword
+# 32 hex characters from /dev/urandom (od reads exactly 16 bytes, so no
+# SIGPIPE games under pipefail). Linux-only; used when a password knob is
+# left empty.
+MintRandomPassword() {
+    od -An -N16 -tx1 /dev/urandom | tr -d ' 
+'
+}
+
 WarnDefaultPassword() {
     local name="$1" value="$2" default_value="$3"
     if [ "$value" = "$default_value" ]; then
@@ -380,7 +389,7 @@ InitUserSSHDir() {
 # ============================================================================
 # modules/zsh.sh - oh-my-zsh installation and .zshrc generation
 # (all platforms, bash 3.2+)
-# Platform must set: ZSH_PATH_LIST (array). ConfigureZsh additionally needs
+# Platform must set: ZSH_PATHS (array). ConfigureZsh additionally needs
 # ZSH_HOME, ZSH_BUILD_IN_PLUGINS, ZSH_EXTRA_EXPORTS (array, may be empty),
 # ZSH_TRAPEXIT (true/false), ZSH_OWNER (may be empty); InstallOhMyZsh needs
 # OMZ_HOME, OMZ_OWNER (may be empty).
@@ -389,7 +398,7 @@ InitUserSSHDir() {
 GenerateCommandPath() {
     DEFAULT_PATH=""
     local path_entry
-    for path_entry in "${ZSH_PATH_LIST[@]}"; do
+    for path_entry in "${ZSH_PATHS[@]}"; do
         DEFAULT_PATH="${path_entry}:${DEFAULT_PATH}"
     done
     DEFAULT_PATH="${DEFAULT_PATH%:}"
@@ -554,7 +563,7 @@ ConfigurePackages() {
     GPG_HOME_OWNER="${CURRENT_USERNAME}:users"
     ZSH_HOME="$HOME_BASE"
     ZSH_OWNER="${CURRENT_USERNAME}:users"
-    ZSH_PATH_LIST=("/bin" "/sbin" "/usr/bin" "/usr/sbin" "/usr/local/bin" "/usr/local/sbin" "/usr/syno/bin" "/usr/syno/sbin")
+    ZSH_PATHS=("/bin" "/sbin" "/usr/bin" "/usr/sbin" "/usr/local/bin" "/usr/local/sbin" "/usr/syno/bin" "/usr/syno/sbin")
     ZSH_EXTRA_EXPORTS=("export DEBIAN_FRONTEND=\"noninteractive\"")
     ZSH_TRAPEXIT="true"
 

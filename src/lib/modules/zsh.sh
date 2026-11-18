@@ -1,7 +1,7 @@
 # ============================================================================
 # modules/zsh.sh - oh-my-zsh installation and .zshrc generation
 # (all platforms, bash 3.2+)
-# Platform must set: ZSH_PATH_LIST (array). ConfigureZsh additionally needs
+# Platform must set: ZSH_PATHS (array). ConfigureZsh additionally needs
 # ZSH_HOME, ZSH_BUILD_IN_PLUGINS, ZSH_EXTRA_EXPORTS (array, may be empty),
 # ZSH_TRAPEXIT (true/false), ZSH_OWNER (may be empty); InstallOhMyZsh needs
 # OMZ_HOME, OMZ_OWNER (may be empty).
@@ -10,7 +10,7 @@
 GenerateCommandPath() {
     DEFAULT_PATH=""
     local path_entry
-    for path_entry in "${ZSH_PATH_LIST[@]}"; do
+    for path_entry in "${ZSH_PATHS[@]}"; do
         DEFAULT_PATH="${path_entry}:${DEFAULT_PATH}"
     done
     DEFAULT_PATH="${DEFAULT_PATH%:}"

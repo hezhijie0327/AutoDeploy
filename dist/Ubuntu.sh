@@ -50,12 +50,12 @@ ZSH_THEME="${ZSH_THEME:-ys}"
 # ============================================================================
 
 ## Credentials (defaults are intentional; change them after deployment)
-ROOT_PASSWORD="${ROOT_PASSWORD:-R00t@123!}"
-LOCK_ROOT="${LOCK_ROOT:-FALSE}" # TRUE locks the root account after deployment
+ROOT_PASSWORD="${ROOT_PASSWORD:-}" # empty = generate a random one at run time (printed)
+LOCK_ROOT="${LOCK_ROOT:-false}" # TRUE locks the root account after deployment
 NUT_ADMIN_PASSWORD="${NUT_ADMIN_PASSWORD:-123456}"
 NUT_MON_PASSWORD="${NUT_MON_PASSWORD:-secret}"
-SNMP_AUTH_PASS="${SNMP_AUTH_PASS:-}" # empty -> root password (warns)
-SNMP_PRIV_PASS="${SNMP_PRIV_PASS:-}" # empty -> hostname (warns)
+SNMP_AUTH_PASSWORD="${SNMP_AUTH_PASSWORD:-}" # empty -> root password (warns)
+SNMP_PRIV_PASSWORD="${SNMP_PRIV_PASSWORD:-}" # empty -> hostname (warns)
 
 ## Behavior switches
 PURGE_OTHER_USERS="${PURGE_OTHER_USERS:-true}" # remove other /home users (fresh-install assumption)
@@ -165,13 +165,12 @@ DEPENDENCY_PACKAGES_BASE=(
 AUTODEPLOY_STEP_TOTAL=51 # must match the RunStep count (lint.sh checks)
 
 ## Credentials
-DEFAULT_PASSWORD_DEFAULT='*Ubuntu123*' # baseline for the default-password warning
-DEFAULT_PASSWORD="${DEFAULT_PASSWORD:-${DEFAULT_PASSWORD_DEFAULT}}"
+DEFAULT_PASSWORD="${DEFAULT_PASSWORD:-}" # empty = generate a random one at run time (printed)
 
 ## Identity
-DEFAULT_USERNAME="${DEFAULT_USERNAME:-ubuntu}"
+DEFAULT_USERNAME="${DEFAULT_USERNAME:-default}"
 DEFAULT_FIRSTNAME="${DEFAULT_FIRSTNAME:-User}"
-DEFAULT_LASTNAME="${DEFAULT_LASTNAME:-Ubuntu}"
+DEFAULT_LASTNAME="${DEFAULT_LASTNAME:-Default}"
 
 ## Behavior switches
 DISABLE_SWAP="${DISABLE_SWAP:-false}"
@@ -248,6 +247,15 @@ BackupPath() {
         mv "$target" "$backup"
         LogInfo "backed up ${target} -> ${backup}"
     fi
+}
+
+# MintRandomPassword
+# 32 hex characters from /dev/urandom (od reads exactly 16 bytes, so no
+# SIGPIPE games under pipefail). Linux-only; used when a password knob is
+# left empty.
+MintRandomPassword() {
+    od -An -N16 -tx1 /dev/urandom | tr -d ' 
+'
 }
 
 WarnDefaultPassword() {
@@ -607,7 +615,7 @@ GenerateWireGuardConfig() {
 # ============================================================================
 # modules/zsh.sh - oh-my-zsh installation and .zshrc generation
 # (all platforms, bash 3.2+)
-# Platform must set: ZSH_PATH_LIST (array). ConfigureZsh additionally needs
+# Platform must set: ZSH_PATHS (array). ConfigureZsh additionally needs
 # ZSH_HOME, ZSH_BUILD_IN_PLUGINS, ZSH_EXTRA_EXPORTS (array, may be empty),
 # ZSH_TRAPEXIT (true/false), ZSH_OWNER (may be empty); InstallOhMyZsh needs
 # OMZ_HOME, OMZ_OWNER (may be empty).
@@ -616,7 +624,7 @@ GenerateWireGuardConfig() {
 GenerateCommandPath() {
     DEFAULT_PATH=""
     local path_entry
-    for path_entry in "${ZSH_PATH_LIST[@]}"; do
+    for path_entry in "${ZSH_PATHS[@]}"; do
         DEFAULT_PATH="${path_entry}:${DEFAULT_PATH}"
     done
     DEFAULT_PATH="${DEFAULT_PATH%:}"
@@ -1348,13 +1356,13 @@ deb-src [arch=${OS_ARCHITECTURE:-amd64} signed-by=/usr/share/keyrings/crowdsec-a
 # Platform wrapper sets SNMP_USER, then calls this.
 ConfigureSNMPBase() {
     HaveCommand snmpwalk || return 0
-    if [ -z "${SNMP_AUTH_PASS:-}" ]; then
-        SNMP_AUTH_PASS="${ROOT_PASSWORD}"
-        LogWarn "SNMP_AUTH_PASS defaults to the root password; override it via SNMP_AUTH_PASS."
+    if [ -z "${SNMP_AUTH_PASSWORD:-}" ]; then
+        SNMP_AUTH_PASSWORD="${ROOT_PASSWORD}"
+        LogWarn "SNMP_AUTH_PASSWORD defaults to the root password; override it via SNMP_AUTH_PASSWORD."
     fi
-    if [ -z "${SNMP_PRIV_PASS:-}" ]; then
-        SNMP_PRIV_PASS="${NEW_HOSTNAME}"
-        LogWarn "SNMP_PRIV_PASS defaults to the hostname; override it via SNMP_PRIV_PASS."
+    if [ -z "${SNMP_PRIV_PASSWORD:-}" ]; then
+        SNMP_PRIV_PASSWORD="${NEW_HOSTNAME}"
+        LogWarn "SNMP_PRIV_PASSWORD defaults to the hostname; override it via SNMP_PRIV_PASSWORD."
     fi
     SNMP_SYS_CONTACT="${DEFAULT_FULLNAME}"
     SNMP_SYS_LOCATION="${NEW_HOSTNAME}"
@@ -1371,11 +1379,11 @@ ConfigureSNMPBase() {
     systemctl stop snmpd
     pkill -x snmpd > /dev/null 2>&1 || true
     sed -i 's/^mibs :/# mibs :/g' /etc/snmp/snmp.conf
-    printf 'createUser %s SHA "%s" AES "%s"\n' "$SNMP_USER" "$SNMP_AUTH_PASS" "$SNMP_PRIV_PASS" > /var/lib/snmp/snmpd.conf
+    printf 'createUser %s SHA "%s" AES "%s"\n' "$SNMP_USER" "$SNMP_AUTH_PASSWORD" "$SNMP_PRIV_PASSWORD" > /var/lib/snmp/snmpd.conf
     printf '%s\n' "${snmp_list[@]}" | sort > /etc/snmp/snmpd.conf
     systemctl start snmpd
     # Verification only; head closes the pipe early, so ignore SIGPIPE.
-    snmpwalk -v3 -a SHA -A "$SNMP_AUTH_PASS" -x AES -X "$SNMP_PRIV_PASS" -l authPriv -u "$SNMP_USER" 127.0.0.1 | head || true
+    snmpwalk -v3 -a SHA -A "$SNMP_AUTH_PASSWORD" -x AES -X "$SNMP_PRIV_PASSWORD" -l authPriv -u "$SNMP_USER" 127.0.0.1 | head || true
 }
 # ============================================================================
 # modules/debian/ssh.sh - OpenSSH host keys, user key setup and sshd
@@ -1401,7 +1409,7 @@ ConfigureOpenSSH() {
 }
 
 # Root password login is intentional: the root account gets locked afterwards
-# via LOCK_ROOT=TRUE (see ConfigureRootUser). Needs SSH_PORT (defaults to 22,
+# via LOCK_ROOT=true (see ConfigureRootUser). Needs SSH_PORT (defaults to 22,
 # e.g. Proxmox VE keeps 22 for cluster-internal SSH).
 ConfigureSshd() {
     [ -f /usr/share/openssh/sshd_config ] || return 0
@@ -1624,7 +1632,7 @@ WriteHostfile() {
 }
 
 # Structural globals shared by both Debian platforms; platform ConfigurePackages
-# blocks may override any of them (e.g. Proxmox VE extends ZSH_PATH_LIST).
+# blocks may override any of them (e.g. Proxmox VE extends ZSH_PATHS).
 # shellcheck disable=SC2034 # consumed by the gpg/proxychains/zsh modules
 SetDebianGlobals() {
     PROXYCHAINS_CONF="/etc/proxychains4.conf"
@@ -1634,7 +1642,7 @@ SetDebianGlobals() {
     GPG_HOME_OWNER="${DEFAULT_USERNAME}:${DEFAULT_USERNAME}"
     ZSH_HOME="/home/${DEFAULT_USERNAME}"
     ZSH_OWNER="${DEFAULT_USERNAME}:${DEFAULT_USERNAME}"
-    ZSH_PATH_LIST=("/bin" "/sbin" "/usr/bin" "/usr/sbin" "/usr/local/bin" "/usr/local/sbin")
+    ZSH_PATHS=("/bin" "/sbin" "/usr/bin" "/usr/sbin" "/usr/local/bin" "/usr/local/sbin")
     ZSH_EXTRA_EXPORTS=("export DEBIAN_FRONTEND=\"noninteractive\"")
     ZSH_TRAPEXIT="false"
 }
@@ -1642,12 +1650,16 @@ SetDebianGlobals() {
 # modules/debian/users.sh - default user and root account management
 # (Ubuntu / Proxmox VE, bash 4.4+)
 # ConfigureDefaultUser needs DEFAULT_USERNAME/FULLNAME/PASSWORD (plus
-# DEFAULT_PASSWORD_DEFAULT for the warning) and the PURGE_OTHER_USERS switch;
+# DEFAULT_PASSWORD_SENTINEL for the warning) and the PURGE_OTHER_USERS switch;
 # the pveum blocks are no-ops on non-PVE hosts (HaveCommand pveum).
 # ============================================================================
 
 ConfigureDefaultUser() {
-    WarnDefaultPassword "DEFAULT_PASSWORD" "$DEFAULT_PASSWORD" "$DEFAULT_PASSWORD_DEFAULT"
+    if [ -z "$DEFAULT_PASSWORD" ]; then
+        DEFAULT_PASSWORD=$(MintRandomPassword)
+        LogWarn "DEFAULT_PASSWORD was empty: generated a random one - note it down (override via env on re-runs)"
+        LogInfo "default user password: ${DEFAULT_PASSWORD}"
+    fi
     PURGE_OTHER_USERS="${PURGE_OTHER_USERS:-true}"
     if [ "$PURGE_OTHER_USERS" = "true" ]; then
         LogWarn "PURGE_OTHER_USERS=true: removing every other user under /home (set PURGE_OTHER_USERS=false to keep them)"
@@ -1703,11 +1715,14 @@ ConfigureDefaultShell() {
 }
 
 ConfigureRootUser() {
-    LOCK_ROOT="${LOCK_ROOT:-FALSE}"
-    ROOT_PASSWORD="${ROOT_PASSWORD:-R00t@123!}"
-    WarnDefaultPassword "ROOT_PASSWORD" "$ROOT_PASSWORD" 'R00t@123!'
+    LOCK_ROOT="${LOCK_ROOT:-false}"
+    if [ -z "$ROOT_PASSWORD" ]; then
+        ROOT_PASSWORD=$(MintRandomPassword)
+        LogWarn "ROOT_PASSWORD was empty: generated a random one - note it down (override via env on re-runs)"
+        LogInfo "root password: ${ROOT_PASSWORD}"
+    fi
     printf 'root:%s\n' "$ROOT_PASSWORD" | chpasswd
-    if [ "$LOCK_ROOT" = "TRUE" ]; then
+    if [ "$LOCK_ROOT" = "true" ]; then
         passwd -l root
     else
         passwd -u root

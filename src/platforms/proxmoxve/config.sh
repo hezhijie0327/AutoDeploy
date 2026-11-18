@@ -9,14 +9,13 @@
 AUTODEPLOY_STEP_TOTAL=50 # must match the RunStep count (lint.sh checks)
 
 ## Credentials
-DEFAULT_PASSWORD_DEFAULT='*Proxmox123*' # baseline for the default-password warning
-DEFAULT_PASSWORD="${DEFAULT_PASSWORD:-${DEFAULT_PASSWORD_DEFAULT}}"
+DEFAULT_PASSWORD="${DEFAULT_PASSWORD:-}" # empty = generate a random one at run time (printed)
 SNMP_USER="${SNMP_USER:-proxmox}"
 
 ## Identity
-DEFAULT_USERNAME="${DEFAULT_USERNAME:-proxmox}"
+DEFAULT_USERNAME="${DEFAULT_USERNAME:-default}"
 DEFAULT_FIRSTNAME="${DEFAULT_FIRSTNAME:-User}"
-DEFAULT_LASTNAME="${DEFAULT_LASTNAME:-Proxmox}"
+DEFAULT_LASTNAME="${DEFAULT_LASTNAME:-Default}"
 
 ## Behavior switches
 RESET_CLUSTER="${RESET_CLUSTER:-true}" # FALSE on clustered nodes! resets corosync state

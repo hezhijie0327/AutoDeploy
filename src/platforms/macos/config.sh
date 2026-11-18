@@ -8,7 +8,7 @@
 AUTODEPLOY_STEP_TOTAL=16 # must match the RunStep count (lint.sh checks)
 
 ## Behavior switches
-REINSTALL_BREW="${REINSTALL_BREW:-false}" # true wipes and reinstalls Homebrew
+RESET_BREW="${RESET_BREW:-false}" # true wipes and reinstalls Homebrew
 INSTALL_APP_FROM_CASK="${INSTALL_APP_FROM_CASK:-false}" # install CASK_APPS via brew (disabled by default)
 INSTALL_APP_FROM_MAS="${INSTALL_APP_FROM_MAS:-false}" # install MAS_APPS via mas (needs an App Store sign-in)
 

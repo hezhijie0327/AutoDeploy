@@ -41,6 +41,15 @@ BackupPath() {
     fi
 }
 
+# MintRandomPassword
+# 32 hex characters from /dev/urandom (od reads exactly 16 bytes, so no
+# SIGPIPE games under pipefail). Linux-only; used when a password knob is
+# left empty.
+MintRandomPassword() {
+    od -An -N16 -tx1 /dev/urandom | tr -d ' 
+'
+}
+
 WarnDefaultPassword() {
     local name="$1" value="$2" default_value="$3"
     if [ "$value" = "$default_value" ]; then

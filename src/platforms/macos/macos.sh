@@ -81,7 +81,7 @@ ConfigurePackages() {
     GPG_PINENTRY="${BREW_PREFIX}/bin/pinentry-tty"
     ZSH_HOME="/Users/${CURRENT_USERNAME}"
     ZSH_OWNER=""
-    ZSH_PATH_LIST=("/bin" "/sbin" "/usr/bin" "/usr/sbin" "/usr/local/bin" "/usr/local/sbin" "${BREW_PREFIX}/bin" "${BREW_PREFIX}/sbin")
+    ZSH_PATHS=("/bin" "/sbin" "/usr/bin" "/usr/sbin" "/usr/local/bin" "/usr/local/sbin" "${BREW_PREFIX}/bin" "${BREW_PREFIX}/sbin")
     ZSH_EXTRA_EXPORTS=(
         "export HOMEBREW_API_DOMAIN=\"https://mirrors.cernet.edu.cn/homebrew-bottles/api\""
         "export HOMEBREW_BOTTLE_DOMAIN=\"https://mirrors.cernet.edu.cn/homebrew-bottles/bottles\""
@@ -161,7 +161,7 @@ InstallDependencyPackages() {
     export HOMEBREW_BOTTLE_DOMAIN="https://mirrors.cernet.edu.cn/homebrew-bottles/bottles"
     export HOMEBREW_BREW_GIT_REMOTE="https://mirrors.cernet.edu.cn/brew.git"
     export PATH="${BREW_PREFIX}/sbin:${BREW_PREFIX}/bin:${PATH}"
-    if [ "$REINSTALL_BREW" = "true" ]; then
+    if [ "$RESET_BREW" = "true" ]; then
         sudo rm -rf "$BREW_PREFIX" "/usr/local/Homebrew"
     fi
     if ! HaveCommand brew; then

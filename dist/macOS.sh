@@ -53,7 +53,7 @@ ZSH_THEME="${ZSH_THEME:-ys}"
 AUTODEPLOY_STEP_TOTAL=16 # must match the RunStep count (lint.sh checks)
 
 ## Behavior switches
-REINSTALL_BREW="${REINSTALL_BREW:-false}" # true wipes and reinstalls Homebrew
+RESET_BREW="${RESET_BREW:-false}" # true wipes and reinstalls Homebrew
 INSTALL_APP_FROM_CASK="${INSTALL_APP_FROM_CASK:-false}" # install CASK_APPS via brew (disabled by default)
 INSTALL_APP_FROM_MAS="${INSTALL_APP_FROM_MAS:-false}" # install MAS_APPS via mas (needs an App Store sign-in)
 
@@ -189,6 +189,15 @@ BackupPath() {
         mv "$target" "$backup"
         LogInfo "backed up ${target} -> ${backup}"
     fi
+}
+
+# MintRandomPassword
+# 32 hex characters from /dev/urandom (od reads exactly 16 bytes, so no
+# SIGPIPE games under pipefail). Linux-only; used when a password knob is
+# left empty.
+MintRandomPassword() {
+    od -An -N16 -tx1 /dev/urandom | tr -d ' 
+'
 }
 
 WarnDefaultPassword() {
@@ -548,7 +557,7 @@ GenerateWireGuardConfig() {
 # ============================================================================
 # modules/zsh.sh - oh-my-zsh installation and .zshrc generation
 # (all platforms, bash 3.2+)
-# Platform must set: ZSH_PATH_LIST (array). ConfigureZsh additionally needs
+# Platform must set: ZSH_PATHS (array). ConfigureZsh additionally needs
 # ZSH_HOME, ZSH_BUILD_IN_PLUGINS, ZSH_EXTRA_EXPORTS (array, may be empty),
 # ZSH_TRAPEXIT (true/false), ZSH_OWNER (may be empty); InstallOhMyZsh needs
 # OMZ_HOME, OMZ_OWNER (may be empty).
@@ -557,7 +566,7 @@ GenerateWireGuardConfig() {
 GenerateCommandPath() {
     DEFAULT_PATH=""
     local path_entry
-    for path_entry in "${ZSH_PATH_LIST[@]}"; do
+    for path_entry in "${ZSH_PATHS[@]}"; do
         DEFAULT_PATH="${path_entry}:${DEFAULT_PATH}"
     done
     DEFAULT_PATH="${DEFAULT_PATH%:}"
@@ -728,7 +737,7 @@ ConfigurePackages() {
     GPG_PINENTRY="${BREW_PREFIX}/bin/pinentry-tty"
     ZSH_HOME="/Users/${CURRENT_USERNAME}"
     ZSH_OWNER=""
-    ZSH_PATH_LIST=("/bin" "/sbin" "/usr/bin" "/usr/sbin" "/usr/local/bin" "/usr/local/sbin" "${BREW_PREFIX}/bin" "${BREW_PREFIX}/sbin")
+    ZSH_PATHS=("/bin" "/sbin" "/usr/bin" "/usr/sbin" "/usr/local/bin" "/usr/local/sbin" "${BREW_PREFIX}/bin" "${BREW_PREFIX}/sbin")
     ZSH_EXTRA_EXPORTS=(
         "export HOMEBREW_API_DOMAIN=\"https://mirrors.cernet.edu.cn/homebrew-bottles/api\""
         "export HOMEBREW_BOTTLE_DOMAIN=\"https://mirrors.cernet.edu.cn/homebrew-bottles/bottles\""
@@ -808,7 +817,7 @@ InstallDependencyPackages() {
     export HOMEBREW_BOTTLE_DOMAIN="https://mirrors.cernet.edu.cn/homebrew-bottles/bottles"
     export HOMEBREW_BREW_GIT_REMOTE="https://mirrors.cernet.edu.cn/brew.git"
     export PATH="${BREW_PREFIX}/sbin:${BREW_PREFIX}/bin:${PATH}"
-    if [ "$REINSTALL_BREW" = "true" ]; then
+    if [ "$RESET_BREW" = "true" ]; then
         sudo rm -rf "$BREW_PREFIX" "/usr/local/Homebrew"
     fi
     if ! HaveCommand brew; then

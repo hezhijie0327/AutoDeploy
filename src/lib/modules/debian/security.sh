@@ -75,13 +75,13 @@ deb-src [arch=${OS_ARCHITECTURE:-amd64} signed-by=/usr/share/keyrings/crowdsec-a
 # Platform wrapper sets SNMP_USER, then calls this.
 ConfigureSNMPBase() {
     HaveCommand snmpwalk || return 0
-    if [ -z "${SNMP_AUTH_PASS:-}" ]; then
-        SNMP_AUTH_PASS="${ROOT_PASSWORD}"
-        LogWarn "SNMP_AUTH_PASS defaults to the root password; override it via SNMP_AUTH_PASS."
+    if [ -z "${SNMP_AUTH_PASSWORD:-}" ]; then
+        SNMP_AUTH_PASSWORD="${ROOT_PASSWORD}"
+        LogWarn "SNMP_AUTH_PASSWORD defaults to the root password; override it via SNMP_AUTH_PASSWORD."
     fi
-    if [ -z "${SNMP_PRIV_PASS:-}" ]; then
-        SNMP_PRIV_PASS="${NEW_HOSTNAME}"
-        LogWarn "SNMP_PRIV_PASS defaults to the hostname; override it via SNMP_PRIV_PASS."
+    if [ -z "${SNMP_PRIV_PASSWORD:-}" ]; then
+        SNMP_PRIV_PASSWORD="${NEW_HOSTNAME}"
+        LogWarn "SNMP_PRIV_PASSWORD defaults to the hostname; override it via SNMP_PRIV_PASSWORD."
     fi
     SNMP_SYS_CONTACT="${DEFAULT_FULLNAME}"
     SNMP_SYS_LOCATION="${NEW_HOSTNAME}"
@@ -98,9 +98,9 @@ ConfigureSNMPBase() {
     systemctl stop snmpd
     pkill -x snmpd > /dev/null 2>&1 || true
     sed -i 's/^mibs :/# mibs :/g' /etc/snmp/snmp.conf
-    printf 'createUser %s SHA "%s" AES "%s"\n' "$SNMP_USER" "$SNMP_AUTH_PASS" "$SNMP_PRIV_PASS" > /var/lib/snmp/snmpd.conf
+    printf 'createUser %s SHA "%s" AES "%s"\n' "$SNMP_USER" "$SNMP_AUTH_PASSWORD" "$SNMP_PRIV_PASSWORD" > /var/lib/snmp/snmpd.conf
     printf '%s\n' "${snmp_list[@]}" | sort > /etc/snmp/snmpd.conf
     systemctl start snmpd
     # Verification only; head closes the pipe early, so ignore SIGPIPE.
-    snmpwalk -v3 -a SHA -A "$SNMP_AUTH_PASS" -x AES -X "$SNMP_PRIV_PASS" -l authPriv -u "$SNMP_USER" 127.0.0.1 | head || true
+    snmpwalk -v3 -a SHA -A "$SNMP_AUTH_PASSWORD" -x AES -X "$SNMP_PRIV_PASSWORD" -l authPriv -u "$SNMP_USER" 127.0.0.1 | head || true
 }

@@ -64,11 +64,11 @@ REINSTALL_RELEASE='26.04' REINSTALL_PASSWORD='MyS3cure!Pass' \
 
 | 变量 | 默认值 | 说明 |
 |------|--------|------|
-| `ROOT_PASSWORD` | `R00t@123!` | root 密码（Ubuntu / PVE） |
-| `DEFAULT_PASSWORD` | `*Ubuntu123*` / `*Proxmox123*` | 默认用户密码 |
-| `LOCK_ROOT` | `FALSE` | 设为 `TRUE` 部署后锁定 root 账户 |
+| `ROOT_PASSWORD` | 留空随机生成并打印 | root 密码（Ubuntu / PVE） |
+| `DEFAULT_PASSWORD` | 留空随机生成并打印 | 默认用户密码（Ubuntu / PVE） |
+| `LOCK_ROOT` | `false` | 设为 `true` 部署后锁定 root 账户 |
 | `NUT_ADMIN_PASSWORD` / `NUT_MON_PASSWORD` | `123456` / `secret` | NUT UPS 用户密码 |
-| `SNMP_AUTH_PASS` / `SNMP_PRIV_PASS` | root 密码 / 主机名 | SNMPv3 凭据（建议显式设置） |
+| `SNMP_AUTH_PASSWORD` / `SNMP_PRIV_PASSWORD` | root 密码 / 主机名 | SNMPv3 凭据（建议显式设置） |
 | `SNMP_USER` | `proxmox` | SNMPv3 只读用户名（PVE） |
 | `OPENSSH_PASSWORD` | 空 | SSH 私钥口令 |
 | `GPG_PUBKEY` | `DD982DAAB9C71C78F9563E5207EB56787030D792` | 导入的 GPG 公钥（SSH 认证支持） |
@@ -79,7 +79,7 @@ REINSTALL_RELEASE='26.04' REINSTALL_PASSWORD='MyS3cure!Pass' \
 |------|--------|------|
 | `PURGE_OTHER_USERS` | `true` | 删除 `/home` 下其他用户（Ubuntu / PVE，全新装机假设；保留请设 `false`） |
 | `RESET_CLUSTER` | `true` | 重置 corosync 集群状态（PVE；**已入集群的节点务必设 `false`**） |
-| `REINSTALL_BREW` | `false` | 重装 Homebrew（macOS） |
+| `RESET_BREW` | `false` | 重装 Homebrew（macOS） |
 | `DISABLE_SWAP` | `false` | 不创建 swapfile（Ubuntu） |
 | `AUTODEPLOY_FORCE` | `false` | 忽略断点记录，强制重跑所有步骤 |
 | `AUTODEPLOY_STATE_DIR` | `~/.autodeploy` | 断点续跑状态文件目录 |
@@ -169,7 +169,7 @@ bash tests/run_tests.sh # 纯函数单元测试
 ## 注意事项
 
 - 脚本会修改系统配置（用户、网络、防火墙、SSH），**请先在测试环境验证**
-- 默认密码仅为装机便利，生产环境必须修改；SSH root 密码登录是有意保留的，部署完成后建议 `LOCK_ROOT=TRUE`
+- 凭据留空时随机生成并在运行日志打印（生产环境改掉或显式传入）；SSH root 密码登录是有意保留的，部署完成后建议 `LOCK_ROOT=true`
 - `PURGE_OTHER_USERS` 与 `RESET_CLUSTER` 默认为破坏性行为，仅适用于全新装机
 - 建议执行前备份重要数据
 

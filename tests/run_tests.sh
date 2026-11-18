@@ -133,7 +133,7 @@ AssertEq "3000 MiB rounds down (frac .5)" "4096" "$(ComputeSwapSize 3000)"
 AssertEq "3500 MiB rounds up (frac .7)" "4096" "$(ComputeSwapSize 3500)"
 
 printf '== GenerateCommandPath ==\n'
-ZSH_PATH_LIST=("/bin" "/usr/bin" "/usr/local/bin")
+ZSH_PATHS=("/bin" "/usr/bin" "/usr/local/bin")
 GenerateCommandPath
 AssertEq "reverses list, no trailing colon" "/usr/local/bin:/usr/bin:/bin" "$DEFAULT_PATH"
 
@@ -149,7 +149,7 @@ printf '== ConfigureZsh / GenerateOMZProfile ==\n'
 zsh() { :; }
 ZSH_HOME="${TMPDIR_TESTS}/zsh"
 ZSH_OWNER=""
-ZSH_PATH_LIST=("/bin" "/usr/bin" "/opt/homebrew/bin")
+ZSH_PATHS=("/bin" "/usr/bin" "/opt/homebrew/bin")
 ZSH_BUILD_IN_PLUGINS="aliases brew git"
 ZSH_EXTRA_EXPORTS=("export HOMEBREW_NO_AUTO_UPDATE=\"1\"")
 ZSH_TRAPEXIT="true"

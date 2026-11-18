@@ -22,7 +22,7 @@ ConfigureOpenSSH() {
 }
 
 # Root password login is intentional: the root account gets locked afterwards
-# via LOCK_ROOT=TRUE (see ConfigureRootUser). Needs SSH_PORT (defaults to 22,
+# via LOCK_ROOT=true (see ConfigureRootUser). Needs SSH_PORT (defaults to 22,
 # e.g. Proxmox VE keeps 22 for cluster-internal SSH).
 ConfigureSshd() {
     [ -f /usr/share/openssh/sshd_config ] || return 0
