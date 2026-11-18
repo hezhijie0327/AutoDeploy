@@ -82,7 +82,7 @@ REINSTALL_RELEASE='24.04' REINSTALL_PASSWORD='MyS3cure!Pass' \
 | `AUTODEPLOY_STATE_DIR` | `~/.autodeploy` | 断点续跑状态文件目录 |
 | `XANMOD_BRANCH` | `edge` | XanMod 内核分支：`disable` / `main` / `edge` / `lts` / `rt` |
 | `GHPROXY_URL` | 空 | GitHub 代理地址，可带或不带 `https://`（自动补全 scheme 与末尾斜杠） |
-| `RESET_DOMAIN` / `RESET_HOSTNAME` | `false` | 忽略检测到的搜索域 / 主机名，按 `HOSTNAME_PREFIX` 重新生成 |
+| `RESET_DOMAIN` / `RESET_HOSTNAME` | `false` | 忽略检测到的搜索域 / 主机名；主机名重置后生成 12 位随机 hash（同 docker 容器 ID 风格） |
 | `DISABLE_ICMP_ECHO` | `false` | `true` 时忽略全部 ICMP echo（Ubuntu / PVE） |
 | `PREFER_IPV4` | `true` | gai.conf 地址选择优先 IPv4 |
 | `DISABLE_DISPLAY` | `false` | 关闭 efifb/vesafb（PVE，GPU 直通场景） |
@@ -104,7 +104,7 @@ REINSTALL_RELEASE='24.04' REINSTALL_PASSWORD='MyS3cure!Pass' \
 | `PROXY_PROTOCOL` / `PROXY_IP` / `PROXY_PORT` / `PROXY_USERNAME` / `PROXY_PASSWORD` | proxychains 上游代理 |
 | `PROXY_URL` | `http://vpn.zhijie.online:7890` | zsh `proxy_on` 便捷代理 |
 | `DEFAULT_FIRSTNAME` / `DEFAULT_LASTNAME` | `User` / `Ubuntu`（PVE: `Proxmox`） | 默认用户姓名（`DEFAULT_FULLNAME` = 姓 名） |
-| `HOSTNAME_PREFIX` | `Ubuntu`（PVE: `ProxmoxVE`） | 仅用于 `RESET_HOSTNAME=true` 时的时间戳主机名前缀；检测不到主机名时自动生成 Docker 风格随机名（如 `gentle-gauss`） |
+| `CUSTOM_HOSTNAME` / `CUSTOM_DOMAIN` | 自定义主机名 / 搜索域（Ubuntu / PVE），优先于自动检测与 `RESET_*`；检测不到主机名时自动生成 12 位随机 hash（如 `a3f19c02b7d4`） |
 | `ZSH_THEME` | `ys` | oh-my-zsh 主题 |
 | `CUSTOM_HOSTNAME` / `CUSTOM_DOMAIN` | 自定义主机名 / 搜索域（Ubuntu / PVE），优先于自动检测与 `RESET_*` |
 | `CUSTOM_DNS` | 默认 `223.5.5.5 223.6.6.6 2400:3200::1 2400:3200:baba::1`（AliDNS），空格分隔，env 可覆盖 |

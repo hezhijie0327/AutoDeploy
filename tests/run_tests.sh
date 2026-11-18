@@ -54,12 +54,12 @@ unset RESET_DOMAIN
 printf '== GenerateHostname ==\n'
 HOSTNAME_FILE="${TMPDIR_TESTS}/hostname"
 printf 'myhost\n' > "$HOSTNAME_FILE"
-HOSTNAME_PREFIX="Test" GenerateHostname
+GenerateHostname
 AssertEq "reads hostname file" "myhost" "$NEW_HOSTNAME"
 AssertEq "OLD_HOSTNAME keeps original" "myhost" "$OLD_HOSTNAME"
 
 printf 'myhost extra\n' > "$HOSTNAME_FILE"
-HOSTNAME_PREFIX="Test" GenerateHostname
+GenerateHostname
 AssertEq "takes first field only" "myhost" "$NEW_HOSTNAME"
 
 CUSTOM_HOSTNAME="custom-host" GenerateHostname
@@ -68,10 +68,10 @@ AssertEq "OLD_HOSTNAME survives CUSTOM_HOSTNAME" "myhost" "$OLD_HOSTNAME"
 unset CUSTOM_HOSTNAME
 
 HOSTNAME_FILE="${TMPDIR_TESTS}/missing"
-RESET_HOSTNAME="true" HOSTNAME_PREFIX="Test" GenerateHostname
+RESET_HOSTNAME="true" GenerateHostname
 case "$NEW_HOSTNAME" in
-    Test-[0-9]*) printf 'ok   RESET_HOSTNAME generates prefixed timestamp\n' ;;
-    *) printf 'FAIL RESET_HOSTNAME generates prefixed timestamp, got [%s]\n' "$NEW_HOSTNAME"; FAILURES=$((FAILURES + 1)) ;;
+    [0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]) printf 'ok   RESET_HOSTNAME mints a random hash (%s)\n' "$NEW_HOSTNAME" ;;
+    *) printf 'FAIL RESET_HOSTNAME mints a random hash, got [%s]\n' "$NEW_HOSTNAME"; FAILURES=$((FAILURES + 1)) ;;
 esac
 unset RESET_HOSTNAME
 
@@ -79,22 +79,22 @@ printf '== GenerateHostname random fallback ==\n'
 HOSTNAME_FILE="${TMPDIR_TESTS}/missing"
 # Shadow the hostname command with an empty-output one so detection yields "".
 hostname() { :; }
-HOSTNAME_PREFIX="Test" GenerateHostname
+GenerateHostname
 case "$NEW_HOSTNAME" in
-    [a-z]*-[a-z]*) printf 'ok   empty detection mints a docker-style name (%s)\n' "$NEW_HOSTNAME" ;;
-    *) printf 'FAIL empty detection mints a docker-style name, got [%s]\n' "$NEW_HOSTNAME"; FAILURES=$((FAILURES + 1)) ;;
+    [0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]) printf 'ok   empty detection mints a random hash (%s)\n' "$NEW_HOSTNAME" ;;
+    *) printf 'FAIL empty detection mints a random hash, got [%s]\n' "$NEW_HOSTNAME"; FAILURES=$((FAILURES + 1)) ;;
 esac
 # Two consecutive calls should differ (random, not deterministic).
 A="$NEW_HOSTNAME"
-HOSTNAME_PREFIX="Test" GenerateHostname
+GenerateHostname
 if [ "$A" != "$NEW_HOSTNAME" ]; then printf 'ok   consecutive calls differ\n'; else printf 'FAIL consecutive calls differ\n'; FAILURES=$((FAILURES + 1)); fi
 unset -f hostname
 
 printf '== Custom hostname / domain ==\n'
 CUSTOM_HOSTNAME="myhost"
-HOSTNAME_PREFIX="Test" GenerateHostname
+GenerateHostname
 AssertEq "CUSTOM_HOSTNAME overrides detection" "myhost" "$NEW_HOSTNAME"
-RESET_HOSTNAME="true" HOSTNAME_PREFIX="Test" GenerateHostname
+RESET_HOSTNAME="true" GenerateHostname
 AssertEq "CUSTOM_HOSTNAME wins over RESET_HOSTNAME" "myhost" "$NEW_HOSTNAME"
 unset CUSTOM_HOSTNAME RESET_HOSTNAME
 CUSTOM_DOMAIN="example.com corp.example.com"

@@ -17,7 +17,6 @@ SNMP_USER="${SNMP_USER:-proxmox}"
 DEFAULT_USERNAME="${DEFAULT_USERNAME:-proxmox}"
 DEFAULT_FIRSTNAME="${DEFAULT_FIRSTNAME:-User}"
 DEFAULT_LASTNAME="${DEFAULT_LASTNAME:-Proxmox}"
-HOSTNAME_PREFIX="${HOSTNAME_PREFIX:-ProxmoxVE}"
 
 ## Behavior switches
 RESET_CLUSTER="${RESET_CLUSTER:-true}" # FALSE on clustered nodes! resets corosync state
