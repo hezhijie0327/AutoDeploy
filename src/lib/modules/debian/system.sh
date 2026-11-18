@@ -26,9 +26,18 @@ GenerateDomain() {
     fi
 }
 
+# Docker-style random hostname (adjective-surname, RFC-1123-safe lowercase
+# words) for hosts where nothing is detectable.
+MINT_RANDOM_HOSTNAME() {
+    local adjectives=(brave calm clever eager fancy gentle happy jolly kind lively lucky mellow noble quiet rapid sharp swift tender vivid witty zealous)
+    local surnames=(bohr curie darwin edison euler fermi gauss hopper kepler lorentz maxwell newton nobel planck raman tesla torvalds watt weber)
+    printf '%s-%s\n' "${adjectives[$((RANDOM % ${#adjectives[@]}))]}" "${surnames[$((RANDOM % ${#surnames[@]}))]}"
+}
+
 # Sets NEW_HOSTNAME (CUSTOM_HOSTNAME > hostname file > hostname command >
-# HOSTNAME_PREFIX timestamp) and OLD_HOSTNAME (original hostname, used by the
-# Proxmox VE node rename step).
+# Docker-style random name when nothing is detectable, or HOSTNAME_PREFIX +
+# timestamp on an explicit RESET_HOSTNAME) and OLD_HOSTNAME (original
+# hostname, used by the Proxmox VE node rename step).
 GenerateHostname() {
     RESET_HOSTNAME="${RESET_HOSTNAME:-false}"
     OLD_HOSTNAME=""
@@ -44,7 +53,9 @@ GenerateHostname() {
         return 0
     fi
     NEW_HOSTNAME="$OLD_HOSTNAME"
-    if [ -z "$NEW_HOSTNAME" ] || [ "$RESET_HOSTNAME" = "true" ]; then
+    if [ -z "$NEW_HOSTNAME" ]; then
+        NEW_HOSTNAME=$(MINT_RANDOM_HOSTNAME)
+    elif [ "$RESET_HOSTNAME" = "true" ]; then
         NEW_HOSTNAME="${HOSTNAME_PREFIX}-$(date '+%Y%m%d%H%M%S')"
     fi
 }

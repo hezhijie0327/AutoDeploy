@@ -75,6 +75,21 @@ case "$NEW_HOSTNAME" in
 esac
 unset RESET_HOSTNAME
 
+printf '== GenerateHostname random fallback ==\n'
+HOSTNAME_FILE="${TMPDIR_TESTS}/missing"
+# Shadow the hostname command with an empty-output one so detection yields "".
+hostname() { :; }
+HOSTNAME_PREFIX="Test" GenerateHostname
+case "$NEW_HOSTNAME" in
+    [a-z]*-[a-z]*) printf 'ok   empty detection mints a docker-style name (%s)\n' "$NEW_HOSTNAME" ;;
+    *) printf 'FAIL empty detection mints a docker-style name, got [%s]\n' "$NEW_HOSTNAME"; FAILURES=$((FAILURES + 1)) ;;
+esac
+# Two consecutive calls should differ (random, not deterministic).
+A="$NEW_HOSTNAME"
+HOSTNAME_PREFIX="Test" GenerateHostname
+if [ "$A" != "$NEW_HOSTNAME" ]; then printf 'ok   consecutive calls differ\n'; else printf 'FAIL consecutive calls differ\n'; FAILURES=$((FAILURES + 1)); fi
+unset -f hostname
+
 printf '== Custom hostname / domain ==\n'
 CUSTOM_HOSTNAME="myhost"
 HOSTNAME_PREFIX="Test" GenerateHostname
