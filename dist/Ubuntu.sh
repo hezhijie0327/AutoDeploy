@@ -2060,13 +2060,6 @@ ConfigurePackages() {
 
 # Configure System
 ConfigureSystem() {
-    # Install-time structural globals: this container's Install* steps run
-    # BEFORE ConfigurePackages, so the variables their modules need are
-    # declared here rather than there.
-    DOCKER_APT_DISTRO="ubuntu"
-    FRR_APT_LINE="deb [arch=${OS_ARCHITECTURE} signed-by=/usr/share/keyrings/frrouting-archive-keyring.gpg] https://deb.frrouting.org/frr stable frr-stable"
-    FRR_EXTRA_PACKAGES=("frr-rpki-rtrlib")
-    SetDebianGlobals
     ConfigureHostfile() {
         WriteHostfile "127.0.1.1 ${NEW_HOSTNAME}"
     }
@@ -2128,6 +2121,13 @@ ConfigureSystem() {
 
 # Install Custom Packages
 InstallCustomPackages() {
+    # Install-time structural globals: this container's Install* steps run
+    # BEFORE ConfigureSystem/ConfigurePackages, so the variables their
+    # modules need are declared here rather than there.
+    DOCKER_APT_DISTRO="ubuntu"
+    FRR_APT_LINE="deb [arch=${OS_ARCHITECTURE} signed-by=/usr/share/keyrings/frrouting-archive-keyring.gpg] https://deb.frrouting.org/frr stable frr-stable"
+    FRR_EXTRA_PACKAGES=("frr-rpki-rtrlib")
+    SetDebianGlobals
     InstallCloudflareWARP() {
         [ "$INSTALL_CLOUDFLARE_WARP" = "true" ] || { LogInfo "INSTALL_CLOUDFLARE_WARP=false - skipped"; return 0; }
         InstallAptRepo "cloudflare-warp" "https://pkg.cloudflareclient.com/pubkey.gpg" \
