@@ -144,8 +144,11 @@ curl "https://source.zhijie.online/AutoDeploy/main/dist/Ubuntu.sh" | sudo bash
 | `REINSTALL_PASSWORD` | 随机生成并打印 | 新系统 root 密码；留空时若检测到本机 SSH 公钥则同时安装密钥 |
 | `REINSTALL_SSH_KEYS` | 复用本机 root 公钥 | authorized_keys 内容或文件路径 |
 | `REINSTALL_INSTALLER_PART_SIZE_MB` | `2048` | 安装暂存分区大小 |
+| `REINSTALL_CANCEL` | `false` | `true` 时撤销已 staged 的重装：清除一次性 GRUB 引导项、删除安装文件并重置状态，然后退出 |
 
 流程：脚本在本机备好 Alpine netboot 内核与安装器（写入 initramfs），注册一次性 GRUB 引导项；重启后自动分区、下载 Ubuntu 云镜像并复制安装、按原网卡 MAC 还原网络配置、写入密码 / 密钥并禁用 cloud-init。**目标磁盘会被清空**，仅支持 Ubuntu 源系统、GRUB 引导。重装完成后建议再跑一次 `dist/Ubuntu.sh` 完成完整配置。
+
+取消：重启前任何时刻跑 `REINSTALL_CANCEL=true ... Reinstall.sh` 即可撤销（清除一次性引导项与安装文件）；重启进安装器后的最初 10 秒内在**控制台**输入 `CANCEL` 也会中止并回退到原系统（此时尚未动盘），无人值守超时后自动继续。
 
 ## 开发
 

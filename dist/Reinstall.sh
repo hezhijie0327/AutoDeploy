@@ -59,6 +59,7 @@ AUTODEPLOY_STEP_TOTAL=6 # must match the RunStep count (lint.sh checks)
 # is allowed but must be one of the LTS releases mapped in GetUbuntuCodename.
 REINSTALL_RELEASE="${REINSTALL_RELEASE:-26.04}"
 REINSTALL_INSTALLER_PART_SIZE_MB="${REINSTALL_INSTALLER_PART_SIZE_MB:-2048}" # staging partition for the cloud image
+REINSTALL_CANCEL="${REINSTALL_CANCEL:-false}" # true = undo a staged reinstall (clears the one-time boot entry) and exit
 
 ## Installer bootstrap (Alpine netboot files run the install after reboot)
 REINSTALL_CONFHOME="${REINSTALL_CONFHOME:-https://source.zhijie.online/AutoDeploy/main/src/platforms/reinstall}" # trans.sh location
@@ -450,8 +451,26 @@ RenderSummary() {
     LogInfo "============================================================"
 }
 
+# CancelReinstall
+# Undo a staged reinstall: clear the one-time GRUB boot entry, drop the
+# installer menu entry and staged files, and reset the resume state so a
+# later run starts fresh (same idea as the `reset` subcommand of
+# bin456789/reinstall). Run with REINSTALL_CANCEL=true before rebooting.
+CancelReinstall() {
+    if HaveCommand grub-editenv && [ -f /boot/grub/grubenv ]; then
+        grub-editenv /boot/grub/grubenv unset next_entry || true
+    fi
+    rm -f /boot/grub/custom.cfg /reinstall-vmlinuz /reinstall-initrd /reinstall-modloop
+    rm -f "$(StateFile)"
+    LogInfo "staged reinstall cancelled; the host boots its default entry again"
+}
+
 ## Process
 RequireRoot
+if [ "${REINSTALL_CANCEL:-false}" = "true" ]; then
+    CancelReinstall
+    exit 0
+fi
 InitRun
 RunStep "CheckReinstallEnvironment" CheckReinstallEnvironment
 RunStep "CollectReinstallFacts" CollectReinstallFacts

@@ -223,8 +223,26 @@ RenderSummary() {
     LogInfo "============================================================"
 }
 
+# CancelReinstall
+# Undo a staged reinstall: clear the one-time GRUB boot entry, drop the
+# installer menu entry and staged files, and reset the resume state so a
+# later run starts fresh (same idea as the `reset` subcommand of
+# bin456789/reinstall). Run with REINSTALL_CANCEL=true before rebooting.
+CancelReinstall() {
+    if HaveCommand grub-editenv && [ -f /boot/grub/grubenv ]; then
+        grub-editenv /boot/grub/grubenv unset next_entry || true
+    fi
+    rm -f /boot/grub/custom.cfg /reinstall-vmlinuz /reinstall-initrd /reinstall-modloop
+    rm -f "$(StateFile)"
+    LogInfo "staged reinstall cancelled; the host boots its default entry again"
+}
+
 ## Process
 RequireRoot
+if [ "${REINSTALL_CANCEL:-false}" = "true" ]; then
+    CancelReinstall
+    exit 0
+fi
 InitRun
 RunStep "CheckReinstallEnvironment" CheckReinstallEnvironment
 RunStep "CollectReinstallFacts" CollectReinstallFacts

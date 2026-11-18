@@ -421,13 +421,24 @@ resize_rootfs() {
 
 ## Process
 log "installer started: $(date -u '+%Y-%m-%d %H:%M:%S UTC')"
+# Last-second escape hatch: typing CANCEL on the console within 10s aborts
+# and reboots back to the old system - the disk is untouched until
+# partition_disk. Unattended boots fall through after the timeout; stdin
+# must be /dev/console because OpenRC services have no controlling terminal.
+printf '%s' 'Reinstall starts in 10s - type CANCEL to abort: '
+if read -t 10 answer < /dev/console && [ "$answer" = "CANCEL" ]; then
+    log "cancelled; rebooting back to the old system"
+    sync
+    reboot
+fi
+printf '%s\n' ''
 setup_network
 apk_arch=$(get_extra arch "amd64")
 case "$apk_arch" in
     arm64) apk_arch="aarch64" ;;
     *) apk_arch="x86_64" ;;
 esac
-repo_url=$(get_extra repo "http://mirrors.cernet.edu.cn/alpine/v3.22/main")
+repo_url=$(get_extra repo "http://mirrors.cernet.edu.cn/alpine/latest-stable/main")
 printf '%s\n' "$repo_url" > /etc/apk/repositories
 wait_for_upstream "$repo_url" "$apk_arch"
 apk add --no-cache parted e2fsprogs e2fsprogs-extra dosfstools util-linux qemu-img > /dev/null 2>&1 || die "apk install failed"
