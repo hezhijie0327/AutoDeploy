@@ -61,7 +61,13 @@ ConfigureDockerEngine() {
         "  \"allow-direct-routing\": true,"
         "  \"experimental\": true,"
         "  \"firewall-backend\": \"nftables\","
-        "  \"ip-forward\": true"
+        "  \"ip-forward\": true,"
+        "  \"live-restore\": true,"
+        "  \"log-driver\": \"json-file\","
+        "  \"log-opts\": {"
+        "    \"max-file\": \"3\","
+        "    \"max-size\": \"10m\""
+        "  }"
         "}"
     )
     if [ "${#DOCKER_REGISTRY_MIRRORS[@]}" -gt 0 ]; then
@@ -71,6 +77,12 @@ ConfigureDockerEngine() {
             "  \"experimental\": true,"
             "  \"firewall-backend\": \"nftables\","
             "  \"ip-forward\": true,"
+            "  \"live-restore\": true,"
+            "  \"log-driver\": \"json-file\","
+            "  \"log-opts\": {"
+            "    \"max-file\": \"3\","
+            "    \"max-size\": \"10m\""
+            "  },"
             "  \"registry-mirrors\": ["
             "$(printf '    "%s",\n' "${DOCKER_REGISTRY_MIRRORS[@]}" | sed '$s/,$//')"
             "  ]"
@@ -81,7 +93,9 @@ ConfigureDockerEngine() {
     chown -R "${DEFAULT_USERNAME}:docker" "/docker"
     chmod -R 775 "/docker"
     mkdir -p /etc/docker
-    printf '%s\n' 'DOCKER_OPTS="--iptables=false"' > /etc/default/docker
+    # daemon.json is the single source of truth; the legacy /etc/default/docker
+    # DOCKER_OPTS file is ignored by the systemd unit and contradicted the
+    # docker-managed iptables, so it is deliberately not written.
     printf '%s\n' "${docker_list[@]}" > /etc/docker/daemon.json
     systemctl enable docker
     systemctl restart docker

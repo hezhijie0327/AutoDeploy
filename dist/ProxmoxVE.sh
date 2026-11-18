@@ -93,7 +93,7 @@ DEPENDENCY_PACKAGES_BASE=(
     "ca-certificates"
     "chrony"
     "curl"
-    "dnsutils"
+    "bind9-dnsutils"
     "ethtool"
     "fail2ban"
     "fastfetch"
@@ -124,10 +124,10 @@ DEPENDENCY_PACKAGES_BASE=(
     "nut-xml"
     "openssh-client"
     "openssh-server"
-    "p7zip-full"
+    "7zip"
     "pinentry-tty"
     "postfix"
-    "proxychains-ng"
+    "proxychains4" # renamed from proxychains-ng in resolute/trixie
     "python3"
     "python3-pip"
     "qrencode"
@@ -136,7 +136,7 @@ DEPENDENCY_PACKAGES_BASE=(
     "snmp"
     "snmp-mibs-downloader"
     "snmpd"
-    "sudo"
+    "sudo-rs" # rust sudo is the 26.04 / trixie direction; classic sudo.ws stays out
     "systemd"
     "systemd-zram-generator"
     "tcpdump"
@@ -208,7 +208,6 @@ DEPENDENCY_PACKAGES=("${DEPENDENCY_PACKAGES_BASE[@]}"
     "proxmox-secure-boot-support"
     "sbsigntool"
     "shim-signed"
-    "sudo-rs"
 )
 # ============================================================================
 # core.sh - logging, error handling and the resume/progress state machine
@@ -866,7 +865,13 @@ ConfigureDockerEngine() {
         "  \"allow-direct-routing\": true,"
         "  \"experimental\": true,"
         "  \"firewall-backend\": \"nftables\","
-        "  \"ip-forward\": true"
+        "  \"ip-forward\": true,"
+        "  \"live-restore\": true,"
+        "  \"log-driver\": \"json-file\","
+        "  \"log-opts\": {"
+        "    \"max-file\": \"3\","
+        "    \"max-size\": \"10m\""
+        "  }"
         "}"
     )
     if [ "${#DOCKER_REGISTRY_MIRRORS[@]}" -gt 0 ]; then
@@ -876,6 +881,12 @@ ConfigureDockerEngine() {
             "  \"experimental\": true,"
             "  \"firewall-backend\": \"nftables\","
             "  \"ip-forward\": true,"
+            "  \"live-restore\": true,"
+            "  \"log-driver\": \"json-file\","
+            "  \"log-opts\": {"
+            "    \"max-file\": \"3\","
+            "    \"max-size\": \"10m\""
+            "  },"
             "  \"registry-mirrors\": ["
             "$(printf '    "%s",\n' "${DOCKER_REGISTRY_MIRRORS[@]}" | sed '$s/,$//')"
             "  ]"
@@ -886,7 +897,9 @@ ConfigureDockerEngine() {
     chown -R "${DEFAULT_USERNAME}:docker" "/docker"
     chmod -R 775 "/docker"
     mkdir -p /etc/docker
-    printf '%s\n' 'DOCKER_OPTS="--iptables=false"' > /etc/default/docker
+    # daemon.json is the single source of truth; the legacy /etc/default/docker
+    # DOCKER_OPTS file is ignored by the systemd unit and contradicted the
+    # docker-managed iptables, so it is deliberately not written.
     printf '%s\n' "${docker_list[@]}" > /etc/docker/daemon.json
     systemctl enable docker
     systemctl restart docker

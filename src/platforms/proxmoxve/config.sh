@@ -49,5 +49,4 @@ DEPENDENCY_PACKAGES=("${DEPENDENCY_PACKAGES_BASE[@]}"
     "proxmox-secure-boot-support"
     "sbsigntool"
     "shim-signed"
-    "sudo-rs"
 )
