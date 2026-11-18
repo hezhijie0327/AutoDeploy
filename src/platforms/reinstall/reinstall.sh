@@ -113,7 +113,9 @@ DownloadInstallerFiles() {
         arm64) ALPINE_ARCH="aarch64" ;;
     esac
     ALPINE_BASE="${ALPINE_MIRROR}/v${REINSTALL_ALPINE_VERSION}/releases/${ALPINE_ARCH}/netboot"
-    REINSTALL_CLOUD_IMAGE="${IMAGE_MIRROR}/releases/${UBUNTU_CODENAME}/release/ubuntu-${REINSTALL_RELEASE}-server-cloudimg-${OS_ARCHITECTURE}.img"
+    # The CERNET mirror carries the <codename>/current/ tree only (no
+    # releases/), with codename-based filenames.
+    REINSTALL_CLOUD_IMAGE="${IMAGE_MIRROR}/${UBUNTU_CODENAME}/current/${UBUNTU_CODENAME}-server-cloudimg-${OS_ARCHITECTURE}.img"
     ALPINE_REPO="${ALPINE_MIRROR}/v${REINSTALL_ALPINE_VERSION}/main"
 
     curl -fsSL -o /reinstall-vmlinuz "${ALPINE_BASE}/vmlinuz-${ALPINE_FLAVOUR}"
