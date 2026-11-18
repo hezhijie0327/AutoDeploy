@@ -94,6 +94,13 @@ Die() {
     exit 1
 }
 
+# LogSeparator
+# Full-width separator line for summary blocks; every block that frames a
+# report prints these through here instead of inlining the dashes.
+LogSeparator() {
+    LogInfo "============================================================"
+}
+
 HaveCommand() {
     command -v "$1" > /dev/null 2>&1
 }
@@ -120,14 +127,13 @@ BackupPath() {
 # SIGPIPE games under pipefail). Linux-only; used when a password knob is
 # left empty.
 MintRandomPassword() {
-    od -An -N16 -tx1 /dev/urandom | tr -d ' 
-'
+    od -An -N16 -tx1 /dev/urandom | tr -d ' \n'
 }
 
 WarnDefaultPassword() {
     local name="$1" value="$2" default_value="$3"
     if [ "$value" = "$default_value" ]; then
-        LogWarn "${name} is using the built-in default. Change it after deployment, or override it with ${name}=<value> before running."
+        LogWarn "${name} is using the built-in default; change it after deployment or override it with ${name}=<value> before running"
     fi
 }
 
@@ -456,7 +462,7 @@ InstallBootEntry() {
 }
 
 RenderSummary() {
-    LogInfo "============================================================"
+    LogSeparator
     LogInfo "reinstall prepared: Ubuntu ${REINSTALL_RELEASE} (${UBUNTU_CODENAME}) on ${REINSTALL_DISK}"
     LogInfo "login: root"
     if [ "$REINSTALL_CREDENTIALS_MODE" = "generated-password" ]; then
@@ -471,7 +477,7 @@ RenderSummary() {
     fi
     LogInfo "network: ${MGMT_IPV4:-dhcp4} on ${MGMT_IFACE} (mac ${MGMT_MAC})"
     LogInfo "reboot now with: reboot"
-    LogInfo "============================================================"
+    LogSeparator
 }
 
 # CancelReinstall

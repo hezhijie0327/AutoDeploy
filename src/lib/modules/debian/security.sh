@@ -77,11 +77,11 @@ ConfigureSNMPBase() {
     HaveCommand snmpwalk || return 0
     if [ -z "${SNMP_AUTH_PASSWORD:-}" ]; then
         SNMP_AUTH_PASSWORD="${ROOT_PASSWORD}"
-        LogWarn "SNMP_AUTH_PASSWORD defaults to the root password; override it via SNMP_AUTH_PASSWORD."
+        LogWarn "SNMP_AUTH_PASSWORD defaults to the root password; override it via SNMP_AUTH_PASSWORD"
     fi
     if [ -z "${SNMP_PRIV_PASSWORD:-}" ]; then
         SNMP_PRIV_PASSWORD="${NEW_HOSTNAME}"
-        LogWarn "SNMP_PRIV_PASSWORD defaults to the hostname; override it via SNMP_PRIV_PASSWORD."
+        LogWarn "SNMP_PRIV_PASSWORD defaults to the hostname; override it via SNMP_PRIV_PASSWORD"
     fi
     SNMP_SYS_CONTACT="${DEFAULT_FULLNAME}"
     SNMP_SYS_LOCATION="${NEW_HOSTNAME}"

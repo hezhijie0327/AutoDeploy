@@ -214,7 +214,7 @@ InstallBootEntry() {
 }
 
 RenderSummary() {
-    LogInfo "============================================================"
+    LogSeparator
     LogInfo "reinstall prepared: Ubuntu ${REINSTALL_RELEASE} (${UBUNTU_CODENAME}) on ${REINSTALL_DISK}"
     LogInfo "login: root"
     if [ "$REINSTALL_CREDENTIALS_MODE" = "generated-password" ]; then
@@ -229,7 +229,7 @@ RenderSummary() {
     fi
     LogInfo "network: ${MGMT_IPV4:-dhcp4} on ${MGMT_IFACE} (mac ${MGMT_MAC})"
     LogInfo "reboot now with: reboot"
-    LogInfo "============================================================"
+    LogSeparator
 }
 
 # CancelReinstall

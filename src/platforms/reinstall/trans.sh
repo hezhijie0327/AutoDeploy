@@ -30,11 +30,17 @@ CMDLINE="$(cat /proc/cmdline)"
 DONE_BANNER=""
 
 log() {
-    printf '[Reinstall] %s\n' "$*"
+    printf '[AutoDeploy] %s\n' "$*"
+}
+
+# Same separator the phase-1 script prints (core.sh LogSeparator); this
+# file runs under busybox ash and cannot reuse it.
+separator() {
+    separator
 }
 
 die() {
-    printf '[Reinstall] ERROR: %s\n' "$*" >&2
+    printf '[AutoDeploy] ERROR: %s\n' "$*" >&2
     exit 1
 }
 
@@ -462,6 +468,6 @@ format_and_copy
 chroot_configure
 resize_rootfs
 log "============================================================"
-log "Ubuntu installed successfully. Reboot to boot the new system."
+log "Ubuntu installed successfully; reboot to boot the new system"
 log "============================================================"
 exit 0
